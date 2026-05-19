@@ -1,23 +1,15 @@
 #!/usr/bin/env bash
-# Fail the job if line coverage from the most recent .xcresult is below
-# COVERAGE_FLOOR.
-#
-# Floor calibrated to today's measured iPhone-Debug coverage (~47.4%)
-# with a small tolerance band, ratcheting up over time toward the 80%
-# v1 target (#545). Update the COVERAGE_FLOOR knob (not the comparison)
-# when bumping.
-# TODO: ratchet +5pp/quarter until reaching 80% once v1 audit blockers
-# close (20 open P0/P1 issues per .squad/decisions.md).
-#
-# Required env vars:
-#   DERIVED_DATA_PATH
+# Fail if line coverage from the latest .xcresult is below COVERAGE_FLOOR.
+# Floor tracks today's iPhone-Debug measurement (~47.4%); ratchet toward
+# 80% v1 target (#545) — bump COVERAGE_FLOOR, not the comparison.
 set -euo pipefail
-
-: "${DERIVED_DATA_PATH:?DERIVED_DATA_PATH is required}"
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=_lib.sh
+source "$SCRIPT_DIR/_lib.sh"
 
 COVERAGE_FLOOR=45
 
-XCRESULT=$(find "${DERIVED_DATA_PATH}/Logs/Test" -name "*.xcresult" 2>/dev/null | head -1)
+XCRESULT=$(find_latest_xcresult)
 if [[ -z "$XCRESULT" ]]; then
   echo "::error::No .xcresult found — tests may have crashed before producing results"
   exit 1

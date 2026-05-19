@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
-# Remove SDK-bound module caches restored from the cache action so the
-# Swift compiler does not detect a SwiftShims mtime mismatch on the
-# first build of the run.
-#
-# Required env vars:
-#   DERIVED_DATA_PATH
+# Drop SDK-bound module caches from a restored DerivedData to avoid the
+# SwiftShims mtime mismatch on first build.
 set -euo pipefail
 
 : "${DERIVED_DATA_PATH:?DERIVED_DATA_PATH is required}"
@@ -12,7 +8,7 @@ set -euo pipefail
 for SUBDIR in ModuleCache.noindex SDKStatCaches.noindex; do
   CACHE_PATH="${DERIVED_DATA_PATH}/${SUBDIR}"
   if [[ -d "$CACHE_PATH" ]]; then
-    echo "Removing stale ${SUBDIR} (would otherwise trigger SwiftShims mtime mismatch)"
+    echo "Removing stale ${SUBDIR}"
     rm -rf "$CACHE_PATH"
   fi
 done

@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-# Publish BUILD_NUMBER, GIT_COMMIT_HASH, and MARKETING_VERSION to GITHUB_ENV.
-#
-# Required env vars:
-#   BUILD_NUMBER — github.run_number (provided by caller)
-#   GITHUB_ENV   — provided by GitHub Actions
+# Export BUILD_NUMBER, GIT_COMMIT_HASH, MARKETING_VERSION to GITHUB_ENV.
 set -euo pipefail
 
 : "${BUILD_NUMBER:?BUILD_NUMBER is required}"

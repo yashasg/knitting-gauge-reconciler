@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
-# Mirror the job status back to the GitLab commit as a pipeline status.
-#
-# Required env vars:
-#   GITLAB_PAT
-#   GITLAB_PROJECT_ID  — numeric GitLab project id (from client_payload.project_id)
-#   GITLAB_SHA         — commit sha to attach the status to
-#   JOB_STATUS         — value of ${{ job.status }}
-#   TARGET_URL         — URL of the Actions run for the GitLab status link
+# Mirror this job's status back to the GitLab commit as a pipeline status.
 set -euo pipefail
 
 : "${GITLAB_PAT:?GITLAB_PAT is required}"

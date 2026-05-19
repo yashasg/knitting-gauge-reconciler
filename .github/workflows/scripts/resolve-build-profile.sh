@@ -1,18 +1,8 @@
 #!/usr/bin/env bash
-# Resolve CONFIGURATION / TEST_CONFIGURATION based on the GitLab event type.
-#
-# MRs run Debug-only to halve the wall clock (#544) — the audit
-# showed Release build was ~7m and Debug build+test prep was
-# ~12m, so dropping Release off the MR critical path is the
-# single biggest lever. Push events on main still produce the
-# Release build so whole-module optimization, Swift -O, and the
-# Release-only linker config remain gated before any downstream
-# tag/deploy. Tests always run in Debug.
-#
-# Required env vars:
-#   EVENT   — client_payload.event ("push" or "merge_request")
-#   BRANCH  — client_payload.branch
-#   GITHUB_ENV — provided by GitHub Actions
+# Resolve CONFIGURATION/TEST_CONFIGURATION from event type.
+# push-to-main → Release (gates whole-module opt + Release linker config, #544);
+# everything else (MRs) → Debug to halve wall-clock. Tests always Debug so
+# @testable + TCA transitive internals stay linkable on Xcode 26.
 set -euo pipefail
 
 : "${EVENT:?EVENT is required}"

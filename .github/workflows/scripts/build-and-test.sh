@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
-# Invoke app/build.sh with the resolved configuration for the iPhone 17
-# Pro simulator. Tests always run in Debug; the build configuration is
-# Debug for MRs and Release for push-to-main (see resolve-build-profile.sh).
-#
-# Required env vars:
-#   CONFIGURATION
-#   TEST_CONFIGURATION
-#   DERIVED_DATA_PATH
+# Build + test via app/build.sh on the iPhone 17 Pro simulator.
 set -euo pipefail
 
 : "${CONFIGURATION:?CONFIGURATION is required}"

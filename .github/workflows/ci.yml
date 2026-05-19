@@ -34,16 +34,10 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   # macos-26 ships with Xcode 26 by default; no explicit setup-xcode step needed.
   XCODE_VERSION: "26"
-  # CONFIGURATION and TEST_CONFIGURATION are resolved per-event in the
-  # "Resolve build profile" step below. Merge requests run a single
-  # Debug compile (build + test) to keep MR wall-clock under ~10 minutes
-  # (#544). Pushes to main still produce a Release build so whole-module
-  # optimization, Swift -O, and the Release-only linker config (#544
-  # transitive-symbol fix) are exercised on every merge before any
-  # downstream deploy. Tests always run in Debug so @testable imports and
-  # TCA's transitive package internals remain linkable on Xcode 26.
-  # Must match app/build.sh default (DERIVED_DATA_PATH=$REPO_ROOT/build/app/xcode-derived-data)
-  # so the build script and the cache action agree on the path.
+  # CONFIGURATION / TEST_CONFIGURATION are resolved per-event in the
+  # "Resolve build profile" step below (see resolve-build-profile.sh).
+  # Path must match app/build.sh's default so the build script and the
+  # cache action agree on the location.
   DERIVED_DATA_PATH: "${{ github.workspace }}/build/app/xcode-derived-data"
 
 jobs:

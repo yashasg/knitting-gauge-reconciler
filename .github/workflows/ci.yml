@@ -1,0 +1,241 @@
+# CI/CD Pipeline (GitLab bridge)
+#
+# This workflow runs on GitHub Actions as a build machine for the iOS app
+# hosted at gitlab.com/yashasg/value-compass. It is triggered exclusively
+# via repository_dispatch from a Cloudflare Worker that forwards GitLab
+# push and MR webhook events.
+#
+# Tag format (for release tracking):
+#   v0.x.x  — During TestFlight beta phase (pre-App Store)
+#   v1.0.0  — App Store launch and beyond
+#
+# Annotated tags only. Created after a successful upload, not before.
+# Format: git tag -a v1.0.0 -m "Release 1.0.0, build ${{ github.run_number }}"
+
+name: CI
+
+on:
+  repository_dispatch:
+    types: [gitlab_push, gitlab_mr]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ci-${{ github.event.client_payload.branch }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # macos-26 ships with Xcode 26 by default; no explicit setup-xcode step needed.
+  XCODE_VERSION: "26"
+  # CONFIGURATION and TEST_CONFIGURATION are resolved per-event in the
+  # "Resolve build profile" step below. Merge requests run a single
+  # Debug compile (build + test) to keep MR wall-clock under ~10 minutes
+  # (#544). Pushes to main still produce a Release build so whole-module
+  # optimization, Swift -O, and the Release-only linker config (#544
+  # transitive-symbol fix) are exercised on every merge before any
+  # downstream deploy. Tests always run in Debug so @testable imports and
+  # TCA's transitive package internals remain linkable on Xcode 26.
+  # Must match app/build.sh default (DERIVED_DATA_PATH=$REPO_ROOT/build/app/xcode-derived-data)
+  # so the build script and the cache action agree on the path.
+  DERIVED_DATA_PATH: "${{ github.workspace }}/build/app/xcode-derived-data"
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: macos-26
+    timeout-minutes: 30
+    if: |
+      github.event.client_payload.event == 'merge_request' ||
+      (github.event.client_payload.event == 'push' && github.event.client_payload.branch == 'main')
+
+    steps:
+      - name: Checkout from GitLab
+        run: |
+          git clone --depth 1 \
+            --branch ${{ github.event.client_payload.branch }} \
+            https://gitlab-token:${{ secrets.GITLAB_PAT }}@gitlab.com/${{ github.event.client_payload.project_name }} \
+            .
+
+      - name: Resolve build profile (MR=Debug, push-to-main=Release)
+        # MRs run Debug-only to halve the wall clock (#544) — the audit
+        # showed Release build was ~7m and Debug build+test prep was
+        # ~12m, so dropping Release off the MR critical path is the
+        # single biggest lever. Push events on main still produce the
+        # Release build so whole-module optimization, Swift -O, and the
+        # Release-only linker config remain gated before any downstream
+        # tag/deploy. Tests always run in Debug.
+        run: |
+          EVENT="${{ github.event.client_payload.event }}"
+          BRANCH="${{ github.event.client_payload.branch }}"
+          if [[ "$EVENT" == "push" && "$BRANCH" == "main" ]]; then
+            BUILD_CONFIGURATION="Release"
+          else
+            BUILD_CONFIGURATION="Debug"
+          fi
+          TEST_CONFIGURATION_VALUE="Debug"
+          {
+            echo "CONFIGURATION=$BUILD_CONFIGURATION"
+            echo "TEST_CONFIGURATION=$TEST_CONFIGURATION_VALUE"
+          } >> "$GITHUB_ENV"
+          echo "Resolved build profile: event=$EVENT branch=$BRANCH CONFIGURATION=$BUILD_CONFIGURATION TEST_CONFIGURATION=$TEST_CONFIGURATION_VALUE"
+
+      - name: Set build metadata
+        run: |
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          BUILD_NUMBER=${{ github.run_number }}
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
+          echo "GIT_COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
+          MARKETING_VER=$(awk '/MARKETING_VERSION = /{gsub(/;/,""); print $NF; exit}' app/VCA.xcodeproj/project.pbxproj)
+          echo "MARKETING_VERSION=${MARKETING_VER}" >> $GITHUB_ENV
+          echo "Version: marketing=${MARKETING_VER} build=${BUILD_NUMBER} commit=${COMMIT_HASH}"
+
+      - name: Verify swift-format (ships with Xcode 26)
+        run: xcrun swift-format --version
+
+      - name: Restore DerivedData cache
+        id: cache-derived-data
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: |
+            ${{ env.DERIVED_DATA_PATH }}
+            ~/Library/Developer/Xcode/DerivedData/ModuleCache.noindex
+          key: derived-data-branch-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ env.TEST_CONFIGURATION }}-${{ github.event.client_payload.branch }}-${{ hashFiles('app/VCA.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved', 'app/VCA.xcodeproj/xcshareddata/xcschemes/*.xcscheme', 'app/build.sh', '.github/workflows/ci.yml') }}
+          restore-keys: |
+            derived-data-branch-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ github.event.client_payload.branch }}-
+            derived-data-branch-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ env.TEST_CONFIGURATION }}-main-
+
+      - name: Restore SwiftPM SourcePackages cache
+        id: cache-spm
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: ${{ env.DERIVED_DATA_PATH }}/SourcePackages
+          key: spm-sourcepackages-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ hashFiles('app/VCA.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: |
+            spm-sourcepackages-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-
+
+      - name: Purge SDK-bound module caches (avoid SwiftShims mtime drift)
+        run: |
+          for SUBDIR in ModuleCache.noindex SDKStatCaches.noindex; do
+            CACHE_PATH="${{ env.DERIVED_DATA_PATH }}/${SUBDIR}"
+            if [[ -d "$CACHE_PATH" ]]; then
+              echo "Removing stale ${SUBDIR} (would otherwise trigger SwiftShims mtime mismatch)"
+              rm -rf "$CACHE_PATH"
+            fi
+          done
+
+      - name: Purge cached xcresult and xcactivitylog bundles
+        # The cache restore above can pull in stale Logs/Test/*.xcresult and
+        # Logs/Build/*.xcactivitylog from a previous run. Without this step,
+        # a failed build's artifact upload would include those stale bundles
+        # alongside the current run's diagnostics, making triage harder and
+        # bloating the artifact. Delete only Logs/ so compiled products in
+        # the cache are preserved.
+        run: rm -rf "${{ env.DERIVED_DATA_PATH }}/Logs"
+
+      - name: Lint (swift-format --strict)
+        run: |
+          xcrun swift-format lint \
+            --configuration .swift-format \
+            --recursive \
+            --parallel \
+            --strict \
+            app/Sources \
+            app/Tests
+
+      - name: Build (${{ env.CONFIGURATION }}) and test (${{ env.TEST_CONFIGURATION }}, iPhone 17 Pro simulator)
+        run: |
+          cd app && \
+            PLATFORM_MODE=iphone \
+            CONFIGURATION="${{ env.CONFIGURATION }}" \
+            TEST_CONFIGURATION="${{ env.TEST_CONFIGURATION }}" \
+            RUN_ANALYZE=false \
+            RUN_SWIFT_FORMAT=false \
+            RUN_TESTS=true \
+            DERIVED_DATA_PATH="${{ env.DERIVED_DATA_PATH }}" \
+            ./build.sh
+
+      - name: Save DerivedData cache
+        # Save the cache as soon as the build/test step finishes so the
+        # next CI run gets a warm DerivedData regardless of whether the
+        # downstream coverage steps succeed. Previously the combined
+        # actions/cache@v5 post-step shared a single failure point with
+        # the coverage pipeline — a flake in xccov could skip the save
+        # and leave the cache permanently cold (#544). `if: always()`
+        # ensures even a partial compile is preserved when build itself
+        # fails so the next run does not start from scratch; the
+        # cache-hit guard avoids re-uploading on exact-key hits.
+        if: always() && steps.cache-derived-data.outputs.cache-hit != 'true'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: |
+            ${{ env.DERIVED_DATA_PATH }}
+            ~/Library/Developer/Xcode/DerivedData/ModuleCache.noindex
+          key: ${{ steps.cache-derived-data.outputs.cache-primary-key }}
+
+      - name: Save SwiftPM SourcePackages cache
+        if: always() && steps.cache-spm.outputs.cache-hit != 'true'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: ${{ env.DERIVED_DATA_PATH }}/SourcePackages
+          key: ${{ steps.cache-spm.outputs.cache-primary-key }}
+
+      - name: Upload xcresult bundles on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.DERIVED_DATA_PATH }}/Logs/Test/*.xcresult
+            ${{ env.DERIVED_DATA_PATH }}/Logs/Build/*.xcactivitylog
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Report coverage
+        if: always()
+        run: |
+          XCRESULT=$(find "${{ env.DERIVED_DATA_PATH }}/Logs/Test" -name "*.xcresult" 2>/dev/null | head -1)
+          if [[ -z "$XCRESULT" ]]; then
+            echo "No .xcresult found — skipping coverage report"
+            exit 0
+          fi
+          xcrun xccov view --report "$XCRESULT"
+
+      - name: Enforce coverage threshold
+        if: success()
+        run: |
+          XCRESULT=$(find "${{ env.DERIVED_DATA_PATH }}/Logs/Test" -name "*.xcresult" 2>/dev/null | head -1)
+          if [[ -z "$XCRESULT" ]]; then
+            echo "::error::No .xcresult found — tests may have crashed before producing results"
+            exit 1
+          fi
+          COVERAGE=$(xcrun xccov view --report --json "$XCRESULT" | python3 -c "import json,sys; raw=sys.stdin.read(); raw.strip() or (print('::error::Coverage JSON was empty from xccov', file=sys.stderr) or sys.exit(1)); data=json.loads(raw); line_coverage=data.get('lineCoverage'); isinstance(line_coverage, (int, float)) or (print('::error::Coverage JSON missing numeric lineCoverage', file=sys.stderr) or sys.exit(1)); print(line_coverage * 100)")
+          if [[ ! "$COVERAGE" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+            echo "::error::Computed coverage is not numeric: '$COVERAGE'"
+            exit 1
+          fi
+          echo "Line coverage: ${COVERAGE}%"
+          # Floor calibrated to today's measured iPhone-Debug coverage
+          # (~47.4%) with a small tolerance band, ratcheting up over
+          # time toward the 80% v1 target (#545). Update the
+          # COVERAGE_FLOOR knob (not the comparison) when bumping.
+          # TODO: ratchet +5pp/quarter until reaching 80% once v1 audit
+          # blockers close (20 open P0/P1 issues per .squad/decisions.md).
+          COVERAGE_FLOOR=45
+          if (( $(echo "$COVERAGE < $COVERAGE_FLOOR" | bc -l) )); then
+            echo "::error::Coverage ${COVERAGE}% is below the minimum threshold (${COVERAGE_FLOOR}%)"
+            exit 1
+          fi
+
+      - name: Post status to GitLab
+        if: always()
+        run: |
+          STATE=$([[ "${{ job.status }}" == "success" ]] && echo "success" || echo "failed")
+          curl -X POST \
+            -H "PRIVATE-TOKEN: ${{ secrets.GITLAB_PAT }}" \
+            "https://gitlab.com/api/v4/projects/${{ github.event.client_payload.project_id }}/statuses/${{ github.event.client_payload.sha }}" \
+            -d "state=${STATE}" \
+            -d "name=Build & Test" \
+            -d "target_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

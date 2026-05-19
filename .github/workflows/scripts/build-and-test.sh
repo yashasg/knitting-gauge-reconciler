@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build + test via app/build.sh on the iPhone 17 Pro simulator.
+# Build + test via app/build.sh.
 set -euo pipefail
 
 : "${CONFIGURATION:?CONFIGURATION is required}"

@@ -6,7 +6,23 @@ set -euo pipefail
 : "${GITHUB_ENV:?GITHUB_ENV is required}"
 
 COMMIT_HASH=$(git rev-parse --short HEAD)
-MARKETING_VER=$(awk '/MARKETING_VERSION = /{gsub(/;/,""); print $NF; exit}' app/app.xcodeproj/project.pbxproj)
+
+# Locate the (single) xcodeproj under app/ so this workflow stays
+# project-agnostic.
+shopt -s nullglob
+XCODEPROJ_MATCHES=(app/*.xcodeproj)
+shopt -u nullglob
+if (( ${#XCODEPROJ_MATCHES[@]} == 0 )); then
+  echo "::error::No .xcodeproj found under app/"
+  exit 1
+fi
+if (( ${#XCODEPROJ_MATCHES[@]} > 1 )); then
+  echo "::error::Multiple .xcodeproj found under app/: ${XCODEPROJ_MATCHES[*]}"
+  exit 1
+fi
+PBXPROJ="${XCODEPROJ_MATCHES[0]}/project.pbxproj"
+
+MARKETING_VER=$(awk '/MARKETING_VERSION = /{gsub(/;/,""); print $NF; exit}' "$PBXPROJ")
 
 {
   echo "BUILD_NUMBER=$BUILD_NUMBER"

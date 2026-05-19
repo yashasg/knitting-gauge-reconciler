@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Fail if line coverage from the latest .xcresult is below COVERAGE_FLOOR.
-# Floor tracks today's iPhone-Debug measurement (~47.4%); ratchet toward
-# 80% v1 target (#545) — bump COVERAGE_FLOOR, not the comparison.
+# Default floor is 0 so a fresh template passes out of the box; projects
+# should ratchet COVERAGE_FLOOR upward as coverage improves.
 set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=_lib.sh
 source "$SCRIPT_DIR/_lib.sh"
 
-COVERAGE_FLOOR=45
+COVERAGE_FLOOR="${COVERAGE_FLOOR:-0}"
 
 XCRESULT=$(find_latest_xcresult)
 if [[ -z "$XCRESULT" ]]; then

@@ -1,16 +1,21 @@
 # CI/CD Pipeline (GitLab bridge)
 #
-# This workflow runs on GitHub Actions as a build machine for the iOS app
-# hosted at gitlab.com/yashasg/value-compass. It is triggered exclusively
-# via repository_dispatch from a Cloudflare Worker that forwards GitLab
-# push and MR webhook events.
+# This workflow runs on GitHub Actions as a build machine for an iOS app
+# hosted on GitLab. It is triggered exclusively via repository_dispatch
+# from a Cloudflare Worker (or equivalent) that forwards GitLab push and
+# MR webhook events. The GitLab project is resolved per-event from
+# `client_payload.project_name` / `client_payload.project_id`.
 #
-# Tag format (for release tracking):
-#   v0.x.x  — During TestFlight beta phase (pre-App Store)
-#   v1.0.0  — App Store launch and beyond
+# This workflow is project-agnostic: it assumes the GitLab repo follows
+# the convention below and does not need to be edited per project.
 #
-# Annotated tags only. Created after a successful upload, not before.
-# Format: git tag -a v1.0.0 -m "Release 1.0.0, build ${{ github.run_number }}"
+#   app/
+#     Sources/         Swift sources (linted)
+#     Tests/           Swift tests  (linted)
+#     <Name>.xcodeproj Xcode project (exactly one, discovered at runtime)
+#     build.sh         Build entry point honoring this env contract:
+#                        CONFIGURATION, TEST_CONFIGURATION, DERIVED_DATA_PATH,
+#                        PLATFORM_MODE, RUN_ANALYZE, RUN_SWIFT_FORMAT, RUN_TESTS
 #
 # Step bodies live under .github/workflows/scripts/ so this file stays
 # focused on orchestration. Inputs are passed via `env:` rather than
@@ -93,7 +98,7 @@ jobs:
           path: |
             ${{ env.DERIVED_DATA_PATH }}
             ~/Library/Developer/Xcode/DerivedData/ModuleCache.noindex
-          key: derived-data-branch-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ env.TEST_CONFIGURATION }}-${{ github.event.client_payload.branch }}-${{ hashFiles('app/app.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved', 'app/app.xcodeproj/xcshareddata/xcschemes/*.xcscheme', 'app/build.sh', '.github/workflows/ci.yml') }}
+          key: derived-data-branch-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ env.TEST_CONFIGURATION }}-${{ github.event.client_payload.branch }}-${{ hashFiles('app/*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved', 'app/*.xcodeproj/xcshareddata/xcschemes/*.xcscheme', 'app/build.sh', '.github/workflows/ci.yml') }}
           restore-keys: |
             derived-data-branch-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ github.event.client_payload.branch }}-
             derived-data-branch-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ env.TEST_CONFIGURATION }}-main-
@@ -103,7 +108,7 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: ${{ env.DERIVED_DATA_PATH }}/SourcePackages
-          key: spm-sourcepackages-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ hashFiles('app/app.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: spm-sourcepackages-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ hashFiles('app/*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: |
             spm-sourcepackages-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-
 
@@ -122,7 +127,7 @@ jobs:
       - name: Lint (swift-format --strict)
         run: "$CI_SCRIPTS/lint.sh"
 
-      - name: Build (${{ env.CONFIGURATION }}) and test (${{ env.TEST_CONFIGURATION }}, iPhone 17 Pro simulator)
+      - name: Build (${{ env.CONFIGURATION }}) and test (${{ env.TEST_CONFIGURATION }})
         run: "$CI_SCRIPTS/build-and-test.sh"
 
       - name: Save DerivedData cache
@@ -131,7 +136,7 @@ jobs:
         # downstream coverage steps succeed. Previously the combined
         # actions/cache@v5 post-step shared a single failure point with
         # the coverage pipeline — a flake in xccov could skip the save
-        # and leave the cache permanently cold (#544). `if: always()`
+        # and leave the cache permanently cold. `if: always()`
         # ensures even a partial compile is preserved when build itself
         # fails so the next run does not start from scratch; the
         # cache-hit guard avoids re-uploading on exact-key hits.

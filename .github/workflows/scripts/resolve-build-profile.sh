@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Resolve CONFIGURATION/TEST_CONFIGURATION from event type.
-# push-to-main → Release (gates whole-module opt + Release linker config, #544);
-# everything else (MRs) → Debug to halve wall-clock. Tests always Debug so
-# @testable + TCA transitive internals stay linkable on Xcode 26.
+# push-to-main → Release (so the Release linker config is exercised on
+# the main branch); everything else (MRs) → Debug to halve wall-clock.
+# Tests always Debug so @testable + transitive internals stay linkable.
 set -euo pipefail
 
 : "${EVENT:?EVENT is required}"

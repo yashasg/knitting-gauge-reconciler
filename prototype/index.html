@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Knitting Gauge Reconciler — Two-axis gauge math for sweaters that actually fit</title>
+<meta name="description" content="Type your swatch's stitch gauge and row gauge. See per-section adjustments for yoke depth, body length, and sleeve length — instantly. No accounts, no tracking." />
+<meta name="theme-color" content="#FAF6F0" />
+<style>
+  :root{
+    --bg:#FAF6F0;
+    --card:#FFFFFF;
+    --ink:#2A2237;
+    --muted:#7A6E85;
+    --line:#E6DEEE;
+    --accent:#6B4A85;
+    --accent-soft:#EFE6F4;
+    --good:#5E8B6B;
+    --warn:#C68B2C;
+    --alert:#9B3F6C;
+    --shadow:0 1px 2px rgba(42,34,55,.06),0 4px 14px rgba(42,34,55,.06);
+    --radius:14px;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Inter","Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-text-size-adjust:100%}
+  body{padding:24px 16px 80px;max-width:760px;margin:0 auto;line-height:1.45}
+  header{margin-bottom:18px}
+  header h1{font-size:22px;margin:0 0 4px;letter-spacing:-.01em}
+  header p{margin:0;color:var(--muted);font-size:14px}
+  header p strong{color:var(--accent)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin:14px 0}
+  .card h2{margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+  .pair-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700;margin:6px 0 6px}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:520px){.grid2{grid-template-columns:1fr}}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input[type="number"]{
+    width:100%;font:600 18px var(--mono);padding:12px 12px;
+    background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--ink);
+    -moz-appearance:textfield;appearance:textfield;
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+  .field-hint{font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono)}
+
+  .heroes{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  @media (max-width:520px){.heroes{grid-template-columns:1fr}}
+  .hero{
+    background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 14px 12px;
+    display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden;
+  }
+  .hero .label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .hero .value{font:700 38px var(--mono);letter-spacing:-.02em;line-height:1;color:var(--ink)}
+  .hero .axis{font:500 11px var(--mono);color:var(--muted);margin-top:6px;line-height:1.35}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;color:#fff;font-size:11px;font-weight:600;align-self:flex-start}
+  .pill-good{background:var(--good)}
+  .pill-warn{background:var(--warn)}
+  .pill-alert{background:var(--alert)}
+  .pill-neutral{background:var(--muted)}
+
+  .verdict{
+    background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;
+    padding:12px 14px;font-size:14px;color:var(--ink);line-height:1.5;
+  }
+  .verdict strong{color:var(--accent)}
+
+  .sections{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+  .section-row{
+    display:grid;grid-template-columns:1.4fr .8fr 1fr;gap:10px;align-items:center;
+    background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+  }
+  @media (max-width:520px){.section-row{grid-template-columns:1fr 1fr;}.section-row .name{grid-column:1/-1;margin-bottom:4px}}
+  .section-row .name{font-size:13px;font-weight:600;color:var(--ink)}
+  .section-row .pattern{font:500 13px var(--mono);color:var(--muted)}
+  .section-row .actual{font:700 17px var(--mono);color:var(--accent);text-align:right}
+  .section-row .actual small{font:500 11px var(--mono);color:var(--muted);margin-left:4px}
+  .section-row .actual input{
+    width:64px;font:500 13px var(--mono);padding:6px 8px;
+    background:#fff;border:1px solid var(--line);border-radius:6px;color:var(--muted);text-align:right;
+  }
+  .section-row .pattern label{margin:0 0 2px;font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+
+  details{margin-top:12px}
+  details summary{cursor:pointer;font-size:13px;color:var(--accent);font-weight:600;list-style:none;padding:6px 0}
+  details summary::-webkit-details-marker{display:none}
+  details summary::before{content:"▸ ";display:inline-block;transition:transform .15s ease}
+  details[open] summary::before{content:"▾ "}
+  .breakdown{font:500 13px var(--mono);color:var(--muted);background:var(--bg);padding:10px 12px;border-radius:8px;margin-top:6px;line-height:1.6}
+  .breakdown b{color:var(--ink);font-weight:700}
+
+  .reset-row{display:flex;justify-content:space-between;align-items:center;margin-top:6px;flex-wrap:wrap;gap:6px}
+  .link-btn{background:none;border:none;color:var(--accent);font:600 13px var(--sans);cursor:pointer;padding:6px 0}
+  .link-btn:hover{text-decoration:underline}
+
+  .about{font-size:13px;line-height:1.6;color:var(--ink)}
+  .about p{margin:0 0 10px}
+  .about ul{margin:0 0 10px;padding-left:20px}
+  .about li{margin-bottom:4px}
+  .about .warn{background:#F6EFDE;border-left:3px solid var(--warn);padding:10px 12px;border-radius:6px;font-size:13px;color:#5A4318}
+
+  footer{margin-top:24px;font-size:12px;color:var(--muted);text-align:center;line-height:1.6}
+  footer a{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Knitting Gauge Reconciler</h1>
+  <p>Type your swatch. See <strong>every per-section adjustment</strong> — instantly.</p>
+</header>
+
+<section class="card" aria-labelledby="gauge-label">
+  <h2 id="gauge-label">Your two gauges</h2>
+
+  <div class="pair-label">Pattern gauge (per 10 cm)</div>
+  <div class="grid2">
+    <div>
+      <label for="ps">Pattern stitches</label>
+      <input id="ps" type="number" inputmode="decimal" min="1" step="0.5" value="32" />
+      <div class="field-hint">stitches per 10 cm (horizontal)</div>
+    </div>
+    <div>
+      <label for="pr">Pattern rows</label>
+      <input id="pr" type="number" inputmode="decimal" min="1" step="0.5" value="24" />
+      <div class="field-hint">rows per 10 cm (vertical)</div>
+    </div>
+  </div>
+
+  <div class="pair-label" style="margin-top:14px">Your swatch (per 10 cm)</div>
+  <div class="grid2">
+    <div>
+      <label for="ys">Your stitches</label>
+      <input id="ys" type="number" inputmode="decimal" min="1" step="0.5" value="32" />
+      <div class="field-hint">stitches per 10 cm — measure on a blocked swatch</div>
+    </div>
+    <div>
+      <label for="yr">Your rows</label>
+      <input id="yr" type="number" inputmode="decimal" min="1" step="0.5" value="32" />
+      <div class="field-hint">rows per 10 cm — same swatch, vertical count</div>
+    </div>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="result-label">
+  <h2 id="result-label">Reconciliation — both axes</h2>
+
+  <div class="heroes">
+    <div class="hero" id="hero-st">
+      <div class="label">Stitch-wise (horizontal)</div>
+      <div class="value" id="v-st">100%</div>
+      <span class="pill pill-good" id="p-st">Match</span>
+      <div class="axis" id="x-st">Pattern asks 32 st/10cm · You hit 32 st/10cm</div>
+    </div>
+    <div class="hero" id="hero-row">
+      <div class="label">Row-wise (vertical)</div>
+      <div class="value" id="v-row">75%</div>
+      <span class="pill pill-warn" id="p-row">Denser than pattern</span>
+      <div class="axis" id="x-row">Pattern asks 24 rows/10cm · You hit 32 rows/10cm</div>
+    </div>
+  </div>
+
+  <div class="verdict" id="verdict">
+    Your stitch gauge matches the pattern, but your <strong>row gauge is 33% denser</strong> than expected.
+    Every vertical section (yoke, body length, sleeves, German short rows) will come out
+    <strong>shorter</strong> than the pattern intends — unless you adjust the row counts using the
+    multipliers below.
+  </div>
+
+  <div class="pair-label" style="margin-top:14px">Per-section adjustments — edit your pattern's target dimensions</div>
+  <div class="sections" id="sections">
+    <div class="section-row" data-section="yoke">
+      <div class="name">Yoke depth</div>
+      <div class="pattern"><label for="pat-yoke">Pattern says</label><input id="pat-yoke" type="number" inputmode="decimal" min="0" step="0.5" value="20" /> cm</div>
+      <div class="actual">Knit to <span id="act-yoke">26.7</span><small>cm</small></div>
+    </div>
+    <div class="section-row" data-section="body">
+      <div class="name">Body length</div>
+      <div class="pattern"><label for="pat-body">Pattern says</label><input id="pat-body" type="number" inputmode="decimal" min="0" step="0.5" value="50" /> cm</div>
+      <div class="actual">Knit to <span id="act-body">66.7</span><small>cm</small></div>
+    </div>
+    <div class="section-row" data-section="sleeve">
+      <div class="name">Sleeve length</div>
+      <div class="pattern"><label for="pat-sleeve">Pattern says</label><input id="pat-sleeve" type="number" inputmode="decimal" min="0" step="0.5" value="45" /> cm</div>
+      <div class="actual">Knit to <span id="act-sleeve">60.0</span><small>cm</small></div>
+    </div>
+    <div class="section-row" data-section="incs">
+      <div class="name">Increase-row spacing</div>
+      <div class="pattern"><label for="pat-incs">Pattern says</label><input id="pat-incs" type="number" inputmode="numeric" min="0" step="1" value="6" /> rows</div>
+      <div class="actual">Space every <span id="act-incs">8</span><small>rows</small></div>
+    </div>
+  </div>
+
+  <details>
+    <summary>Show full math</summary>
+    <div class="breakdown" id="breakdown">—</div>
+  </details>
+
+  <div class="reset-row">
+    <button class="link-btn" id="reset">Reset to defaults</button>
+    <button class="link-btn" id="share">Copy share link</button>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="about-label">
+  <h2 id="about-label">About this calculator</h2>
+  <div class="about">
+    <p>This tool reconciles a <em>two-axis</em> gauge mismatch — the kind that single-number gauge calculators hide. When your stitch gauge matches the pattern but your row gauge is off (or vice versa), every vertical section ends up the wrong length unless you adjust the row counts.</p>
+    <p>The math is deterministic: <code>row_scale = pattern_row / your_row</code> tells you the multiplier for every vertical dimension; <code>stitch_scale = pattern_st / your_st</code> tells you the multiplier for every horizontal one. Increase-row spacing is rescaled by the row ratio so your shaping lands at the right depth.</p>
+    <p class="warn"><strong>Scope:</strong> This tool provides estimates based on your swatch measurements. Always test a full-size gauge swatch (washed and blocked the way you'll wash and block the finished garment) before starting your project. Numbers here are a starting point — your finished piece is the final word.</p>
+    <p><em>Not affiliated with Ravelry, Knit Companion, or any pattern designer.</em> Gauge math is conventional knitting arithmetic from open craft literature.</p>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="privacy-label">
+  <h2 id="privacy-label">Privacy</h2>
+  <div class="about">
+    <p>This page collects nothing. Your gauge values stay in your browser (<code>localStorage</code>) and the share link (URL hash). No server. No analytics. No network requests of any kind.</p>
+  </div>
+</section>
+
+<footer>
+  Knitting Gauge Reconciler — squad-approved prototype · cycle 2026-05-18i · vanilla HTML/JS/CSS, single file<br/>
+  No backend · No API · No tracking · Open it from disk and it works offline
+</footer>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const inputs = {
+    ps: $('ps'), pr: $('pr'),
+    ys: $('ys'), yr: $('yr'),
+    patYoke: $('pat-yoke'), patBody: $('pat-body'),
+    patSleeve: $('pat-sleeve'), patIncs: $('pat-incs')
+  };
+
+  const DEFAULTS = { ps:32, pr:24, ys:32, yr:32, patYoke:20, patBody:50, patSleeve:45, patIncs:6 };
+  const STORAGE_KEY = 'knitting-gauge-reconciler.v1';
+
+  function readNum(el, def){
+    const v = parseFloat(el.value);
+    return (isFinite(v) && v > 0) ? v : def;
+  }
+
+  function fmtPct(x){ return Math.round(x * 100) + '%'; }
+  function fmtCm(x){ return (Math.round(x * 10) / 10).toFixed(1); }
+  function fmtRows(x){ return Math.max(1, Math.round(x)); }
+
+  function pillFor(scale){
+    // scale = 1.0 means perfect match. <1 means your gauge produces a smaller dimension than pattern (you need MORE).
+    const drift = Math.abs(scale - 1);
+    if (drift < 0.03) return { cls:'pill-good', label:'Match' };
+    if (drift < 0.10) return { cls:'pill-warn', label: scale > 1 ? 'Looser than pattern' : 'Tighter than pattern' };
+    return { cls:'pill-alert', label: scale > 1 ? 'Much looser' : 'Much tighter' };
+  }
+
+  function pillRowFor(scale){
+    // scale = pattern_row / your_row. If you knit MORE rows per 10cm, your fabric is denser
+    // and the multiplier > 1 (you need to knit MORE rows to reach the same cm).
+    const drift = Math.abs(scale - 1);
+    if (drift < 0.03) return { cls:'pill-good', label:'Match' };
+    if (drift < 0.10) return { cls:'pill-warn', label: scale > 1 ? 'Denser than pattern' : 'Looser than pattern' };
+    return { cls:'pill-alert', label: scale > 1 ? 'Much denser' : 'Much looser' };
+  }
+
+  function compute(){
+    const ps = readNum(inputs.ps, DEFAULTS.ps);
+    const pr = readNum(inputs.pr, DEFAULTS.pr);
+    const ys = readNum(inputs.ys, DEFAULTS.ys);
+    const yr = readNum(inputs.yr, DEFAULTS.yr);
+    const patYoke = readNum(inputs.patYoke, DEFAULTS.patYoke);
+    const patBody = readNum(inputs.patBody, DEFAULTS.patBody);
+    const patSleeve = readNum(inputs.patSleeve, DEFAULTS.patSleeve);
+    const patIncs = readNum(inputs.patIncs, DEFAULTS.patIncs);
+
+    // Horizontal scale: to hit pattern's intended width with your stitch gauge,
+    // multiply the stitch count by (your_st / pattern_st).
+    // Equivalently, your fabric width at pattern's stitch count = pattern_st / your_st.
+    // We display "stitch_scale" as the fraction of pattern width your stitches produce.
+    const stitchWidthScale = ps / ys;   // if <1, your stitches make a narrower fabric for same stitch count
+
+    // Vertical scale: to hit pattern's intended length with your row gauge,
+    // your rows count must be multiplied by (your_row / pattern_row).
+    // Display row_scale as the multiplier on the cm dimension you need to knit
+    // to hit pattern's intended dimension count.
+    // If you knit MORE rows per 10cm (yr > pr), you must knit MORE cm to lay down the same row count.
+    const rowCountScale = yr / pr;      // row-count multiplier on every vertical section
+
+    // Per-section actual cm = pattern cm * (your_row / pattern_row)
+    // Because the pattern specifies the section in terms of row counts indirectly,
+    // and you need more cm to lay down the same row count.
+    const actYoke = patYoke * rowCountScale;
+    const actBody = patBody * rowCountScale;
+    const actSleeve = patSleeve * rowCountScale;
+    // Increase-row spacing: pattern says "increase every N rows".
+    // To keep the same vertical distance between increases, scale N by (your_row / pattern_row).
+    const actIncs = patIncs * rowCountScale;
+
+    // Display "stitch-wise" as fraction of pattern width your stitches occupy (ps/ys).
+    // If 100%, gauges match horizontally.
+    $('v-st').textContent = fmtPct(stitchWidthScale);
+    const ps_pill = pillFor(stitchWidthScale);
+    const pst = $('p-st'); pst.className = 'pill ' + ps_pill.cls; pst.textContent = ps_pill.label;
+    $('x-st').textContent = `Pattern asks ${ps} st/10cm · You hit ${ys} st/10cm`;
+
+    // Display "row-wise" as cm multiplier you need (= rowCountScale).
+    $('v-row').textContent = fmtPct(rowCountScale);
+    const pr_pill = pillRowFor(rowCountScale);
+    const prt = $('p-row'); prt.className = 'pill ' + pr_pill.cls; prt.textContent = pr_pill.label;
+    $('x-row').textContent = `Pattern asks ${pr} rows/10cm · You hit ${yr} rows/10cm`;
+
+    $('act-yoke').textContent = fmtCm(actYoke);
+    $('act-body').textContent = fmtCm(actBody);
+    $('act-sleeve').textContent = fmtCm(actSleeve);
+    $('act-incs').textContent = fmtRows(actIncs);
+
+    // Verdict
+    const stDrift = Math.round((stitchWidthScale - 1) * 100);
+    const rwDrift = Math.round((rowCountScale - 1) * 100);
+    let v = '';
+    if (Math.abs(stDrift) < 3 && Math.abs(rwDrift) < 3) {
+      v = `<strong>Both gauges match the pattern.</strong> Knit straight from the pattern — no per-section adjustments needed. Re-check after blocking.`;
+    } else if (Math.abs(stDrift) < 3) {
+      const dir = rwDrift > 0 ? 'denser' : 'looser';
+      v = `Your stitch gauge matches the pattern, but your <strong>row gauge is ${Math.abs(rwDrift)}% ${dir}</strong> than expected. ` +
+          `Every vertical section (yoke, body length, sleeves, German short rows) needs the row-wise multiplier below — read the "Knit to ___" column.`;
+    } else if (Math.abs(rwDrift) < 3) {
+      const dir = stDrift > 0 ? 'wider' : 'narrower';
+      v = `Your row gauge matches, but your <strong>stitch gauge is ${Math.abs(stDrift)}% ${dir}</strong> than the pattern. ` +
+          `Choose a different pattern size (e.g. cast on for a 2XL to land at the M finished width), then knit the vertical sections per the row-wise multiplier — which is 100% so leave them alone.`;
+    } else {
+      const dir1 = stDrift > 0 ? 'wider' : 'narrower';
+      const dir2 = rwDrift > 0 ? 'denser' : 'looser';
+      v = `Both axes are off: stitch gauge is <strong>${Math.abs(stDrift)}% ${dir1}</strong>, row gauge is <strong>${Math.abs(rwDrift)}% ${dir2}</strong> than the pattern. ` +
+          `Pick the pattern size whose stitch count gives you the finished width you want, then use the row-wise multiplier for every vertical section. ` +
+          `If the drift is severe (>15% either axis), consider swapping yarn or needle size before continuing.`;
+    }
+    $('verdict').innerHTML = v;
+
+    // Breakdown
+    $('breakdown').innerHTML =
+      `pattern: <b>${ps}</b> st × <b>${pr}</b> rows per 10cm (aspect <b>${(ps/pr).toFixed(2)}</b>)<br>` +
+      `you:     <b>${ys}</b> st × <b>${yr}</b> rows per 10cm (aspect <b>${(ys/yr).toFixed(2)}</b>)<br>` +
+      `stitch width scale = pattern_st / your_st = ${ps} / ${ys} = <b>${stitchWidthScale.toFixed(3)}</b><br>` +
+      `row count scale    = your_row / pattern_row = ${yr} / ${pr} = <b>${rowCountScale.toFixed(3)}</b><br>` +
+      `→ for any vertical dim D the pattern names, knit to <b>D × ${rowCountScale.toFixed(3)} cm</b><br>` +
+      `→ for any horizontal dim, your stitch count produces <b>${(stitchWidthScale*100).toFixed(1)}%</b> of the pattern's intended width`;
+
+    persist({ps, pr, ys, yr, patYoke, patBody, patSleeve, patIncs});
+    updateHash({ps, pr, ys, yr, patYoke, patBody, patSleeve, patIncs});
+  }
+
+  function persist(state){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(_) {}
+  }
+
+  function load(){
+    // URL hash takes precedence
+    const hash = location.hash.slice(1);
+    if (hash) {
+      const params = new URLSearchParams(hash);
+      const fromHash = {};
+      ['ps','pr','ys','yr','patYoke','patBody','patSleeve','patIncs'].forEach(k => {
+        const short = k === 'patYoke' ? 'py' : k === 'patBody' ? 'pb' :
+                      k === 'patSleeve' ? 'pl' : k === 'patIncs' ? 'pi' : k;
+        const v = params.get(short);
+        if (v !== null) fromHash[k] = parseFloat(v);
+      });
+      if (Object.keys(fromHash).length) return applyState({...DEFAULTS, ...fromHash});
+    }
+    try {
+      const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      if (s) return applyState({...DEFAULTS, ...s});
+    } catch(_) {}
+    applyState(DEFAULTS);
+  }
+
+  function applyState(s){
+    inputs.ps.value = s.ps;
+    inputs.pr.value = s.pr;
+    inputs.ys.value = s.ys;
+    inputs.yr.value = s.yr;
+    inputs.patYoke.value = s.patYoke;
+    inputs.patBody.value = s.patBody;
+    inputs.patSleeve.value = s.patSleeve;
+    inputs.patIncs.value = s.patIncs;
+    compute();
+  }
+
+  function updateHash(s){
+    const p = new URLSearchParams({
+      ps:s.ps, pr:s.pr, ys:s.ys, yr:s.yr,
+      py:s.patYoke, pb:s.patBody, pl:s.patSleeve, pi:s.patIncs
+    });
+    const newHash = '#' + p.toString();
+    if (location.hash !== newHash) {
+      history.replaceState(null, '', location.pathname + location.search + newHash);
+    }
+  }
+
+  Object.values(inputs).forEach(el => el.addEventListener('input', compute));
+
+  $('reset').addEventListener('click', () => {
+    try { localStorage.removeItem(STORAGE_KEY); } catch(_) {}
+    history.replaceState(null, '', location.pathname + location.search);
+    applyState(DEFAULTS);
+  });
+
+  $('share').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(location.href);
+      const btn = $('share');
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    } catch(_) {
+      window.prompt('Copy this link:', location.href);
+    }
+  });
+
+  load();
+})();
+</script>
+
+</body>
+</html>

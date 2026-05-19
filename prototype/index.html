@@ -192,6 +192,17 @@
       <div class="pattern"><label for="pat-incs">Pattern says</label><input id="pat-incs" type="number" inputmode="numeric" min="0" step="1" value="6" /> rows</div>
       <div class="actual">Space every <span id="act-incs">8</span><small>rows</small></div>
     </div>
+    <div class="section-row" data-section="cast-on">
+      <div class="name">Cast-on stitches</div>
+      <div class="pattern">
+        <label for="pat-cast-on">Pattern says</label>
+        <input id="pat-cast-on" type="number" inputmode="numeric" min="1" step="1" value="128"
+               autocomplete="off"
+               aria-describedby="hint-cast-on" />
+        <span id="hint-cast-on" class="field-hint">stitches to cast on</span>
+      </div>
+      <div class="actual">Cast on <span id="act-cast-on">128</span><small>stitches</small> <span class="pill pill-warn" id="pill-cast-on" hidden></span></div>
+    </div>
   </div>
 
   <details>
@@ -234,10 +245,11 @@
     ps: $('ps'), pr: $('pr'),
     ys: $('ys'), yr: $('yr'),
     patYoke: $('pat-yoke'), patBody: $('pat-body'),
-    patSleeve: $('pat-sleeve'), patIncs: $('pat-incs')
+    patSleeve: $('pat-sleeve'), patIncs: $('pat-incs'),
+    patCastOn: $('pat-cast-on')
   };
 
-  const DEFAULTS = { ps:32, pr:24, ys:32, yr:32, patYoke:20, patBody:50, patSleeve:45, patIncs:6 };
+  const DEFAULTS = { ps:32, pr:24, ys:32, yr:32, patYoke:20, patBody:50, patSleeve:45, patIncs:6, patCastOn:128 };
   const STORAGE_KEY = 'knitting-gauge-reconciler.v1';
 
   function readNum(el, def){
@@ -274,6 +286,7 @@
     const patBody = readNum(inputs.patBody, DEFAULTS.patBody);
     const patSleeve = readNum(inputs.patSleeve, DEFAULTS.patSleeve);
     const patIncs = readNum(inputs.patIncs, DEFAULTS.patIncs);
+    const patCastOn = readNum(inputs.patCastOn, DEFAULTS.patCastOn);
 
     // Horizontal scale: to hit pattern's intended width with your stitch gauge,
     // multiply the stitch count by (your_st / pattern_st).
@@ -318,26 +331,37 @@
     $('act-sleeve').textContent = fmtCm(actSleeve);
     $('act-incs').textContent = fmtRows(actIncs);
 
+    // Cast-on stitch count adjustment (Jacquard Formula 1)
+    const exactStitches = patCastOn * (ys / ps);
+    const roundedStitches = Math.round(exactStitches);
+    const castOnDriftPct = ((roundedStitches - exactStitches) / exactStitches) * 100;
+    const actCastOn = roundedStitches;
+    $('act-cast-on').textContent = actCastOn;
+    const pillCastOn = $('pill-cast-on');
+    if (Math.abs(castOnDriftPct) >= 3) {
+      pillCastOn.className = 'pill pill-warn';
+      pillCastOn.textContent = `${castOnDriftPct > 0 ? '+' : ''}${castOnDriftPct.toFixed(0)}% width`;
+      pillCastOn.removeAttribute('hidden');
+    } else {
+      pillCastOn.setAttribute('hidden', '');
+    }
+
     // Verdict
     const stDrift = Math.round((stitchWidthScale - 1) * 100);
     const rwDrift = Math.round((rowCountScale - 1) * 100);
     let v = '';
     if (Math.abs(stDrift) < 3 && Math.abs(rwDrift) < 3) {
-      v = `<strong>Both gauges match the pattern.</strong> Knit straight from the pattern — no per-section adjustments needed. Re-check after blocking.`;
+      v = `<strong>Both gauges match.</strong> Cast on ${patCastOn} stitches as written. Knit straight from the pattern — no adjustments needed. Re-check after blocking.`;
     } else if (Math.abs(stDrift) < 3) {
       const dir = rwDrift > 0 ? 'denser' : 'looser';
-      v = `Your stitch gauge matches the pattern, but your <strong>row gauge is ${Math.abs(rwDrift)}% ${dir}</strong> than expected. ` +
-          `Every vertical section (yoke, body length, sleeves, German short rows) needs the row-wise multiplier below — read the "Knit to ___" column.`;
+      v = `Your stitch gauge matches — <strong>cast on ${actCastOn} stitches</strong> as written. Your row gauge is ${Math.abs(rwDrift)}% ${dir} than expected; use the adjusted cm values below for every vertical section.`;
     } else if (Math.abs(rwDrift) < 3) {
       const dir = stDrift > 0 ? 'wider' : 'narrower';
-      v = `Your row gauge matches, but your <strong>stitch gauge is ${Math.abs(stDrift)}% ${dir}</strong> than the pattern. ` +
-          `Choose a different pattern size (e.g. cast on for a 2XL to land at the M finished width), then knit the vertical sections per the row-wise multiplier — which is 100% so leave them alone.`;
+      v = `Your row gauge matches, but your <strong>stitch gauge is ${Math.abs(stDrift)}% ${dir}</strong>. <strong>Cast on ${actCastOn} stitches</strong> instead of the pattern's ${patCastOn} to hit the same width. Vertical sections need no adjustment.`;
     } else {
       const dir1 = stDrift > 0 ? 'wider' : 'narrower';
       const dir2 = rwDrift > 0 ? 'denser' : 'looser';
-      v = `Both axes are off: stitch gauge is <strong>${Math.abs(stDrift)}% ${dir1}</strong>, row gauge is <strong>${Math.abs(rwDrift)}% ${dir2}</strong> than the pattern. ` +
-          `Pick the pattern size whose stitch count gives you the finished width you want, then use the row-wise multiplier for every vertical section. ` +
-          `If the drift is severe (>15% either axis), consider swapping yarn or needle size before continuing.`;
+      v = `Both axes are off: stitch gauge <strong>${Math.abs(stDrift)}% ${dir1}</strong>, row gauge <strong>${Math.abs(rwDrift)}% ${dir2}</strong>. <strong>Cast on ${actCastOn} stitches</strong> (not ${patCastOn}) to preserve width, and use the adjusted cm values for vertical sections. If drift exceeds 15% on either axis, consider swapping yarn or needle size.`;
     }
     $('verdict').innerHTML = v;
 
@@ -349,10 +373,11 @@
       `row density ratio  = your_row / pattern_row = ${yr} / ${pr} = <b>${rowCountScale.toFixed(3)}</b><br>` +
       `dim correction     = pattern_row / your_row = ${pr} / ${yr} = <b>${dimScale.toFixed(3)}</b><br>` +
       `→ for any vertical dim D the pattern names, knit to <b>D × ${dimScale.toFixed(3)} cm</b> (denser rows = fewer cm needed)<br>` +
-      `→ for any horizontal dim, your stitch count produces <b>${(stitchWidthScale*100).toFixed(1)}%</b> of the pattern's intended width`;
+      `→ for any horizontal dim, your stitch count produces <b>${(stitchWidthScale*100).toFixed(1)}%</b> of the pattern's intended width<br>` +
+      `cast-on adjust = your_st / pattern_st × patCastOn = ${ys}/${ps} × ${patCastOn} = <b>${roundedStitches}</b> stitches`;
 
-    persist({ps, pr, ys, yr, patYoke, patBody, patSleeve, patIncs});
-    updateHash({ps, pr, ys, yr, patYoke, patBody, patSleeve, patIncs});
+    persist({ps, pr, ys, yr, patYoke, patBody, patSleeve, patIncs, patCastOn});
+    updateHash({ps, pr, ys, yr, patYoke, patBody, patSleeve, patIncs, patCastOn});
   }
 
   function persist(state){
@@ -365,9 +390,10 @@
     if (hash) {
       const params = new URLSearchParams(hash);
       const fromHash = {};
-      ['ps','pr','ys','yr','patYoke','patBody','patSleeve','patIncs'].forEach(k => {
+      ['ps','pr','ys','yr','patYoke','patBody','patSleeve','patIncs','patCastOn'].forEach(k => {
         const short = k === 'patYoke' ? 'py' : k === 'patBody' ? 'pb' :
-                      k === 'patSleeve' ? 'pl' : k === 'patIncs' ? 'pi' : k;
+                      k === 'patSleeve' ? 'pl' : k === 'patIncs' ? 'pi' :
+                      k === 'patCastOn' ? 'pc' : k;
         const v = params.get(short);
         if (v !== null) fromHash[k] = parseFloat(v);
       });
@@ -389,13 +415,15 @@
     inputs.patBody.value = s.patBody;
     inputs.patSleeve.value = s.patSleeve;
     inputs.patIncs.value = s.patIncs;
+    inputs.patCastOn.value = s.patCastOn;
     compute();
   }
 
   function updateHash(s){
     const p = new URLSearchParams({
       ps:s.ps, pr:s.pr, ys:s.ys, yr:s.yr,
-      py:s.patYoke, pb:s.patBody, pl:s.patSleeve, pi:s.patIncs
+      py:s.patYoke, pb:s.patBody, pl:s.patSleeve, pi:s.patIncs,
+      pc:s.patCastOn
     });
     const newHash = '#' + p.toString();
     if (location.hash !== newHash) {

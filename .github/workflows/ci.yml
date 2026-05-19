@@ -88,7 +88,7 @@ jobs:
           BUILD_NUMBER=${{ github.run_number }}
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
           echo "GIT_COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
-          MARKETING_VER=$(awk '/MARKETING_VERSION = /{gsub(/;/,""); print $NF; exit}' app/VCA.xcodeproj/project.pbxproj)
+          MARKETING_VER=$(awk '/MARKETING_VERSION = /{gsub(/;/,""); print $NF; exit}' app/app.xcodeproj/project.pbxproj)
           echo "MARKETING_VERSION=${MARKETING_VER}" >> $GITHUB_ENV
           echo "Version: marketing=${MARKETING_VER} build=${BUILD_NUMBER} commit=${COMMIT_HASH}"
 
@@ -102,7 +102,7 @@ jobs:
           path: |
             ${{ env.DERIVED_DATA_PATH }}
             ~/Library/Developer/Xcode/DerivedData/ModuleCache.noindex
-          key: derived-data-branch-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ env.TEST_CONFIGURATION }}-${{ github.event.client_payload.branch }}-${{ hashFiles('app/VCA.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved', 'app/VCA.xcodeproj/xcshareddata/xcschemes/*.xcscheme', 'app/build.sh', '.github/workflows/ci.yml') }}
+          key: derived-data-branch-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ env.TEST_CONFIGURATION }}-${{ github.event.client_payload.branch }}-${{ hashFiles('app/app.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved', 'app/app.xcodeproj/xcshareddata/xcschemes/*.xcscheme', 'app/build.sh', '.github/workflows/ci.yml') }}
           restore-keys: |
             derived-data-branch-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ github.event.client_payload.branch }}-
             derived-data-branch-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ env.TEST_CONFIGURATION }}-main-
@@ -112,7 +112,7 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: ${{ env.DERIVED_DATA_PATH }}/SourcePackages
-          key: spm-sourcepackages-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ hashFiles('app/VCA.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: spm-sourcepackages-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ hashFiles('app/app.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: |
             spm-sourcepackages-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-
 

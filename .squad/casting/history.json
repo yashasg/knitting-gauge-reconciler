@@ -1,0 +1,38 @@
+{
+  "assignment_cast_snapshots": {
+    "repl-cast-2026-05-19T07:11:08.639Z": {
+      "created_at": "2026-05-19T07:11:08.639Z",
+      "agents": [
+        "tesla",
+        "ada",
+        "edison",
+        "curie",
+        "hopper",
+        "scribe",
+        "ralph"
+      ],
+      "universe": "Famous Inventors"
+    },
+    "expansion-2026-05-19T07:14:05Z": {
+      "created_at": "2026-05-19T07:14:05Z",
+      "agents": [
+        "ive",
+        "mendel",
+        "jacquard"
+      ],
+      "universe": "Famous Inventors",
+      "kind": "expansion"
+    }
+  },
+  "universe_usage_history": [
+    {
+      "universe": "Famous Inventors",
+      "used_at": "2026-05-19T07:11:08.639Z"
+    },
+    {
+      "universe": "Famous Inventors",
+      "used_at": "2026-05-19T07:14:05Z",
+      "note": "team expansion: added ui/ux designer, user researcher, knitting domain expert"
+    }
+  ]
+}

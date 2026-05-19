@@ -1,0 +1,67 @@
+{
+  "agents": {
+    "tesla": {
+      "created_at": "2026-05-19T07:11:08.639Z",
+      "persistent_name": "Tesla",
+      "universe": "Famous Inventors",
+      "status": "active"
+    },
+    "ada": {
+      "created_at": "2026-05-19T07:11:08.639Z",
+      "persistent_name": "Ada",
+      "universe": "Famous Inventors",
+      "status": "active"
+    },
+    "edison": {
+      "created_at": "2026-05-19T07:11:08.639Z",
+      "persistent_name": "Edison",
+      "universe": "Famous Inventors",
+      "status": "active"
+    },
+    "curie": {
+      "created_at": "2026-05-19T07:11:08.639Z",
+      "persistent_name": "Curie",
+      "universe": "Famous Inventors",
+      "status": "active"
+    },
+    "hopper": {
+      "created_at": "2026-05-19T07:11:08.639Z",
+      "persistent_name": "Hopper",
+      "universe": "Famous Inventors",
+      "status": "active"
+    },
+    "scribe": {
+      "created_at": "2026-05-19T07:11:08.639Z",
+      "persistent_name": "Scribe",
+      "universe": "Famous Inventors",
+      "status": "active"
+    },
+    "ralph": {
+      "created_at": "2026-05-19T07:11:08.639Z",
+      "persistent_name": "Ralph",
+      "universe": "Famous Inventors",
+      "status": "active"
+    },
+    "ive": {
+      "created_at": "2026-05-19T07:14:05Z",
+      "persistent_name": "Ive",
+      "universe": "Famous Inventors",
+      "status": "active",
+      "legacy_named": false
+    },
+    "mendel": {
+      "created_at": "2026-05-19T07:14:05Z",
+      "persistent_name": "Mendel",
+      "universe": "Famous Inventors",
+      "status": "active",
+      "legacy_named": false
+    },
+    "jacquard": {
+      "created_at": "2026-05-19T07:14:05Z",
+      "persistent_name": "Jacquard",
+      "universe": "Famous Inventors",
+      "status": "active",
+      "legacy_named": false
+    }
+  }
+}

@@ -209,7 +209,7 @@
   <h2 id="about-label">About this calculator</h2>
   <div class="about">
     <p>This tool reconciles a <em>two-axis</em> gauge mismatch — the kind that single-number gauge calculators hide. When your stitch gauge matches the pattern but your row gauge is off (or vice versa), every vertical section ends up the wrong length unless you adjust the row counts.</p>
-    <p>The math is deterministic: <code>row_scale = pattern_row / your_row</code> tells you the multiplier for every vertical dimension; <code>stitch_scale = pattern_st / your_st</code> tells you the multiplier for every horizontal one. Increase-row spacing is rescaled by the row ratio so your shaping lands at the right depth.</p>
+    <p>The math is deterministic: <code>dim_scale = pattern_row / your_row</code> is the multiplier for every vertical dimension — a denser swatch (more rows per cm) means you knit <em>fewer</em> cm to reach the pattern's intended row count; <code>stitch_scale = pattern_st / your_st</code> tells you the multiplier for every horizontal one. Increase-row spacing is rescaled by <code>your_row / pattern_row</code> so the physical gap between increases stays correct.</p>
     <p class="warn"><strong>Scope:</strong> This tool provides estimates based on your swatch measurements. Always test a full-size gauge swatch (washed and blocked the way you'll wash and block the finished garment) before starting your project. Numbers here are a starting point — your finished piece is the final word.</p>
     <p><em>Not affiliated with Ravelry, Knit Companion, or any pattern designer.</em> Gauge math is conventional knitting arithmetic from open craft literature.</p>
   </div>
@@ -258,8 +258,7 @@
   }
 
   function pillRowFor(scale){
-    // scale = pattern_row / your_row. If you knit MORE rows per 10cm, your fabric is denser
-    // and the multiplier > 1 (you need to knit MORE rows to reach the same cm).
+    // scale = your_row / pattern_row. >1 means your fabric is denser (more rows per cm).
     const drift = Math.abs(scale - 1);
     if (drift < 0.03) return { cls:'pill-good', label:'Match' };
     if (drift < 0.10) return { cls:'pill-warn', label: scale > 1 ? 'Denser than pattern' : 'Looser than pattern' };
@@ -282,22 +281,23 @@
     // We display "stitch_scale" as the fraction of pattern width your stitches produce.
     const stitchWidthScale = ps / ys;   // if <1, your stitches make a narrower fabric for same stitch count
 
-    // Vertical scale: to hit pattern's intended length with your row gauge,
-    // your rows count must be multiplied by (your_row / pattern_row).
-    // Display row_scale as the multiplier on the cm dimension you need to knit
-    // to hit pattern's intended dimension count.
-    // If you knit MORE rows per 10cm (yr > pr), you must knit MORE cm to lay down the same row count.
-    const rowCountScale = yr / pr;      // row-count multiplier on every vertical section
+    // Row density ratio: your_row / pattern_row. >1 means you knit more rows per cm (denser).
+    // Used for the hero display and for increase-row spacing.
+    const rowCountScale = yr / pr;
 
-    // Per-section actual cm = pattern cm * (your_row / pattern_row)
-    // Because the pattern specifies the section in terms of row counts indirectly,
-    // and you need more cm to lay down the same row count.
-    const actYoke = patYoke * rowCountScale;
-    const actBody = patBody * rowCountScale;
-    const actSleeve = patSleeve * rowCountScale;
+    // Dimension correction factor: pattern_row / your_row.
+    // The pattern's cm values encode a row count (patDim × pr / 10 rows).
+    // To land that same row count with YOUR gauge, knit patDim × (pr / yr) cm.
+    // Denser swatch (yr > pr) → dimScale < 1 → knit fewer cm.
+    const dimScale = pr / yr;
+
+    const actYoke   = patYoke   * dimScale;
+    const actBody   = patBody   * dimScale;
+    const actSleeve = patSleeve * dimScale;
     // Increase-row spacing: pattern says "increase every N rows".
-    // To keep the same vertical distance between increases, scale N by (your_row / pattern_row).
-    const actIncs = patIncs * rowCountScale;
+    // To preserve the same physical gap between increases, scale by (your_row / pattern_row):
+    // denser swatch → more rows needed to cover the same cm → larger N.
+    const actIncs   = patIncs   * rowCountScale;
 
     // Display "stitch-wise" as fraction of pattern width your stitches occupy (ps/ys).
     // If 100%, gauges match horizontally.
@@ -306,7 +306,8 @@
     const pst = $('p-st'); pst.className = 'pill ' + ps_pill.cls; pst.textContent = ps_pill.label;
     $('x-st').textContent = `Pattern asks ${ps} st/10cm · You hit ${ys} st/10cm`;
 
-    // Display "row-wise" as cm multiplier you need (= rowCountScale).
+    // Display "row-wise" as the row density ratio (your_row / pattern_row).
+    // >1 means you're denser; the pill and percentage tell the user their relative density.
     $('v-row').textContent = fmtPct(rowCountScale);
     const pr_pill = pillRowFor(rowCountScale);
     const prt = $('p-row'); prt.className = 'pill ' + pr_pill.cls; prt.textContent = pr_pill.label;
@@ -345,8 +346,9 @@
       `pattern: <b>${ps}</b> st × <b>${pr}</b> rows per 10cm (aspect <b>${(ps/pr).toFixed(2)}</b>)<br>` +
       `you:     <b>${ys}</b> st × <b>${yr}</b> rows per 10cm (aspect <b>${(ys/yr).toFixed(2)}</b>)<br>` +
       `stitch width scale = pattern_st / your_st = ${ps} / ${ys} = <b>${stitchWidthScale.toFixed(3)}</b><br>` +
-      `row count scale    = your_row / pattern_row = ${yr} / ${pr} = <b>${rowCountScale.toFixed(3)}</b><br>` +
-      `→ for any vertical dim D the pattern names, knit to <b>D × ${rowCountScale.toFixed(3)} cm</b><br>` +
+      `row density ratio  = your_row / pattern_row = ${yr} / ${pr} = <b>${rowCountScale.toFixed(3)}</b><br>` +
+      `dim correction     = pattern_row / your_row = ${pr} / ${yr} = <b>${dimScale.toFixed(3)}</b><br>` +
+      `→ for any vertical dim D the pattern names, knit to <b>D × ${dimScale.toFixed(3)} cm</b> (denser rows = fewer cm needed)<br>` +
       `→ for any horizontal dim, your stitch count produces <b>${(stitchWidthScale*100).toFixed(1)}%</b> of the pattern's intended width`;
 
     persist({ps, pr, ys, yr, patYoke, patBody, patSleeve, patIncs});

@@ -170,16 +170,73 @@ if grep -Eiq 'Failed to launch app|NSMachErrorDomain' "$LOG_FILE" \
   exit 65
 fi
 
+# Defense in depth: parse the xcresult bundle to verify that every test
+# assertion actually passed. Heuristic regex matches above can legitimately
+# fire on real failures (e.g. a test crashes mid-execution with signal term,
+# or the unit test bundle bootstrap-crashes so no tests run at all). The
+# xcresult bundle is xcodebuild's authoritative record — if it disagrees
+# with the heuristics, the heuristics lose.
+verify_xcresult_summary() {
+  local bundle="$1"
+  if [[ ! -d "$bundle" ]]; then
+    echo "error: expected xcresult bundle at $bundle but it does not exist" >&2
+    return 65
+  fi
+  local summary_json
+  if ! summary_json=$(xcrun xcresulttool get test-results summary --path "$bundle" 2>/dev/null); then
+    echo "error: could not read test-results summary from $bundle" >&2
+    return 65
+  fi
+  local parsed
+  if ! parsed=$(printf '%s' "$summary_json" | /usr/bin/python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+print(d.get("result", ""))
+print(d.get("passedTests", -1))
+print(d.get("failedTests", -1))
+print(d.get("skippedTests", -1))
+' 2>/dev/null); then
+    echo "error: could not parse xcresult summary JSON at $bundle" >&2
+    return 65
+  fi
+  local result passed failed skipped
+  { read -r result; read -r passed; read -r failed; read -r skipped; } <<< "$parsed"
+  if [[ "$result" != "Passed" ]] \
+      || [[ "$failed" != "0" ]] \
+      || [[ "$passed" == "-1" ]] \
+      || [[ "$passed" == "0" ]]; then
+    echo "error: xcresult summary disagrees with success heuristic — bundle reports result=$result passed=$passed failed=$failed skipped=$skipped" >&2
+    return 65
+  fi
+  return 0
+}
+
 # If the only reason for non-zero STATUS is a known Xcode 26.4 post-test
 # infrastructure failure, treat it as success only after xcodebuild reports that
-# the test action or Swift Testing run succeeded.
+# the test action or Swift Testing run succeeded AND the xcresult bundle agrees.
 TESTS_PASSED_PATTERN='\*\* TEST SUCCEEDED \*\*|Test Suite '\''Selected tests'\'' passed|Test run with [0-9]+ tests .* passed'
 if [[ "$STATUS" -ne 0 ]] \
     && grep -Eq "$BENIGN_XCODE_INFRA_FAILURE" "$LOG_FILE" \
     && grep -Eq "$TESTS_PASSED_PATTERN" "$LOG_FILE" \
     && ! grep -Eq "Test Suite '.*' failed|Test Case '.*' failed" "$LOG_FILE"; then
+  if [[ "$MODE" == "test" ]]; then
+    if ! verify_xcresult_summary "$RESULT_BUNDLE_PATH"; then
+      echo "error: refusing to treat xcodebuild exit $STATUS as benign because the xcresult bundle reports real test failures" >&2
+      exit 65
+    fi
+  fi
   echo "note: xcodebuild exit $STATUS attributed to Xcode 26.4 post-test infrastructure bug; all test assertions passed" >&2
   exit 0
+fi
+
+# Final guard: even when xcodebuild's own exit code is 0, cross-check the
+# xcresult bundle. xcodebuild has on occasion reported success while the
+# bundle records failed assertions; the bundle wins.
+if [[ "$MODE" == "test" && "$STATUS" -eq 0 ]]; then
+  if ! verify_xcresult_summary "$RESULT_BUNDLE_PATH"; then
+    echo "error: xcodebuild reported success but the xcresult bundle records test failures" >&2
+    exit 65
+  fi
 fi
 
 exit "$STATUS"

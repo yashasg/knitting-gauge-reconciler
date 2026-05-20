@@ -67,3 +67,66 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 **MVP Scope:** Save (explicit button on results), List (chronological + swipe-to-delete), Load (tap to reload into calculator), Delete. No iCloud sync or search in v1.
 
 **Handoff status:** Ready for Edison (iOS implementation) and Ive (metadata UX design). See `.squad/decisions.md` (2026-05-19 Evening Session) and orchestration logs for full context.
+
+---
+
+## 2026-05-20 — Swift Coding Standards Adoption (Issue #8)
+
+**Session:** Adopt Google Swift Style Guide as the team's normative reference.
+**Participants:** Tesla (sole driver this cycle — small documentation+ownership change).
+**Trigger:** GitLab issue #8 ("follow coding standards") — user requested
+copying `google_swift_coding_style.md` to `docs/swift_coding_standards.md`
+and updating Squad to follow it.
+
+**Constraint discovered:** The uploaded artefact is unreachable from
+automation. Direct fetch (`/uploads/<secret>/<filename>`) → Cloudflare bot
+challenge (HTTP 403). GitLab API equivalent
+(`/api/v4/projects/.../uploads/<secret>/<filename>`) → 404. The project
+uploads listing returns only 2 unrelated files (`DESIGN.md`, `screen.png`).
+
+**Decision:** Don't vendor the upstream guide. Instead, write a project-
+local `docs/swift_coding_standards.md` that:
+
+1. Points at Google's canonical, stable URL (`https://google.github.io/swift/`)
+   as the normative external reference.
+2. Captures the **project bindings** that already apply to this codebase and
+   that the loop has enforced ad-hoc until now: warnings-as-errors, no
+   network, determinism in the math layer, force-unwrap discipline, serial
+   UI tests, accessibility identifiers as part of the public contract,
+   etc. Twelve subsections under §2.
+3. Defines resolution rules (§4 — project rule > Google > Apple API design
+   guidelines > existing file convention).
+4. Defines amendment flow via `.squad/decisions/inbox/<agent>-swift-
+   standard-*.md` so future changes follow the normal Scribe merge.
+
+**Ownership assignment:**
+
+- Ada owns §2.2 (Determinism in the math layer).
+- Edison owns §2.8 (SwiftUI specifics).
+- Hopper owns §3 (Tooling — build script, future formatter/linter wiring).
+- Curie owns §2.9 (Tests).
+- Tesla owns the rest and the resolution rules.
+
+**Files touched:**
+
+- `docs/swift_coding_standards.md` — created.
+- `.squad/decisions.md` — appended "Tesla: Swift Coding Standards Adopted".
+- `.squad/agents/ada/charter.md` — added "Coding standards" subsection.
+- `.squad/agents/edison/charter.md` — added "Coding standards" subsection.
+- `.squad/agents/hopper/charter.md` — added "Coding standards" subsection.
+- `.squad/agents/curie/charter.md` — added "Coding standards" subsection.
+- `README.md` — added "Development" section linking to the standards doc.
+
+**Validation:** No Swift code changes; ran `./app/build.sh test` to confirm
+the documentation-only change does not regress the build/test gate.
+
+**Triage in same cycle:**
+
+- Closed stale issues #5 (no_matching_runner), #6 (external gate blocked),
+  #7 (ci/cd now fixed, informational) with explanatory comments — CI is
+  demonstrably green on `main` (#108, #110) and on every recent MR.
+- Commented on #9 (Swift metrics capture) with a scope clarification
+  request: the metric list looks server-shaped (request counts, DB pools,
+  queue depth) but the app charter forbids network calls — proposed a
+  device-local MetricKit-plus-in-process-counters interpretation and held
+  implementation pending response.

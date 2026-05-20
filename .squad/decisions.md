@@ -258,3 +258,64 @@ Changes:
 - `KnittingGaugeReconcilerUITests.swift`: Added `XCTAssertFalse(app.otherElements["privacy-card"].exists)` in `testAboutHelpButtonOpensPullUpSheet` as a regression guard.
 
 Not Changed: About `?` affordance next to the app title — preserved. `AboutHelpSheet` content — no privacy copy existed there; unchanged. All other help overlays, compact layouts, share/export, accessibility, Dynamic Type — unchanged.
+
+**Tesla: Swift Coding Standards Adopted**
+
+Date: 2026-05-20T02:15:00-07:00
+Author: Tesla (loop lead)
+Status: Binding
+Related: GitLab issue #8
+
+Adopt the **Google Swift Style Guide** (<https://google.github.io/swift/>) as
+the normative external reference for all Swift code in this repository. The
+guide is captured at `docs/swift_coding_standards.md`, which records both the
+pointer to Google's guide and the **project-specific bindings** that override
+or supplement it:
+
+- §2.1 Warnings as errors (already in `app/build.sh`).
+- §2.2 Determinism in the math layer (no randomness, no clock reads in
+  `GaugeMath.compute` and callees, explicit `String(format:)` formatting,
+  no `NumberFormatter` inside math).
+- §2.3 No network, no analytics upload (per issue #1 mitigation 3).
+- §2.4 Force-unwrap discipline on user input (`!`, `try!` banned).
+- §2.5 Implicitly-unwrapped optionals banned in new declarations.
+- §2.6 Caseless `enum` for namespaces (matches existing `GaugeMath`).
+- §2.7 4-space indent, 120-col max line length (stricter indent than
+  Google's 2-space default; project rule wins).
+- §2.8 SwiftUI: private `@State`/`@Binding`, accessibility identifiers part
+  of the public test contract, `.task { ... }` over `Task { ... }` in `body`.
+- §2.9 Tests: Swift Testing for unit, XCTest for UI, UI tests **serial**
+  (per 2026-05-20T06-25 decision), no `@Test(.disabled)` quarantine.
+- §2.10 Concurrency: no `@MainActor` on pure-value/pure-math types; no
+  `DispatchQueue.main.async` inside SwiftUI views.
+- §2.11 Doc comments on public types in `GaugeMath.swift` using `///`.
+- §2.12 No `print`/`os_log`/`Logger` in release outside `#if DEBUG` or
+  env-var-gated branches; math layer never logs.
+
+Resolution rules (§4): project rule > Google guide > Apple API Design
+Guidelines. When all three are silent, follow the existing file convention.
+
+Why not vendor a snapshot of Google's guide: the upstream URL is stable
+(2019), bundling creates a drift risk, and the attachment on issue #8 is
+behind Cloudflare bot protection (and the GitLab API resolves the same
+secret to 404), so it could not be fetched into the repo as the user asked.
+The project doc points to Google's canonical URL, which is the equivalent
+material and reachable.
+
+Agent ownership:
+
+- Ada owns §2.2 (Determinism in the math layer).
+- Edison owns §2.8 (SwiftUI specifics).
+- Hopper owns §3 (Tooling — build script, future formatter/linter wiring).
+- Curie owns §2.9 (Tests).
+- Tesla owns the rest and the resolution rules.
+
+Amendment flow: any rule change goes through
+`.squad/decisions/inbox/<agent>-swift-standard-<topic>.md` for the next
+Scribe merge.
+
+PR / MR rules (§5): every MR touching Swift code must pass
+`./app/build.sh test` locally (warnings = 0, tests pass), pass GitLab CI
+mirror, introduce no force-unwraps on user input, introduce no network or
+analytics dependency without a written decision, and update UI test
+identifiers in the same commit when renaming a control.

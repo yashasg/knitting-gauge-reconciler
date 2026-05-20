@@ -263,11 +263,30 @@ print(d.get("skippedTests", -1))
 #       the simulator in a rough state that prevents the next runner
 #       cold launch.
 #
-# Behavior: only enter recovery if every failure is one of the three
-# recognized variants. For (a) rerun the specific test method; for (b)
-# and (c) rerun the whole UI test target. The simulator is rebooted
-# once and the rerun bundle replaces the canonical bundle (the original
-# is preserved alongside as .signal-term-original.xcresult for triage).
+#   (d) Runner connection-loss bootstrap: the UI runner process is
+#       launched but xcodebuild's IDE side loses its IPC connection
+#       before the runner finishes bootstrapping. xcodebuild reports
+#       "Early unexpected exit, operation never finished bootstrapping
+#       - no restart will be attempted." with underlying "Lost pending
+#       connection to the test runner before launch." Same overall
+#       shape as (b)/(c) — single "<Target>-Runner (<pid>) encountered
+#       an error" entry, whole UI suite wiped — but the SIGTERM
+#       wording is absent so the (b) matcher doesn't catch it.
+#       Observed when the simulator was left in a degraded state by an
+#       earlier per-test launch hang; a simple shutdown/boot pair
+#       sometimes is not enough to clear it, so the whole-target rerun
+#       escalates to `simctl erase` for a clean device state. See
+#       GitLab issue #17.
+#
+# Behavior: only enter recovery if every failure is one of the four
+# recognized variants. For (a) rerun the specific test method; for (b),
+# (c), and (d) rerun the whole UI test target. For whole-target reruns
+# the simulator is fully erased (then booted) instead of just rebooted,
+# since reboot alone has not been sufficient under variant (d). For
+# pure per-test reruns the simulator is just rebooted (the lighter
+# reset is preferred when nothing on disk is suspected to be wedged).
+# The rerun bundle replaces the canonical bundle (the original is
+# preserved alongside as .signal-term-original.xcresult for triage).
 # Any real assertion failure or unrecognized failure shape refuses the
 # recovery, preserving the original failure for the gate to fail on.
 # Each rerun gets a single attempt; persistent flakes still fail the
@@ -290,6 +309,18 @@ RUNNER_BOOTSTRAP = "Test crashed with signal term while preparing to run tests"
 RUNNER_INSTALL_FAILED = "Failed to install or launch the test runner"
 RUNNER_LAUNCH_FAILED = "Simulator device failed to launch"
 FBS_NIL = "Application info provider (FBSApplicationLibrary) returned nil"
+# GitLab issue #17: variant (d) — runner launches but loses its IPC
+# connection to xcodebuild before finishing bootstrap. Same fix shape
+# as (b)/(c) (whole-target rerun) but reported without the SIGTERM
+# wording, so it needs its own matcher.
+RUNNER_LOST_CONNECTION = "Lost pending connection to the test runner before launch"
+# Either of these openers means the runner never reported back; pair
+# with one of the bootstrap qualifiers above to whitelist as variant
+# (b) / (c) / (d).
+RUNNER_BOOTSTRAP_OPENERS = (
+    "Early unexpected exit, operation never finished bootstrapping",
+    "Lost pending connection to the test runner before launch",
+)
 d = json.load(sys.stdin)
 failures = d.get("testFailures") or []
 if not failures:
@@ -310,13 +341,15 @@ for f in failures:
     elif (RUNNER_BOOTSTRAP in text
           or RUNNER_INSTALL_FAILED in text
           or RUNNER_LAUNCH_FAILED in text
-          or FBS_NIL in text):
+          or FBS_NIL in text
+          or RUNNER_LOST_CONNECTION in text
+          or any(opener in text for opener in RUNNER_BOOTSTRAP_OPENERS)):
         # Whole-target rerun: no method spec, just the target name. The
         # runner-level failure wipes out every test in the target (or
         # the runner never finishes bootstrapping) so we cannot narrow
-        # further. Rerunning the whole target on a freshly rebooted
-        # simulator gives the transient install/launch flake a clean
-        # second attempt.
+        # further. Rerunning the whole target on a freshly erased
+        # simulator (see escalation below) gives the transient
+        # install/launch/connection flake a clean second attempt.
         target_level.add(target)
     else:
         sys.exit(2)
@@ -353,9 +386,33 @@ for s in specs:
     echo "error: refusing to rerun $rerun_count signal-term failures; too many to be infra flake" >&2
     return 1
   fi
-  echo "note: $rerun_count signal-term flake spec(s) detected; rerunning on fresh simulator: $(printf '%s' "$rerun_specs" | tr '\n' ' ')" >&2
+  # Whole-target rerun specs are bare target names (no "/" — see the
+  # extractor above). Their presence means at least one of variants
+  # (b)/(c)/(d) fired and the simulator state is suspect. GitLab
+  # issue #17 documents a (d)-variant cycle where `simctl shutdown` +
+  # `simctl boot` was not enough to clear the degraded state and the
+  # rerun reproduced the same "Lost pending connection" bootstrap
+  # failure; only `simctl erase` cleared it. Escalate to erase when
+  # any whole-target rerun is queued; keep the cheaper shutdown/boot
+  # pair when only per-test (variant a) reruns are queued.
+  local needs_full_erase=0
+  while IFS= read -r spec; do
+    [[ -z "$spec" ]] && continue
+    if [[ "$spec" != */* ]]; then
+      needs_full_erase=1
+      break
+    fi
+  done <<< "$rerun_specs"
+  if (( needs_full_erase )); then
+    echo "note: $rerun_count signal-term flake spec(s) detected (whole-target rerun queued); erasing and rebooting simulator: $(printf '%s' "$rerun_specs" | tr '\n' ' ')" >&2
+  else
+    echo "note: $rerun_count signal-term flake spec(s) detected; rerunning on fresh simulator: $(printf '%s' "$rerun_specs" | tr '\n' ' ')" >&2
+  fi
   if [[ -n "$SIMULATOR_UDID" ]]; then
     xcrun simctl shutdown "$SIMULATOR_UDID" >/dev/null 2>&1 || true
+    if (( needs_full_erase )); then
+      xcrun simctl erase "$SIMULATOR_UDID" >/dev/null 2>&1 || true
+    fi
     xcrun simctl boot "$SIMULATOR_UDID" >/dev/null 2>&1 || true
     xcrun simctl bootstatus "$SIMULATOR_UDID" -b >/dev/null
   fi

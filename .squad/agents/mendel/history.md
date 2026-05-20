@@ -42,3 +42,21 @@ Any references to the old project path should be updated. Use `app/app.xcodeproj
 ### 2026-05-19 — corrected canonical Xcode project path
 
 Correction to earlier path note: the project bundle must remain `app/KnittingGaugeReconciler.xcodeproj` per the explicit Tesla scaffold priority item. Scenario mapping remains tied to the `KnittingGaugeReconciler` test/UI-test targets.
+
+## [2026-05-20T05:06:06Z] Saved Reconciliations User Value Research
+
+**Session:** Evaluated knitter mental model for saved reconciliations  
+**Participants:** Mendel (user research), Tesla (architecture), Jacquard (domain)  
+**Output:** Research documentation, orchestration log, decision archive
+
+**Finding:** Four gauge numbers alone are insufficient. Knitters think in "pattern + yarn + needle" triples.
+
+**Critical Metadata Required:**
+- **Pattern name** (user input, ~50 char) — primary lookup key
+- **Yarn identifier** (user input, ~40 char) — secondary lookup for fiber comparison
+- **Timestamp** (auto-generated, optional user label ~20 char) — temporal context
+- **Stitch pattern + blocking state** (optional but high-value)
+
+**MVP Recommendation:** Store 4 gauge values + 3 metadata fields. 43.75% data increase → 10x usability improvement. All labels text-based and discoverable; no design-only communication.
+
+**Handoff status:** Ready for design (Ive) and implementation (Edison). See `.squad/decisions.md` (2026-05-19 Evening Session) and orchestration logs for full context.

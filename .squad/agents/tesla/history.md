@@ -55,3 +55,15 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 - Rescued the stuck Hopper handoff for simulator launch support; `app/run.sh` now validates with `bash -n` and ran successfully end-to-end via `./app/run.sh`.
 - Convention established: `app/run.sh` is a thin launch wrapper over `app/build.sh`; `build.sh` remains the single source of build configuration, simulator destination, derived data, and warning policy.
 - Trade-off: the run script duplicates a small amount of simulator/app-install plumbing to keep developer launch ergonomics simple, but does not duplicate Xcode build policy.
+
+## [2026-05-20T05:06:06Z] Saved Reconciliations Architecture Evaluation
+
+**Session:** Three-agent consensus on saved reconciliations feature  
+**Participants:** Tesla (architecture), Mendel (user research), Jacquard (domain)  
+**Output:** Orchestration logs, decision archive, session log
+
+**Decision:** Recommend SwiftData persistence on iOS 17+. Store full `GaugeInputs` (9 fields) + metadata (label, createdAt, updatedAt). Recomputed values derived via `GaugeMath.compute()`.
+
+**MVP Scope:** Save (explicit button on results), List (chronological + swipe-to-delete), Load (tap to reload into calculator), Delete. No iCloud sync or search in v1.
+
+**Handoff status:** Ready for Edison (iOS implementation) and Ive (metadata UX design). See `.squad/decisions.md` (2026-05-19 Evening Session) and orchestration logs for full context.

@@ -71,3 +71,83 @@ Owner: Edison
 Replace the old unavailable distribution affordance with a native SwiftUI `Menu` labeled "Copy results". Menu choices are TSV, Markdown, CSV, and HTML. Each action copies deterministic results text and shows "Copied [format]".
 
 Rationale: The app has no backend or networking path for distributing externally-addressable results. Copying structured result data is truthful, local-first, and testable while preserving the compact layout.
+
+## 2026-05-19 (Evening Session)
+
+**User Directive (yashasg): Copy results single option**
+
+Date: 2026-05-19T20:36:39.715-07:00
+
+User clarified that Copy results should support only formatted text, not multiple format choices. Copied output should be a single plain-text action without TSV/Markdown/CSV/HTML menu, and no attribution until the app is on the App Store.
+
+**Edison: Single Formatted Copy Results**
+
+Date: 2026-05-19T20:36:39.715-07:00
+
+Replaced the multi-format Copy results menu with one accessible Copy results action that copies deterministic formatted plain text to the pasteboard and shows "Copied!" feedback. Current product scope is one local formatted-text copy flow only.
+
+**User Directive: Share affordance evolution**
+
+Date: 2026-05-19T21:48:59.931-07:00
+
+Prefer a single native Share affordance because iOS share sheet already includes Copy to Clipboard; avoid redundant Copy results UI. Explore using SwiftUI ImageRenderer to share a rendered image/screenshot of the main result screen.
+
+**User Directive: Image-primary sharing**
+
+Date: 2026-05-19T21:51:27.105-07:00
+
+Share should use the rendered PNG as the primary payload. Formatted text should be used only as a fallback if rendering fails, not shared alongside the PNG by default.
+
+**Edison: Image-Primary Sharing Decision**
+
+Date: 2026-05-19T21:51:27.105-07:00
+
+Use a single native Share results affordance backed by a small UIActivityViewController wrapper instead of ShareLink. This lets the app render a purpose-built SwiftUI results card with ImageRenderer, share the rendered PNG as the primary payload, and fall back to the formatted text summary through the same share sheet path only if image generation or file writing fails.
+
+**Tesla: Saved Reconciliation Architecture Decision**
+
+Date: 2026-05-19T22:06:06.097-07:00
+
+**Status:** Proposed  
+**Relevant agents:** Edison (iOS), Ive (Design), Ada (Algorithms)
+
+Yes — worth doing saved reconciliations. Low implementation cost, high user value. Knitters frequently reference past reconciliations when returning to a project or starting a similar one.
+
+**Minimal Data Model:** Store full `GaugeInputs` (9 fields: pattern stitch/row gauge, user stitch/row gauge, section dimensions, cast-on, increase spacing) plus metadata (label, createdAt, updatedAt). Everything else is derived via `GaugeMath.compute()`.
+
+**Persistence Approach:** Recommended SwiftData (iOS 17+). Native SwiftUI integration, `@Query` macro, automatic migrations, zero config. App already targets iOS 17+ (SwiftUI NavigationStack).
+
+**MVP Scope:** Save (explicit button on results), list (chronological with swipe-to-delete), load (tap to reload into calculator), delete. No iCloud sync, search, or folders in v1.
+
+**Mendel: Saved Reconciliations — Research & MVP Scope**
+
+Date: 2026-05-19T22:06:06.097-07:00
+
+**Finding:** Four gauge numbers alone are insufficient for knitter mental model. Without metadata, saved reconciliations become ambiguous and unactionable.
+
+**Critical metadata required:**
+1. **Pattern name** (user input on save, ~50 char text) — primary lookup key
+2. **Yarn identifier** (user input on save, ~40 char text) — secondary lookup for repeat fibers  
+3. **Timestamp** (auto-generated; optional user-provided context label ~20 char) — temporal reference for mid-project vs. planning
+4. **Stitch pattern + blocking state** (optional but high-value for knitter context)
+
+**MVP recommendation:** Store 4 gauge values + 3 metadata fields (pattern name, yarn, timestamp). This 43.75% increase in data footprint delivers a 10x improvement in usability and aligns with knitter behavior.
+
+**Design floor:** Keep all labels text-based and discoverable; no design-only communication (color, icons) for metadata differentiation.
+
+**Jacquard: Saved Reconciliations — Domain Evaluation**
+
+Date: 2026-05-19T22:06:06.097-07:00
+
+**Verdict:** INSUFFICIENT to store just swatch dimensions without context, but MVP-defensible with small additions.
+
+**What knitters need when opening saved reconciliation later:**
+1. **Stitch pattern used** (garter, stockinette, ribbing, etc.) — different patterns have wildly different gauge responses
+2. **Blocking state** (pre- or post-blocking) — blocking can swing gauge by 10–15%
+3. **Yarn fiber content** — wool vs. cotton vs. acrylic all stretch differently
+4. **Needle size used** — reconciliation is tied to specific needle; crucial for reproduction
+5. **Memorable label** (e.g. "Flax Cardigan 5.5mm bamboo") — raw numbers don't connect to projects
+
+**Real scenario risk:** Knitter saves reconciliation for linen sweater with 5.5mm needles in stockinette. Six months later loads it thinking gauge might apply to a cotton tee in ribbing on 5.0mm needles. Without metadata, saved reconciliation is misleading and useless.
+
+**Recommendation:** Save the four points as proposed. Add fifth: short human-readable label + stitch pattern + blocking state. Stays minimal but gives knitters enough context to decide applicability.

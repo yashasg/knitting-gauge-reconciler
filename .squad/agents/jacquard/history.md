@@ -163,6 +163,27 @@ Any references to the old project path should be updated. Use `app/app.xcodeproj
 
 Correction to earlier path note: the project bundle must remain `app/KnittingGaugeReconciler.xcodeproj` per the explicit Tesla scaffold priority item. Math review remains against `GaugeMath.swift` in the `KnittingGaugeReconciler` scheme.
 
+## [2026-05-20T05:06:06Z] Saved Reconciliations Domain Evaluation
+
+**Session:** Evaluated knitting workflow fit for saved reconciliations  
+**Participants:** Jacquard (domain expert), Tesla (architecture), Mendel (user research)  
+**Output:** Domain evaluation, orchestration log, decision archive
+
+**Verdict:** INSUFFICIENT storing just swatch dimensions. Context required for trust and reusability.
+
+**Critical Context Needed:**
+- **Stitch pattern** (garter, stockinette, ribbing — affect gauge differently)
+- **Blocking state** (pre- or post-blocking; 10–15% gauge swing)
+- **Yarn fiber content** (wool vs. cotton vs. acrylic; different stretch profiles)
+- **Needle size** (reconciliation tied to specific needle; crucial for reproduction)
+- **Memorable label** (e.g. "Flax Cardigan 5.5mm bamboo" vs. raw numbers)
+
+**Risk:** Knitter saves linen reconciliation (5.5mm, stockinette, pre-blocked) and reuses for cotton tee (5.0mm, ribbing, post-blocked) without metadata context. Reconciliation becomes misleading and useless.
+
+**Recommendation:** Save four gauge points as proposed. Add fifth: label + stitch pattern + blocking state. Minimal overhead, massive trust/UX improvement.
+
+**Handoff status:** Ready for implementation (Edison) and design (Ive). See `.squad/decisions.md` (2026-05-19 Evening Session) and orchestration logs for full context.
+
 ### [2026-05-19 19:58:36Z] Per-Section Adjustment Semantics — Knitter-Facing Validation
 
 **Task:** Review knitting domain semantics for per-section adjustment guidance.

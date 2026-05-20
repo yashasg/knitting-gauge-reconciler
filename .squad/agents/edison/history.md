@@ -46,3 +46,15 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 **Decision:** Constrain `NumberField` hint copy to the compact numeric column width for non-accessibility Dynamic Type, while leaving it unconstrained at accessibility sizes.
 
 **Work:** Fixed swatch hint text wrapping by constraining NumberField hints to column width at non-accessibility sizes. Preserves accessibility fallback. Simulator build passed. Curie verified with UI tests — both Pattern gauge and Your swatch remain side-by-side when they fit.
+
+## [2026-05-20T03:31:51Z] Copy Results Menu Implementation
+
+**Session:** copy-results-menu
+
+**Task:** Implement Ive's Copy results menu UX spec.
+
+**Deliverable:** Native SwiftUI `Menu` with deterministic formatters for TSV, Markdown, CSV, HTML. Removed old unavailable share-link affordance. Added formatter and UI test coverage.
+
+**Validation:** Ive approved design; Curie tightened tests for old affordance removal and per-section guidance coverage. `./app/build.sh test` passed.
+
+**Status:** Approved and ready for deployment.

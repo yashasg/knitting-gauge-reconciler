@@ -96,3 +96,13 @@ Any references to the old project path should be updated. Use `app/app.xcodeproj
 ### 2026-05-19 — corrected canonical Xcode project path
 
 Correction to earlier path note: the project bundle must remain `app/KnittingGaugeReconciler.xcodeproj` per the explicit Tesla scaffold priority item. UX review remains against the SwiftUI app in that project; scheme remains `KnittingGaugeReconciler`.
+
+## [2026-05-20T03:31:51Z] Copy Results Menu UX Specification
+
+**Session:** copy-results-menu
+
+**Task:** Define UX specification for replacing the old share-link affordance with a native Copy results menu.
+
+**Deliverable:** UX spec for native `Menu` labeled "Copy results" with TSV, Markdown, CSV, and HTML format options; accessible labels and copied-status feedback; no share/link/URL wording.
+
+**Status:** Approved and implemented by Edison; validated by Curie.

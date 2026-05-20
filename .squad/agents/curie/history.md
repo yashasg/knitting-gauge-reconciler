@@ -45,3 +45,15 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 **Outcome:** APPROVED
 
 **Work:** Verified Edison's swatch hint layout fix. Updated UI tests to confirm both Pattern gauge and Your swatch fields remain side-by-side when they fit. Build-for-testing and targeted UI test passed.
+
+## [2026-05-20T03:31:51Z] Copy Results Menu Review & Approval
+
+**Session:** copy-results-menu
+
+**Task:** Review and approve Edison's Copy results menu implementation.
+
+**Validation:** Confirmed UI no longer exposes old copy-share-link affordance. Formatter output includes current gauge results plus per-section row/round guidance. Tests explicitly cover menu formats, formatter guidance rows, and old affordance removal. `./app/build.sh test` passed.
+
+**Decision:** APPROVED.
+
+**Status:** Ready for deployment.

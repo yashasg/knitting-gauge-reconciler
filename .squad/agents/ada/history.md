@@ -120,3 +120,17 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 - **Principle:** Finished garment measurements must remain constant; rows/rounds are the output parameter.
 
 **Next:** Implementation can proceed with corrected calculation logic applied to all vertical measurements (yoke, body, sleeves).
+
+## [2026-05-20T03:31:51Z] Per-Section Row Guidance Decision
+
+**Session:** copy-results-menu
+
+**Task:** Establish semantics for per-section vertical outputs in Copy results formatters.
+
+**Decision:** Per-section vertical outputs preserve the pattern's physical centimetre measurements and present row/round counts as guidance for reaching those same measurements at the user's row gauge.
+
+**Rationale:** Row gauge differences change how many rows or rounds are needed to reach a yoke/body/sleeve length; they must not change the finished centimetre target specified by the pattern.
+
+**Validation:** Curie approved per-section adjustment logic from test-engineering perspective. Covered in unit tests and UI expectations.
+
+**Status:** APPROVED and implemented in formatters.

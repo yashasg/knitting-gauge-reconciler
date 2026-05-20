@@ -83,3 +83,66 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 **Rationale:** Concurrent local simulator usage can conflict and destabilize UI test runs.
 
 **Impact on Edison:** Build and test scenarios coordinated with other agents must respect single-simulator access during local UI test execution.
+
+## [2026-05-19T23:27:48-07:00] About Calculator Help Overlay
+
+**Session:** about-calculator-help-overlay
+**Task:** Apply the same compact `?` pull-up overlay pattern to the "About this calculator" card.
+
+**What changed:**
+- `aboutCard` now shows only a compact title + `?` (`questionmark.circle`) button. The long explanatory paragraphs, scope warning block, and non-affiliation disclaimer were removed from the main card.
+- Added `@State private var showAboutHelp = false` and a new `.sheet(isPresented: $showAboutHelp)` attached to the NavigationStack.
+- New `AboutHelpSheet` private struct renders all the about content (two explanation paragraphs, amber scope warning block, footnote disclaimer) in a scrollable pull-up sheet with `accessibilityIdentifier("about-help-sheet")`.
+- VoiceOver: the `?` button carries `accessibilityLabel("About this calculator, more information")` + hint; sheet is fully navigable with Dynamic Type.
+- Added `testAboutHelpButtonOpensPullUpSheet` UI test: asserts button exists with correct label, that `two-axis gauge mismatch` text is NOT in the main view, taps button, asserts sheet appears with the text.
+- Build passed (exit code 0). No unrelated files touched.
+
+**Pattern generalised:** Both `verdictPanel` and `aboutCard` now follow the same compact title + `?` → sheet convention for reducing clutter in the main scroll view.
+
+## [2026-05-19T23:53:43.824-07:00] About `?` Moved to App Title — About Card Removed
+
+**Session:** about-help-title
+**Task:** Remove the standalone "About this calculator" card; place the `?` button directly beside the app title in the `header`.
+
+**What changed:**
+- Removed `aboutCard` from `ContentView.body` and deleted the property entirely.
+- Updated `header` to wrap the app title + `?` button in an `HStack`. The button still shows `showAboutHelp = true`, triggering the same `AboutHelpSheet` pull-up sheet.
+- Title `Text` carries `.fixedSize(horizontal: false, vertical: true)` to prevent truncation on small screens when the button is adjacent.
+- Updated `testAboutHelpButtonOpensPullUpSheet`: removed `scrollToElement` (button is now at the top, always visible), replaced `.exists` assertion with `waitForExistence(timeout: 3)` for launch-timing robustness.
+- Build succeeded (no compile errors).
+
+**Key learning:** When promoting a contextual help button from a card at an arbitrary scroll position to the title area, always verify Dynamic Type wrapping of the adjacent title — `fixedSize(horizontal: false, vertical: true)` prevents the title from being truncated by the button's minimum tap target (44 pt).
+
+## [2026-05-19T23:53:43-07:00] Removed Privacy Card from About
+
+**Session:** remove-about-privacy-copy
+**Task:** Remove privacy/non-tracking card from the main scroll view — analytics are being added so the "no analytics" claim would become false.
+
+**What changed:**
+- Removed `privacyCard` reference from `ContentView.body` VStack.
+- Deleted the `privacyCard` computed property (SectionTitle "Privacy" + "This app collects nothing…" text).
+- Added negative UI assertion in `testAboutHelpButtonOpensPullUpSheet`: `XCTAssertFalse(app.otherElements["privacy-card"].exists)`.
+- No replacement privacy/analytics copy added.
+
+**Key learning:** When a truthfulness-limited piece of copy must be removed (not just hidden), delete both the view and its property; a negative assertion in an existing test is sufficient to guard against accidental re-introduction without making the test brittle.
+
+## [2026-05-20T00:00:00Z] Final Help Overlay UI Changes — Reviewed and Approved
+
+**Session:** help-overlays (Help Overlay UI Finalization)
+**Reviewer:** Curie (QA)
+**Status:** APPROVED
+
+**Summary:** Completed final help overlay UI changes as directed by yashasg:
+1. **About `?` Help Overlay** — Applied compact title + `?` → pull-up sheet pattern to About card
+2. **About `?` Repositioned** — Removed standalone About card; moved `?` button next to app title in header
+3. **Privacy Card Removed** — Eliminated misleading "no analytics" copy; no replacement
+
+**Verification by Curie:**
+- Build successful (exit code 0)
+- Accessibility verified: VoiceOver labels intact, Dynamic Type support preserved
+- UI tests updated and passing
+- Share/export functionality preserved
+- Math and layout unchanged
+- No misleading privacy claims
+
+**Status:** Ready for deployment. All decisions documented in decisions.md.

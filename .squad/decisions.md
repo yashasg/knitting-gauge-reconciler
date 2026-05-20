@@ -177,3 +177,84 @@ Date: 2026-05-19T23:25:04.530-07:00
 When running locally, Squad must not run more than one iOS simulator at any given time. All UI tests must run in serial.
 
 Rationale: Concurrent local simulator usage can conflict and destabilize UI test runs.
+
+**User Directive: About Calculator Help Overlay**
+
+Date: 2026-05-19T23:27:48.303-07:00
+By: yashasg (via Copilot)
+
+Apply the same compact help-overlay treatment to the "About this calculator" card: keep the title visible with a nearby `?` help affordance, and open the about content in a pull-up overlay when tapped.
+
+Rationale: User wants explanatory/about copy available on demand without occupying main screen space.
+
+**Edison: About Calculator Help Overlay**
+
+Date: 2026-05-19T23:27:48-07:00
+Author: Edison (Frontend Dev)
+
+The "About this calculator" card contained three full paragraphs of explanatory text, a scope warning block, and a non-affiliation disclaimer directly in the main scroll view. Applied the same compact title + `?` → pull-up sheet pattern to the `aboutCard`:
+
+1. The main card shows only `SectionTitle("About this calculator")` + a `questionmark.circle` button.
+2. Tapping the `?` opens `AboutHelpSheet` — a scrollable `.sheet` with `presentationDetents([.medium, .large])` and a visible drag indicator.
+3. `AboutHelpSheet` contains all existing about content verbatim.
+
+Rationale: Consistent with the `verdictPanel` decision. VoiceOver users get the full content on demand; the button's `accessibilityLabel` ("About this calculator, more information") clearly signals the action.
+
+Accessibility: `?` button: `accessibilityLabel("About this calculator, more information")`, `accessibilityHint("Opens an explanation of how this calculator works")`, `accessibilityIdentifier("about-help-button")`. Sheet `ScrollView` carries `accessibilityIdentifier("about-help-sheet")`. Sheet title `Text` has `.accessibilityAddTraits(.isHeader)`. All body text respects Dynamic Type.
+
+Test Coverage: Added `testAboutHelpButtonOpensPullUpSheet` in `KnittingGaugeReconcilerUITests` — asserts button is discoverable and hittable, long about copy is NOT present in main view, taps button, asserts `about-help-sheet` scroll view appears, and copy becomes visible in sheet.
+
+**User Directive: Move About `?` to App Title — Remove Card**
+
+Date: 2026-05-19T23:53:43.824-07:00
+By: yashasg (via Copilot)
+
+Remove the About card completely. Put the `?` help affordance next to the app title at the top of the screen, and have it pull up the overlay with the About information.
+
+Rationale: User wants About information available globally from the title area without dedicating a separate card to it.
+
+**Edison: Move About `?` to App Title — Remove Standalone About Card**
+
+Date: 2026-05-19T23:53:43.824-07:00
+Author: Edison (Frontend Dev)
+
+After the previous session placed a compact `?` button inside a dedicated "About this calculator" card, the user direction changed: remove the card entirely and place the `?` affordance next to the app title at the top.
+
+Changes:
+1. **Removed `aboutCard`** entirely from `ContentView.body` and deleted the `aboutCard` property.
+2. **Updated `header`** — the app title `Text` is now wrapped in an `HStack` alongside a `Button { showAboutHelp = true }` carrying a `questionmark.circle` icon.
+3. The `AboutHelpSheet` pull-up sheet and `@State private var showAboutHelp` are unchanged; only the trigger location moved.
+4. **Updated `testAboutHelpButtonOpensPullUpSheet`** — removed the `scrollToElement` call (button is now immediately visible at the top), replaced `XCTAssertTrue(helpButton.exists)` with `helpButton.waitForExistence(timeout: 3)` to be robust against launch timing.
+
+Rationale: The `?` at the title level makes the About action globally discoverable without consuming a card slot in the main scroll flow. Consistent with conventional iOS app patterns.
+
+Accessibility: `?` button preserved with full `accessibilityLabel`, `accessibilityHint`, `accessibilityIdentifier`. Title uses `.fixedSize(horizontal: false, vertical: true)` so long titles wrap correctly on small screens. Sheet structure and Dynamic Type support unchanged.
+
+Test Coverage: Updated `testAboutHelpButtonOpensPullUpSheet` — uses `waitForExistence(timeout: 3)`, still asserts correct label, long copy absent from main view, sheet appears on tap, copy visible in sheet.
+
+**User Directive: Remove Privacy Copy — No Misleading Claims**
+
+Date: 2026-05-19T23:53:43.824-07:00
+By: yashasg (via Copilot)
+
+Remove the privacy/non-tracking card or copy from the About information because the app is capturing analytics and that statement will be misleading going forward.
+
+Rationale: User wants the app copy to avoid claims that will no longer be true once analytics are present.
+
+**Edison: Remove Privacy/Non-Tracking Card from About**
+
+Date: 2026-05-19T23:53:43-07:00
+Author: Edison (Frontend Dev)
+Status: Implemented
+
+The main scroll view contained a `privacyCard` (Section title "Privacy") with the copy: "This app collects nothing. Your gauge values stay on device. No server. No analytics. No network requests of any kind." Analytics are being added, which would make this claim false.
+
+Decision: Remove the privacy/non-tracking card entirely. Do not replace it with a new analytics or privacy policy claim.
+
+Rationale: Keeping technically-false copy in the UI erodes user trust more than having no copy at all. A future, accurate privacy/analytics disclosure should be drafted deliberately by the product owner — not patched in reactively.
+
+Changes:
+- `ContentView.swift`: Removed `privacyCard` from body VStack; deleted `privacyCard` computed property.
+- `KnittingGaugeReconcilerUITests.swift`: Added `XCTAssertFalse(app.otherElements["privacy-card"].exists)` in `testAboutHelpButtonOpensPullUpSheet` as a regression guard.
+
+Not Changed: About `?` affordance next to the app title — preserved. `AboutHelpSheet` content — no privacy copy existed there; unchanged. All other help overlays, compact layouts, share/export, accessibility, Dynamic Type — unchanged.

@@ -67,3 +67,23 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 **Rationale:** Concurrent local simulator usage can conflict and destabilize UI test runs.
 
 **Impact on Curie:** Test suite must enforce serial simulator access when invoked from CI/local workflows.
+
+## [2026-05-20T00:00:00Z] Final Help Overlay UI Changes — Review Complete
+
+**Session:** help-overlays (Help Overlay UI Finalization)
+**Status:** APPROVED
+
+**Summary:** Reviewed and approved Edison's final help overlay UI changes:
+1. **About `?` Help Overlay** — Applied compact title + `?` → pull-up sheet to About card
+2. **About `?` Repositioned** — Moved from card to app title header area
+3. **Privacy Card Removed** — Eliminated misleading "no analytics" claim
+
+**Verification:**
+- Build succeeded without errors
+- Accessibility verified: VoiceOver labels and Dynamic Type fully supported
+- UI tests updated and passing
+- Share/export preserved
+- Math and layout preserved
+- No misleading privacy statements in UI
+
+**Decision:** All changes ready for deployment. Decisions documented in decisions.md.

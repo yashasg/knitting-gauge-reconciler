@@ -176,7 +176,11 @@ fi
 #   1. Null bundle identifier / simctl cleanup (original)
 #   2. mkstemp failure in result-bundle staging + UI-runner bootstrap signal-term (new variant)
 #   3. IOHIDLib plugin diagnostics emitted after all unit and UI tests pass
-BENIGN_XCODE_INFRA_FAILURE='Failed to launch app with identifier: \(null\)|Invalid request: No bundle identifier|mkstemp: No such file or directory|Early unexpected exit, operation never finished bootstrapping|Test crashed with signal term (while preparing to run tests|before establishing connection)|Error loading .*IOHIDLib|Cannot find function pointer IOHIDLibFactory|failed to create instance for plugin|IOCreatePlugInInterfaceForService'
+#   4. Runner xctrunner install/launch failure where FBSApplicationLibrary
+#      transiently returns nil for the runner bundle id during the
+#      cold launch — recoverable by rerunning the UI target on a
+#      fresh simulator.
+BENIGN_XCODE_INFRA_FAILURE='Failed to launch app with identifier: \(null\)|Invalid request: No bundle identifier|mkstemp: No such file or directory|Early unexpected exit, operation never finished bootstrapping|Test crashed with signal term (while preparing to run tests|before establishing connection)|Error loading .*IOHIDLib|Cannot find function pointer IOHIDLibFactory|failed to create instance for plugin|IOCreatePlugInInterfaceForService|Failed to launch app with identifier: com\.yashasg\.KnittingGaugeReconcilerUITests\.xctrunner|Simulator device failed to launch com\.yashasg\.KnittingGaugeReconcilerUITests\.xctrunner|Failed to install or launch the test runner|Application info provider \(FBSApplicationLibrary\) returned nil'
 if grep -Eiq 'Failed to launch app|NSMachErrorDomain' "$LOG_FILE" \
     && ! grep -Eq "$BENIGN_XCODE_INFRA_FAILURE" "$LOG_FILE"; then
   echo "error: xcodebuild emitted simulator launch/crash diagnostics" >&2
@@ -224,23 +228,50 @@ print(d.get("skippedTests", -1))
   return 0
 }
 
-# Recover from a specific class of UI-runner flake: under the
-# single-simulator serial-UI constraint (2026-05-20T06-25-04Z-serial-ui-tests.md),
-# XCUIApplication launches occasionally hang past xcodebuild's per-test
-# watchdog, the runner is killed with SIGTERM, xcodebuild then *advances*
-# to the next test rather than retrying the crashed one, and the failure
-# survives in the xcresult bundle even though re-running the same test in
-# isolation passes deterministically. -retry-tests-on-failure does not
-# catch this case because xcodebuild never observes a structured failure
-# callback — only a post-mortem "Test crashed with signal term." entry.
+# Recover from three related classes of UI-runner flake under the
+# single-simulator serial-UI constraint (2026-05-20T06-25-04Z-serial-ui-tests.md):
 #
-# Behavior: if (and only if) every failure in the bundle is exactly the
-# signal-term entry, rerun those specific tests one more time on a freshly
-# rebooted simulator and replace the bundle with the rerun result. Any
-# real assertion failure or non-signal-term crash causes the function to
-# refuse the rerun, preserving the original failure for the gate to fail
-# on. Each test is given a single rerun attempt; persistent flakes still
-# fail the gate.
+#   (a) Per-test signal-term: XCUIApplication launches occasionally hang
+#       past xcodebuild's per-test watchdog, the runner is killed with
+#       SIGTERM, xcodebuild *advances* to the next test rather than
+#       retrying the crashed one, and the failure survives in the
+#       xcresult bundle as a single failure entry whose failureText is
+#       exactly "Test crashed with signal term." and whose
+#       testIdentifierString is a "Target/test()" spec.
+#       -retry-tests-on-failure does not catch this case because
+#       xcodebuild never observes a structured failure callback — only a
+#       post-mortem signal-term entry.
+#
+#   (b) Runner-bootstrap signal-term: the UI runner process itself is
+#       killed with SIGTERM *before* it finishes bootstrapping (i.e.
+#       before any test starts). xcodebuild reports "Early unexpected
+#       exit, operation never finished bootstrapping - no restart will
+#       be attempted." with underlying "Test crashed with signal term
+#       while preparing to run tests.", and emits a single failure entry
+#       whose testIdentifierString is "<Target>-Runner (<pid>) encountered
+#       an error" (not a Target/test() spec). The whole UI suite is
+#       wiped from the bundle and no individual tests can be re-targeted.
+#
+#   (c) Runner install/launch failure: FBSApplicationLibrary transiently
+#       returns nil for the xctrunner bundle id during a cold launch and
+#       SpringBoard refuses to open it ("Simulator device failed to
+#       launch com.yashasg.KnittingGaugeReconcilerUITests.xctrunner" /
+#       "Failed to install or launch the test runner"). Like (b) this
+#       wipes the UI suite from the bundle and the failure entry has a
+#       "<Target>-Runner (<pid>) encountered an error" identifier. May
+#       appear alongside (a) when an earlier per-test signal-term left
+#       the simulator in a rough state that prevents the next runner
+#       cold launch.
+#
+# Behavior: only enter recovery if every failure is one of the three
+# recognized variants. For (a) rerun the specific test method; for (b)
+# and (c) rerun the whole UI test target. The simulator is rebooted
+# once and the rerun bundle replaces the canonical bundle (the original
+# is preserved alongside as .signal-term-original.xcresult for triage).
+# Any real assertion failure or unrecognized failure shape refuses the
+# recovery, preserving the original failure for the gate to fail on.
+# Each rerun gets a single attempt; persistent flakes still fail the
+# gate.
 rerun_signal_term_failures() {
   local bundle="$1"
   if [[ ! -d "$bundle" ]]; then
@@ -254,21 +285,57 @@ rerun_signal_term_failures() {
   set +e
   rerun_specs=$(printf '%s' "$summary_json" | /usr/bin/python3 -c '
 import json, sys
-SIGNAL_TERM = "Test crashed with signal term."
+PER_TEST = "Test crashed with signal term."
+RUNNER_BOOTSTRAP = "Test crashed with signal term while preparing to run tests"
+RUNNER_INSTALL_FAILED = "Failed to install or launch the test runner"
+RUNNER_LAUNCH_FAILED = "Simulator device failed to launch"
+FBS_NIL = "Application info provider (FBSApplicationLibrary) returned nil"
 d = json.load(sys.stdin)
 failures = d.get("testFailures") or []
 if not failures:
     sys.exit(3)
-specs = []
+target_level = set()
+method_level = []
 for f in failures:
-    if (f.get("failureText") or "").strip() != SIGNAL_TERM:
-        sys.exit(2)
+    text = (f.get("failureText") or "").strip()
     tid = (f.get("testIdentifierString") or "").strip()
     target = (f.get("targetName") or "").strip()
-    if not tid or not target or "/" not in tid:
+    if not target:
         sys.exit(2)
-    method = tid.replace("()", "")
-    specs.append(f"{target}/{method}")
+    if text == PER_TEST:
+        if not tid or "/" not in tid:
+            sys.exit(2)
+        method = tid.replace("()", "")
+        method_level.append((target, f"{target}/{method}"))
+    elif (RUNNER_BOOTSTRAP in text
+          or RUNNER_INSTALL_FAILED in text
+          or RUNNER_LAUNCH_FAILED in text
+          or FBS_NIL in text):
+        # Whole-target rerun: no method spec, just the target name. The
+        # runner-level failure wipes out every test in the target (or
+        # the runner never finishes bootstrapping) so we cannot narrow
+        # further. Rerunning the whole target on a freshly rebooted
+        # simulator gives the transient install/launch flake a clean
+        # second attempt.
+        target_level.add(target)
+    else:
+        sys.exit(2)
+specs = []
+seen = set()
+for t in sorted(target_level):
+    if t not in seen:
+        seen.add(t)
+        specs.append(t)
+for (target, spec) in method_level:
+    # If the whole target is already queued for rerun, the narrower
+    # method spec is redundant; xcodebuild would still run the whole
+    # target. Drop it to keep the rerun args tidy and the rerun_count
+    # guard accurate.
+    if target in target_level:
+        continue
+    if spec not in seen:
+        seen.add(spec)
+        specs.append(spec)
 for s in specs:
     print(s)
 ' 2>/dev/null)
@@ -286,7 +353,7 @@ for s in specs:
     echo "error: refusing to rerun $rerun_count signal-term failures; too many to be infra flake" >&2
     return 1
   fi
-  echo "note: $rerun_count signal-term flake(s) detected; rerunning on fresh simulator: $(printf '%s' "$rerun_specs" | tr '\n' ' ')" >&2
+  echo "note: $rerun_count signal-term flake spec(s) detected; rerunning on fresh simulator: $(printf '%s' "$rerun_specs" | tr '\n' ' ')" >&2
   if [[ -n "$SIMULATOR_UDID" ]]; then
     xcrun simctl shutdown "$SIMULATOR_UDID" >/dev/null 2>&1 || true
     xcrun simctl boot "$SIMULATOR_UDID" >/dev/null 2>&1 || true

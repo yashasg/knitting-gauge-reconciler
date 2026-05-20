@@ -162,3 +162,15 @@ Any references to the old project path should be updated. Use `app/app.xcodeproj
 ### 2026-05-19 — corrected canonical Xcode project path
 
 Correction to earlier path note: the project bundle must remain `app/KnittingGaugeReconciler.xcodeproj` per the explicit Tesla scaffold priority item. Math review remains against `GaugeMath.swift` in the `KnittingGaugeReconciler` scheme.
+
+### [2026-05-19 19:58:36Z] Per-Section Adjustment Semantics — Knitter-Facing Validation
+
+**Task:** Review knitting domain semantics for per-section adjustment guidance.
+
+**Validation confirmed:** The app should NOT tell a user that "a 20 cm yoke should be 15 cm." Instead:
+- **Rows/rounds change** to match the user's gauge
+- **Finished garment measurements stay the same** across all gauge variations
+- User's gauge determines how many rows/rounds are needed to hit the cm target
+- The finished measurement target is fixed; rows/rounds are the computed output
+
+**Domain principle:** Knitters think in finished garment dimensions (20 cm yoke width). Their gauge determines the row count needed. This tool preserves that mental model.

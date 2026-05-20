@@ -109,3 +109,14 @@ Any references to the old project path should be updated. Use `app/app.xcodeproj
 ### 2026-05-19 — corrected canonical Xcode project path
 
 Correction to earlier path note: the project bundle must remain `app/KnittingGaugeReconciler.xcodeproj` per the explicit Tesla scaffold priority item. `app/build.sh` and loop wording use the full project name; scheme remains `KnittingGaugeReconciler`.
+
+### [2026-05-19 19:58:36Z] Per-Section Adjustment Semantics — Final Validation
+
+**Task:** Review and validate the semantic direction for per-section adjustment calculations.
+
+**Outcome:** Ada confirmed the critical semantic error and established the correct direction:
+- **Current (wrong):** Preserve original pattern row count, change physical measurement
+- **Corrected:** Keep cm measurement target unchanged, compute row/round guidance for user's gauge
+- **Principle:** Finished garment measurements must remain constant; rows/rounds are the output parameter.
+
+**Next:** Implementation can proceed with corrected calculation logic applied to all vertical measurements (yoke, body, sleeves).

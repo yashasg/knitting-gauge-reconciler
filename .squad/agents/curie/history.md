@@ -36,3 +36,12 @@ Any references to the old project path should be updated. Use `app/app.xcodeproj
 ### 2026-05-19 — corrected canonical Xcode project path
 
 Correction to earlier path note: the project bundle must remain `app/KnittingGaugeReconciler.xcodeproj` per the explicit Tesla scaffold priority item. Curie's validation gate should continue to run `./app/build.sh test`, which targets the full project path with warnings as errors.
+
+---
+
+## [2026-05-20T02:21:23Z] Swatch Hint Layout Verification
+
+**Session:** swatch-hint-layout (Edison + Curie)
+**Outcome:** APPROVED
+
+**Work:** Verified Edison's swatch hint layout fix. Updated UI tests to confirm both Pattern gauge and Your swatch fields remain side-by-side when they fit. Build-for-testing and targeted UI test passed.

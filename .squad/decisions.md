@@ -15,3 +15,12 @@ Use nested grouped sections inside the existing gauge card: each logical input g
 **Edison: Gauge Field Grouping Implementation**
 
 Implemented Ive's gauge grouping direction with two nested rounded sections inside the existing gauge card: one for Pattern gauge and one for Your swatch. Used InputGroup reusable wrapper with structure, padding, rounded shape, and subtle stroke plus native grouped background. Preserved existing field labels, bindings, identifiers, and compact two-column layout. Implementation complete; UI tests passing.
+# Swatch Hint Layout
+
+Date: 2026-05-19T18:58:14.719-07:00
+Owner: Edison
+
+Decision: Constrain `NumberField` hint copy to the compact numeric column width for non-accessibility Dynamic Type, while leaving it unconstrained at accessibility sizes.
+
+Rationale: Swatch hints should wrap inside their compact column instead of increasing the child ideal width that makes `AdaptiveTwoColumnStack` choose its vertical fallback. Accessibility sizes keep the existing stacked/full-width fallback.
+

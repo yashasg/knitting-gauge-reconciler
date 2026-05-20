@@ -37,3 +37,12 @@ Any references to the old project path should be updated. Use `app/app.xcodeproj
 ### 2026-05-19 — corrected canonical Xcode project path
 
 Correction to earlier path note: the project bundle must remain `app/KnittingGaugeReconciler.xcodeproj` per the explicit Tesla scaffold priority item. UI work remains under `app/KnittingGaugeReconciler/`; scheme remains `KnittingGaugeReconciler`.
+
+---
+
+## [2026-05-20T02:21:23Z] Swatch Hint Layout Fix
+
+**Session:** swatch-hint-layout (Edison + Curie)
+**Decision:** Constrain `NumberField` hint copy to the compact numeric column width for non-accessibility Dynamic Type, while leaving it unconstrained at accessibility sizes.
+
+**Work:** Fixed swatch hint text wrapping by constraining NumberField hints to column width at non-accessibility sizes. Preserves accessibility fallback. Simulator build passed. Curie verified with UI tests — both Pattern gauge and Your swatch remain side-by-side when they fit.

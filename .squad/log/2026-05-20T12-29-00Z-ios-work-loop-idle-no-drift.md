@@ -245,3 +245,56 @@ Loop remains in the "Final review → All pass → log in `.squad/log/`,
 hand off to yashasg" state. Next actionable input must come from
 yashasg (reply on #9 to unblock metrics-capture scope, or a new
 direction). Squad idle.
+
+---
+
+## Post-script (12:41Z) — "superseded by HEAD" mechanism is **not strictly deterministic**
+
+This log was committed at `f8803ee` (push 2026-05-20T12:30:23Z). Per
+the predictions above, pushing `f8803ee` should have flipped the
+prior-main pipeline `#2540422517` (for `1679b2a`) from `success` →
+`failed` within seconds. Direct observation at 12:41:09Z, ~11 minutes
+after push and ~3.5 minutes after `f8803ee`'s own pipeline
+`#2540460723` was POSTed as `success` at 12:37:41Z:
+
+```
+#2540460723  f8803ee0  success   created=2026-05-20T12:37:41.093Z  updated=2026-05-20T12:37:41.407Z
+#2540422517  1679b2a8  success   created=2026-05-20T12:24:40.273Z  updated=2026-05-20T12:29:07.158Z  ← still success, NOT flipped
+#2540396235  debb8899  failed    created=2026-05-20T12:15:02.882Z  updated=2026-05-20T12:21:57.626Z
+```
+
+Both current HEAD `f8803ee` **and** its parent `1679b2a` are currently
+`success`. This breaks the "only the latest main HEAD's pipeline
+retains `success`" claim asserted earlier in this log and in the
+12:15:00Z / 12:18:30Z cycle logs.
+
+**Revised mechanism, post-evidence:** the external GHA→GitLab bridge
+**sometimes** POSTs a `failed` status against the previous main
+pipeline shortly after a new HEAD is pushed (observed on
+`9256ace` → `1889f95`, `1889f95` → `331733d`, `331733d` → `1ef1048`,
+`1ef1048` → `debb889`, `debb889` → `1679b2a`), but **does not always
+do so** (this cycle, `1679b2a` → `f8803ee`: no flip after >3.5 min).
+The flip is **opportunistic**, not guaranteed. Hopper's standing
+recommendation (filter `pipelines?ref=main` to
+`sha == $(git rev-parse origin/main)`) is therefore the **correct**
+way for any tooling to read HEAD CI status — it is robust to both
+the flipping case and the non-flipping case.
+
+**No new GitLab issue opened.** None of the five goals is affected:
+
+1. **Working app:** ✅ HEAD `f8803ee` pipeline `#2540460723` →
+   success.
+2. **UI/UX approved:** ✅ no code touched.
+3. **User scenarios captured:** ✅ no test touched.
+4. **Expert approved:** ✅ no math touched.
+5. **Code tested and validated:** ✅ local gate (this cycle) and HEAD
+   CI both green.
+
+The discrepancy is a meta-observation about the external mirror's
+behavior, not a defect in the app or build pipeline. Future cycles
+should treat the external pipeline table as **"only the HEAD-SHA
+pipeline is authoritative; parent statuses may be `success`,
+`failed`, or stale — ignore them"**, which is a *weaker* and
+*correct* form of the mechanism documented over the prior three
+cycles. The over-generalized "deterministic flip" framing is hereby
+retracted in favor of this revised understanding.

@@ -90,6 +90,27 @@ which is consistent with the external-mirror pattern: pipelines are
 POSTed standalone rather than aggregated from per-job statuses, so a
 later POST against the same pipeline ID can overwrite the verdict.
 
+**Post-push update (12:14Z, after this log was written):** the
+mechanism was directly observed when the new log commit `1ef1048`
+was pushed. As soon as external pipeline `#2540392997` was POSTed
+for `1ef1048` as `success`, the previous-main pipeline
+`#2540374120` (for `331733d`) immediately transitioned from
+`success` → `failed`. So this is **not** a stale-mirror anomaly
+as initially hypothesized — it is **deterministic "superseded by
+newer main HEAD"** semantics in the external-mirror system: the
+most recent external pipeline on `main` keeps its verdict, and
+all prior main pipelines get flipped to `failed` as a
+"not-the-latest" marker. The pattern explains the symmetric
+observation on `1889f95` after `331733d` was pushed in the prior
+cycle. Cross-cycle: `9256ace` and earlier mains will also show
+`failed` for the same reason, while only the current HEAD remains
+`success`. **Mechanism noted for future cycles** so the squad
+does not re-investigate this; treat external main pipelines as
+"verdict on HEAD only, stale on parents." Recommendation for
+Hopper if quieter signal is wanted later: filter
+`glab api .../pipelines?ref=main` to `sha == $(git rev-parse
+origin/main)` before reading status.
+
 This is **not drift on the codebase or on any of the five goals**
 because:
 

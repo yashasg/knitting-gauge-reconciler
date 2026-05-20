@@ -246,13 +246,49 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         assertStackedBelow(yourRows, yourStitches)
     }
 
-    private func assertSideBySide(_ leading: XCUIElement, _ trailing: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+    private func assertSideBySide(
+        _ leading: XCUIElement,
+        _ trailing: XCUIElement,
+        timeout: TimeInterval = 3,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        waitUntil(timeout: timeout) {
+            trailing.frame.minX > leading.frame.maxX
+                && abs(trailing.frame.midY - leading.frame.midY) < max(leading.frame.height, trailing.frame.height)
+        }
         XCTAssertGreaterThan(trailing.frame.minX, leading.frame.maxX, file: file, line: line)
-        XCTAssertLessThan(abs(trailing.frame.midY - leading.frame.midY), max(leading.frame.height, trailing.frame.height), file: file, line: line)
+        XCTAssertLessThan(
+            abs(trailing.frame.midY - leading.frame.midY),
+            max(leading.frame.height, trailing.frame.height),
+            file: file,
+            line: line
+        )
     }
 
-    private func assertStackedBelow(_ lower: XCUIElement, _ upper: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+    private func assertStackedBelow(
+        _ lower: XCUIElement,
+        _ upper: XCUIElement,
+        timeout: TimeInterval = 3,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        waitUntil(timeout: timeout) { lower.frame.minY > upper.frame.maxY }
         XCTAssertGreaterThan(lower.frame.minY, upper.frame.maxY, file: file, line: line)
+    }
+
+    @discardableResult
+    private func waitUntil(
+        timeout: TimeInterval = 3,
+        interval: TimeInterval = 0.1,
+        _ condition: () -> Bool
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if condition() { return true }
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: interval))
+        }
+        return condition()
     }
 
     private enum ScrollDirection {

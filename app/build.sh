@@ -280,17 +280,22 @@ print(d.get("skippedTests", -1))
 #
 # Behavior: only enter recovery if every failure is one of the four
 # recognized variants. For (a) rerun the specific test method; for (b),
-# (c), and (d) rerun the whole UI test target. For whole-target reruns
-# the simulator is fully erased (then booted) instead of just rebooted,
-# since reboot alone has not been sufficient under variant (d). For
-# pure per-test reruns the simulator is just rebooted (the lighter
-# reset is preferred when nothing on disk is suspected to be wedged).
-# The rerun bundle replaces the canonical bundle (the original is
-# preserved alongside as .signal-term-original.xcresult for triage).
-# Any real assertion failure or unrecognized failure shape refuses the
-# recovery, preserving the original failure for the gate to fail on.
-# Each rerun gets a single attempt; persistent flakes still fail the
-# gate.
+# (c), and (d) rerun the whole UI test target. The simulator is always
+# erased (then booted) before the rerun — `simctl shutdown` + `boot`
+# alone has been observed to leave the device in "Invalid device state"
+# (Mach error -308) on the rerun, even when the original failure was
+# per-test variant (a). The ~20s extra cost is acceptable on the rare
+# recovery path. The rerun bundle replaces the canonical bundle (the
+# original is preserved alongside as .signal-term-original.xcresult
+# for triage). If the rerun bundle itself reports only recognized
+# bootstrap-class variant (b)/(c)/(d) failures (i.e. the simulator was
+# wedged badly enough that even erase+boot didn't clear it on the
+# first rerun), the function escalates: shutdown all simulators (not
+# just the target one), erase, boot, and try the same rerun once more
+# (max two attempts total). Any real assertion failure or unrecognized
+# failure shape refuses the recovery, preserving the original failure
+# for the gate to fail on. Persistent flakes after both rerun attempts
+# still fail the gate.
 rerun_signal_term_failures() {
   local bundle="$1"
   if [[ ! -d "$bundle" ]]; then
@@ -386,36 +391,33 @@ for s in specs:
     echo "error: refusing to rerun $rerun_count signal-term failures; too many to be infra flake" >&2
     return 1
   fi
-  # Whole-target rerun specs are bare target names (no "/" — see the
-  # extractor above). Their presence means at least one of variants
-  # (b)/(c)/(d) fired and the simulator state is suspect. GitLab
-  # issue #17 documents a (d)-variant cycle where `simctl shutdown` +
-  # `simctl boot` was not enough to clear the degraded state and the
-  # rerun reproduced the same "Lost pending connection" bootstrap
-  # failure; only `simctl erase` cleared it. Escalate to erase when
-  # any whole-target rerun is queued; keep the cheaper shutdown/boot
-  # pair when only per-test (variant a) reruns are queued.
-  local needs_full_erase=0
-  while IFS= read -r spec; do
-    [[ -z "$spec" ]] && continue
-    if [[ "$spec" != */* ]]; then
-      needs_full_erase=1
-      break
+  # Recovery is last-resort: simctl shutdown + boot has been observed to
+  # leave the simulator in "Invalid device state" (Mach error -308) on
+  # the rerun, even when the original failure was per-test (variant a).
+  # Always erase before the rerun to guarantee clean device state; the
+  # ~20s extra cost is acceptable on the rare recovery path. This also
+  # subsumes the variant-aware escalation needed for the (b)/(c)/(d)
+  # whole-target reruns. See GitLab issue #17.
+  echo "note: $rerun_count signal-term flake spec(s) detected; erasing and rebooting simulator before rerun: $(printf '%s' "$rerun_specs" | tr '\n' ' ')" >&2
+  reset_sim_for_rerun() {
+    if [[ -z "$SIMULATOR_UDID" ]]; then
+      return 0
     fi
-  done <<< "$rerun_specs"
-  if (( needs_full_erase )); then
-    echo "note: $rerun_count signal-term flake spec(s) detected (whole-target rerun queued); erasing and rebooting simulator: $(printf '%s' "$rerun_specs" | tr '\n' ' ')" >&2
-  else
-    echo "note: $rerun_count signal-term flake spec(s) detected; rerunning on fresh simulator: $(printf '%s' "$rerun_specs" | tr '\n' ' ')" >&2
-  fi
-  if [[ -n "$SIMULATOR_UDID" ]]; then
-    xcrun simctl shutdown "$SIMULATOR_UDID" >/dev/null 2>&1 || true
-    if (( needs_full_erase )); then
-      xcrun simctl erase "$SIMULATOR_UDID" >/dev/null 2>&1 || true
+    if (( ${1:-0} )); then
+      # Heavy reset: shut down ALL simulators (in case a stale
+      # background sim is competing for CoreSimulator IPC), then erase
+      # and boot only the target one. Used when the first rerun also
+      # hit a recognized bootstrap-class infrastructure flake.
+      xcrun simctl shutdown all >/dev/null 2>&1 || true
+      sleep 2
+    else
+      xcrun simctl shutdown "$SIMULATOR_UDID" >/dev/null 2>&1 || true
     fi
+    xcrun simctl erase "$SIMULATOR_UDID" >/dev/null 2>&1 || true
     xcrun simctl boot "$SIMULATOR_UDID" >/dev/null 2>&1 || true
     xcrun simctl bootstatus "$SIMULATOR_UDID" -b >/dev/null
-  fi
+  }
+  reset_sim_for_rerun 0
   local rerun_bundle="${bundle%.xcresult}.flake-rerun.xcresult"
   rm -rf "$rerun_bundle"
   mkdir -p "$(dirname "$rerun_bundle")"
@@ -439,13 +441,73 @@ for s in specs:
     test
   )
   local rerun_log="$LOG_DIR/xcodebuild-${MODE}-flake-rerun-$$.log"
-  set +e
-  if command -v xcpretty >/dev/null 2>&1; then
-    xcodebuild "${rerun_args[@]}" 2>&1 | tee "$rerun_log" | xcpretty
-  else
-    xcodebuild "${rerun_args[@]}" 2>&1 | tee "$rerun_log"
+  do_rerun() {
+    set +e
+    if command -v xcpretty >/dev/null 2>&1; then
+      xcodebuild "${rerun_args[@]}" 2>&1 | tee "$rerun_log" | xcpretty
+    else
+      xcodebuild "${rerun_args[@]}" 2>&1 | tee "$rerun_log"
+    fi
+    set -e
+  }
+  do_rerun
+  # Second-pass rerun: if the first rerun also hit a recognized
+  # bootstrap-class variant (b/c/d) — i.e. the simulator was wedged
+  # badly enough that erase+boot didn't clear it on the first pass —
+  # do a heavier reset (shutdown all sims + erase + boot) and try the
+  # same rerun once more. Only one extra attempt. The fixture is
+  # narrow: every failure must be a recognized whole-target bootstrap
+  # variant (no per-test SIGTERMs, no unknown failures, no real
+  # assertion failures).
+  bootstrap_only_rerun_failures() {
+    local b="$1"
+    if [[ ! -d "$b" ]]; then return 1; fi
+    local sj
+    if ! sj=$(xcrun xcresulttool get test-results summary --path "$b" 2>/dev/null); then
+      return 1
+    fi
+    set +e
+    printf '%s' "$sj" | /usr/bin/python3 -c '
+import json, sys
+RUNNER_BOOTSTRAP = "Test crashed with signal term while preparing to run tests"
+RUNNER_INSTALL_FAILED = "Failed to install or launch the test runner"
+RUNNER_LAUNCH_FAILED = "Simulator device failed to launch"
+FBS_NIL = "Application info provider (FBSApplicationLibrary) returned nil"
+RUNNER_LOST_CONNECTION = "Lost pending connection to the test runner before launch"
+INVALID_DEVICE_STATE = "Invalid device state"
+MACH_SERVER_DIED = "Mach error -308"
+BOOTSTRAP_OPENERS = (
+    "Early unexpected exit, operation never finished bootstrapping",
+    "Lost pending connection to the test runner before launch",
+)
+d = json.load(sys.stdin)
+failures = d.get("testFailures") or []
+if not failures:
+    sys.exit(2)
+for f in failures:
+    text = (f.get("failureText") or "").strip()
+    if not (RUNNER_BOOTSTRAP in text
+            or RUNNER_INSTALL_FAILED in text
+            or RUNNER_LAUNCH_FAILED in text
+            or FBS_NIL in text
+            or RUNNER_LOST_CONNECTION in text
+            or INVALID_DEVICE_STATE in text
+            or MACH_SERVER_DIED in text
+            or any(o in text for o in BOOTSTRAP_OPENERS)):
+        sys.exit(2)
+sys.exit(0)
+' >/dev/null 2>&1
+    local rc=$?
+    set -e
+    return $rc
+  }
+  if ! verify_xcresult_summary "$rerun_bundle" \
+      && bootstrap_only_rerun_failures "$rerun_bundle"; then
+    echo "note: first rerun also hit a recognized bootstrap-class flake; doing heavy sim reset and rerunning once more" >&2
+    rm -rf "$rerun_bundle"
+    reset_sim_for_rerun 1
+    do_rerun
   fi
-  set -e
   if ! verify_xcresult_summary "$rerun_bundle"; then
     echo "error: signal-term flake rerun did not pass cleanly; original failure stands" >&2
     rm -f "$rerun_log"

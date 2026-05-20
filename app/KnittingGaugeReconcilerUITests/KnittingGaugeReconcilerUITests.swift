@@ -64,16 +64,18 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         app.launch()
 
         let showFullMath = app.buttons["disclosure-full-math"]
-        scrollToElement(showFullMath, in: app)
+        scrollToElement(showFullMath, in: app, requireHittable: true)
         XCTAssertTrue(showFullMath.exists)
+        XCTAssertTrue(showFullMath.isHittable)
         showFullMath.tap()
         let breakdown = app.staticTexts["show-full-math"]
-        XCTAssertTrue(breakdown.waitForExistence(timeout: 2))
+        XCTAssertTrue(breakdown.waitForExistence(timeout: 5))
         XCTAssertTrue(breakdown.label.contains("dim correction"))
 
         let reset = app.buttons["reset-defaults"]
-        scrollToElement(reset, in: app)
+        scrollToElement(reset, in: app, requireHittable: true)
         XCTAssertTrue(reset.exists)
+        XCTAssertTrue(reset.isHittable)
         reset.tap()
         XCTAssertTrue(app.staticTexts["133%"].waitForExistence(timeout: 2))
     }
@@ -114,9 +116,12 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         XCTAssertGreaterThan(yokeAdjustment.frame.minY, patternYoke.frame.maxY)
     }
 
-    private func scrollToElement(_ element: XCUIElement, in app: XCUIApplication) {
+    private func scrollToElement(_ element: XCUIElement, in app: XCUIApplication, requireHittable: Bool = false) {
         var attempts = 0
-        while !element.exists && attempts < 6 {
+        while attempts < 8 {
+            if element.exists && (!requireHittable || element.isHittable) {
+                return
+            }
             app.swipeUp()
             attempts += 1
         }

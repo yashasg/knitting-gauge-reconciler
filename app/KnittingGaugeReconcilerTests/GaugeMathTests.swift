@@ -19,6 +19,7 @@ struct GaugeMathTests {
     @Test func scenario3LooserRowsOnly() {
         let result = GaugeMath.compute(withGauge(yourStitches: 32, yourRows: 20))
         expect(result, stitchWidthScale: 1, rowCountScale: 20.0 / 24.0, dimensionScale: 24.0 / 20.0, yoke: 24, body: 60, sleeve: 54, increases: 5, castOn: 128)
+        #expect(GaugeMath.fmtCm(result.adjustedSleeveLength) == "54.0")
         #expect(GaugeMath.fmtRows(result.adjustedIncreaseSpacing) == 5)
     }
 
@@ -45,20 +46,94 @@ struct GaugeMathTests {
         #expect(GaugeMath.sanitized(0, default: 32) == 32)
         #expect(GaugeMath.sanitized(-5, default: 32) == 32)
         #expect(GaugeMath.sanitized(.nan, default: 32) == 32)
+        #expect(GaugeMath.sanitized(.infinity, default: 32) == 32)
+        #expect(GaugeMath.sanitized(-.infinity, default: 32) == 32)
         #expect(GaugeMath.sanitized(0.1, default: 32) == 0.1)
     }
 
     @Test func rowFormattingMatchesPrototype() {
         #expect(GaugeMath.fmtRows(6.5) == 7)
         #expect(GaugeMath.fmtRows(6.4) == 6)
+        #expect(GaugeMath.fmtRows(6.6) == 7)
         #expect(GaugeMath.fmtRows(0.4) == 1)
         #expect(GaugeMath.fmtRows(0) == 1)
+        #expect(GaugeMath.fmtRows(0.0) == 1)
     }
 
     @Test func cmAndPercentFormattingMatchPrototype() {
         #expect(GaugeMath.fmtCm(33.75) == "33.8")
         #expect(GaugeMath.fmtCm(37.5) == "37.5")
         #expect(GaugeMath.fmtPct(32.0 / 36.0) == 89)
+    }
+
+    // MARK: - Edge cases from prototype/tests/gauge-math.test.js
+
+    /// yr = 2 × pr: every cm dimension halves; increase spacing doubles.
+    @Test func edgeVeryLargeDriftDenserRows() {
+        let result = GaugeMath.compute(withGauge(yourStitches: 32, yourRows: 48))
+        #expect(result.dimensionScale.isApproximately(0.5))
+        #expect(result.rowCountScale.isApproximately(2.0))
+        #expect(GaugeMath.fmtCm(result.adjustedYokeDepth) == "10.0")
+        #expect(GaugeMath.fmtCm(result.adjustedBodyLength) == "25.0")
+        #expect(GaugeMath.fmtRows(result.adjustedIncreaseSpacing) == 12)
+    }
+
+    /// yr = pr / 2: every cm dimension doubles; increase spacing halves.
+    @Test func edgeVeryLargeDriftLooserRows() {
+        let result = GaugeMath.compute(withGauge(yourStitches: 32, yourRows: 12))
+        #expect(result.dimensionScale.isApproximately(2.0))
+        #expect(result.rowCountScale.isApproximately(0.5))
+        #expect(GaugeMath.fmtCm(result.adjustedYokeDepth) == "40.0")
+        #expect(GaugeMath.fmtCm(result.adjustedBodyLength) == "100.0")
+        #expect(GaugeMath.fmtRows(result.adjustedIncreaseSpacing) == 3)
+    }
+
+    /// Perfect-match gauge: no floating-point drift — results must be exactly the pattern values.
+    @Test func floatPrecisionExactMatchNoFPDrift() {
+        let result = GaugeMath.compute(GaugeInputs(
+            patternStitches: 32, patternRows: 24,
+            yourStitches: 32, yourRows: 24,
+            patternYokeDepth: 20, patternBodyLength: 50,
+            patternSleeveLength: 45, patternIncreaseSpacing: 6,
+            patternCastOn: 128
+        ))
+        #expect(result.adjustedYokeDepth == 20.0)
+        #expect(result.adjustedBodyLength == 50.0)
+        #expect(result.adjustedSleeveLength == 45.0)
+        #expect(result.adjustedIncreaseSpacing == 6.0)
+    }
+
+    /// Non-power-of-2 gauge values, stitch and row match: dimScale must be exactly 1.0.
+    @Test func floatPrecisionArbitraryMatchedGauge() {
+        let result = GaugeMath.compute(GaugeInputs(
+            patternStitches: 30, patternRows: 22,
+            yourStitches: 30, yourRows: 22,
+            patternYokeDepth: 18.5, patternBodyLength: 52.3,
+            patternSleeveLength: 41.0, patternIncreaseSpacing: 7,
+            patternCastOn: 120
+        ))
+        #expect(result.dimensionScale == 1.0)
+        #expect(result.adjustedYokeDepth == 18.5)
+        #expect(result.adjustedBodyLength == 52.3)
+        #expect(result.adjustedIncreaseSpacing == 7.0)
+    }
+
+    /// For exact-ratio cast-ons (no fractional stitches), rounding drift must be zero.
+    @Test func castOnRoundingDriftZeroForExactRatio() {
+        // Scenario 4: 128 × (36/32) = 144.0 — no rounding required
+        let result4 = GaugeMath.compute(withGauge(yourStitches: 36, yourRows: 24))
+        #expect(result4.castOnRoundingDriftPercent.isApproximately(0.0))
+        // Scenario 5: 128 × (28/32) = 112.0 — no rounding required
+        let result5 = GaugeMath.compute(withGauge(yourStitches: 28, yourRows: 24))
+        #expect(result5.castOnRoundingDriftPercent.isApproximately(0.0))
+    }
+
+    /// stitchWidthScale (ps/ys) × stitchCountMultiplier (ys/ps) must equal 1.0.
+    @Test func stitchWidthScaleAndCountMultiplierAreReciprocals() {
+        let result = GaugeMath.compute(withGauge(yourStitches: 36, yourRows: 24))
+        #expect((result.stitchWidthScale * result.stitchCountMultiplier).isApproximately(1.0))
+        let result2 = GaugeMath.compute(withGauge(yourStitches: 28, yourRows: 24))
+        #expect((result2.stitchWidthScale * result2.stitchCountMultiplier).isApproximately(1.0))
     }
 
     private func withGauge(yourStitches: Double, yourRows: Double) -> GaugeInputs {

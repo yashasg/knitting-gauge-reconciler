@@ -46,3 +46,66 @@ This is the *forward* scaling: multiply the pattern's cast-on by the ratio of yo
 **Default:** `patCastOn: 128` (128 ÷ 32 st/10cm = 40 cm half-circumference, typical small-medium sweater at demo gauge)
 
 **Key DOM elements:** `#pat-cast-on` (input), `#act-cast-on` (output span), `#pill-cast-on` (drift pill, hidden by default), `#hint-cast-on` (aria-describedby hint)
+
+### 2026-05-19 — Gauge math JS→Swift port audit (this session)
+
+**Task:** Port `prototype/tests/gauge-math.test.js` and prototype JS math into Swift. Verify alignment with `decisions.md`.
+
+**Findings — GaugeMath.swift:** All formulas were already correct. No changes required. Full mapping:
+- `stitchWidthScale = patternStitches / yourStitches` (= ps/ys)
+- `stitchCountMultiplier = yourStitches / patternStitches` (= ys/ps)
+- `rowCountScale = yourRows / patternRows` (= yr/pr)
+- `dimensionScale = patternRows / yourRows` (= pr/yr) — applied to all vertical cm outputs
+- `adjustedCastOn = round(patternCastOn × ys/ps)`, with drift% tracking
+- `fmtCm`, `fmtRows`, `fmtPct`, `sanitized` all correct
+
+**Findings — GaugeMathTests.swift:** File was already at 169 lines with complete coverage, including all edge cases from the JS test file:
+- 6 Jacquard scenarios (scenarios 1–6) ✓
+- `invalidInputsFallBackToDefaults` (readNumPure parity) ✓
+- `rowFormattingMatchesPrototype` — including fmtRows(6.6)==7 ✓
+- `cmAndPercentFormattingMatchPrototype` ✓
+- `edgeVeryLargeDriftDenserRows` (yr = 2×pr) ✓
+- `edgeVeryLargeDriftLooserRows` (yr = pr/2) ✓
+- `floatPrecisionExactMatchNoFPDrift` ✓
+- `floatPrecisionArbitraryMatchedGauge` (non-power-of-2 values) ✓
+- `castOnRoundingDriftZeroForExactRatio` ✓
+- `stitchWidthScaleAndCountMultiplierAreReciprocals` ✓
+
+**Test run result:** `** TEST SUCCEEDED **` — 15 unit tests + 1 UI test passed on iPhone 17 Pro Max (iOS 26.4). Build used `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`. Zero warnings.
+
+**No code changes made** — port was already complete. Only the DerivedData stale `.swiftdeps` file needed to be cleared to unblock build.
+
+**Build environment note:** If `build.sh test` fails with "unable to open dependencies file", clean DerivedData: `rm -rf ~/Library/Developer/Xcode/DerivedData/KnittingGaugeReconciler-*`. The simulator (UUID `5747BBD8-1614-4C2C-88EB-95ECBF0C4429`) was already booted; no pre-boot required.
+
+### 2026-05-19 — iOS Swift port formula audit
+
+**Task:** Verify whether `GaugeMath.swift` and `GaugeMathTests.swift` already reflect the corrected row/stitch scaling formulas from the prototype inversion fix.
+
+**Findings:** The Swift port was already correct before this session. All formulas match the fixed prototype:
+- `stitchWidthScale = patternStitches / yourStitches` (= `ps/ys`)
+- `rowCountScale = yourRows / patternRows` (= `yr/pr`) — used for increase spacing display only
+- `dimensionScale = patternRows / yourRows` (= `pr/yr`) — applied to all vertical cm outputs
+- `stitchCountMultiplier = yourStitches / patternStitches` (= `ys/ps`) — used for cast-on
+- No inversion bugs were present; no Swift code changes were required.
+
+**Test run result:** `** TEST SUCCEEDED **` on iPhone 17 Pro Max simulator (iOS 26.4). All 9 unit tests + 1 UI test passed with `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`. Zero warnings.
+
+**Build environment note:** The build script's default `SIMULATOR_NAME="iPhone 17 Pro Max"` is correct for this machine. Pre-booting the simulator with `xcrun simctl boot <uuid>` before invoking `xcodebuild test` avoids a transient Mach error -308 on cold boot.
+
+
+## [2026-05-19 19:13:04Z] Canonical Xcode Project Path Update
+
+⚠️ **All squad members:** The Xcode project has been renamed to **`app/app.xcodeproj`**. 
+
+- **Previous path:** `app/KnittingGaugeReconciler.xcodeproj`
+- **Current path:** `app/app.xcodeproj` (canonical reference)
+- **App target & scheme:** `KnittingGaugeReconciler` (unchanged)
+- **Build script:** `app/build.sh` updated and validated
+
+Any references to the old project path should be updated. Use `app/app.xcodeproj` going forward.
+
+---
+
+### 2026-05-19 — corrected canonical Xcode project path
+
+Correction to earlier path note: the project bundle must remain `app/KnittingGaugeReconciler.xcodeproj` per the explicit Tesla scaffold priority item. `app/build.sh` and loop wording use the full project name; scheme remains `KnittingGaugeReconciler`.

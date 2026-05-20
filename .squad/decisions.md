@@ -151,3 +151,29 @@ Date: 2026-05-19T22:06:06.097-07:00
 **Real scenario risk:** Knitter saves reconciliation for linen sweater with 5.5mm needles in stockinette. Six months later loads it thinking gauge might apply to a cotton tee in ribbing on 5.0mm needles. Without metadata, saved reconciliation is misleading and useless.
 
 **Recommendation:** Save the four points as proposed. Add fifth: short human-readable label + stitch pattern + blocking state. Stays minimal but gives knitters enough context to decide applicability.
+
+**User Directive: Saved Reconciliations — Optional Naming**
+
+Date: 2026-05-19T22:11:17.564-07:00
+
+Saved reconciliations should not force the user to provide a name. Use a default name like `Reconciliation <Number>`, allow the user to edit it, and keep metadata optional rather than mandatory. Do not implement yet; create a work item only.
+
+Rationale: User wants saved reconciliations to be low-friction and avoid blocking users on naming or metadata entry.
+
+**Edison: Verdict Help Overlay**
+
+Date: 2026-05-19T22:40:33.537-07:00
+
+The verdict panel now renders a single-line row: verdict title on the left, a `?` (questionmark.circle) button on the right. The full body text is shown in a `.sheet` pull-up overlay when the user taps `?`. This pattern was applied to all verdict states (Gauge match, Drift, Significant drift, Major mismatch) for consistency.
+
+Implementation: `verdictPanel` replaced `VStack(title + body)` with `HStack(title + Button(?))`. `showVerdictHelp: Bool` state drives `.sheet(isPresented:)` on the NavigationStack. Verdict title Text carries the concise `verdictAccessibilityLabel` summary for VoiceOver. Sheet content is natively navigable with `presentationDetents([.medium, .large])`.
+
+Rationale: Keeps the reconciliation card compact while preserving longer advisory text one tap away. VoiceOver users get the concise summary immediately and can activate the help button to hear the full explanation.
+
+**User Directive: Serial iOS UI Testing Constraint**
+
+Date: 2026-05-19T23:25:04.530-07:00
+
+When running locally, Squad must not run more than one iOS simulator at any given time. All UI tests must run in serial.
+
+Rationale: Concurrent local simulator usage can conflict and destabilize UI test runs.

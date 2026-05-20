@@ -58,3 +58,28 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 **Validation:** Ive approved design; Curie tightened tests for old affordance removal and per-section guidance coverage. `./app/build.sh test` passed.
 
 **Status:** Approved and ready for deployment.
+
+## [2026-05-19T22:40:33-07:00] Major Mismatch Help Overlay
+
+**Session:** major-mismatch-help-overlay
+**Task:** Move verdictPanel explanatory body text behind a tappable `?` affordance.
+
+**What changed:**
+- `verdictPanel` now shows only the verdict title + a `?` (`questionmark.circle`) button. The inline `Text(verdictBody)` was removed from the card.
+- Added `@State private var showVerdictHelp = false` and a `.sheet(isPresented:)` presentation attached to the NavigationStack.
+- New `VerdictHelpSheet` private struct renders the title + explanation in a scrollable pull-up sheet with `.presentationDetents([.medium, .large])` and `.presentationDragIndicator(.visible)`.
+- VoiceOver: the `?` button carries `accessibilityLabel("More information")` + hint; the title Text carries the existing `verdictAccessibilityLabel` summary. Sheet content is fully navigable.
+- Added `testVerdictHelpButtonOpensPullUpSheet` UI test: asserts the help button exists, that `re-swatching` text is NOT in the main view, taps button, asserts sheet appears with the text.
+- All 18 unit tests pass; app builds successfully.
+
+**Decision:** Applied to all verdict states (not just "Major mismatch") for consistent UX — the card is always compact with title + `?`.
+
+---
+
+## ⚠️ [2026-05-20T06:25:04Z] Serial iOS UI Testing Constraint
+
+**Directive:** When running locally, Squad must not run more than one iOS simulator at any given time. All UI tests must run in serial.
+
+**Rationale:** Concurrent local simulator usage can conflict and destabilize UI test runs.
+
+**Impact on Edison:** Build and test scenarios coordinated with other agents must respect single-simulator access during local UI test execution.

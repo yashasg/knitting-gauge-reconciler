@@ -57,3 +57,13 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 **Decision:** APPROVED.
 
 **Status:** Ready for deployment.
+
+---
+
+## ⚠️ [2026-05-20T06:25:04Z] Serial iOS UI Testing Constraint
+
+**Directive:** When running locally, Squad must not run more than one iOS simulator at any given time. All UI tests must run in serial.
+
+**Rationale:** Concurrent local simulator usage can conflict and destabilize UI test runs.
+
+**Impact on Curie:** Test suite must enforce serial simulator access when invoked from CI/local workflows.

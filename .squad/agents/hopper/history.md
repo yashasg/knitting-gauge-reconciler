@@ -160,3 +160,13 @@ Merged the project-path correction into `.squad/decisions.md`, updated the learn
 Created `app/run.sh` as an executable launch wrapper over `app/build.sh build`. It preserves `SIMULATOR_NAME`, `SIMULATOR_UDID`, and `DESTINATION` selection, resolves the built app from `app/.build/derived-data/Build/Products/Debug-iphonesimulator`, stages the `.app` under `app/.build/run` to avoid DerivedData races, reads `CFBundleIdentifier` from the staged app Info.plist, then installs and launches with `xcrun simctl`.
 
 Canonical run/build paths used for validation: `app/build.sh`, `app/run.sh`, `app/KnittingGaugeReconciler.xcodeproj`, scheme `KnittingGaugeReconciler`, derived data `app/.build/derived-data`. Validation passed: `bash -n app/build.sh`, `bash -n app/run.sh`, and `LOCK_WAIT_SECONDS=600 ./app/run.sh` exited 0 and launched `com.yashasg.KnittingGaugeReconciler` on the selected iPhone 17 Pro simulator.
+
+---
+
+## ⚠️ [2026-05-20T06:25:04Z] Serial iOS UI Testing Constraint
+
+**Directive:** When running locally, Squad must not run more than one iOS simulator at any given time. All UI tests must run in serial.
+
+**Rationale:** Concurrent local simulator usage can conflict and destabilize UI test runs.
+
+**Impact on Hopper:** `app/build.sh test` and simulator launch workflows (via `app/run.sh`) must enforce serial simulator access. When orchestrating with Curie and Edison, coordinate to ensure only one simulator is active during test execution.

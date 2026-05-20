@@ -7,6 +7,10 @@ description: "Knitting Gauge Reconciler — iOS app build loop"
 
 # Squad Work Loop — Knitting Gauge Reconciler iOS
 
+## Model defaults
+
+Default all Squad agent model selections to `claude-opus-4.7-xhigh`. Exception: Ralph and Scribe must not inherit or use this default.
+
 ## Goals (all five must be ✅ to exit)
 
 1. **Working app** — `./app/build.sh test` exits 0, iPhone simulator, zero crashes.

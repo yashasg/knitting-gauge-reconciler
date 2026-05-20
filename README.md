@@ -2,6 +2,13 @@
 
 HISA-approved prototype: Knitting Gauge Reconciler — Two-axis gauge math for sweaters that actually fit.
 
+## Development
+
+- iOS app source: `app/KnittingGaugeReconciler/`
+- Build & test: `./app/build.sh test` (warnings-as-errors enforced; iPhone 17 Pro simulator by default).
+- Coding standards: see [`docs/swift_coding_standards.md`](docs/swift_coding_standards.md) — adopts Google's Swift Style Guide as the normative external reference with project-specific bindings (no network, deterministic math, force-unwrap discipline, accessibility identifiers part of the public contract).
+- Reference prototype (used to drive the iOS port): `prototype/index.html` and `prototype/tests/gauge-math.test.js` (77 passing scenarios).
+
 ## Getting started
 
 To make it easy for you to get started with GitLab, here's a list of recommended next steps.

@@ -16,10 +16,10 @@ Top open item remains the remote merge gate for `squad/curie-serial-ui-test-hard
 
 ## External gate
 
-- Remote branch exists at `a6c08c023fbdfa1c5796be2342c47e8c8922b76c`.
+- Remote branch existed at `a6c08c023fbdfa1c5796be2342c47e8c8922b76c` before this log commit was added and pushed.
 - Remote `main` exists at `4f3cfdfbfd92f3e66347e0e61ddf13e5f5938f9f`.
 - `GITLAB_TOKEN` is not present in this environment.
-- GitLab project and pipeline API calls for `yashasg/knitting-gauge-reconciler` return `404 Project Not Found`.
+- GitLab project, merge request, and pipeline API calls for `yashasg/knitting-gauge-reconciler` return `404 Project Not Found`, including when retried with the available git credential.
 
 Do not merge into `main` until GitLab API/project access is restored and the branch pipeline is confirmed green.
 

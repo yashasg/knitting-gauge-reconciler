@@ -48,15 +48,15 @@ enum GaugeMath {
             stitchCountMultiplier: stitchCountMultiplier,
             rowCountScale: rowCountScale,
             dimensionScale: dimensionScale,
-            adjustedYokeDepth: inputs.patternYokeDepth,
-            adjustedBodyLength: inputs.patternBodyLength,
-            adjustedSleeveLength: inputs.patternSleeveLength,
+            adjustedYokeDepth: inputs.patternYokeDepth * dimensionScale,
+            adjustedBodyLength: inputs.patternBodyLength * dimensionScale,
+            adjustedSleeveLength: inputs.patternSleeveLength * dimensionScale,
             patternYokeRows: inputs.patternYokeDepth * patternRowsPerCm,
             patternBodyRows: inputs.patternBodyLength * patternRowsPerCm,
             patternSleeveRows: inputs.patternSleeveLength * patternRowsPerCm,
-            adjustedYokeRows: inputs.patternYokeDepth * yourRowsPerCm,
-            adjustedBodyRows: inputs.patternBodyLength * yourRowsPerCm,
-            adjustedSleeveRows: inputs.patternSleeveLength * yourRowsPerCm,
+            adjustedYokeRows: inputs.patternYokeDepth * dimensionScale * yourRowsPerCm,
+            adjustedBodyRows: inputs.patternBodyLength * dimensionScale * yourRowsPerCm,
+            adjustedSleeveRows: inputs.patternSleeveLength * dimensionScale * yourRowsPerCm,
             adjustedIncreaseSpacing: inputs.patternIncreaseSpacing * rowCountScale,
             adjustedCastOn: adjustedCastOn,
             castOnRoundingDriftPercent: castOnRoundingDriftPercent
@@ -185,7 +185,7 @@ private struct ResultsExportRowsModel {
     }
 
     private func section(name: String, cm: Double, adjustedRows: Double, patternRows: Double) -> ResultsExportSummary.SectionGuidance {
-        let adjusted = "Keep \(GaugeMath.fmtCm(cm)) cm; about \(GaugeMath.fmtRows(adjustedRows)) rows/rounds"
+        let adjusted = "Knit to \(GaugeMath.fmtCm(cm)) cm; about \(GaugeMath.fmtRows(adjustedRows)) rows/rounds"
         let pattern = "Pattern about \(GaugeMath.fmtRows(patternRows)) rows"
         return ResultsExportSummary.SectionGuidance(
             name: name,

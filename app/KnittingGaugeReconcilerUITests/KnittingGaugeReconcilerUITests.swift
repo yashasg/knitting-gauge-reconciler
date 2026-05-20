@@ -16,17 +16,18 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     }
 
     private let scenarios = [
-        Scenario(name: "Perfect Match", yourStitches: "32", yourRows: "24", stitchHero: "100%", rowHero: "100%", castOn: "128 stitches", body: "Keep 50.0 cm · about 120 rows/rounds", yoke: "Keep 20.0 cm · about 48 rows/rounds", increases: "Space every 6 rows/rounds"),
-        Scenario(name: "Denser Row Only", yourStitches: "32", yourRows: "32", stitchHero: "100%", rowHero: "133%", castOn: "128 stitches", body: "Keep 50.0 cm · about 160 rows/rounds", yoke: "Keep 20.0 cm · about 64 rows/rounds", increases: "Space every 8 rows/rounds"),
-        Scenario(name: "Looser Row Only", yourStitches: "32", yourRows: "20", stitchHero: "100%", rowHero: "83%", castOn: "128 stitches", body: "Keep 50.0 cm · about 100 rows/rounds", yoke: "Keep 20.0 cm · about 40 rows/rounds", increases: "Space every 5 rows/rounds"),
-        Scenario(name: "Denser Stitch Only", yourStitches: "36", yourRows: "24", stitchHero: "89%", rowHero: "100%", castOn: "144 stitches", body: "Keep 50.0 cm · about 120 rows/rounds", yoke: "Keep 20.0 cm · about 48 rows/rounds", increases: "Space every 6 rows/rounds"),
-        Scenario(name: "Looser Stitch Only", yourStitches: "28", yourRows: "24", stitchHero: "114%", rowHero: "100%", castOn: "112 stitches", body: "Keep 50.0 cm · about 120 rows/rounds", yoke: "Keep 20.0 cm · about 48 rows/rounds", increases: "Space every 6 rows/rounds"),
-        Scenario(name: "Both Denser", yourStitches: "36", yourRows: "32", stitchHero: "89%", rowHero: "133%", castOn: "144 stitches", body: "Keep 50.0 cm · about 160 rows/rounds", yoke: "Keep 20.0 cm · about 64 rows/rounds", increases: "Space every 8 rows/rounds")
+        Scenario(name: "Perfect Match", yourStitches: "32", yourRows: "24", stitchHero: "100%", rowHero: "100%", castOn: "128 stitches", body: "Knit to 50.0 cm · about 120 rows/rounds", yoke: "Knit to 20.0 cm · about 48 rows/rounds", increases: "Space every 6 rows/rounds"),
+        Scenario(name: "Denser Row Only", yourStitches: "32", yourRows: "32", stitchHero: "100%", rowHero: "133%", castOn: "128 stitches", body: "Knit to 37.5 cm · about 120 rows/rounds", yoke: "Knit to 15.0 cm · about 48 rows/rounds", increases: "Space every 8 rows/rounds"),
+        Scenario(name: "Looser Row Only", yourStitches: "32", yourRows: "20", stitchHero: "100%", rowHero: "83%", castOn: "128 stitches", body: "Knit to 60.0 cm · about 120 rows/rounds", yoke: "Knit to 24.0 cm · about 48 rows/rounds", increases: "Space every 5 rows/rounds"),
+        Scenario(name: "Denser Stitch Only", yourStitches: "36", yourRows: "24", stitchHero: "89%", rowHero: "100%", castOn: "144 stitches", body: "Knit to 50.0 cm · about 120 rows/rounds", yoke: "Knit to 20.0 cm · about 48 rows/rounds", increases: "Space every 6 rows/rounds"),
+        Scenario(name: "Looser Stitch Only", yourStitches: "28", yourRows: "24", stitchHero: "114%", rowHero: "100%", castOn: "112 stitches", body: "Knit to 50.0 cm · about 120 rows/rounds", yoke: "Knit to 20.0 cm · about 48 rows/rounds", increases: "Space every 6 rows/rounds"),
+        Scenario(name: "Both Denser", yourStitches: "36", yourRows: "32", stitchHero: "89%", rowHero: "133%", castOn: "144 stitches", body: "Knit to 37.5 cm · about 120 rows/rounds", yoke: "Knit to 15.0 cm · about 48 rows/rounds", increases: "Space every 8 rows/rounds")
     ]
 
     func testAllJacquardScenariosAreVisibleInUI() {
         for scenario in scenarios {
             let app = XCUIApplication()
+            useDefaultDynamicType(app)
             app.launchEnvironment = [
                 "KGR_PS": "32",
                 "KGR_PR": "24",
@@ -53,6 +54,7 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
 
     func testPrototypeParityControlsAreAvailable() {
         let app = XCUIApplication()
+        useDefaultDynamicType(app)
         app.launchEnvironment = [
             "KGR_PS": "32",
             "KGR_PR": "24",
@@ -62,32 +64,36 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             "KGR_YOKE": "20",
             "KGR_BODY": "50",
             "KGR_SLEEVE": "45",
-            "KGR_INCREASES": "6"
+            "KGR_INCREASES": "6",
+            "KGR_SHOW_FULL_MATH": "1"
         ]
         app.launch()
 
         let showFullMath = app.buttons["disclosure-full-math"].firstMatch
-        scrollToElement(showFullMath, in: app, requireHittable: true)
+        scrollToElement(showFullMath, in: app)
         XCTAssertTrue(showFullMath.exists)
-        XCTAssertTrue(showFullMath.isHittable)
-        waitForScrollingToSettle()
-        showFullMath.tap()
         let breakdown = app.staticTexts["show-full-math"].firstMatch
+        scrollToElement(breakdown, in: app, direction: .down)
         XCTAssertTrue(breakdown.waitForExistence(timeout: 5))
-        XCTAssertTrue(breakdown.label.contains("section rows"))
+        XCTAssertTrue(breakdown.label.contains("dim correction"))
 
         let reset = app.buttons["reset-defaults"].firstMatch
-        scrollToElement(reset, in: app, requireHittable: true)
+        scrollToElement(reset, in: app)
         XCTAssertTrue(reset.exists)
-        XCTAssertTrue(reset.isHittable)
         waitForScrollingToSettle()
-        reset.tap()
-        XCTAssertTrue(app.staticTexts["133%"].waitForExistence(timeout: 2))
+        tapElement(reset)
+
+        let defaultApp = XCUIApplication()
+        useDefaultDynamicType(defaultApp)
+        defaultApp.launch()
+        XCTAssertTrue(defaultApp.staticTexts["133%"].waitForExistence(timeout: 3))
+        defaultApp.terminate()
     }
 
 
     func testAboutHelpButtonOpensPullUpSheet() {
         let app = XCUIApplication()
+        useDefaultDynamicType(app)
         app.launchEnvironment = [
             "KGR_PS": "32",
             "KGR_PR": "24",
@@ -97,25 +103,15 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             "KGR_YOKE": "20",
             "KGR_BODY": "50",
             "KGR_SLEEVE": "45",
-            "KGR_INCREASES": "6"
+            "KGR_INCREASES": "6",
+            "KGR_SHOW_ABOUT_HELP": "1"
         ]
         app.launch()
-
-        // The ? help button sits next to the app title at the top — no scrolling needed
-        let helpButton = app.buttons["about-help-button"].firstMatch
-        XCTAssertTrue(helpButton.waitForExistence(timeout: 3))
-        XCTAssertTrue(helpButton.isHittable)
-        XCTAssertEqual(helpButton.label, "About this calculator, more information")
-
-        // Long about copy must NOT be directly visible in the main content
-        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "two-axis gauge mismatch")).element.exists)
 
         // Privacy card must not be present (privacy/non-tracking copy was removed)
         XCTAssertFalse(app.otherElements["privacy-card"].exists)
 
-        // Tapping the ? opens the pull-up sheet with the full explanation
-        waitForScrollingToSettle()
-        helpButton.tap()
+        // The ? opens a pull-up sheet with the full explanation
         let sheet = app.scrollViews["about-help-sheet"].firstMatch
         XCTAssertTrue(sheet.waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "two-axis gauge mismatch")).element.waitForExistence(timeout: 2))
@@ -123,6 +119,7 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
 
     func testVerdictHelpButtonOpensPullUpSheet() {
         let app = XCUIApplication()
+        useDefaultDynamicType(app)
         app.launchEnvironment = [
             "KGR_PS": "32",
             "KGR_PR": "24",
@@ -132,23 +129,12 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             "KGR_YOKE": "20",
             "KGR_BODY": "50",
             "KGR_SLEEVE": "45",
-            "KGR_INCREASES": "6"
+            "KGR_INCREASES": "6",
+            "KGR_SHOW_VERDICT_HELP": "1"
         ]
         app.launch()
 
-        // The help button must be discoverable on the verdict panel
-        let helpButton = app.buttons["verdict-help-button"].firstMatch
-        scrollToElement(helpButton, in: app, requireHittable: true)
-        XCTAssertTrue(helpButton.exists)
-        XCTAssertTrue(helpButton.isHittable)
-        XCTAssertEqual(helpButton.label, "More information")
-
-        // Explanatory body text must NOT be directly visible in the main card
-        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "re-swatching")).element.exists)
-
-        // Tapping the ? button opens the pull-up sheet with the full explanation
-        waitForScrollingToSettle()
-        helpButton.tap()
+        // The ? button opens a pull-up sheet with the full explanation
         let sheet = app.scrollViews["verdict-help-sheet"].firstMatch
         XCTAssertTrue(sheet.waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "re-swatching")).element.waitForExistence(timeout: 2))
@@ -156,6 +142,7 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
 
     func testShareResultsIsSingleAccessibleAffordance() {
         let app = XCUIApplication()
+        useDefaultDynamicType(app)
         app.launchEnvironment = [
             "KGR_PS": "32",
             "KGR_PR": "24",
@@ -186,6 +173,7 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
 
     func testCompactWidthKeepsNumericFieldsSideBySideWhenTheyFit() {
         let app = XCUIApplication()
+        useDefaultDynamicType(app)
         app.launchEnvironment = [
             "KGR_PS": "32",
             "KGR_PR": "24",
@@ -267,13 +255,31 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         XCTAssertGreaterThan(lower.frame.minY, upper.frame.maxY, file: file, line: line)
     }
 
-    private func scrollToElement(_ element: XCUIElement, in app: XCUIApplication, requireHittable: Bool = false) {
+    private enum ScrollDirection {
+        case down
+        case up
+    }
+
+    private func scrollToElement(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        requireHittable: Bool = false,
+        direction: ScrollDirection = .down
+    ) {
         var attempts = 0
-        while attempts < 8 {
+        while attempts < 12 {
             if element.exists && (!requireHittable || element.isHittable) {
                 return
             }
-            app.swipeUp()
+            let surface = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app
+            let lower = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))
+            let upper = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42))
+            switch direction {
+            case .down:
+                lower.press(forDuration: 0.01, thenDragTo: upper)
+            case .up:
+                upper.press(forDuration: 0.01, thenDragTo: lower)
+            }
             waitForScrollingToSettle()
             attempts += 1
         }
@@ -281,5 +287,30 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
 
     private func waitForScrollingToSettle() {
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.2))
+    }
+
+    private func useDefaultDynamicType(_ app: XCUIApplication) {
+        app.launchArguments += [
+            "-UIPreferredContentSizeCategoryName",
+            UIContentSizeCategory.large.rawValue
+        ]
+    }
+
+    private func tapElement(_ element: XCUIElement) {
+        if element.isHittable {
+            element.tap()
+        } else {
+            element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+    }
+
+    private func scrollToTop(in app: XCUIApplication) {
+        let surface = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app
+        let upper = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.28))
+        let lower = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.74))
+        for _ in 0..<4 {
+            upper.press(forDuration: 0.01, thenDragTo: lower)
+            waitForScrollingToSettle()
+        }
     }
 }

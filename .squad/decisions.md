@@ -1177,3 +1177,23 @@ The iOS app is **production-ready** from a code, architecture, and test-coverage
 **Signed by:** Tesla (Lead / Architect)  
 **Date:** 2026-05-19  
 **No objections or blockers.**
+
+---
+
+### 2026-05-19T17:09:54.972-07:00: User directive
+
+**By:** yashasg (via Copilot)
+
+**What:** We don't run anything on GitLab runners; only GitHub is the CI/CD.
+
+**Why:** User request — captured for team memory
+
+---
+
+### 2026-05-19T17:11:36.765-07:00: User directive
+
+**By:** yashasg (via Copilot)
+
+**What:** GitHub jobs are triggered using webhooks.
+
+**Why:** User request — captured for team memory

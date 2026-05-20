@@ -104,8 +104,8 @@ stitch_count_multiplier = your_st / pattern_st
 ```
 
 **Direction:** 
-- If your stitch gauge is **denser** (more stitches per 10cm) than pattern: `multiplier < 1`. You need FEWER stitches to match the pattern's intended width.
-- If your stitch gauge is **looser** (fewer stitches per 10cm) than pattern: `multiplier > 1`. You need MORE stitches to match the pattern's intended width.
+- If your stitch gauge is **denser** (more stitches per 10cm) than pattern: `multiplier > 1`. Your stitches are smaller, so you need MORE stitches to match the pattern's intended width.
+- If your stitch gauge is **looser** (fewer stitches per 10cm) than pattern: `multiplier < 1`. Your stitches are larger, so you need FEWER stitches to match the pattern's intended width.
 
 **Plain language:** "Your stitches are [bigger/smaller] than the pattern's, so divide/multiply the cast-on number to hit the same finished width."
 
@@ -244,7 +244,8 @@ adjusted_increment_spacing = pattern_increment_rows × (your_row / pattern_row)
 - At 28 st/10cm, that's 40 cm ✓
 
 **What the tool should show:**
-- **Stitch scale:** 28/32 = 0.875 (87.5% of pattern width per stitch count). Multiply stitch counts by 0.875.
+- **Stitch width scale:** 32/28 = 1.143 (the pattern's stitch count would produce 114% of the intended width at your gauge).
+- **Cast-on multiplier:** 28/32 = 0.875. Multiply stitch counts by 0.875.
 - **Row scale:** 24/24 = 1.0 (100%). No row adjustment needed.
 - **Adjusted stitch counts:** 128 × 0.875 = **112 stitches**
 - **Section depths:** No adjustment needed (row gauge matches).
@@ -268,7 +269,8 @@ Stitch scale is also inverted: uses `pattern_st / your_st` instead of `your_st /
 
 All scenarios use pattern: **32 st/10cm × 24 rows/10cm** (reference gauge).
 Pattern specs: yoke 20 cm / 48 rows, body 50 cm / 120 rows, cast-on 32 stitches, increases every 6 rows.
-Output: `(stitch_multiplier, row_multiplier, yoke_depth_cm, body_depth_cm, increase_spacing_rows)`.
+Output: `(stitch_width_scale, dimension_scale, yoke_depth_cm, body_depth_cm, increase_spacing_rows)`.
+Where cast-on is relevant, use `pattern_cast_on × (your_st / pattern_st)`.
 
 #### Scenario 1: Perfect Match
 **Your gauge:** 32 st/10cm × 24 rows/10cm  
@@ -292,26 +294,26 @@ Output: `(stitch_multiplier, row_multiplier, yoke_depth_cm, body_depth_cm, incre
 
 #### Scenario 5: Looser Stitch Gauge Only (Hisahashisaka's case)
 **Your gauge:** 28 st/10cm × 24 rows/10cm  
-**Expected:** `(0.875, 1.0, 20.0, 50.0, 6.0)`  
-**Why:** Stitch scale = 28/32 = 0.875 (cast on fewer stitches); no row adjustment.
+**Expected:** `(1.143, 1.0, 20.0, 50.0, 6.0)` and cast-on `128 × (28/32) = 112`  
+**Why:** Stitch width scale = 32/28 ≈ 1.143 (same stitch count is wider); cast-on multiplier = 28/32 = 0.875 (cast on fewer stitches); no row adjustment.
 
 #### Scenario 6: Both Denser (Both Axes)
 **Your gauge:** 36 st/10cm × 32 rows/10cm  
-**Expected:** `(0.889, 0.75, 15.0, 37.5, 10.7)`  
-**Why:** Stitch scale = 32/36 ≈ 0.889; row scale = 24/32 = 0.75; increase spacing = 6 × 32/24 = 8 (but stated as 10.7 if using exact row count math, or 8 if rounding).
+**Expected:** `(0.889, 0.75, 15.0, 37.5, 8.0)` and cast-on `128 × (36/32) = 144`  
+**Why:** Stitch width scale = 32/36 ≈ 0.889; dimension scale = 24/32 = 0.75; increase spacing = 6 × 32/24 = 8.
 
 ### Summary: The Correct Formulas
 
 | Dimension | Formula | Direction |
 |-----------|---------|-----------|
-| **Stitch count** | `count × (your_st / pattern_st)` | If your gauge is denser, multiply by <1 (cast on fewer). |
+| **Stitch count** | `count × (your_st / pattern_st)` | If your gauge is denser, multiply by >1 (cast on more); if looser, multiply by <1 (cast on fewer). |
 | **Row count** | `rows × (your_row / pattern_row)` | If your gauge is denser, multiply by >1 (knit more rows). |
 | **Section depth (cm)** | `cm × (pattern_row / your_row)` | If your gauge is denser, multiply by <1 (knit to shallower depth). |
 | **Increase spacing** | `spacing × (your_row / pattern_row)` | If your gauge is denser, multiply by >1 (increase more frequently). |
 
 ### Implementation Notes for Ada
 
-1. **Stitch scale should be `your_st / pattern_st`**, not the inverse.
+1. **Stitch count multiplier should be `your_st / pattern_st`**; the displayed stitch width scale is the reciprocal, `pattern_st / your_st`.
 2. **Row scale for cm-depth adjustment should be `pattern_row / your_row`** (inverse of row count multiplier).
 3. **Display the row-count multiplier** (your_row / pattern_row) for reference, but apply the *depth multiplier* (pattern_row / your_row) to cm values.
 4. **Pill labels:** 

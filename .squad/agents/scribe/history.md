@@ -9,3 +9,7 @@
 ## Learnings
 
 <!-- Append learnings below -->
+
+### 2026-05-19 — corrected canonical Xcode project path
+
+Record future session logs with `app/KnittingGaugeReconciler.xcodeproj` as the canonical Xcode project path. The earlier `app/app.xcodeproj` broadcast is superseded; scheme remains `KnittingGaugeReconciler`.

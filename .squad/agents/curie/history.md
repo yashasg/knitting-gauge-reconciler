@@ -12,3 +12,26 @@
 - **Test file location:** `prototype/tests/gauge-math.test.js` — run with `node prototype/tests/gauge-math.test.js`. No external dependencies; Node 18+ stdlib only.
 - **Rounding rule for increase rows:** `fmtRows(x) = Math.max(1, Math.round(x))`. JS `Math.round` is half-up: 6.5 → 7, 6.4 → 6. Minimum output is 1 (clamp prevents zero/negative row counts).
 - **Spec discrepancies found:** Jacquard's Scenario 5 defines `stitchWidthScale` as `ys/ps` (count multiplier) while Scenario 4 and the code both use `ps/ys` (display width ratio). Scenario 6's Expected tuple lists increase spacing as 10.7 but the formula gives 8. Decision filed at `.squad/decisions/inbox/curie-test-discrepancy.md`.
+- **Swift edge cases added (2026-05-19):** Extended `GaugeMathTests.swift` from 10 to 15 tests. Added: `edgeVeryLargeDriftDenserRows` (yr=48), `edgeVeryLargeDriftLooserRows` (yr=12), `floatPrecisionExactMatchNoFPDrift`, `floatPrecisionArbitraryMatchedGauge`, `castOnRoundingDriftZeroForExactRatio`, `stitchWidthScaleAndCountMultiplierAreReciprocals`. Also extended `invalidInputsFallBackToDefaults` (added infinity/-infinity) and `rowFormattingMatchesPrototype` (added 6.6→7 and 0.0→1 cases). All 15 tests pass, zero compiler warnings.
+- **UI test runner blocker (2026-05-19):** Uncommitted changes in the working tree modify `app/build.sh` to add `-derivedDataPath "$PROJECT_DIR/.build/derived-data"`. This causes xcodebuild to build the runner app to the custom path, but the simulator installer attempts to install from the old default DerivedData path (which no longer exists), producing "Missing bundle ID" error. The committed version of build.sh (without `-derivedDataPath`) worked correctly. Filed in decisions/inbox/curie-test-coverage.md.
+- **Hopper CI config fix validated (2026-05-19):** Reviewed commit `1183ed5` — removed invalid `image: macos-26-xcode-26` field from `.gitlab-ci.yml` (shell executor, not Docker) and added `timeout: 30 minutes`. `./app/build.sh test` exits 0: 15/15 Swift unit tests pass (GaugeMathTests), `** TEST SUCCEEDED **`, zero compiler warning diagnostics. JS prototype suite 77/77 pass. Build script correctly keeps `-derivedDataPath`, `xcrun simctl shutdown` pre-boot, and `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`. Only remaining blocker is external: GitLab CI `ios:test` job still fails with `no_matching_runner` (infrastructure, not code).
+- **build.sh benign-crash exemption pattern (2026-05-19):** build.sh correctly exempts Xcode 26.4 post-test infrastructure crash (`Failed to launch app with identifier: (null)`) from causing false failure. This pattern should not be broadened — keep the two-condition check (benign string AND non-zero exit) so real launch failures still propagate.
+- **Final local validation (2026-05-19):** Inbox was empty; latest logs still show only GitLab API/token blocker. `node prototype/tests/gauge-math.test.js` passed 77/77, and `./app/build.sh test` exited 0 with warnings-as-errors enabled, so compiler warnings remained zero. Swift `GaugeMathTests.swift` still names and covers all six Jacquard scenarios one-to-one. Git remote read and push dry-run succeeded, but CI API verification remains blocked without `GITLAB_TOKEN` (unauthenticated pipeline API not accessible).
+
+
+## [2026-05-19 19:13:04Z] Canonical Xcode Project Path Update
+
+⚠️ **All squad members:** The Xcode project has been renamed to **`app/app.xcodeproj`**. 
+
+- **Previous path:** `app/KnittingGaugeReconciler.xcodeproj`
+- **Current path:** `app/app.xcodeproj` (canonical reference)
+- **App target & scheme:** `KnittingGaugeReconciler` (unchanged)
+- **Build script:** `app/build.sh` updated and validated
+
+Any references to the old project path should be updated. Use `app/app.xcodeproj` going forward.
+
+---
+
+### 2026-05-19 — corrected canonical Xcode project path
+
+Correction to earlier path note: the project bundle must remain `app/KnittingGaugeReconciler.xcodeproj` per the explicit Tesla scaffold priority item. Curie's validation gate should continue to run `./app/build.sh test`, which targets the full project path with warnings as errors.

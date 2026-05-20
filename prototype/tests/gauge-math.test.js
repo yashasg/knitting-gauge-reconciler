@@ -9,14 +9,10 @@
  *   - Jacquard's six test scenarios (Test Scenarios section)
  *   - Ada's "Corrected Formula Direction" table
  *
- * NOTE on Jacquard spec discrepancies found during test authoring:
- *   See .squad/decisions/inbox/curie-test-discrepancy.md for full analysis.
- *   Short version:
- *   - Scenario 5's "stitch scale 0.875" uses ys/ps (count multiplier), but
- *     Scenario 4 and the code both use ps/ys (display width ratio). These are
- *     different quantities. Code is tested as-is (ps/ys).
- *   - Scenario 6's expected increase spacing of 10.7 does not match the formula
- *     (6 × 32/24 = 8.0). Code is tested against 8.
+ * NOTE on scale names:
+ *   - stitchWidthScale is ps/ys: the width produced by the same stitch count.
+ *   - computeActStitches uses ys/ps: the cast-on count multiplier.
+ *   - Scenario 6's increase spacing is 6 × 32/24 = 8.0 rows.
  */
 
 'use strict';
@@ -177,11 +173,7 @@ describe('Scenario 4: Denser Stitch Only (32/24 vs 36/24)', () => {
 
 describe('Scenario 5: Looser Stitch Only / Hisahashisaka\'s Case (32/24 vs 28/24)', () => {
   const r = computeGaugeMath({ ...PAT, ys: 28, yr: 24 });
-  // NOTE: Jacquard scenario 5 specifies stitch_scale = 0.875 (= ys/ps = 28/32),
-  // but that is the stitch COUNT multiplier, not the display width scale.
-  // The code uses ps/ys = 32/28 ≈ 1.143 (display: "your fabric is 114% as wide for same count").
-  // Scenario 4 uses the same ps/ys convention. These are consistent; Jacquard's scenario 5
-  // mixes definitions. Tests verify code behaviour; discrepancy is logged in decisions/inbox.
+  // stitchWidthScale is the display width ratio (ps/ys); cast-on uses ys/ps below.
   assertEqual(r.stitchWidthScale, 32 / 28,  'stitchWidthScale = ps/ys = 1.143… (code: wider per count)');
   assertEqual(fmtPct(r.stitchWidthScale), 114, 'fmtPct(stitchWidthScale) = 114%', 0);
   assertEqual(r.rowCountScale,    1.0,      'rowCountScale = 1.0 (row gauge matches)');
@@ -200,8 +192,7 @@ describe('Scenario 6: Both Denser (32/24 vs 36/32)', () => {
   assertEqual(r.dimScale,         24 / 32,      'dimScale = pr/yr = 0.75');
   assertEqual(fmtCm(r.actYoke),   15.0,         'actYoke = 15.0 cm', 0);
   assertEqual(fmtCm(r.actBody),   37.5,         'actBody = 37.5 cm', 0);
-  // actIncs = 6 × (32/24) = 8.0  [Jacquard spec lists 10.7 in expected row but
-  // then corrects to 8 in the "Why" note — code is correct at 8]
+  // actIncs = 6 × (32/24) = 8.0
   assertEqual(r.actIncs,          6 * (32 / 24),'actIncs = 8.0 rows (exact)');
   assertEqual(fmtRows(r.actIncs), 8,            'fmtRows(actIncs) = 8', 0);
   // adjusted cast-on: ys=36, ps=32, patStitches=128 → 128 × (36/32) = 144

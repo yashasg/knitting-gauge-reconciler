@@ -31,3 +31,67 @@ The prototype uses a well-structured design token vocabulary: `--bg`, `--card`, 
 **Iteration notes:** Opus (ive-1) over-analyzed; Sonnet respawn (ive-2) converged but produced desktop-aspect Excalidraw; ive-4 reshaped to portrait but verdict card layout created false wizard impression (fanned right); ive-5 baked Principle 1 into design doc (moved to top) and Excalidraw layout (vertical stacking, no fanning). Design now fully compliant with user directive.
 
 **Open questions unresolved:** CSS custom property fallback for verdict slab dark mode; whether to surface adjusted cast-on in Mismatch branch (design asks; Mendel/Jacquard input needed).
+
+### 2026-05-19 — iOS SwiftUI Review & Sign-Off
+
+**Task:** Review SwiftUI screens against prototype/index.html for structure, labels, flow, accessibility.
+
+**Findings & Fixes:**
+
+1. **Verdict State Machine Bug** — iOS used OR logic for drift thresholds (either >= 15% = mismatch), but decisions.md specifies 4 distinct branches:
+   - Perfect Match: Both < 3%
+   - Minor Drift: ONE axis off (3-15%)
+   - Significant Drift: BOTH axes off (3-15%)
+   - Major Mismatch: Either >= 15%
+   
+   Fixed `verdictTitle` to check `stitchOffRange && rowOffRange` for dual-axis detection.
+
+2. **Pill Styling Contrast** — HeroMetric pills used `opacity(0.18)` and `opacity(0.22)` backgrounds, too faint for sufficient contrast. Changed to solid colors with white text (matching prototype #5E8B6B green, #C68B2C amber) and added `pillBackground()` helper function.
+
+3. **Verdict Copy Refinement** — Updated `verdictBody` to align with prototype's concise tone and axis-specific messaging (e.g., "Row gauge is off" vs generic "One axis is off").
+
+**Verification:**
+- All 77 prototype test scenarios pass ✅
+- Math logic matches prototype exactly (stitch scale, row scale, dimension scale, cast-on rounding)
+- Single-screen layout adheres to "One screen, one press" binding directive
+- All inputs ≥44pt touch targets
+- Verdict card dominates post-compute with high-contrast inverted background
+- Pills have text labels (no color-only signals) + solid semantic colors
+- VoiceOver labels semantic and comprehensive
+
+**Status:** SIGNED OFF — iOS app structure, labels, flow, and accessibility expectations closely match prototype. No additional changes needed.
+
+### 2026-05-19 — Final UI/UX Approval Review
+
+**Task:** Confirm SwiftUI implementation meets prototype against four inputs, live recalc, hero percentages, results table, accessibility, Dynamic Type, and crash-prone patterns.
+
+**Verification Completed:**
+- ✅ Four gauge inputs (pattern stitch/row, your stitch/row) with proper labels, units, hints
+- ✅ Live recalc: `@State` → `inputs` → `GaugeMath.compute()` reactive chain
+- ✅ Hero percentages displayed with semantic text-based status pills (Match, Denser/Looser/Much*); no color-only signals
+- ✅ Results table: `AdjustmentRow` renders yoke, body, sleeve, increases, cast-on with pattern/adjusted values; responsive layout collapses on compact width + accessibility text sizes
+- ✅ Accessibility: Semantic labels throughout (inputs with spoken units, verdict panel combined, buttons ≥44pt); all section titles marked as headers; adjustment rows auto-identified for test automation
+- ✅ Dynamic Type: `AdaptiveTwoColumnStack` and `AdjustmentRow` both guard on `dynamicTypeSize.isAccessibilitySize`; all text semantic font sizes (no hardcoded `px`); hero value has `minimumScaleFactor(0.7)` for large text
+- ✅ No crash patterns: Zero force unwraps, safe Optional handling, `GaugeMath.sanitized()` guards input
+
+**No UX Blockers Found.** All verification complete.
+
+**Approval:** iOS UI/UX **APPROVED** against prototype. Implementation matches HIG, a11y floor, and "one screen, one press" principle. Delivered `.squad/decisions/inbox/ive-ui-approval.md` for team record.
+
+
+## [2026-05-19 19:13:04Z] Canonical Xcode Project Path Update
+
+⚠️ **All squad members:** The Xcode project has been renamed to **`app/app.xcodeproj`**. 
+
+- **Previous path:** `app/KnittingGaugeReconciler.xcodeproj`
+- **Current path:** `app/app.xcodeproj` (canonical reference)
+- **App target & scheme:** `KnittingGaugeReconciler` (unchanged)
+- **Build script:** `app/build.sh` updated and validated
+
+Any references to the old project path should be updated. Use `app/app.xcodeproj` going forward.
+
+---
+
+### 2026-05-19 — corrected canonical Xcode project path
+
+Correction to earlier path note: the project bundle must remain `app/KnittingGaugeReconciler.xcodeproj` per the explicit Tesla scaffold priority item. UX review remains against the SwiftUI app in that project; scheme remains `KnittingGaugeReconciler`.

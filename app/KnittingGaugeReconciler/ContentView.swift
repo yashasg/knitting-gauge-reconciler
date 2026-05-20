@@ -13,9 +13,9 @@ struct ContentView: View {
     @State private var patternBody = initialText("KGR_BODY", defaultValue: "50")
     @State private var patternSleeve = initialText("KGR_SLEEVE", defaultValue: "45")
     @State private var patternIncreases = initialText("KGR_INCREASES", defaultValue: "6")
-    @State private var showFullMath = false
-    @State private var showVerdictHelp = false
-    @State private var showAboutHelp = false
+    @State private var showFullMath = initialBool("KGR_SHOW_FULL_MATH")
+    @State private var showVerdictHelp = initialBool("KGR_SHOW_VERDICT_HELP")
+    @State private var showAboutHelp = initialBool("KGR_SHOW_ABOUT_HELP")
     @State private var sharePayload: SharePayload?
 
     private var inputs: GaugeInputs {
@@ -322,9 +322,9 @@ struct ContentView: View {
             return "Your row gauge matches, but your stitch gauge is \(stitchPercent)% \(stitchDir). Cast on \(result.adjustedCastOn) stitches instead of the pattern's \(Int(inputs.patternCastOn)) to hit the same width. Vertical sections need no adjustment.\(majorNote)"
         }
         if !stitchOff {
-            return "Your stitch gauge matches — cast on \(result.adjustedCastOn) stitches as written. Your row gauge is \(rowPercent)% \(rowDir) than expected; keep the pattern's cm targets and use the row/round guidance for each vertical section.\(majorNote)"
+            return "Your stitch gauge matches — cast on \(result.adjustedCastOn) stitches as written. Your row gauge is \(rowPercent)% \(rowDir) than expected; use the adjusted cm targets for each vertical section.\(majorNote)"
         }
-        return "Both axes are off: stitch gauge \(stitchPercent)% \(stitchDir), row gauge \(rowPercent)% \(rowDir). Cast on \(result.adjustedCastOn) stitches (not \(Int(inputs.patternCastOn))). Keep the pattern's cm targets and use the row/round guidance for vertical sections.\(majorNote)"
+        return "Both axes are off: stitch gauge \(stitchPercent)% \(stitchDir), row gauge \(rowPercent)% \(rowDir). Cast on \(result.adjustedCastOn) stitches (not \(Int(inputs.patternCastOn))) and use the adjusted cm targets for vertical sections.\(majorNote)"
     }
 
     private var verdictAccessibilityLabel: String {
@@ -340,7 +340,7 @@ struct ContentView: View {
             return "Stitch gauge off \(stitchPercent) percent. Cast on \(result.adjustedCastOn) instead of \(Int(inputs.patternCastOn)) stitches. Row counts as written."
         }
         if !stitchOff {
-            return "Row gauge off \(rowPercent) percent. Cast on \(result.adjustedCastOn) stitches as written. Keep the pattern centimetre targets and check row or round guidance for vertical sections."
+            return "Row gauge off \(rowPercent) percent. Cast on \(result.adjustedCastOn) stitches as written. Check the adjusted centimetre targets for vertical sections."
         }
         return "Both axes off. Cast on \(result.adjustedCastOn) instead of \(Int(inputs.patternCastOn)) stitches. Review section row or round guidance below."
     }
@@ -351,9 +351,9 @@ struct ContentView: View {
         you:     \(formatPlain(inputs.yourStitches)) st x \(formatPlain(inputs.yourRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.yourStitches / inputs.yourRows)))
         stitch width scale = pattern_st / your_st = \(formatPlain(inputs.patternStitches)) / \(formatPlain(inputs.yourStitches)) = \(String(format: "%.3f", result.stitchWidthScale))
         row density ratio  = your_row / pattern_row = \(formatPlain(inputs.yourRows)) / \(formatPlain(inputs.patternRows)) = \(String(format: "%.3f", result.rowCountScale))
-        section rows       = section_cm x rows_per_10cm / 10
-        -> keep the pattern's vertical cm targets; row gauge changes row/round counts, not finished measurements
-        -> yoke: \(formatPlain(inputs.patternYokeDepth)) cm = about \(GaugeMath.fmtRows(result.patternYokeRows)) pattern rows, about \(GaugeMath.fmtRows(result.adjustedYokeRows)) of your rows/rounds
+        dim correction     = pattern_row / your_row = \(formatPlain(inputs.patternRows)) / \(formatPlain(inputs.yourRows)) = \(String(format: "%.3f", result.dimensionScale))
+        -> vertical dim D becomes D x \(String(format: "%.3f", result.dimensionScale)) cm
+        -> yoke: \(formatPlain(inputs.patternYokeDepth)) cm -> \(GaugeMath.fmtCm(result.adjustedYokeDepth)) cm, about \(GaugeMath.fmtRows(result.adjustedYokeRows)) rows/rounds
         -> for any horizontal dim, your stitch count produces \(String(format: "%.1f", result.stitchWidthScale * 100))% of the pattern's intended width
         cast-on adjust = your_st / pattern_st x patCastOn = \(formatPlain(inputs.yourStitches))/\(formatPlain(inputs.patternStitches)) x \(formatPlain(inputs.patternCastOn)) = \(result.adjustedCastOn) stitches
         """
@@ -420,7 +420,7 @@ struct ContentView: View {
     }
 
     private func sectionGuidance(cm: Double, rows: Double) -> String {
-        "Keep \(GaugeMath.fmtCm(cm)) cm · about \(GaugeMath.fmtRows(rows)) rows/rounds"
+        "Knit to \(GaugeMath.fmtCm(cm)) cm · about \(GaugeMath.fmtRows(rows)) rows/rounds"
     }
 }
 
@@ -465,7 +465,7 @@ private struct AboutHelpSheet: View {
                     .font(.body)
                     .lineSpacing(4)
                     .foregroundStyle(AppTheme.ink)
-                Text("The math is deterministic: section rows = section_cm × rows_per_10cm / 10. Row gauge changes row/round guidance, not the finished centimetre targets; stitch_scale = pattern_st / your_st describes horizontal width.")
+                Text("The math is deterministic: dimension correction = pattern_row / your_row. A denser swatch means fewer centimetres are needed to reach the pattern's intended row count; stitch_scale = pattern_st / your_st describes horizontal width.")
                     .font(.body)
                     .lineSpacing(4)
                     .foregroundStyle(AppTheme.ink)
@@ -540,7 +540,7 @@ private struct ResultsShareCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
 
             VStack(alignment: .leading, spacing: 18) {
-                Text("Section row/round guidance")
+                Text("Section adjustment guidance")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(AppTheme.sage)
                 ForEach(summary.sections, id: \.name) { section in
@@ -959,6 +959,10 @@ private enum AppTheme {
 
 private func initialText(_ environmentKey: String, defaultValue: String) -> String {
     ProcessInfo.processInfo.environment[environmentKey] ?? defaultValue
+}
+
+private func initialBool(_ environmentKey: String) -> Bool {
+    ProcessInfo.processInfo.environment[environmentKey] == "1"
 }
 
 private func read(_ text: String, defaultValue: Double) -> Double {

@@ -135,6 +135,8 @@ if [[ "$MODE" == "test" && "$STATUS" -ne 0 ]] \
   echo "note: simulator was busy during test launch; rebooting simulator and retrying once" >&2
   FIRST_LOG_FILE="$LOG_FILE"
   LOG_FILE="$LOG_DIR/xcodebuild-${MODE}-retry-$$.log"
+  rm -rf "$RESULT_BUNDLE_PATH"
+  mkdir -p "$(dirname "$RESULT_BUNDLE_PATH")"
   if [[ -n "$SIMULATOR_UDID" ]]; then
     xcrun simctl shutdown "$SIMULATOR_UDID" >/dev/null 2>&1 || true
     xcrun simctl boot "$SIMULATOR_UDID" >/dev/null 2>&1 || true

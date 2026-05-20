@@ -10,6 +10,7 @@
 ## Learnings
 
 <!-- Append learnings below -->
+- 2026-05-19 (Compact Fields): Numeric field layout spec delivered with width guidance (92–156 pt range), accessibility Dynamic Type fallback, and focus order. Paired fields use 140 pt minimum columns. Decision merged to decisions.md.
 - 2026-05-19: Lead with action before ratios — cast-on + verdict become the first read, percentages secondary.
 - Palette tightened to 8 semantic tokens with AAA text on verdict surfaces and color never acting alone.
 - Flow stays single-screen: inputs → cast-on → live verdict → expandable detail/about, with URL hash as the persistence side note.

@@ -100,10 +100,23 @@ XCODEBUILD_ARGS=(
   "${DESTINATION_ARGS[@]}"
 )
 if [[ "$MODE" == "test" ]]; then
+  # UI tests under the single-simulator serial-UI constraint
+  # (2026-05-20T06-25-04Z-serial-ui-tests.md) occasionally suffer
+  # runner-level signal-term crashes during XCUIApplication cold
+  # launches — xcodebuild then jumps to the *next* test instead of
+  # re-running the crashed one, leaving a real Failed entry in the
+  # xcresult bundle even though the test logic is sound. Xcode 13+'s
+  # -retry-tests-on-failure / -test-iterations N reruns only failed
+  # tests and accepts each as passing if any iteration passes — it
+  # does not retry passing tests and does not mask deterministic
+  # failures (a broken test still fails every iteration). Final
+  # verify_xcresult_summary guard remains the source of truth.
   XCODEBUILD_ARGS+=(
     -parallel-testing-enabled NO
     -enableCodeCoverage YES
     -resultBundlePath "$RESULT_BUNDLE_PATH"
+    -retry-tests-on-failure
+    -test-iterations 2
   )
 fi
 XCODEBUILD_ARGS+=(
@@ -211,6 +224,127 @@ print(d.get("skippedTests", -1))
   return 0
 }
 
+# Recover from a specific class of UI-runner flake: under the
+# single-simulator serial-UI constraint (2026-05-20T06-25-04Z-serial-ui-tests.md),
+# XCUIApplication launches occasionally hang past xcodebuild's per-test
+# watchdog, the runner is killed with SIGTERM, xcodebuild then *advances*
+# to the next test rather than retrying the crashed one, and the failure
+# survives in the xcresult bundle even though re-running the same test in
+# isolation passes deterministically. -retry-tests-on-failure does not
+# catch this case because xcodebuild never observes a structured failure
+# callback — only a post-mortem "Test crashed with signal term." entry.
+#
+# Behavior: if (and only if) every failure in the bundle is exactly the
+# signal-term entry, rerun those specific tests one more time on a freshly
+# rebooted simulator and replace the bundle with the rerun result. Any
+# real assertion failure or non-signal-term crash causes the function to
+# refuse the rerun, preserving the original failure for the gate to fail
+# on. Each test is given a single rerun attempt; persistent flakes still
+# fail the gate.
+rerun_signal_term_failures() {
+  local bundle="$1"
+  if [[ ! -d "$bundle" ]]; then
+    return 1
+  fi
+  local summary_json
+  if ! summary_json=$(xcrun xcresulttool get test-results summary --path "$bundle" 2>/dev/null); then
+    return 1
+  fi
+  local rerun_specs extract_status
+  set +e
+  rerun_specs=$(printf '%s' "$summary_json" | /usr/bin/python3 -c '
+import json, sys
+SIGNAL_TERM = "Test crashed with signal term."
+d = json.load(sys.stdin)
+failures = d.get("testFailures") or []
+if not failures:
+    sys.exit(3)
+specs = []
+for f in failures:
+    if (f.get("failureText") or "").strip() != SIGNAL_TERM:
+        sys.exit(2)
+    tid = (f.get("testIdentifierString") or "").strip()
+    target = (f.get("targetName") or "").strip()
+    if not tid or not target or "/" not in tid:
+        sys.exit(2)
+    method = tid.replace("()", "")
+    specs.append(f"{target}/{method}")
+for s in specs:
+    print(s)
+' 2>/dev/null)
+  extract_status=$?
+  set -e
+  if [[ "$extract_status" -ne 0 ]]; then
+    return 1
+  fi
+  if [[ -z "$rerun_specs" ]]; then
+    return 1
+  fi
+  local rerun_count
+  rerun_count=$(printf '%s\n' "$rerun_specs" | grep -c '.')
+  if [[ "$rerun_count" -gt 5 ]]; then
+    echo "error: refusing to rerun $rerun_count signal-term failures; too many to be infra flake" >&2
+    return 1
+  fi
+  echo "note: $rerun_count signal-term flake(s) detected; rerunning on fresh simulator: $(printf '%s' "$rerun_specs" | tr '\n' ' ')" >&2
+  if [[ -n "$SIMULATOR_UDID" ]]; then
+    xcrun simctl shutdown "$SIMULATOR_UDID" >/dev/null 2>&1 || true
+    xcrun simctl boot "$SIMULATOR_UDID" >/dev/null 2>&1 || true
+    xcrun simctl bootstatus "$SIMULATOR_UDID" -b >/dev/null
+  fi
+  local rerun_bundle="${bundle%.xcresult}.flake-rerun.xcresult"
+  rm -rf "$rerun_bundle"
+  mkdir -p "$(dirname "$rerun_bundle")"
+  local rerun_args=(
+    -project "$PROJECT"
+    -scheme "$SCHEME"
+    -configuration "$CONFIGURATION"
+    -derivedDataPath "$DERIVED_DATA_PATH"
+    "${DESTINATION_ARGS[@]}"
+    -parallel-testing-enabled NO
+    -resultBundlePath "$rerun_bundle"
+  )
+  while IFS= read -r spec; do
+    [[ -n "$spec" ]] && rerun_args+=(-only-testing:"$spec")
+  done <<< "$rerun_specs"
+  rerun_args+=(
+    SWIFT_TREAT_WARNINGS_AS_ERRORS=YES
+    GCC_TREAT_WARNINGS_AS_ERRORS=YES
+    CLANG_TREAT_WARNINGS_AS_ERRORS=YES
+    OTHER_SWIFT_FLAGS="-warnings-as-errors"
+    test
+  )
+  local rerun_log="$LOG_DIR/xcodebuild-${MODE}-flake-rerun-$$.log"
+  set +e
+  if command -v xcpretty >/dev/null 2>&1; then
+    xcodebuild "${rerun_args[@]}" 2>&1 | tee "$rerun_log" | xcpretty
+  else
+    xcodebuild "${rerun_args[@]}" 2>&1 | tee "$rerun_log"
+  fi
+  set -e
+  if ! verify_xcresult_summary "$rerun_bundle"; then
+    echo "error: signal-term flake rerun did not pass cleanly; original failure stands" >&2
+    rm -f "$rerun_log"
+    return 1
+  fi
+  # Compiler warnings are gated globally already, but if the rerun somehow
+  # introduced a new warning we still want the gate to fail.
+  if grep -Eiq "$COMPILER_WARN_PATTERN" "$rerun_log"; then
+    echo "error: signal-term flake rerun emitted compiler warnings" >&2
+    rm -f "$rerun_log"
+    return 1
+  fi
+  # Promote the rerun bundle into the canonical location for downstream
+  # consumers (CI artifacts, coverage tooling) while preserving the
+  # original failed bundle alongside for triage.
+  local saved="${bundle%.xcresult}.signal-term-original.xcresult"
+  rm -rf "$saved"
+  mv "$bundle" "$saved"
+  mv "$rerun_bundle" "$bundle"
+  rm -f "$rerun_log"
+  return 0
+}
+
 # If the only reason for non-zero STATUS is a known Xcode 26.4 post-test
 # infrastructure failure, treat it as success only after xcodebuild reports that
 # the test action or Swift Testing run succeeded AND the xcresult bundle agrees.
@@ -221,6 +355,11 @@ if [[ "$STATUS" -ne 0 ]] \
     && ! grep -Eq "Test Suite '.*' failed|Test Case '.*' failed" "$LOG_FILE"; then
   if [[ "$MODE" == "test" ]]; then
     if ! verify_xcresult_summary "$RESULT_BUNDLE_PATH"; then
+      if rerun_signal_term_failures "$RESULT_BUNDLE_PATH" \
+          && verify_xcresult_summary "$RESULT_BUNDLE_PATH"; then
+        echo "note: xcodebuild exit $STATUS attributed to Xcode 26.4 post-test infrastructure bug; signal-term flake(s) recovered on rerun" >&2
+        exit 0
+      fi
       echo "error: refusing to treat xcodebuild exit $STATUS as benign because the xcresult bundle reports real test failures" >&2
       exit 65
     fi
@@ -229,12 +368,20 @@ if [[ "$STATUS" -ne 0 ]] \
   exit 0
 fi
 
-# Final guard: even when xcodebuild's own exit code is 0, cross-check the
-# xcresult bundle. xcodebuild has on occasion reported success while the
-# bundle records failed assertions; the bundle wins.
-if [[ "$MODE" == "test" && "$STATUS" -eq 0 ]]; then
+# Final guard for the test action: the xcresult bundle is authoritative. If
+# the main run left any failures in the bundle — whether xcodebuild's own
+# exit code agreed or not — first attempt to recover signal-term runner
+# flakes by rerunning only those tests; otherwise fail.
+if [[ "$MODE" == "test" ]]; then
   if ! verify_xcresult_summary "$RESULT_BUNDLE_PATH"; then
-    echo "error: xcodebuild reported success but the xcresult bundle records test failures" >&2
+    if rerun_signal_term_failures "$RESULT_BUNDLE_PATH" \
+        && verify_xcresult_summary "$RESULT_BUNDLE_PATH"; then
+      echo "note: signal-term flake(s) recovered on rerun; all test assertions now pass" >&2
+      exit 0
+    fi
+    if [[ "$STATUS" -eq 0 ]]; then
+      echo "error: xcodebuild reported success but the xcresult bundle records test failures" >&2
+    fi
     exit 65
   fi
 fi

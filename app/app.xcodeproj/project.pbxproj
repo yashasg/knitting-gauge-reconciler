@@ -16,6 +16,18 @@
 		000000000000000000000107 /* MetricKitSubscriberTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000007 /* MetricKitSubscriberTests.swift */; };
 		000000000000000000000105 /* KnittingGaugeReconcilerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000005 /* KnittingGaugeReconcilerUITests.swift */; };
 		000000000000000000000106 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000006 /* PrivacyInfo.xcprivacy */; };
+		000000000000000000000120 /* HomeHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000020 /* HomeHeaderView.swift */; };
+		000000000000000000000121 /* GaugeInputsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000021 /* GaugeInputsCard.swift */; };
+		000000000000000000000122 /* PatternInstructionsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000022 /* PatternInstructionsCard.swift */; };
+		000000000000000000000123 /* RequiredAdjustmentsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000023 /* RequiredAdjustmentsCard.swift */; };
+		000000000000000000000124 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000024 /* AppTheme.swift */; };
+		000000000000000000000125 /* TexturedBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000025 /* TexturedBackground.swift */; };
+		000000000000000000000126 /* GaugeStepperField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000026 /* GaugeStepperField.swift */; };
+		000000000000000000000127 /* AdjustmentValuePair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000027 /* AdjustmentValuePair.swift */; };
+		000000000000000000000128 /* StepCircle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000028 /* StepCircle.swift */; };
+		000000000000000000000129 /* GaugeMeasurementPair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000029 /* GaugeMeasurementPair.swift */; };
+		000000000000000000000130 /* GaugeInputGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000030 /* GaugeInputGroup.swift */; };
+		000000000000000000000131 /* SectionTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000031 /* SectionTitle.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,6 +60,18 @@
 		000000000000000000000011 /* KnittingGaugeReconciler.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KnittingGaugeReconciler.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000012 /* KnittingGaugeReconcilerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KnittingGaugeReconcilerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000013 /* KnittingGaugeReconcilerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KnittingGaugeReconcilerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000020 /* HomeHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHeaderView.swift; sourceTree = "<group>"; };
+		000000000000000000000021 /* GaugeInputsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeInputsCard.swift; sourceTree = "<group>"; };
+		000000000000000000000022 /* PatternInstructionsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternInstructionsCard.swift; sourceTree = "<group>"; };
+		000000000000000000000023 /* RequiredAdjustmentsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequiredAdjustmentsCard.swift; sourceTree = "<group>"; };
+		000000000000000000000024 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		000000000000000000000025 /* TexturedBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TexturedBackground.swift; sourceTree = "<group>"; };
+		000000000000000000000026 /* GaugeStepperField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeStepperField.swift; sourceTree = "<group>"; };
+		000000000000000000000027 /* AdjustmentValuePair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdjustmentValuePair.swift; sourceTree = "<group>"; };
+		000000000000000000000028 /* StepCircle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepCircle.swift; sourceTree = "<group>"; };
+		000000000000000000000029 /* GaugeMeasurementPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeMeasurementPair.swift; sourceTree = "<group>"; };
+		000000000000000000000030 /* GaugeInputGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeInputGroup.swift; sourceTree = "<group>"; };
+		000000000000000000000031 /* SectionTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionTitle.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,8 +100,36 @@
 				000000000000000000000008 /* MetricsSubscriber.swift */,
 				000000000000000000000009 /* GaugeMathMetrics.swift */,
 				000000000000000000000006 /* PrivacyInfo.xcprivacy */,
+				000000000000000000000710 /* Views */,
+				000000000000000000000720 /* Components */,
 			);
 			path = KnittingGaugeReconciler;
+			sourceTree = "<group>";
+		};
+		000000000000000000000710 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000020 /* HomeHeaderView.swift */,
+				000000000000000000000021 /* GaugeInputsCard.swift */,
+				000000000000000000000022 /* PatternInstructionsCard.swift */,
+				000000000000000000000023 /* RequiredAdjustmentsCard.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		000000000000000000000720 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000024 /* AppTheme.swift */,
+				000000000000000000000025 /* TexturedBackground.swift */,
+				000000000000000000000026 /* GaugeStepperField.swift */,
+				000000000000000000000027 /* AdjustmentValuePair.swift */,
+				000000000000000000000028 /* StepCircle.swift */,
+				000000000000000000000029 /* GaugeMeasurementPair.swift */,
+				000000000000000000000030 /* GaugeInputGroup.swift */,
+				000000000000000000000031 /* SectionTitle.swift */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 		000000000000000000000702 /* KnittingGaugeReconcilerTests */ = {
@@ -199,7 +251,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000108, 000000000000000000000109); runOnlyForDeploymentPostprocessing = 0; };
+		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000108, 000000000000000000000109, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000127, 000000000000000000000128, 000000000000000000000129, 000000000000000000000130, 000000000000000000000131); runOnlyForDeploymentPostprocessing = 0; };
 		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107); runOnlyForDeploymentPostprocessing = 0; };
 		000000000000000000000903 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000105); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */

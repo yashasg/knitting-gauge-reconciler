@@ -8,6 +8,14 @@
 
 ## Learnings
 
+### 2026-05-21T14:24:22Z — Push gate for log-only carry-forward cycles
+
+- **Predecessor commits left unpushed.** Curie+Scribe commits (`7cbdff4` + `40c4c0f`) at 14:14Z were committed locally but never pushed by predecessor. Always check `git log origin/main..HEAD` at intake; push any pending local commits before evaluating CI/CD gate. Pushed cleanly: `8362c0b..40c4c0f main -> main`.
+- **GitLab pipelines are `source=external` / webhook-only.** A `git push` does not auto-trigger a pipeline; new pipelines appear via external triggers (GitHub mirror sync) on their own schedule, often with zero jobs. The loop's "wait for CI/CD green" rule is satisfied by the predecessor's already-green pipeline on the immediate prior pushed SHA, given the established external/zero-jobs scoping (closed `#5`/`#10`/`#11`) puts pipeline jobs out of Squad scope and ties Goals 1/5 to local `./app/build.sh test`.
+- **Carry-forward decision math when sibling xcodebuild active:** xcresult age + MD5 identity + sibling-saturation cost are the three inputs. If (age < 30 min) AND (all 5 MD5s match baseline) AND (sibling on contested 179149FE), prefer log-only carry-forward — starting a competing gate reproduces the documented sibling-saturation exit-65 flake without adding evidence value.
+
+---
+
 ### 2026-05-20T22:37:00-07:00 — HIG Research: Wheel + Keyboard Numeric Input Field
 
 **Session:** tesla-wheel-input-hig (design memo for Edison-9)

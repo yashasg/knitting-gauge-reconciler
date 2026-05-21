@@ -20,9 +20,11 @@ struct GaugeMeasurementPair<Leading: View, Trailing: View>: View {
         } else {
             HStack(alignment: .top, spacing: spacing) {
                 leading()
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    // maxHeight: .infinity ensures both sides fill the same row height
+                    // so a mismatch label appearing on one side cannot shrink the other.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 trailing()
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
     }

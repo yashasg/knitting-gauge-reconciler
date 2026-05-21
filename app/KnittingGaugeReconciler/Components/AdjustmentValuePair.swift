@@ -15,7 +15,10 @@ struct AdjustmentValuePair: View {
     private var delta: Int { yourValue - patternValue }
 
     var body: some View {
-        HStack(spacing: 10) {
+        // alignment: .top prevents the left block from shifting down when the
+        // delta badge makes the right block taller (was default .center, which
+        // caused a vertical shift every time delta appeared/disappeared).
+        HStack(alignment: .top, spacing: 10) {
             // Left: pattern rows (low-contrast, informational)
             VStack(alignment: .center, spacing: 4) {
                 Text(patternLabel)

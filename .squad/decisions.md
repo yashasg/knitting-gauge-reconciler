@@ -1,3 +1,37 @@
+## 2026-05-21T14:09:26-07:00 — Edison Implementation: Option D Gauge Mismatch UI
+
+### 2026-05-21T14:09:26-07:00: Implementation — Gauge Mismatch State (Option D, no vertical growth)
+
+**By:** Edison (Frontend Dev, second pass)
+**Requested by:** Tesla (Squad)
+**Spec:** Ive's Option D (2026-05-21T12:41:13-07:00 REVISED spec)
+
+#### Files changed
+
+- **app/KnittingGaugeReconciler/Components/GaugeStepperField.swift**
+  - Removed the conditional below-field mismatch label so mismatch no longer adds vertical pixels.
+  - Added inline warning chrome on the existing 44×44 picker button via `exclamationmark.triangle.fill`.
+  - Added field/button accessibility value+hint payloads with the full mismatch sentence.
+  - Added warning copy to the existing wheel sheet and expanded mismatch detents to avoid clipping.
+  
+- **app/KnittingGaugeReconcilerUITests/KnittingGaugeReconcilerUITests.swift**
+  - Updated stepper helpers to parse numeric values from spoken accessibility values.
+  - Updated mismatch regression coverage to verify equal widths, fixed vertical position, no visible mismatch text rows, and warning metadata.
+  - Added wheel-sheet warning-summary coverage.
+
+#### Diff shape
+
+- Visual mismatch signal moved from a conditional vertical text row to the field's existing horizontal accessory chrome.
+- Equal-width `LazyVGrid` pairing remains unchanged.
+- Sheet focus order now reads title/warning summary, then wheel, then Done.
+
+#### Verification
+
+- `./app/build.sh test` passed.
+- **Test count:** 58/58.
+- **Warnings:** 0.
+- **Accessibility summary:** mismatched field value now includes the full sentence (`32 rows, row gauge mismatch detected` shape), picker button exposes `Warning`, and the wheel sheet displays the same warning sentence when opened.
+
 ## 2026-05-21T12:41:13-07:00 — Gauge Mismatch State Fix (User Directive + Revised UX Spec + Equal-Width Implementation)
 
 ### 2026-05-21T12:41:13-07:00: User directive — Paired gauge fields must not grow vertically for mismatch state

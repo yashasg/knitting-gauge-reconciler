@@ -29,6 +29,52 @@ struct GaugeStepperField: View {
         return range.lowerBound
     }
 
+    private var spokenUnit: String {
+        switch unit {
+        case "st":
+            return "stitches"
+        case "ro":
+            return "rows"
+        default:
+            return unit
+        }
+    }
+
+    private var mismatchSentence: String? {
+        guard hasMismatch, let mismatchLabel else { return nil }
+        return mismatchLabel
+    }
+
+    private var spokenMismatchSentence: String? {
+        guard let mismatchSentence else { return nil }
+        guard let firstCharacter = mismatchSentence.first else { return mismatchSentence }
+        return firstCharacter.lowercased() + String(mismatchSentence.dropFirst())
+    }
+
+    private var fieldAccessibilityValue: String {
+        let baseValue = "\(currentValue) \(spokenUnit)"
+        guard let spokenMismatchSentence else { return baseValue }
+        return "\(baseValue), \(spokenMismatchSentence)"
+    }
+
+    private var fieldAccessibilityHint: String {
+        guard mismatchSentence != nil else { return "Double-tap to edit." }
+        return "Double-tap to edit. Use the picker button for wheel selection and warning details."
+    }
+
+    private var pickerAccessibilityValue: String {
+        mismatchSentence == nil ? "" : "Warning"
+    }
+
+    private var pickerAccessibilityHint: String {
+        guard let mismatchSentence else { return "Double-tap to open wheel picker." }
+        return "\(mismatchSentence). Opens the wheel picker and warning details."
+    }
+
+    private var sheetDetents: Set<PresentationDetent> {
+        mismatchSentence == nil ? [.height(280)] : [.medium, .large]
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title)
@@ -36,9 +82,7 @@ struct GaugeStepperField: View {
                 .foregroundStyle(AppTheme.muted)
                 .padding(.bottom, 8)
 
-            // ── Visual container ──────────────────────────────────────────────────
             HStack(spacing: 0) {
-                // Text field
                 TextField("", text: $text)
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.center)
@@ -46,15 +90,16 @@ struct GaugeStepperField: View {
                     .foregroundStyle(hasMismatch ? AppTheme.mismatchText : AppTheme.ink)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 12)
+                    .accessibilityLabel(title)
+                    .accessibilityValue(fieldAccessibilityValue)
+                    .accessibilityHint(fieldAccessibilityHint)
                     .accessibilityIdentifier("\(identifier)-field")
 
-                // Vertical divider
                 Rectangle()
                     .fill(AppTheme.outline)
                     .frame(width: 1)
                     .padding(.vertical, 8)
 
-                // Chevron → opens wheel picker
                 Button {
                     showWheelPicker = true
                 } label: {
@@ -62,10 +107,23 @@ struct GaugeStepperField: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(AppTheme.muted)
                         .frame(width: 44, height: 44)
+                        .overlay(alignment: .topTrailing) {
+                            if hasMismatch {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(AppTheme.mismatchText)
+                                    .padding(.top, 8)
+                                    .padding(.trailing, 6)
+                                    .allowsHitTesting(false)
+                                    .accessibilityHidden(true)
+                            }
+                        }
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Open picker for \(title)")
+                .accessibilityValue(pickerAccessibilityValue)
+                .accessibilityHint(pickerAccessibilityHint)
                 .accessibilityIdentifier("\(identifier)-chevron")
             }
             .frame(minHeight: 44)
@@ -78,14 +136,6 @@ struct GaugeStepperField: View {
                         lineWidth: 1.5
                     )
             )
-
-            if let mismatchLabel, hasMismatch {
-                Text(mismatchLabel)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(AppTheme.mismatchText)
-                    .accessibilityIdentifier("\(identifier)-mismatch")
-                    .padding(.top, 4)
-            }
 
             // ── Legacy ± strip (8pt tall, visually invisible on white card) ───────
             // UI tests rely on `{identifier}` (increment) and `{identifier}-minus`
@@ -121,9 +171,10 @@ struct GaugeStepperField: View {
                 text: $text,
                 range: range,
                 identifier: identifier,
+                mismatchLabel: mismatchSentence,
                 isPresented: $showWheelPicker
             )
-            .presentationDetents([.height(280)])
+            .presentationDetents(sheetDetents)
             .presentationDragIndicator(.visible)
         }
     }
@@ -136,6 +187,7 @@ private struct GaugeStepperWheelSheet: View {
     @Binding var text: String
     let range: ClosedRange<Int>
     let identifier: String
+    let mismatchLabel: String?
     @Binding var isPresented: Bool
 
     @State private var selectedValue: Int
@@ -145,12 +197,14 @@ private struct GaugeStepperWheelSheet: View {
         text: Binding<String>,
         range: ClosedRange<Int>,
         identifier: String,
+        mismatchLabel: String?,
         isPresented: Binding<Bool>
     ) {
         self.title = title
         self._text = text
         self.range = range
         self.identifier = identifier
+        self.mismatchLabel = mismatchLabel
         self._isPresented = isPresented
         let initial = Int(text.wrappedValue) ?? range.lowerBound
         self._selectedValue = State(initialValue: initial.clamped(to: range))
@@ -158,33 +212,47 @@ private struct GaugeStepperWheelSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // ── Header row ────────────────────────────────────────────────────────
-            HStack {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.ink)
-                Spacer()
-                Button("Done") {
-                    text = "\(selectedValue)"
-                    isPresented = false
-                }
-                .font(.body.weight(.semibold))
-                .foregroundStyle(AppTheme.sage)
-                .accessibilityIdentifier("\(identifier)-wheel-done")
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 4)
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(AppTheme.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, mismatchLabel == nil ? 4 : 12)
 
-            // ── Wheel picker ──────────────────────────────────────────────────────
+            if let mismatchLabel {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(AppTheme.mismatchText)
+                    Text(mismatchLabel)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.mismatchText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("\(identifier)-warning-summary")
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
+            }
+
             Picker(title, selection: $selectedValue) {
-                ForEach(range, id: \.self) { val in
-                    Text("\(val)").tag(val)
+                ForEach(range, id: \.self) { value in
+                    Text("\(value)").tag(value)
                 }
             }
             .pickerStyle(.wheel)
             .labelsHidden()
             .accessibilityIdentifier("\(identifier)-wheel")
+
+            Button("Done") {
+                text = "\(selectedValue)"
+                isPresented = false
+            }
+            .font(.body.weight(.semibold))
+            .foregroundStyle(AppTheme.sage)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .accessibilityIdentifier("\(identifier)-wheel-done")
         }
         .background(AppTheme.card)
     }

@@ -108,16 +108,14 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         let valueField = app.textFields["your-stitches-field"].firstMatch
         XCTAssertTrue(valueField.waitForExistence(timeout: 3))
 
-        // Tapping + increments the value.
         scrollToElement(plusButton, in: app, requireHittable: true)
         tapElement(plusButton)
-        waitUntil(timeout: 2) { valueField.value as? String == "21" }
-        XCTAssertEqual(valueField.value as? String, "21", "Plus button should increment from 20 to 21")
+        waitUntil(timeout: 2) { self.numericFieldValue(valueField) == 21 }
+        XCTAssertEqual(numericFieldValue(valueField), 21, "Plus button should increment from 20 to 21")
 
-        // Tapping − decrements the value.
         tapElement(minusButton)
-        waitUntil(timeout: 2) { valueField.value as? String == "20" }
-        XCTAssertEqual(valueField.value as? String, "20", "Minus button should decrement from 21 to 20")
+        waitUntil(timeout: 2) { self.numericFieldValue(valueField) == 20 }
+        XCTAssertEqual(numericFieldValue(valueField), 20, "Minus button should decrement from 21 to 20")
 
         // Tapping the value field opens the keyboard.
         dismissKeyboard(in: app)
@@ -298,6 +296,60 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         assertStackedBelow(yourRows, yourStitches)
     }
 
+    func testMismatchStatesKeepYourGaugeFieldsEqualWidth() {
+        let scenarios: [(yourStitches: String, yourRows: String, stitchMismatch: Bool, rowMismatch: Bool)] = [
+            ("32", "24", false, false),
+            ("36", "24", true, false),
+            ("32", "32", false, true),
+            ("36", "32", true, true),
+        ]
+        var baselineCalculateButtonY: CGFloat?
+
+        for scenario in scenarios {
+            let app = launchApp(yourStitches: scenario.yourStitches, yourRows: scenario.yourRows)
+            let yourStitches = app.textFields["your-stitches-field"]
+            let yourRows = app.textFields["your-rows-field"]
+            let calculateButton = app.buttons["calculate-button"]
+            XCTAssertTrue(yourStitches.waitForExistence(timeout: 2))
+            XCTAssertTrue(yourRows.exists)
+            XCTAssertTrue(calculateButton.exists)
+
+            assertApproximatelyEqualWidth(yourStitches, yourRows)
+            if let baselineCalculateButtonY {
+                XCTAssertLessThanOrEqual(
+                    abs(calculateButton.frame.minY - baselineCalculateButtonY),
+                    1,
+                    "Mismatch state should not add vertical growth"
+                )
+            } else {
+                baselineCalculateButtonY = calculateButton.frame.minY
+            }
+
+            XCTAssertFalse(app.staticTexts["your-stitches-mismatch"].exists)
+            XCTAssertFalse(app.staticTexts["your-rows-mismatch"].exists)
+            XCTAssertEqual((yourStitches.value as? String)?.contains("stitch gauge mismatch detected"), scenario.stitchMismatch)
+            XCTAssertEqual((yourRows.value as? String)?.contains("row gauge mismatch detected"), scenario.rowMismatch)
+            XCTAssertEqual(app.buttons["your-stitches-chevron"].value as? String, scenario.stitchMismatch ? "Warning" : "")
+            XCTAssertEqual(app.buttons["your-rows-chevron"].value as? String, scenario.rowMismatch ? "Warning" : "")
+            app.terminate()
+        }
+    }
+
+    func testMismatchWarningSummaryAppearsInWheelSheet() {
+        let app = launchApp(yourStitches: "32", yourRows: "32")
+        let warningButton = app.buttons["your-rows-chevron"]
+        XCTAssertTrue(warningButton.waitForExistence(timeout: 2))
+
+        tapElement(warningButton)
+        let warningSummary = app.staticTexts["your-rows-warning-summary"]
+        XCTAssertTrue(warningSummary.waitForExistence(timeout: 2))
+        XCTAssertEqual(warningSummary.label, "Row gauge mismatch detected")
+        XCTAssertEqual(app.textFields["your-rows-field"].value as? String, "32 rows, row gauge mismatch detected")
+
+        tapElement(app.buttons["your-rows-wheel-done"])
+        app.terminate()
+    }
+
     /// Adjust a GaugeStepperField to a target integer value by tapping + or − repeatedly.
     /// Reads the current value from the bound text field to compute the required delta.
     private func setStepperValue(
@@ -313,7 +365,7 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             return
         }
         scrollToElement(field, in: app)
-        let current = Int(field.value as? String ?? "") ?? 0
+        let current = numericFieldValue(field) ?? 0
         let delta = target - current
         guard delta != 0 else { return }
 
@@ -377,6 +429,32 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         XCTAssertGreaterThan(lower.frame.minY, upper.frame.maxY, file: file, line: line)
     }
 
+    private func assertApproximatelyEqualWidth(
+        _ lhs: XCUIElement,
+        _ rhs: XCUIElement,
+        tolerance: CGFloat = 1,
+        timeout: TimeInterval = 3,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        waitUntil(timeout: timeout) {
+            abs(lhs.frame.width - rhs.frame.width) <= tolerance
+        }
+        XCTAssertLessThanOrEqual(
+            abs(lhs.frame.width - rhs.frame.width),
+            tolerance,
+            "Expected equal widths, got \(lhs.frame.width) and \(rhs.frame.width)",
+            file: file,
+            line: line
+        )
+    }
+
+    private func numericFieldValue(_ element: XCUIElement) -> Int? {
+        guard let value = element.value as? String else { return nil }
+        let digits = value.split(whereSeparator: { !$0.isNumber }).first
+        return digits.flatMap { Int(String($0)) }
+    }
+
     @discardableResult
     private func waitUntil(
         timeout: TimeInterval = 3,
@@ -430,6 +508,17 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             "-UIPreferredContentSizeCategoryName",
             UIContentSizeCategory.large.rawValue
         ]
+    }
+
+    private func launchApp(yourStitches: String, yourRows: String) -> XCUIApplication {
+        let app = XCUIApplication()
+        useDefaultDynamicType(app)
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
+            "KGR_YS": yourStitches,
+            "KGR_YR": yourRows,
+        ]) { _, new in new }
+        app.launch()
+        return app
     }
 
     private func tapElement(_ element: XCUIElement) {

@@ -197,7 +197,7 @@ private struct ResultsExportRowsModel {
 }
 
 
-private func plain(_ value: Double) -> String {
+func plain(_ value: Double) -> String {
     value.rounded() == value ? String(Int(value)) : fixed(value, places: 2).trimmingTrailingZeroes()
 }
 
@@ -205,14 +205,14 @@ private func fixed(_ value: Double, places: Int) -> String {
     String(format: "%.\(places)f", value)
 }
 
-private func gaugeStatus(scale: Double) -> String {
+func gaugeStatus(scale: Double) -> String {
     let drift = abs(scale - 1)
     if drift < 0.03 { return "Match" }
     if drift < 0.10 { return scale > 1 ? "Looser than pattern" : "Tighter than pattern" }
     return scale > 1 ? "Much looser" : "Much tighter"
 }
 
-private func rowStatus(scale: Double) -> String {
+func rowStatus(scale: Double) -> String {
     let drift = abs(scale - 1)
     if drift < 0.03 { return "Match" }
     if drift < 0.10 { return scale > 1 ? "Denser than pattern" : "Looser than pattern" }

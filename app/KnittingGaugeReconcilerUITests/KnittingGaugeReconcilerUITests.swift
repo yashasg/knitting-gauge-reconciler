@@ -15,6 +15,16 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         var increases: String
     }
 
+    private static let defaultLaunchEnvironment: [String: String] = [
+        "KGR_PS": "32",
+        "KGR_PR": "24",
+        "KGR_CAST_ON": "128",
+        "KGR_YOKE": "20",
+        "KGR_BODY": "50",
+        "KGR_SLEEVE": "45",
+        "KGR_INCREASES": "6",
+    ]
+
     private let scenarios = [
         Scenario(name: "Perfect Match", yourStitches: "32", yourRows: "24", stitchHero: "100%", rowHero: "100%", castOn: "128 stitches", body: "Knit to 50.0 cm · about 120 rows/rounds", yoke: "Knit to 20.0 cm · about 48 rows/rounds", increases: "Space every 6 rows/rounds"),
         Scenario(name: "Denser Row Only", yourStitches: "32", yourRows: "32", stitchHero: "100%", rowHero: "133%", castOn: "128 stitches", body: "Knit to 37.5 cm · about 120 rows/rounds", yoke: "Knit to 15.0 cm · about 48 rows/rounds", increases: "Space every 8 rows/rounds"),
@@ -32,17 +42,10 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         // the live-recalc path (goal #1) end-to-end.
         let app = XCUIApplication()
         useDefaultDynamicType(app)
-        app.launchEnvironment = [
-            "KGR_PS": "32",
-            "KGR_PR": "24",
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
             "KGR_YS": scenarios[0].yourStitches,
             "KGR_YR": scenarios[0].yourRows,
-            "KGR_CAST_ON": "128",
-            "KGR_YOKE": "20",
-            "KGR_BODY": "50",
-            "KGR_SLEEVE": "45",
-            "KGR_INCREASES": "6"
-        ]
+        ]) { _, new in new }
         app.launch()
 
         let yourStitchesField = app.textFields["your-stitches"]
@@ -116,18 +119,11 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     func testPrototypeParityControlsAreAvailable() {
         let app = XCUIApplication()
         useDefaultDynamicType(app)
-        app.launchEnvironment = [
-            "KGR_PS": "32",
-            "KGR_PR": "24",
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
             "KGR_YS": "32",
             "KGR_YR": "24",
-            "KGR_CAST_ON": "128",
-            "KGR_YOKE": "20",
-            "KGR_BODY": "50",
-            "KGR_SLEEVE": "45",
-            "KGR_INCREASES": "6",
-            "KGR_SHOW_FULL_MATH": "1"
-        ]
+            "KGR_SHOW_FULL_MATH": "1",
+        ]) { _, new in new }
         app.launch()
 
         let showFullMath = app.buttons["disclosure-full-math"].firstMatch
@@ -155,18 +151,11 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     func testAboutHelpButtonOpensPullUpSheet() {
         let app = XCUIApplication()
         useDefaultDynamicType(app)
-        app.launchEnvironment = [
-            "KGR_PS": "32",
-            "KGR_PR": "24",
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
             "KGR_YS": "32",
             "KGR_YR": "24",
-            "KGR_CAST_ON": "128",
-            "KGR_YOKE": "20",
-            "KGR_BODY": "50",
-            "KGR_SLEEVE": "45",
-            "KGR_INCREASES": "6",
-            "KGR_SHOW_ABOUT_HELP": "1"
-        ]
+            "KGR_SHOW_ABOUT_HELP": "1",
+        ]) { _, new in new }
         app.launch()
 
         // Privacy card must not be present (privacy/non-tracking copy was removed)
@@ -181,18 +170,11 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     func testVerdictHelpButtonOpensPullUpSheet() {
         let app = XCUIApplication()
         useDefaultDynamicType(app)
-        app.launchEnvironment = [
-            "KGR_PS": "32",
-            "KGR_PR": "24",
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
             "KGR_YS": "36",
             "KGR_YR": "32",
-            "KGR_CAST_ON": "128",
-            "KGR_YOKE": "20",
-            "KGR_BODY": "50",
-            "KGR_SLEEVE": "45",
-            "KGR_INCREASES": "6",
-            "KGR_SHOW_VERDICT_HELP": "1"
-        ]
+            "KGR_SHOW_VERDICT_HELP": "1",
+        ]) { _, new in new }
         app.launch()
 
         // The ? button opens a pull-up sheet with the full explanation
@@ -204,17 +186,10 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     func testShareResultsIsSingleAccessibleAffordance() {
         let app = XCUIApplication()
         useDefaultDynamicType(app)
-        app.launchEnvironment = [
-            "KGR_PS": "32",
-            "KGR_PR": "24",
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
             "KGR_YS": "32",
             "KGR_YR": "32",
-            "KGR_CAST_ON": "128",
-            "KGR_YOKE": "20",
-            "KGR_BODY": "50",
-            "KGR_SLEEVE": "45",
-            "KGR_INCREASES": "6"
-        ]
+        ]) { _, new in new }
         app.launch()
 
         let shareButton = app.buttons["share-results"].firstMatch
@@ -235,17 +210,10 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     func testCompactWidthKeepsNumericFieldsSideBySideWhenTheyFit() {
         let app = XCUIApplication()
         useDefaultDynamicType(app)
-        app.launchEnvironment = [
-            "KGR_PS": "32",
-            "KGR_PR": "24",
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
             "KGR_YS": "32",
             "KGR_YR": "32",
-            "KGR_CAST_ON": "128",
-            "KGR_YOKE": "20",
-            "KGR_BODY": "50",
-            "KGR_SLEEVE": "45",
-            "KGR_INCREASES": "6"
-        ]
+        ]) { _, new in new }
         app.launch()
 
         let patternStitches = app.textFields["pattern-stitches"]
@@ -281,17 +249,10 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             "-UIPreferredContentSizeCategoryName",
             UIContentSizeCategory.accessibilityExtraExtraExtraLarge.rawValue
         ]
-        app.launchEnvironment = [
-            "KGR_PS": "32",
-            "KGR_PR": "24",
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
             "KGR_YS": "32",
             "KGR_YR": "32",
-            "KGR_CAST_ON": "128",
-            "KGR_YOKE": "20",
-            "KGR_BODY": "50",
-            "KGR_SLEEVE": "45",
-            "KGR_INCREASES": "6"
-        ]
+        ]) { _, new in new }
         app.launch()
 
         let patternStitches = app.textFields["pattern-stitches"]
@@ -398,16 +359,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             element.tap()
         } else {
             element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        }
-    }
-
-    private func scrollToTop(in app: XCUIApplication) {
-        let surface = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app
-        let upper = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.28))
-        let lower = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.74))
-        for _ in 0..<4 {
-            upper.press(forDuration: 0.01, thenDragTo: lower)
-            waitForScrollingToSettle()
         }
     }
 }

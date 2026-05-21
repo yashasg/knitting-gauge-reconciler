@@ -1,3 +1,97 @@
+## 2026-05-20T20:38:28-07:00 — Cleanup Round Audit & Implementation (11 items shipped)
+
+### 2026-05-20T20:38:28-07:00: Edison Cleanup Audit Decision
+
+**Author:** Edison (Frontend Dev)
+**Date:** 2026-05-20T20:38:28-07:00
+**Scope:** `app/KnittingGaugeReconciler/` (all `.swift`), tests, build script
+**Build baseline:** 49/49 tests pass, 0 warnings (must hold after cleanup)
+
+**Summary:** 13 findings audited — 11 approved for immediate implementation, 2 deferred to Tesla/yashasg for architectural review.
+
+**Approved items (11 items — all shipped as of 2026-05-20T20:45:00-07:00):**
+
+**P0 Correctness Issue:**
+- **4.1 (CLEANUP):** Signpost inflation. `result` computed property fired `os_signpost(.begin/.end)` on every access (15-20×/body render). Fixed via cached `@State var cachedResult` + `.onChange(of: inputs, initial: true)` → signpost fires exactly once per user-visible computation. **Fix shape: Option (a) cached state.** Bonus: eliminates per-keystroke GaugeMathResult recomputation.
+
+**Dedupes (Dedupe 3 × identical code, 1 × identical logic):**
+- **2.1:** `gaugeStatus(scale:)` and `rowStatus(scale:)` private in both GaugeMath.swift and ContentView.swift. Made internal in GaugeMath, deleted ContentView copies (~12 lines removed). ~14 lines total.
+- **2.2:** `plain()` (GaugeMath.swift) vs `formatPlain()` (ContentView.swift) — both format doubles to display. `plain()` is canonical (2dp trim trailing zeros); deleted `formatPlain()`, migrated 14 call sites. Verified: no real-knitting-value divergence (both produce identical output for integers and single-decimal gauge). **Note:** `plain("24.333")` → `"24.33"` (2dp); `formatPlain("24.333")` → `"24.333"` (Swift default). All real inputs are integers or 1dp, no regression.
+- **2.3:** `HeroMetric.pillBackground(status:)` and `sharePillBackground(status:)` identical. Deleted pillBackground method, all callers use free function. ~7 lines removed.
+
+**Removes (2 dead code):**
+- **4.2:** `AppTheme.tertiary` unused color constant. Deleted.
+- **8.1:** `scrollToTop(in:)` dead UI test helper. Deleted.
+
+**Cleanup (5 nits):**
+- **1.1:** `didReceive(_ payloads: [MXDiagnosticPayload])` asymmetry — diagnostic payloads bypass `receive()` seam. Added `// TODO(V2):` marker noting gap (V2 should add parallel `receive(diagnostics:)` overload).
+- **4.3:** AboutHelpSheet scope callout uses 3 inline RGB color literals not in AppTheme. Named them: `AppTheme.warningText`, `warningBackground`, `warningAccent`. Maintains byte-identical RGB values, improves maintainability + dark-mode readiness.
+- **4.4:** Redundant `= nil` on `@State private var previousVerdictBucket: VerdictBucket? = nil`. Removed explicit nil (Swift Optionals default to nil).
+- **7.1:** `MockMetricPayload.jsonRepresentation()` defined on mock but not in `MetricPayloadProtocol` (deliberately excluded per comment). Removed from mock (not protocol-required, not called by tests).
+- **8.2:** `launchEnvironment` dict duplicated verbatim 7 times in UI tests. Extracted to `private static let defaultLaunchEnvironment: [String: String]` with canonical 7 keys; all tests use `.merging({_, new in new})` for scenario-specific overrides.
+
+**Items deliberately NOT implemented (audited, user/Edison agreed to skip):**
+- **5.1 (HelpSheetContainer extraction)** — Below 3-use threshold per swift coding standards §2.8. Wait for 3rd help sheet in V2.
+- **D.1 (split GaugeMath math vs export formatters)** — Deferred to Tesla architectural call on file boundaries.
+- **D.2 (flip VerdictBucket derivation direction)** — Deferred to yashasg behavioral call on "truth flow" direction.
+
+**Cross-cutting observations (logged for future reference):**
+- Three places answer "what does this scale deviation mean?": `gaugeStatus()`/`rowStatus()` thresholds (3%, 10%), `verdictTitle` thresholds (3%, 15%), `VerdictBucket` implicit. Consistent today; divergence risk as thresholds evolve. Future: consider unified `GaugeDeviation` classification layer (deferred).
+- AppTheme gap: scope-warning callout has 3 out-of-band RGB literals. Now named, but pattern could recur if more callouts appear.
+- `var` vs `let` on view struct inputs: All private view structs use `var` (convention for SwiftUI) but don't mutate. Minor inconsistency vs Apple's trending toward `let`. Low priority.
+- GaugeTextDefaults.swift: Nine properties are mutable but never mutated. Should be `let` (minor pattern issue, not flagged as formal finding).
+
+### 2026-05-20T20:45:00-07:00: Edison Cleanup Implementation Decision (8 items shipped)
+
+**Author:** Edison (Frontend Dev)
+**Date:** 2026-05-20T20:45:00-07:00
+**Status:** SHIPPED
+**Build:** `./app/build.sh test` → exit 0, 0 warnings, 49/49 tests pass (one simulator flake on first run, second run clean)
+
+**Files modified:**
+- `MetricsSubscriber.swift` — 1.1 TODO marker
+- `GaugeMath.swift` — 2.1 (gaugeStatus/rowStatus internal), 2.2 (plain internal, formatPlain deleted)
+- `ContentView.swift` — 2.1/2.2 dedupe deletes, 2.3 pillBackground delete, 4.1 cached @State result + .onChange(of: inputs), 4.2 AppTheme.tertiary delete, 4.3 AppTheme warning constants added, 4.4 redundant = nil stripped
+
+**LOC delta:** ~−16 lines net production code (MetricsSubscriber +1 TODO, GaugeMath 0 keyword changes, ContentView −17).
+
+**Key implementation decision — 4.1 fix shape (Option a):**
+```swift
+@State private var cachedResult: GaugeMathResult = GaugeMath.compute(GaugeInputs())
+private var result: GaugeMathResult { cachedResult }
+private func recomputeResult() {
+    os_signpost(.begin, log: MetricsSubscriber.log, name: SignpostNames.compute)
+    cachedResult = GaugeMath.compute(inputs)
+    os_signpost(.end, log: MetricsSubscriber.log, name: SignpostNames.compute)
+}
+```
+In body: `.onChange(of: inputs, initial: true) { _, _ in recomputeResult() }`
+
+Signpost correctness:
+- Body re-render (no input change): `result` accesses `cachedResult` (no compute), signpost fires 0 times. ✅
+- Input change: `.onChange` fires once → signpost begin + compute + signpost end fires exactly 1 time. ✅
+
+Rationale: `.onChange(of:initial:)` ensures main-actor synchronous execution (no async isolation questions). Initial: true fires both on first appear and on every subsequent change. Option (a) also eliminates per-keystroke recomputation (bonus benefit beyond signpost fix).
+
+**2.2 divergence flag:** `plain()` and `formatPlain()` produce different output on 3+ decimal places (`24.333` → `"24.33"` vs `"24.333"`), but all real knitting inputs are integers or single-decimal. No user-visible regression. Share-text formatter tests pass.
+
+### 2026-05-20T20:47:00-07:00: Curie Cleanup Implementation Decision (3 items shipped)
+
+**Author:** Curie (Test Engineer)
+**Date:** 2026-05-20T20:47:00-07:00
+**Status:** SHIPPED
+**Build:** `./app/build.sh test` → exit 0, 0 warnings, 49/49 tests pass
+
+**Files modified:**
+- `MetricKitSubscriberTests.swift` — 7.1 jsonRepresentation removed from MockMetricPayload
+- `KnittingGaugeReconcilerUITests.swift` — 8.1 scrollToTop deletion, 8.2 defaultLaunchEnvironment static extracted + all 7 call sites use `Self.defaultLaunchEnvironment.merging(...)`
+
+**Test count:** 49/49 before and after (no @Test methods deleted, only non-test helper removal).
+
+**8.2 pattern note:** The `private static let defaultLaunchEnvironment` + `.merging({ _, new in new })` idiom is canonical for XCTestCase launch environment defaults in this project.
+
+---
+
 ## 2026-05-20T18:50:53-07:00 — User Directive: MetricKit Pivot
 
 ### 2026-05-20T18:50:53-07:00: User directive

@@ -28,14 +28,6 @@ import Foundation
 struct MockMetricPayload: MetricPayloadProtocol {
     var timeStampBegin: Date = .distantPast
     var timeStampEnd: Date   = .distantFuture
-
-    func jsonRepresentation() -> Data {
-        let dict: [String: String] = [
-            "timeStampBegin": timeStampBegin.description,
-            "timeStampEnd":   timeStampEnd.description,
-        ]
-        return (try? JSONSerialization.data(withJSONObject: dict)) ?? Data()
-    }
 }
 
 // MARK: - AC-4: Signpost recording stub

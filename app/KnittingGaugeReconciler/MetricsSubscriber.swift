@@ -55,6 +55,8 @@ final class MetricsSubscriber: NSObject, MXMetricManagerSubscriber {
         // V2 (deferred): POST jsonRepresentation() to developer endpoint via receive().
     }
 
+    // TODO(V2): diagnostic payloads bypass the receive() seam — V2 should route them through a
+    // parallel receive(diagnostics:) overload so the developer-endpoint path covers both payload types.
     func didReceive(_ payloads: [MXDiagnosticPayload]) {
         #if DEBUG
         for payload in payloads {

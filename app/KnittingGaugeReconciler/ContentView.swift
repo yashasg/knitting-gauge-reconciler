@@ -19,7 +19,7 @@ struct ContentView: View {
     @State private var showVerdictHelp = initialBool("KGR_SHOW_VERDICT_HELP")
     @State private var showAboutHelp = initialBool("KGR_SHOW_ABOUT_HELP")
     @State private var sharePayload: SharePayload?
-    @State private var previousVerdictBucket: VerdictBucket? = nil
+    @State private var previousVerdictBucket: VerdictBucket?
     @State private var driftBandSignpostFired = false
 
     private var inputs: GaugeInputs {
@@ -36,11 +36,14 @@ struct ContentView: View {
         )
     }
 
-    private var result: GaugeMathResult {
+    @State private var cachedResult: GaugeMathResult = GaugeMath.compute(GaugeInputs())
+
+    private var result: GaugeMathResult { cachedResult }
+
+    private func recomputeResult() {
         os_signpost(.begin, log: MetricsSubscriber.log, name: SignpostNames.compute)
-        let r = GaugeMath.compute(inputs)
+        cachedResult = GaugeMath.compute(inputs)
         os_signpost(.end, log: MetricsSubscriber.log, name: SignpostNames.compute)
-        return r
     }
 
     var body: some View {
@@ -117,6 +120,9 @@ struct ContentView: View {
                 } else if !isVisible {
                     driftBandSignpostFired = false
                 }
+            }
+            .onChange(of: inputs, initial: true) { _, _ in
+                recomputeResult()
             }
         }
     }
@@ -210,7 +216,7 @@ struct ContentView: View {
                     title: "Stitch-wise (horizontal)",
                     value: "\(GaugeMath.fmtPct(result.stitchWidthScale))%",
                     status: gaugeStatus(scale: result.stitchWidthScale),
-                    detail: "Pattern asks \(formatPlain(inputs.patternStitches)) st/10cm · You hit \(formatPlain(inputs.yourStitches)) st/10cm",
+                    detail: "Pattern asks \(plain(inputs.patternStitches)) st/10cm · You hit \(plain(inputs.yourStitches)) st/10cm",
                     identifier: "stitch-hero"
                 )
             } trailing: {
@@ -218,7 +224,7 @@ struct ContentView: View {
                     title: "Row-wise (vertical)",
                     value: "\(GaugeMath.fmtPct(result.rowCountScale))%",
                     status: rowStatus(scale: result.rowCountScale),
-                    detail: "Pattern asks \(formatPlain(inputs.patternRows)) rows/10cm · You hit \(formatPlain(inputs.yourRows)) rows/10cm",
+                    detail: "Pattern asks \(plain(inputs.patternRows)) rows/10cm · You hit \(plain(inputs.yourRows)) rows/10cm",
                     identifier: "row-hero"
                 )
             }
@@ -275,10 +281,10 @@ struct ContentView: View {
                 pattern: sectionPatternDescription(cm: inputs.patternSleeveLength, rows: result.patternSleeveRows),
                 adjusted: sectionGuidance(cm: result.adjustedSleeveLength, rows: result.adjustedSleeveRows)
             )
-            AdjustmentRow(name: "Increase-row spacing", pattern: "Every \(formatPlain(inputs.patternIncreaseSpacing)) rows", adjusted: "Space every \(GaugeMath.fmtRows(result.adjustedIncreaseSpacing)) rows/rounds")
+            AdjustmentRow(name: "Increase-row spacing", pattern: "Every \(plain(inputs.patternIncreaseSpacing)) rows", adjusted: "Space every \(GaugeMath.fmtRows(result.adjustedIncreaseSpacing)) rows/rounds")
             AdjustmentRow(
                 name: "Cast-on stitches",
-                pattern: "\(formatPlain(inputs.patternCastOn)) stitches",
+                pattern: "\(plain(inputs.patternCastOn)) stitches",
                 adjusted: "Cast on \(result.adjustedCastOn) stitches",
                 adjustedIdentifier: "cast-on-result",
                 driftPill: abs(result.castOnRoundingDriftPercent) >= 3
@@ -401,15 +407,15 @@ struct ContentView: View {
 
     private var fullMathBreakdown: String {
         """
-        pattern: \(formatPlain(inputs.patternStitches)) st x \(formatPlain(inputs.patternRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.patternStitches / inputs.patternRows)))
-        you:     \(formatPlain(inputs.yourStitches)) st x \(formatPlain(inputs.yourRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.yourStitches / inputs.yourRows)))
-        stitch width scale = pattern_st / your_st = \(formatPlain(inputs.patternStitches)) / \(formatPlain(inputs.yourStitches)) = \(String(format: "%.3f", result.stitchWidthScale))
-        row density ratio  = your_row / pattern_row = \(formatPlain(inputs.yourRows)) / \(formatPlain(inputs.patternRows)) = \(String(format: "%.3f", result.rowCountScale))
-        dim correction     = pattern_row / your_row = \(formatPlain(inputs.patternRows)) / \(formatPlain(inputs.yourRows)) = \(String(format: "%.3f", result.dimensionScale))
+        pattern: \(plain(inputs.patternStitches)) st x \(plain(inputs.patternRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.patternStitches / inputs.patternRows)))
+        you:     \(plain(inputs.yourStitches)) st x \(plain(inputs.yourRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.yourStitches / inputs.yourRows)))
+        stitch width scale = pattern_st / your_st = \(plain(inputs.patternStitches)) / \(plain(inputs.yourStitches)) = \(String(format: "%.3f", result.stitchWidthScale))
+        row density ratio  = your_row / pattern_row = \(plain(inputs.yourRows)) / \(plain(inputs.patternRows)) = \(String(format: "%.3f", result.rowCountScale))
+        dim correction     = pattern_row / your_row = \(plain(inputs.patternRows)) / \(plain(inputs.yourRows)) = \(String(format: "%.3f", result.dimensionScale))
         -> vertical dim D becomes D x \(String(format: "%.3f", result.dimensionScale)) cm
-        -> yoke: \(formatPlain(inputs.patternYokeDepth)) cm -> \(GaugeMath.fmtCm(result.adjustedYokeDepth)) cm, about \(GaugeMath.fmtRows(result.adjustedYokeRows)) rows/rounds
+        -> yoke: \(plain(inputs.patternYokeDepth)) cm -> \(GaugeMath.fmtCm(result.adjustedYokeDepth)) cm, about \(GaugeMath.fmtRows(result.adjustedYokeRows)) rows/rounds
         -> for any horizontal dim, your stitch count produces \(String(format: "%.1f", result.stitchWidthScale * 100))% of the pattern's intended width
-        cast-on adjust = your_st / pattern_st x patCastOn = \(formatPlain(inputs.yourStitches))/\(formatPlain(inputs.patternStitches)) x \(formatPlain(inputs.patternCastOn)) = \(result.adjustedCastOn) stitches
+        cast-on adjust = your_st / pattern_st x patCastOn = \(plain(inputs.yourStitches))/\(plain(inputs.patternStitches)) x \(plain(inputs.patternCastOn)) = \(result.adjustedCastOn) stitches
         """
     }
 
@@ -473,7 +479,7 @@ struct ContentView: View {
     }
 
     private func sectionPatternDescription(cm: Double, rows: Double) -> String {
-        "\(formatPlain(cm)) cm · about \(GaugeMath.fmtRows(rows)) pattern rows"
+        "\(plain(cm)) cm · about \(GaugeMath.fmtRows(rows)) pattern rows"
     }
 
     private func sectionGuidance(cm: Double, rows: Double) -> String {
@@ -529,14 +535,14 @@ private struct AboutHelpSheet: View {
                 Text("Scope: This tool provides estimates based on your swatch measurements. Always test a full-size gauge swatch (washed and blocked the way you'll wash and block the finished garment) before starting your project. Numbers here are a starting point — your finished piece is the final word.")
                     .font(.body.weight(.semibold))
                     .lineSpacing(4)
-                    .foregroundStyle(Color(red: 0.35, green: 0.26, blue: 0.09))
+                    .foregroundStyle(AppTheme.warningText)
                     .padding(14)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(red: 0.96, green: 0.94, blue: 0.87))
+                    .background(AppTheme.warningBackground)
                     .overlay(alignment: .leading) {
                         Rectangle()
                             .frame(width: 3)
-                            .foregroundStyle(Color(red: 0.78, green: 0.55, blue: 0.17))
+                            .foregroundStyle(AppTheme.warningAccent)
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     .accessibilityIdentifier("about-scope")
@@ -887,7 +893,7 @@ private struct HeroMetric: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
-                .background(pillBackground(status: status))
+                .background(sharePillBackground(status))
                 .clipShape(Capsule())
             Text(detail)
                 .font(.caption)
@@ -903,14 +909,6 @@ private struct HeroMetric: View {
         .accessibilityHint(detail)
     }
     
-    private func pillBackground(status: String) -> Color {
-        if status == "Match" {
-            return AppTheme.sage
-        } else if status.hasPrefix("Much") {
-            return AppTheme.terracotta
-        }
-        return AppTheme.secondary
-    }
 }
 
 private struct AdjustmentRow: View {
@@ -1011,7 +1009,9 @@ private enum AppTheme {
     static let sage = Color(red: 0.27, green: 0.33, blue: 0.26)
     static let secondary = Color(red: 0.57, green: 0.29, blue: 0.18)
     static let terracotta = Color(red: 0.73, green: 0.10, blue: 0.10)
-    static let tertiary = Color(red: 0.39, green: 0.29, blue: 0.32)
+    static let warningText = Color(red: 0.35, green: 0.26, blue: 0.09)
+    static let warningBackground = Color(red: 0.96, green: 0.94, blue: 0.87)
+    static let warningAccent = Color(red: 0.78, green: 0.55, blue: 0.17)
 }
 
 private func initialText(_ environmentKey: String, defaultValue: String) -> String {
@@ -1026,9 +1026,6 @@ private func read(_ text: String, defaultValue: Double) -> Double {
     GaugeMath.sanitized(Double(text), default: defaultValue)
 }
 
-private func formatPlain(_ value: Double) -> String {
-    value.rounded() == value ? String(Int(value)) : String(value)
-}
 
 private func sharePillBackground(_ status: String) -> Color {
     if status == "Match" {
@@ -1039,16 +1036,4 @@ private func sharePillBackground(_ status: String) -> Color {
     return AppTheme.secondary
 }
 
-private func gaugeStatus(scale: Double) -> String {
-    let drift = abs(scale - 1)
-    if drift < 0.03 { return "Match" }
-    if drift < 0.10 { return scale > 1 ? "Looser than pattern" : "Tighter than pattern" }
-    return scale > 1 ? "Much looser" : "Much tighter"
-}
 
-private func rowStatus(scale: Double) -> String {
-    let drift = abs(scale - 1)
-    if drift < 0.03 { return "Match" }
-    if drift < 0.10 { return scale > 1 ? "Denser than pattern" : "Looser than pattern" }
-    return scale > 1 ? "Much denser" : "Much looser"
-}

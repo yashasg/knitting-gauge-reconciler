@@ -8,6 +8,24 @@
 
 ## Learnings
 
+### 2026-05-21T12:33:05-07:00 — Equal-Width Inline Mismatch Fields
+
+**Session:** edison-gauge-field-equal-widths
+
+- **Root cause:** `GaugeMeasurementPair` used a plain `HStack` and relied on `.frame(maxWidth: .infinity)` for both children. Once one `GaugeStepperField` gained a mismatch label, that side reported a larger ideal width and SwiftUI distributed the row unevenly, so the opposite field looked narrower.
+- **Fix shape:** Swapped the non-accessibility row layout to a two-column `LazyVGrid` with `.flexible(minimum: 0)` columns. That gives the pair explicit equal-width columns in all four mismatch states (`none`, `stitches`, `rows`, `both`) while keeping the mismatch label conditionally rendered below only the offending field.
+- **Regression test:** Added `testMismatchStatesKeepYourGaugeFieldsEqualWidth`, which launches the app in all four mismatch combinations and asserts equal field widths plus the correct mismatch-label visibility.
+- **SwiftUI pitfall:** `.frame(maxWidth: .infinity)` inside an `HStack` is not an equal-width contract when child ideal widths differ. If one side can grow extra validation copy, use an explicit equal-column container instead of trusting intrinsic sizing.
+- **Test result:** 57/57 tests pass, 0 warnings.
+
+**Ive-1 Revised Spec (2026-05-21T12:41:13-07:00):** User directive rejected vertical growth. Ive-1 produced Option D spec (no vertical growth, inline warning glyph in picker affordance, full message in accessibility + picker sheet). This implementation retained below-field label (was acceptable per prior Ive Option B). Follow-up pass will implement Option D:
+- Remove below-field mismatch `Text` from `GaugeStepperField` for paired gauge usage.
+- Add warning semantics to field/button accessibility payloads.
+- Overlay `exclamationmark.triangle.fill` on existing picker button in mismatch state.
+- Surface full sentence in wheel-picker sheet/popover.
+
+---
+
 ### 2026-05-20T22:32:00-07:00 — Stepper → Wheel Swap (Edison-8)
 
 **Session:** edison-wheel-swap

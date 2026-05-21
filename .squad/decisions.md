@@ -1,3 +1,130 @@
+## 2026-05-21T12:41:13-07:00 — Gauge Mismatch State Fix (User Directive + Revised UX Spec + Equal-Width Implementation)
+
+### 2026-05-21T12:41:13-07:00: User directive — Paired gauge fields must not grow vertically for mismatch state
+
+**By:** Tesla (Squad) — the user (via Copilot)
+**What:** Paired gauge input fields (e.g., Stitches + Rows in `GaugeMeasurementPair`) must NOT grow vertically to accommodate mismatch labels or any other error-state affordance. The mismatch state must render within the existing field-row footprint without consuming additional vertical real estate. Vertical space in the `YourGaugeCard` and related card surfaces is constrained.
+
+**Why:** User explicitly rejected vertical-growth approaches (both Ive's just-proposed Option B "pair grows vertically together" and the coordinator's earlier hint at Option A "reserved-space VStack"). Quote: *"i dont think the text fields should grow at all, that takes away vertical real estate, and we are already low on that"*
+
+**Implications:**
+- Equal-width invariant (per `ive-gauge-mismatch-state-spec.md`) still applies — paired fields must stay equal width.
+- BUT the mismatch label cannot live in a reserved-or-conditional slot beneath the field, because either pattern adds vertical pixels.
+- Acceptable replacement patterns to explore: inline icon affordance (e.g., `exclamationmark.triangle.fill` inside the field's existing chrome) with the message exposed via accessibility/tap/popover; replacement of the field's existing title or unit chrome with the error message when mismatched; or a single card-level mismatch summary that re-uses already-rendered surface area.
+- Color + icon + a11y label must still carry the error meaning (WCAG 1.4.1).
+- This directive supersedes Ive's `ive-gauge-mismatch-state-spec.md` Option B selection. Ive is being respawned to produce a revised spec within this constraint.
+
+### 2026-05-21T12:41:13-07:00: REVISED — GaugeStepperField mismatch state spec (no vertical growth) — Option D
+
+**Author:** Ive (UI/UX Designer)
+**Date:** 2026-05-21T12:41:13-07:00
+**Requested by:** Tesla (Squad)
+**Directive:** Copilot directive 2026-05-21T12:41:13-07:00 (no vertical growth)
+**Supersedes:** `ive-gauge-mismatch-state-spec.md` (2026-05-21T12:33:05-07:00) Option B selection — this revision adopts Option D per user constraint
+
+My prior Option B kept the pair visually equal, but it spent vertical budget this product does not have. For `YourGaugeCard`, that was the wrong trade. The revised pattern keeps the paired field row footprint fixed and moves the long message out of the row.
+
+#### Decision: Choose **Option D — refined**
+Use the existing trailing picker affordance as the mismatch carrier instead of adding text below the field.
+
+- Keep the field titles (`Stitches`, `Rows`) visible.
+- Keep the paired fields at **equal widths** in side-by-side layout.
+- Keep the field row at **zero additional vertical pixels** when mismatch fires.
+- Remove the below-field mismatch label from the paired row.
+- Keep the error border.
+- Add an **SF Symbols warning glyph** (`exclamationmark.triangle.fill`) inside the field's existing trailing accessory / picker area when that field is mismatched.
+- Put the full sentence — `Row gauge mismatch detected` / `Stitch gauge mismatch detected` — in:
+  1. the field's accessibility payload, and
+  2. the existing wheel-picker presentation surface when the user opens that field.
+
+This is the best fit for a vertically constrained calculator: the row stays compact, the control remains understandable, and the full message still exists for assistive tech and for users who open the picker.
+
+#### Why this option wins
+1. **No vertical growth.** The field row does not get taller in mismatch state.
+2. **No width drift.** The pair still reads as one comparison unit.
+3. **The label survives.** `Rows` / `Stitches` remain on-screen; we do not replace the field title with warning copy.
+4. **Not color-only.** Border + warning glyph + spoken warning satisfy WCAG 1.4.1 / 3.3.1 better than red alone.
+5. **AX5-safe.** The long sentence lives in a sheet/popover surface where it can wrap, instead of trying to fit inside a dense row.
+
+#### Layout rules
+- **Pair invariants:** In non-accessibility sizes, `GaugeMeasurementPair` stays side-by-side with equal-width columns. Preserve the prior compact-field floor: 140 pt minimum per column. At accessibility sizes, keep the existing vertical stack behavior.
+- **Field chrome:** Keep the title line unchanged. Keep the field border in mismatch tint. Do NOT depend on red text alone. The warning symbol lives inside the existing trailing accessory area. No new horizontal slot is added, no button width increases, no second tiny tap target created.
+- **Touch target:** The trailing accessory remains >= 44 × 44 pt. If the warning affordance is tappable, it must be the same 44 × 44 pt picker button. The main text field hit area must remain >= 44 pt tall.
+
+#### Interaction behavior
+- **Main field:** Tapping the numeric field still opens direct text entry. Mismatch does not change the field's primary edit behavior.
+- **Trailing accessory:** In normal state: standard picker affordance. In mismatch state: the same picker button visually carries warning status (reuse affordance, overlay warning glyph).
+- **Full mismatch copy:** The full sentence should appear in the existing wheel-picker presentation for that field. On iPhone / compact width / AX sizes, prefer a sheet over a popover.
+
+#### Accessibility specification
+- **VoiceOver — mismatch Rows field:**
+  - Numeric field Label: `Rows` | Value: `28 rows, row gauge mismatch detected` | Hint: `Double-tap to edit. Use the picker button for wheel selection and warning details.` | Trait: `Text field`
+  - Trailing picker/warning button Label: `Open picker for Rows` | Value: `Warning` | Hint: `Row gauge mismatch detected. Opens the wheel picker and warning details.` | Trait: `Button`
+- Do not create a separate hidden mismatch text node as its own focus stop in the field row.
+- Keep natural-language units (`rows`, `stitches`) in spoken values.
+
+#### Focus order
+1. Numeric field
+2. Trailing picker / warning button
+3. Next field
+(Warning is attached to an existing control, not added as a new stop.)
+
+#### Dynamic Type up to AX5
+- The inline mismatch treatment is symbol-based, so it does not need to wrap.
+- The long warning sentence belongs in the picker presentation, where it can wrap naturally.
+- At accessibility sizes, keep the existing stacked-field layout but do NOT let mismatch add field-specific vertical growth.
+- If AX text makes a popover feel cramped, prefer a sheet.
+
+#### Implementation note for Edison
+- Keep `GaugeMeasurementPair` equal-width behavior.
+- Remove the conditional below-field mismatch `Text` from `GaugeStepperField` for paired gauge usage.
+- Reuse the existing trailing picker button as the mismatch affordance carrier.
+- Add warning semantics to the field/button accessibility values/hints.
+- Surface the full mismatch sentence in the existing wheel-picker sheet/popover instead of in the row.
+- Preserve 44pt hit targets and existing focus order.
+
+**References:** Apple HIG (Layout, Controls, SF Symbols, Dynamic Type, VoiceOver, Switch Control, Touch Targets) | WCAG 2.2 (1.3.1, 1.4.1, 1.4.4, 1.4.10, 2.4.3, 2.5.8, 3.3.1, 3.3.3)
+
+### 2026-05-21T12:33:05-07:00: Edison — Gauge Field Equal Widths (LazyVGrid Fix — 57/57 tests)
+
+**Author:** Edison (Frontend Dev)
+**Date:** 2026-05-21T12:33:05-07:00
+**Requested by:** Tesla (Squad)
+**Status:** SHIPPED
+**Build:** `./app/build.sh test` → exit 0, 57/57 tests passed, 0 warnings
+
+#### Bug shape
+In `YourGaugeCard`, the field that showed inline mismatch copy could render narrower than its sibling. The reported case was `Rows`: red border + visible `Row gauge mismatch detected` label below the field, while `Stitches` stayed wider beside it.
+
+#### Root cause
+`GaugeMeasurementPair` used a plain `HStack` and relied on `.frame(maxWidth: .infinity)` for both children. That does not force equal column widths in SwiftUI when sibling views report different ideal widths. The mismatching `GaugeStepperField` gained extra intrinsic width from its inline error label, so the pair negotiated uneven column widths.
+
+#### Fix shape
+- Replaced the non-accessibility `HStack` in `GaugeMeasurementPair.swift` with a two-column `LazyVGrid` using `GridItem(.flexible(minimum: 0))` on both columns.
+- Kept the mismatch label in `GaugeStepperField.swift` conditionally rendered below the offending field, in red, with no identifier changes to `your-stitches` or `your-rows`.
+- Added wrapping constraints (`lineLimit(2)` + `fixedSize(horizontal: false, vertical: true)`) so the mismatch sentence stays visible beneath the field instead of truncating.
+
+**Regression test:** Added `testMismatchStatesKeepYourGaugeFieldsEqualWidth` in `KnittingGaugeReconcilerUITests.swift`. Asserts `your-stitches-field` and `your-rows-field` stay same width in all four mismatch-state combinations and mismatch labels appear only for expected field(s).
+
+#### Accessibility verification
+- `accessibilityIdentifier` values `your-stitches` and `your-rows` unchanged.
+- Mismatch sentence still renders as visible text and remains in accessibility tree when present.
+- Error state still uses both red border and explicit text (color not sole signal).
+
+**Note:** This implementation retained the vertical-growth mismatch label because Option D specification from Ive (which removes below-field label) was not yet finalized. Edison's follow-up pass will implement Option D per revised directive.
+
+### 2026-05-21T12:33:05-07:00: GaugeStepperField mismatch state spec (SUPERSEDED BY 2026-05-21T12:41:13-07:00 REVISION — Option B rejected, Option D adopted per user directive)
+
+**Author:** Ive (UI/UX Designer)
+**Date:** 2026-05-21T12:33:05-07:00
+**Requested by:** Tesla (Squad)
+**Status:** SUPERSEDED — User directive (2026-05-21T12:41:13-07:00) required removal of vertical growth; Option D adopted instead
+**Notes:** Kept for audit trail. Original Option B proposed putting mismatch text below the affected field with vertical growth permitted when mismatch exists. This was rejected by user directive requiring zero additional vertical pixels.
+
+**Summary:** Paired gauge fields are one comparison unit. If one side reads as narrower or collapsed when the other shows an error, the UI looks broken. Original decision was to choose Option B: put mismatch text below the affected field, leading-aligned, show only when mismatch exists, allow pair to grow taller together to keep fields at equal width. This proposal was overtaken by user directive 2026-05-21T12:41:13-07:00, which explicitly rejected vertical growth. Ive was respawned to produce Option D (inline warning glyph, full message in picker sheet, zero vertical growth).
+
+---
+
 ## 2026-05-20T20:38:28-07:00 — Cleanup Round Audit & Implementation (11 items shipped)
 
 ### 2026-05-20T20:38:28-07:00: Edison Cleanup Audit Decision

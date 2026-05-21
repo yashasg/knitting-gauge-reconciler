@@ -10,6 +10,8 @@
 ## Learnings
 
 <!-- Append learnings below -->
+- 2026-05-21T12:41:13-07:00: `YourGaugeCard` has a hard vertical-real-estate budget; paired gauge fields must keep equal widths and must not grow taller when mismatch fires. Revised pattern: keep the row footprint fixed, carry warning state in the existing 44×44 picker accessory with an SF Symbols warning glyph, and move the full mismatch sentence to accessibility payloads plus the picker presentation surface because that survives AX5 better. Lesson: verify vertical-real-estate budget with the user before assuming reserved-space patterns are acceptable.
+- 2026-05-21T12:33:05-07:00: Paired gauge fields are a single comparison unit: keep equal-width columns in row layout and let mismatch copy grow the pair vertically together, not laterally distort it. Chosen pattern: conditional mismatch label below the affected field (no permanent reserved slot), wrapped without truncation; revisit Apple HIG Layout/Dynamic Type/VoiceOver/Touch Targets and WCAG 2.2 §§1.4.1, 2.5.8, 3.3.1, 3.3.3 when changing field errors.
 - 2026-05-19 (Compact Fields): Numeric field layout spec delivered with width guidance (92–156 pt range), accessibility Dynamic Type fallback, and focus order. Paired fields use 140 pt minimum columns. Decision merged to decisions.md.
 - 2026-05-19: Lead with action before ratios — cast-on + verdict become the first read, percentages secondary.
 - Palette tightened to 8 semantic tokens with AAA text on verdict surfaces and color never acting alone.
@@ -173,3 +175,23 @@ fresh UX request, not a metrics-implementation detail. Route it through
 ## 2026-05-20T19:26:30Z — MetricKit V1 shipped (Team session)
 
 MetricKit V1 implementation completed. User directives: (1) MetricKit pivot from swift-metrics (2026-05-20T18:50:53), (2) privacy card stays removed (2026-05-20T19:22:50), (3) 9-signpost roster locked (2026-05-20T19:26:30). Build: 49/49 tests pass (was 25). Session log: .squad/log/2026-05-20T19-26-30Z-metrickit-pivot-shipped.md. Orchestration logs: .squad/orchestration-log/2026-05-21T02-26-30Z-{agent-round}.md.
+
+## 2026-05-21T12:41:13-07:00 — Gauge Mismatch State Fix Cycle (Ive Respawn + Option D Revision)
+
+**Session:** gauge-mismatch-fix
+
+**Ive original proposal (2026-05-21T12:33:05-07:00):** Option B — put mismatch text below the affected field, allow pair to grow vertically together to maintain equal widths. Accepted as viable trade-off for keeping paired fields as one visual unit.
+
+**User directive (2026-05-21T12:41:13-07:00):** "i dont think the text fields should grow at all, that takes away vertical real estate, and we are already low on that" — explicit rejection of vertical growth. Directive superseded Ive's Option B selection.
+
+**Ive-1 respawn (2026-05-21T12:41:13-07:00):** Produced revised spec (Option D) within zero-vertical-growth constraint:
+- Reuse existing 44×44 trailing picker button as mismatch affordance carrier.
+- Add SF Symbols warning glyph (`exclamationmark.triangle.fill`) overlaid on picker in mismatch state.
+- Full mismatch sentence surfaces in accessibility payloads and wheel-picker sheet/popover.
+- Row footprint stays fixed (zero additional vertical pixels).
+- Equal widths preserved.
+- Not color-only (border + icon + accessible text satisfy WCAG 1.4.1 / 3.3.1).
+
+**Deliverable:** `.squad/decisions/inbox/ive-gauge-mismatch-state-spec-revised.md` (7,920 bytes, comprehensive spec with layout rules, interaction behavior, accessibility detail, Dynamic Type guidance, focus order, implementation notes for Edison).
+
+**Gate/Status:** Accepted. Edison follow-up pass (not yet spawned) will implement Option D, removing below-field label and wiring warning glyph + picker-surface messaging.

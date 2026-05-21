@@ -13,14 +13,8 @@ struct RequiredAdjustmentsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Header row: title + in-header calculate/recalculate button
-            HStack(alignment: .center, spacing: 12) {
-                Text("Required\nAdjustments")
-                    .font(.system(.largeTitle, design: .serif).weight(.bold))
-                    .foregroundStyle(AppTheme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 4)
-                    .accessibilityAddTraits(.isHeader)
+            // ROW 1: Reconcile button, right-aligned
+            HStack {
                 Spacer()
                 Button {
                     onRecalculate()
@@ -28,7 +22,7 @@ struct RequiredAdjustmentsCard: View {
                     HStack(spacing: 5) {
                         Image(systemName: isResultStale ? "arrow.clockwise" : "wand.and.stars")
                             .font(.footnote.weight(.semibold))
-                        Text(cachedResult == nil ? "Calculate" : "Recalculate")
+                        Text("Reconcile")
                             .font(.subheadline.weight(.semibold))
                     }
                     .foregroundStyle(AppTheme.cream)
@@ -45,9 +39,16 @@ struct RequiredAdjustmentsCard: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("calculate-button")
-                .accessibilityLabel(cachedResult == nil ? "Calculate Adjustments" : "Recalculate Adjustments")
+                .accessibilityLabel("Reconcile Adjustments")
                 .accessibilityHint("Computes gauge reconciliation adjustments for your pattern")
             }
+
+            // ROW 2: title, full width — no hyphenation
+            Text("Required Adjustments")
+                .font(.system(.largeTitle, design: .serif).weight(.bold))
+                .foregroundStyle(AppTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
 
             if let result = cachedResult {
                 // Results — dimmed when stale to signal a Recalculate tap is needed.
@@ -104,8 +105,8 @@ struct RequiredAdjustmentsCard: View {
                 // Dim stale results to signal they need a Recalculate tap.
                 .opacity(isResultStale ? 0.6 : 1.0)
             } else {
-                // Pre-calculate placeholder — shown until the first Calculate tap.
-                Text("Enter your gauge above and tap Calculate to see your adjustments.")
+                // Pre-calculate placeholder — shown until the first Reconcile tap.
+                Text("Enter your gauge above and tap Reconcile to see your adjustments.")
                     .font(.body)
                     .foregroundStyle(AppTheme.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)

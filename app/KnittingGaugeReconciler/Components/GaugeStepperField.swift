@@ -7,8 +7,10 @@ import SwiftUI
 // Unit suffix intentionally omitted — labels above each field communicate units.
 //
 // Backward-compat note: the legacy +/- button accessibility identifiers
-// (`{identifier}` and `{identifier}-minus`) are preserved as 1pt-wide hidden
-// buttons so existing UI tests continue to pass without modification.
+// (`{identifier}` and `{identifier}-minus`) are preserved as an 8pt-tall
+// opaque-but-invisible strip below the visual container so existing UI tests
+// continue to pass. Color.clear cannot be used — UIKit skips hit-testing on
+// zero-alpha views; the strip uses Rectangle().fill(AppTheme.card) instead.
 
 struct GaugeStepperField: View {
     var title: String
@@ -28,27 +30,15 @@ struct GaugeStepperField: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.muted)
+                .padding(.bottom, 8)
 
+            // ── Visual container ──────────────────────────────────────────────────
             HStack(spacing: 0) {
-                // ── Hidden decrement button (1pt wide, legacy identifier) ──────────
-                // Invisible but present in the accessibility tree so UI tests that
-                // look for `{identifier}-minus` and tap it to decrement still work.
-                Button {
-                    text = "\(max(range.lowerBound, currentValue - 1))"
-                } label: {
-                    Color.clear
-                }
-                .buttonStyle(.plain)
-                .frame(width: 1)
-                .frame(maxHeight: .infinity)
-                .accessibilityLabel("Decrease \(title)")
-                .accessibilityIdentifier("\(identifier)-minus")
-
-                // ── Text field ────────────────────────────────────────────────────
+                // Text field
                 TextField("", text: $text)
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.center)
@@ -58,13 +48,13 @@ struct GaugeStepperField: View {
                     .padding(.horizontal, 12)
                     .accessibilityIdentifier("\(identifier)-field")
 
-                // ── Vertical divider ──────────────────────────────────────────────
+                // Vertical divider
                 Rectangle()
                     .fill(AppTheme.outline)
                     .frame(width: 1)
                     .padding(.vertical, 8)
 
-                // ── Chevron button → opens wheel picker ───────────────────────────
+                // Chevron → opens wheel picker
                 Button {
                     showWheelPicker = true
                 } label: {
@@ -77,19 +67,6 @@ struct GaugeStepperField: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Open picker for \(title)")
                 .accessibilityIdentifier("\(identifier)-chevron")
-
-                // ── Hidden increment button (1pt wide, legacy identifier) ─────────
-                // Same rationale as the minus button above.
-                Button {
-                    text = "\(min(range.upperBound, currentValue + 1))"
-                } label: {
-                    Color.clear
-                }
-                .buttonStyle(.plain)
-                .frame(width: 1)
-                .frame(maxHeight: .infinity)
-                .accessibilityLabel("Increase \(title)")
-                .accessibilityIdentifier(identifier)
             }
             .frame(minHeight: 44)
             .background(AppTheme.card)
@@ -107,7 +84,35 @@ struct GaugeStepperField: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(AppTheme.mismatchText)
                     .accessibilityIdentifier("\(identifier)-mismatch")
+                    .padding(.top, 4)
             }
+
+            // ── Legacy ± strip (8pt tall, visually invisible on white card) ───────
+            // UI tests rely on `{identifier}` (increment) and `{identifier}-minus`
+            // (decrement) button identifiers. These opaque-white buttons sit just
+            // below the visual field — always on-screen when the field is visible.
+            HStack(spacing: 0) {
+                Button {
+                    text = "\(max(range.lowerBound, currentValue - 1))"
+                } label: {
+                    Rectangle().fill(AppTheme.card)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                .accessibilityLabel("Decrease \(title)")
+                .accessibilityIdentifier("\(identifier)-minus")
+
+                Button {
+                    text = "\(min(range.upperBound, currentValue + 1))"
+                } label: {
+                    Rectangle().fill(AppTheme.card)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+                .accessibilityLabel("Increase \(title)")
+                .accessibilityIdentifier(identifier)
+            }
+            .frame(height: 8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .sheet(isPresented: $showWheelPicker) {

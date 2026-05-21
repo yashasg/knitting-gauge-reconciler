@@ -122,3 +122,75 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 
 ## Team updates
 - 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).
+
+## [2026-05-20T18:42:54-07:00] swift-metrics test scope V2 (issue #9 re-run)
+
+**Session:** metrics-scoping-v2 (V2 re-run with fact-check directive)
+**Drop:** `.squad/decisions/inbox/curie-metrics-scope-v2.md`
+
+### MetricsTestKit fact-check — Curie CONCEDES V1
+
+**V1 claim (wrong):** swift-metrics does not ship a public test handler; a local 30-line `TestMetricsFactory` is required.
+
+**V2 evidence:** `curl -sL https://raw.githubusercontent.com/apple/swift-metrics/main/Package.swift` returns a `Package.swift` that explicitly declares `.library(name: "MetricsTestKit", targets: ["MetricsTestKit"])` as a top-level product. Tesla was correct in V1. Curie concedes.
+
+**Correction:** Use `MetricsTestKit` from `apple/swift-metrics` as the primary test support library. Link it only to `KnittingGaugeReconcilerTests`. The local factory fallback is retained only if the upstream API is incompatible (unlikely).
+
+### V2 strategy additions over V1
+
+- nm/grep release binary check command documented (exact shell command for AC-7).
+- TEST_RUNNER_KGR_* pass-through mechanism documented; Hopper owns the build.sh change; Curie owns the end-to-end validation test.
+- Acceptance criteria formalised as 10-item AC table (AC-1 through AC-10).
+- All V1 architecture decisions (no bootstrap from tests, per-test factory, no new target, determinism guard, UI regression net) ratified unchanged.
+
+## [2026-05-20T18:50:53-07:00] MetricKit test scope V3 (architecture pivot)
+
+**Session:** metrickit-scope-v3
+**Drop:** `.squad/decisions/inbox/curie-metrickit-scope.md`
+
+### Pivot summary
+
+User directive confirmed: drop `apple/swift-metrics`. MetricKit is the sole
+sanctioned metrics backend. `MXMetricPayload` flows daily via `MXMetricManagerSubscriber.didReceive(_:)`. Custom user-behavior events ride `MXSignpost` / `os_signpost`.
+
+### Key decisions (V3)
+
+- **Mocking strategy:** Protocol-wrap `MXMetricPayload` as `MetricPayloadProtocol`. Subscriber depends on the protocol; production passes `MXMetricPayload` directly via a bridge method; tests pass a `MockMetricPayload` struct. Subclassing ruled out (no public init); fixture JSON ruled out (brittle across OS versions).
+- **Subscriber test architecture:** Both (a) handler-logic isolation and (b) lifecycle idempotency. Handler logic tested via `MockMetricPayload` in Swift Testing. Lifecycle (add/remove from `MXMetricManager.shared`) tested as an integration smoke test in XCTest.
+- **Determinism guard (V3 shape):** Two-layer: (i) static file-scan of `GaugeMath.swift` for `import os.signpost`, `import MetricKit`, `os_signpost(`, `MXSignpost(` — fail if any; (ii) runtime stub via `SignpostRecording` protocol + `RecordingDouble` double — assert zero emissions from `GaugeMath.compute`.
+- **Linker check:** Three-step — `Package.resolved` scan (no forbidden packages), `otool -L` (only system frameworks), `nm` symbol scan (no analytics runtime symbols). MetricKit is the only sanctioned non-system import.
+- **Signpost emission tests:** Wrapper-protocol approach recommended. Tests assert on `RecordingDouble.emissions`, not on OS signpost delivery. Honest limitation documented.
+- **Privacy card flag:** `testAboutHelpButtonOpensPullUpSheet` currently asserts `privacy-card` does NOT exist. MetricKit changes the analytics posture — flagged for Tesla + Edison. Test unchanged until decision made; same-commit rule applies if card returns.
+- **V2 superseded:** MetricsTestKit, MetricsSystem.bootstrap pattern, TEST_RUNNER_KGR_* env pass-through, per-test TestMetrics() factory, KGR_METRICS_BACKEND gate test — all dropped.
+- **Acceptance criteria:** 14-item AC table (AC-1 through AC-14) in the scope document.
+
+### Reusable pattern filed
+
+`.squad/skills/metrickit-protocol-wrap-mock/SKILL.md` — how to mock `MXMetricPayload` (and other sealed system classes) via protocol wrapping.
+
+## [2026-05-20T19:26:30-07:00] MetricKit test suite shipped
+
+**Session:** metrickit-tests-ship
+**Drop:** `.squad/decisions/inbox/curie-metrickit-tests-shipped.md`
+
+### AC implementations
+
+- **AC-1 (subscriber receives payloads):** 4 tests in `MetricKitSubscriberTests` — empty array, single payload, edge-case dates, batch delivery. All pass.
+- **AC-2 (MockMetricPayload):** `struct MockMetricPayload: MetricPayloadProtocol` defined in test file. Required implementing `jsonRepresentation() -> Data` (Edison added this field to the protocol — V3 scope doc hadn't captured it).
+- **AC-3 (static scan):** `gaugemath_hasNoSignpostOrMetricKitImports` reads `GaugeMath.swift` via `#filePath`-relative path. No build phase copy needed — `#filePath` resolves at compile time to absolute source path.
+- **AC-4 (runtime determinism stub):** `RecordingDouble` struct with empty `emissions`. GaugeMath has no signpost injection point; test documents the invariant. Stub will gain full conformance when Edison ships `SignpostRecording` protocol.
+- **AC-5 (verdict classifier):** 17 tests covering all 16 ordered pairs (4 equal → nil, 6 degraded, 6 improved) plus nil-previous case. Edison's return type is `SignpostDecision` (not `VerdictDelta` as spec named it) — updated to match.
+- **AC-6 (otool -L):** `otool_metricKitLinkedAndNoThirdPartySDKs` uses `Bundle.main.executableURL` + `Process()` to run `otool -L`. MetricKit present; no forbidden SDKs. PASSED.
+- **AC-7 (build script):** `./app/build.sh test` exits 0. 42/42 unit + 7/7 UI tests.
+- **AC-8 (privacy card):** `testAboutHelpButtonOpensPullUpSheet` unchanged and passing. Privacy-card absent assertion intact.
+
+### Deviations from V3 scope doc
+
+- Edison named the verdict delta enum `SignpostDecision`, not `VerdictDelta`. Updated tests to match.
+- `MetricPayloadProtocol` has a third field `func jsonRepresentation() -> Data` not in V3 scope. `MockMetricPayload` implements it with `JSONSerialization`.
+- Edison's files (`MetricsSubscriber.swift`, `GaugeMathMetrics.swift`) were on disk but missing from Xcode project; fixed in `project.pbxproj`.
+
+### Test count
+
+18 unit → 42 unit (+24). 7 UI unchanged. Total: 49 tests.
+

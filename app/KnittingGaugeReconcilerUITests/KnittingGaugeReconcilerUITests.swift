@@ -25,30 +25,91 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     ]
 
     func testAllJacquardScenariosAreVisibleInUI() {
-        for scenario in scenarios {
-            let app = XCUIApplication()
-            useDefaultDynamicType(app)
-            app.launchEnvironment = [
-                "KGR_PS": "32",
-                "KGR_PR": "24",
-                "KGR_YS": scenario.yourStitches,
-                "KGR_YR": scenario.yourRows,
-                "KGR_CAST_ON": "128",
-                "KGR_YOKE": "20",
-                "KGR_BODY": "50",
-                "KGR_SLEEVE": "45",
-                "KGR_INCREASES": "6"
-            ]
-            app.launch()
+        // Single-launch flow (resolves issue #18 — per-scenario app.terminate() →
+        // app.launch() cycles exposed the test to multi-minute simulator stalls
+        // on relaunch). Instead, launch once with scenario 0's values then drive
+        // the remaining scenarios via in-app field input. This also exercises
+        // the live-recalc path (goal #1) end-to-end.
+        let app = XCUIApplication()
+        useDefaultDynamicType(app)
+        app.launchEnvironment = [
+            "KGR_PS": "32",
+            "KGR_PR": "24",
+            "KGR_YS": scenarios[0].yourStitches,
+            "KGR_YR": scenarios[0].yourRows,
+            "KGR_CAST_ON": "128",
+            "KGR_YOKE": "20",
+            "KGR_BODY": "50",
+            "KGR_SLEEVE": "45",
+            "KGR_INCREASES": "6"
+        ]
+        app.launch()
+
+        let yourStitchesField = app.textFields["your-stitches"]
+        let yourRowsField = app.textFields["your-rows"]
+        XCTAssertTrue(yourStitchesField.waitForExistence(timeout: 5))
+        XCTAssertTrue(yourRowsField.waitForExistence(timeout: 5))
+
+        let castOnElement = app.staticTexts["cast-on-result"]
+        XCTAssertTrue(castOnElement.waitForExistence(timeout: 5))
+
+        for (index, scenario) in scenarios.enumerated() {
+            if index > 0 {
+                setNumericField(yourStitchesField, to: scenario.yourStitches, in: app)
+                setNumericField(yourRowsField, to: scenario.yourRows, in: app)
+                dismissKeyboard(in: app)
+            }
+
+            let expectedCastOnLabel = "Cast on \(scenario.castOn)"
+            waitUntil(timeout: 5) { castOnElement.label == expectedCastOnLabel }
 
             XCTAssertFalse(app.buttons["calculate-button"].exists, scenario.name)
-            XCTAssertTrue(app.staticTexts[scenario.stitchHero].exists, scenario.name)
-            XCTAssertTrue(app.staticTexts[scenario.rowHero].exists, scenario.name)
-            XCTAssertEqual(app.staticTexts["cast-on-result"].label, "Cast on \(scenario.castOn)", scenario.name)
-            XCTAssertTrue(app.staticTexts[scenario.body].exists, scenario.name)
-            XCTAssertTrue(app.staticTexts[scenario.yoke].exists, scenario.name)
-            XCTAssertTrue(app.staticTexts[scenario.increases].exists, scenario.name)
-            app.terminate()
+            XCTAssertTrue(
+                app.staticTexts[scenario.stitchHero].waitForExistence(timeout: 3),
+                "\(scenario.name) stitchHero=\(scenario.stitchHero)"
+            )
+            XCTAssertTrue(
+                app.staticTexts[scenario.rowHero].exists,
+                "\(scenario.name) rowHero=\(scenario.rowHero)"
+            )
+            XCTAssertEqual(castOnElement.label, expectedCastOnLabel, scenario.name)
+            XCTAssertTrue(
+                app.staticTexts[scenario.body].exists,
+                "\(scenario.name) body=\(scenario.body)"
+            )
+            XCTAssertTrue(
+                app.staticTexts[scenario.yoke].exists,
+                "\(scenario.name) yoke=\(scenario.yoke)"
+            )
+            XCTAssertTrue(
+                app.staticTexts[scenario.increases].exists,
+                "\(scenario.name) increases=\(scenario.increases)"
+            )
+        }
+    }
+
+    private func setNumericField(
+        _ field: XCUIElement,
+        to newValue: String,
+        in app: XCUIApplication
+    ) {
+        // Dismiss the keyboard if it's up so the target field isn't covered
+        // when we tap it. Decimal-pad keyboards have no Return key, so the
+        // app exposes a "Done" keyboard accessory (same affordance the user
+        // gets — see ContentView's .toolbar(.keyboard) modifier).
+        dismissKeyboard(in: app)
+        field.tap()
+        _ = app.keyboards.firstMatch.waitForExistence(timeout: 2)
+        // Clear with generous backspaces; per-scenario values are 2–4 digits.
+        let backspaces = String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8)
+        field.typeText(backspaces + newValue)
+    }
+
+    private func dismissKeyboard(in app: XCUIApplication) {
+        let done = app.toolbars.buttons["keyboard-done"]
+        if done.exists && done.isHittable {
+            done.tap()
+            _ = waitUntil(timeout: 1.5) { !app.keyboards.firstMatch.exists }
         }
     }
 

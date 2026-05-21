@@ -300,5 +300,131 @@ No Swift code changes this cycle; `./app/build.sh test` not re-run
 (documentation / decision only). Build/test gate will run as part of
 the implementation cycle once yashasg approves.
 
+## 2026-05-20T18:42:54-07:00 — swift-metrics scope V2 (issue #9, independent re-pass)
+
+**Session:** Independent V2 re-pass of the swift-metrics scoping from the Lead/architecture
+vantage, requested by yashasg after team default model changed to `claude-sonnet-4.6`.
+Output: `.squad/decisions/inbox/tesla-metrics-scope-v2.md`.
+
+### Learnings — V2 observations
+
+- **V1 synthesis file (`tesla-issue9-synthesis.md`) is absent from the inbox.**
+  The history.md entry from 2026-05-20T18:19:39-07:00 states the file was created, but it
+  is not present in `.squad/decisions/inbox/`. V2 reconstructed V1 consensus from
+  `decisions.md` (all 8 agent views are merged there) and from the history.md synthesis
+  entries. This is a hygiene gap: synthesis documents should be committed before being
+  referenced. Flagging for Scribe: on the next merge pass, confirm whether
+  `tesla-issue9-synthesis.md` content exists elsewhere in decisions.md or needs to be
+  re-created from history.md.
+
+- **V2 ratifies ~95% of V1 consensus.** The core architecture (façade-only, NoOp default,
+  MetricsTestKit in-memory, no exporters, MetricKit deferred, 7 roots, ≤15 signals) is
+  sound. The model-change from `claude-opus-4.7-xhigh` to `claude-sonnet-4.6` did not
+  produce material quality difference on this scoping task — the V1 reasoning was solid.
+
+- **One substantive V1 divergence: Release-config unlock mechanism.**
+  Hopper's V1 view allowed `inmemory` in Release if an unlock env-var was set. V2
+  removes this: Release is always `noop`, unconditionally, no unlock. The correct
+  pre-production diagnostic path is a TestFlight Debug/QA build, not a "unlock" switch
+  in a Release binary. Simpler story, tighter privacy posture, no App Store review risk.
+
+- **Signal-table naming: `kgr.disclosure.*` → `kgr.help.*` (minor).**
+  Edison's V1 view used a `kgr.disclosure.*` root for the full-math toggle. V2 collapses
+  it into `kgr.help.*` — all help/explanation affordances under one root, seven roots
+  total. One root fewer; the signal table is the same 15 entries.
+
+- **V1 naming budget evolution is confirmed:** Tesla V1 Lead started at ≤20 signals /
+  3 roots. Synthesis tightened to ≤15 / 7 roots. V2 ratifies the tightened budget.
+  The approved 15-signal table (see v2 scope doc §4) is the implementation contract.
+
+- **`Package.resolved` commitment is now a PR gate, not a convention.**
+  V1 flagged it as a carve-out; V2 makes it enforceable — missing `Package.resolved`
+  in the same PR as a `Package.swift` change is a blocking review comment. Added to
+  §2.13 draft language.
+
+- **MetricKit remains deferred and the reasoning is clean.**
+  API contract difference (push-from-OS vs pull-from-instrumentation), different payload
+  set, and §7 can be closed by §2.13 alone without implementing the subscriber.
+
+### V1→V2 delta summary
+
+| Topic | V1 | V2 | Delta |
+|---|---|---|---|
+| Env-var shape | `KGR_METRICS_BACKEND` multi-value | Same | Ratified |
+| Default | `noop` | Same | Ratified |
+| Release unlock | Allowed with unlock env-var (Hopper) | Hard `noop`, no unlock | **Diverged** |
+| In-memory backend | MetricsTestKit.TestMetrics | Same | Ratified |
+| Naming budget | ≤15 / 7 roots | Same | Ratified |
+| `kgr.disclosure` root | Separate root | Merged into `kgr.help` | Minor rename |
+| MetricKit | Deferred | Same | Ratified |
+| SPM carve-out | §2.3 carve-out | Same | Ratified |
+| Math-layer ban | §2.2 amendment | Same | Ratified |
+| Diagnostics surface | lldb-only | Same | Ratified |
+
 ## Team updates
 - 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).
+
+## 2026-05-20T18:50:53-07:00 — MetricKit pivot V3 (issue #9, architecture decision)
+
+**Session:** yashasg rejected V1/V2 "vocabulary only" plan (swift-metrics, NoOp default) because it has no real data sink — counters count and nobody learns anything. Decision: drop `apple/swift-metrics` entirely and pivot to Apple's MetricKit framework (`import MetricKit`). Output: `.squad/decisions/inbox/tesla-metrickit-scope.md`.
+
+### Learnings — V3 architecture decision
+
+- **The decisive question for any observability architecture is: "Where does the data go?"**
+  swift-metrics V1/V2 had a conceptually clean architecture (façade, pluggable backend, NoOp default) but no real data sink for production. Mendel flagged it independently: in-memory counters that never surface anywhere are not analytics — they're a development tool. MetricKit solves the sink problem at the OS level (App Store Connect Analytics is a real, queryable, developer-accessible destination). The vocabulary-vs-handler question is secondary; the data-sink question is primary. Apply this test to every future observability proposal: *if the user opted in and data flowed, where would it land and who would read it?*
+
+- **§2.3 carve-out reasoning — system-mediated egress is a distinct category from developer-initiated egress.**
+  The V1/V2 §2.3 rule conflated "no network" with "no data leaves the device." These are different constraints. MetricKit's upload is initiated by the OS, gated on user opt-in, scheduled by Apple, and delivered to a developer-accessible but Apple-hosted sink. The developer's code never opens a socket. This is architecturally distinct from `URLSession(telemetryEndpoint)`. The carve-out is principled: the test is "does *our code* open the connection?" not "does data ever move?" The distinction matters for future decisions (e.g., push notifications, CloudKit sync — all OS-mediated).
+
+- **Signpost roster rationale — 9 signposts from Edison's 12-event starting list.**
+  Three V2 events were dropped or merged for MetricKit:
+  (a) `field.edit.debounced` (9 per-field variants) — too noisy for MetricKit's daily aggregation model; MetricKit is not a high-frequency event bus.
+  (b) `disclosure.full_math.toggle` — insufficient decision value; a disclosure toggle count would not drive any product investment.
+  (c) `verdict.current` gauge — MetricKit has no gauge primitive; interval + event only.
+  Two V2 events were merged: `gauge.compute.invocations` absorbed into the `compute` interval signpost (which already provides daily count).
+  The outcome signal (`verdict.improved` / `verdict.degraded`) is the highest-value addition — it answers "did the tool actually help knitters converge on a workable gauge?" which is the app's primary purpose.
+
+- **Privacy card decision: YES, it returns with MetricKit-corrected language.**
+  Edison removed the card on 2026-05-19 in anticipation of analytics. Under V1/V2 nothing left the device. Under V3, data does leave the device (aggregated, system-mediated, not PII). The brand contract is "local-first, offline, no-upload" — MetricKit upload is real (however small and controlled) and honesty with users is non-negotiable. Silence is a false negative. The disclosure is one sentence and the UX cost is negligible.
+
+- **Reusable pattern written as a skill:** `.squad/skills/data-sink-first/SKILL.md` — the "ask data-sink first" decision heuristic for observability architecture proposals.
+
+## 2026-05-20T19:26:30-07:00 — Standards amendments shipped + GitLab #9 correction (V3 finalization)
+
+**Session:** Applied V3 MetricKit scope amendments to `docs/swift_coding_standards.md` and posted a scope-correction comment on GitLab issue #9.
+
+### Standards amendments applied (final text shipped)
+
+**§2.2 (Determinism in the math layer):** Added enforcement sentence at end of section:
+> "The math layer (`GaugeMath.swift`) MUST NOT import `MetricKit`, `os.signpost`, `os`, or any analytics framework. Verdict classification for analytics signposts lives in `GaugeMathMetrics.swift`, called by the view layer after `GaugeMath.compute(...)` returns. This is enforced by `MetricKitSubscriberTests.AC-3` (static file scan) and `AC-4` (runtime recording double)."
+
+**§2.3 (No network / no analytics upload):** Rewrote the carve-out. Removed the old "on-device-only counters … acceptable and must not transmit" placeholder. New language explicitly:
+- Permits MetricKit (system-framework, OS-mediated upload, user opt-out via iOS Settings)
+- Forbids third-party analytics SDKs by name (Firebase, Amplitude, Mixpanel, Segment, GoogleAnalytics, Sentry)
+- Defers developer-owned HTTP endpoint to V2, requires named URL + retention policy as a separate amendment
+
+**§2.12 (Release logging discipline):** Added:
+> "`MXMetricManagerSubscriber.didReceive(_:)` handlers that log payload contents (e.g., `jsonRepresentation()` via `print` or `os_log`) MUST be wrapped in `#if DEBUG`. In release builds, `didReceive(_:)` is a no-op — the data still flows to App Store Connect Analytics via Apple's auto-pipeline, but our process never emits the contents."
+
+**§7 (MetricKit — open question → CLOSED):** Replaced open-question bullets with RESOLVED entry:
+> "RESOLVED 2026-05-20. MetricKit consumption (via `MXMetricManagerSubscriber` and `MXSignpost(_:)`) is in scope. Re-export of payloads to a developer-owned endpoint is forbidden by default — see §2.3 carve-out. The current roster of `MXSignpost` names (9 total) is documented in `.squad/decisions.md`. Any new signpost name requires a Lead review and an addition to `decisions.md`."
+
+**Deviations from V3 scope doc language:** None — all four sections applied verbatim per task directives. The localisation open question that was the second bullet in §7 is now unhoused; it can be added as §8 in a future amendment if localisation work begins.
+
+### GitLab #9 update
+
+- **New note posted:** `https://gitlab.com/yashasg/knitting-gauge-reconciler/-/work_items/9#note_3370575474` (note ID: **3370575474**)
+- **Stale note superseded:** Note 3370481646 (swift-metrics synthesis, 2026-05-20T18:19:39) prepended with `> **SUPERSEDED** — see note 3370575474 (MetricKit pivot, 2026-05-20).` via `glab api PUT`.
+- Comment covers: why swift-metrics has no sink, MetricKit as replacement, locked 9-signpost roster, privacy posture, V2 deferrals, files landing in scope, standards amendments summary.
+
+### Files touched this session
+
+- `docs/swift_coding_standards.md` — §2.2, §2.3, §2.12, §7 amended
+- `.squad/decisions/inbox/tesla-gitlab-9-comment-DRAFT.md` — comment body (persisted as audit trail; was also posted live)
+- `.squad/decisions/inbox/tesla-metrickit-standards-shipped.md` — decision drop for Scribe
+- `.squad/agents/tesla/history.md` — this entry appended
+---
+
+## 2026-05-20T19:26:30Z — MetricKit V1 shipped (Team session)
+
+MetricKit V1 implementation completed. User directives: (1) MetricKit pivot from swift-metrics (2026-05-20T18:50:53), (2) privacy card stays removed (2026-05-20T19:22:50), (3) 9-signpost roster locked (2026-05-20T19:26:30). Build: 49/49 tests pass (was 25). Session log: .squad/log/2026-05-20T19-26-30Z-metrickit-pivot-shipped.md. Orchestration logs: .squad/orchestration-log/2026-05-21T02-26-30Z-{agent-round}.md.

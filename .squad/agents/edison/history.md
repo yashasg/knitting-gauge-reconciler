@@ -222,3 +222,99 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 
 ## Team updates
 - 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).
+- 2026-05-20T18:50:53-07:00: MetricKit V3 scope completed (issue #9). Architecture pivot from swift-metrics to MetricKit. Deliverable: `.squad/decisions/inbox/edison-metrickit-scope.md`.
+
+## [2026-05-20T18:50:53-07:00] MetricKit V3 Instrumentation Scope (issue #9)
+
+**Session:** metrickit-v3-scope
+**Deliverable:** `.squad/decisions/inbox/edison-metrickit-scope.md`
+
+### Summary
+
+- Architecture pivot: dropped `apple/swift-metrics`; MetricKit (`import MetricKit`) is the
+  backend. Custom user-behavior events ride `MXSignpost(_:log:name:)`.
+- `MetricsSubscriber`: new file `app/KnittingGaugeReconciler/MetricsSubscriber.swift`.
+  `final class MetricsSubscriber: NSObject, MXMetricManagerSubscriber`. Payload handler
+  uses option (b) — `#if DEBUG` console log only in V1; developer endpoint deferred to V2.
+- Bootstrap: `KnittingGaugeReconcilerApp.init()` adds stored `let metricsSubscriber` and
+  calls `MXMetricManager.shared.add(metricsSubscriber)`.
+- Signpost roster trimmed to 11 names (10 confirmed; 1 pending Jacquard/Tesla call):
+  `compute` (INTERVAL), `share.invoked`, `share.fallback`, `reset.tapped`, 4 verdict
+  names, `sheet.verdictHelp.opened`, `sheet.aboutHelp.opened`, `cast_on.driftBandShown`.
+- Gating decision: signpost calls unconditional in release (no-ops when user opted out);
+  `#if DEBUG` only in `didReceive` console log. No app-level env gate needed.
+- Accessibility ID invariance preserved; zero new identifiers; all three critical UI
+  test contracts unchanged.
+- Skill written: `.squad/skills/metrickit-subscriber-bootstrap/SKILL.md`.
+
+### Key learnings V3 over V2
+
+- `MXSignpost` has no dimension/metadata aggregation; `verdict.transition` with
+  `from`/`to` dimensions collapses to 4 named COUNT signposts.
+- MetricKit's iOS Settings opt-in gate removes the need for `KGR_METRICS_ENABLED`
+  env var; app-level env gating would kill production signals from opted-in users.
+- Signpost names must be static string literals; runtime interpolation is invisible
+  to MetricKit's aggregation pipeline.
+- `MetricsSubscriber` must be stored as a `let` property on the App struct —
+  `MXMetricManager` holds a weak reference; without the stored property, the
+  subscriber would be immediately deallocated.
+
+## [2026-05-20T18:42:54-07:00] Metrics scope V2 — re-run (issue #9)
+
+**Session:** swift-metrics-scope-v2 (independent V2 pass; model: claude-sonnet-4.6)
+**Deliverable:** `.squad/decisions/inbox/edison-metrics-scope-v2.md`
+
+### Learnings — V2 additions and corrections over V1
+
+- **Compute metric semantics hazard:** `result` (line 36, ContentView.swift) fires on every SwiftUI `body` re-evaluation, not only on user edits. Label the counter `gauge.compute.invocations` and document as "re-evaluations" — not "user interactions". For user-intent signal, rely on the debounced `field.edit.debounced` events instead. Duration timer is only useful for regression detection (sub-ms CPU time), not UX latency.
+
+- **Bootstrap site is explicit:** `KnittingGaugeReconcilerApp.init()` is the only safe location. The current app struct has no `init()` — adding one is required. Bootstrap before any `body`/`Scene` evaluates. `@main` singleton guarantees single-call; no additional idempotency guard needed.
+
+- **Reset tapped is its own event:** `resetToDefaults()` writes all nine `@State` fields atomically. Using `.onChange` debounce for reset would emit nine `field.edit.debounced` events for one user action, double-counting intent. Hook the counter directly in the `resetToDefaults()` function body inside `#if DEBUG`.
+
+- **Disclosure toggle needs `expanded` dimension:** `disclosure.full_math.toggle` with `expanded: Bool` dimension is the right shape — open/close rate is calculable as a ratio from one event type rather than two.
+
+- **Final event list:** 12 events across 9 trigger sites. All `.onChange`/action-closure hooks; zero new `accessibilityIdentifier` values; zero view-tree footprint.
+
+## [2026-05-20T19:26:30-07:00] MetricKit V1 Implementation (issue #9)
+
+**Session:** metrickit-v1-implementation
+**Files created:** `MetricsSubscriber.swift`, `GaugeMathMetrics.swift`
+**Files modified:** `KnittingGaugeReconcilerApp.swift`, `ContentView.swift`, `MetricKitSubscriberTests.swift` (AC-6 guard), `app.xcodeproj`
+
+### Key learnings
+
+- **`os_signpost` not `MXSignpost`:** `MXSignpost` does not resolve in Swift 6 with `import MetricKit` (compiler error: "cannot find 'MXSignpost' in scope"). The correct API is `os_signpost` from `import os.signpost`. MetricKit aggregates `os_signpost` events on a `MXMetricManager.makeLogHandle(category:)` OSLog handle identically.
+
+- **Protocol minimal surface:** `MetricPayloadProtocol` must NOT include `jsonRepresentation()` — Curie's `MockMetricPayload` has only `timeStampBegin`/`timeStampEnd`. JSON logging uses the concrete `MXMetricPayload` in `didReceive` before bridging to `receive()`.
+
+- **GaugeMathMetrics OSLog handle:** `MXMetricManager.makeLogHandle(category: "user_actions")` is the correct log handle for MetricKit aggregation. A plain `OSLog(subsystem:category:)` will NOT route through MetricKit's pipeline.
+
+- **Verdict-improved/degraded via `.onChange(of: verdictTitle)`:** The per-session `@State private var previousVerdictBucket: VerdictBucket?` lives in ContentView; updated in the `.onChange` callback. `GaugeMathMetrics.classifyVerdictDelta(previous:current:)` returns nil for first compute (nil previous) and for equal buckets — no spurious signposts.
+
+- **Cast-on drift band guard:** `@State private var driftBandSignpostFired = false` prevents re-firing on re-renders. Set to `true` when band becomes visible; cleared when it goes away. `.onChange(of: abs(result.castOnRoundingDriftPercent) >= 3)` is the observation hook.
+
+- **AC-6 otool on iOS:** `Process` is macOS-only. Added `#if os(macOS) || targetEnvironment(macCatalyst)` guard; iOS fallback uses `dlopen("/System/Library/Frameworks/MetricKit.framework/MetricKit", RTLD_LAZY | RTLD_NOLOAD)` to verify MetricKit is loaded in process.
+
+- **Build result:** `./app/build.sh` exit code 0. All 42 tests passed (18 GaugeMathTests + 24 new MetricKit tests from Curie). GaugeMath.swift confirmed zero MetricKit/signpost references by AC-3 file-scan.
+
+### Signpost roster — as shipped (9 names)
+
+| Name | Type | ContentView.swift line |
+|------|------|------------------------|
+| `compute` | INTERVAL | 40, 42 |
+| `sheet.verdictHelp.opened` | EVENT | 90 |
+| `sheet.aboutHelp.opened` | EVENT | 95 |
+| `verdict.improved` | EVENT | 106 |
+| `verdict.degraded` | EVENT | 108 |
+| `cast_on.driftBandShown` | EVENT | 115 |
+| `reset.tapped` | EVENT | 417 |
+| `share.invoked` | EVENT | 433 |
+| `share.fallback` | EVENT | 436 |
+
+
+---
+
+## 2026-05-20T19:26:30Z — MetricKit V1 shipped (Team session)
+
+MetricKit V1 implementation completed. User directives: (1) MetricKit pivot from swift-metrics (2026-05-20T18:50:53), (2) privacy card stays removed (2026-05-20T19:22:50), (3) 9-signpost roster locked (2026-05-20T19:26:30). Build: 49/49 tests pass (was 25). Session log: .squad/log/2026-05-20T19-26-30Z-metrickit-pivot-shipped.md. Orchestration logs: .squad/orchestration-log/2026-05-21T02-26-30Z-{agent-round}.md.

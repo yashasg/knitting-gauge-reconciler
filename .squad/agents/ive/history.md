@@ -152,3 +152,24 @@ fresh UX request, not a metrics-implementation detail. Route it through
 
 ## Team updates
 - 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).
+
+## [2026-05-20T18:42:54-07:00] swift-metrics UX scope V2 (issue #9)
+
+**Session:** swift-metrics-scope-v2 (independent re-run, claude-sonnet-4.6)
+
+**Task:** Independent V2 re-pass on swift-metrics UX scope. Confirm or push back on V1 "NONE" recommendation.
+
+**V2 verdict:** **RATIFY V1. NONE confirmed.** No user-visible metrics surface. No new disclosure copy. No chrome.
+
+**V2 additions over V1 (precision, not corrections):**
+- Explicit negative-assertion identifier contract table (privacy-card, analytics, telemetry, metrics in release)
+- Debug overlay containment rule: `.overlay`/`.safeAreaInset` under `#if DEBUG`; must not be a first-class VStack member or alter layout metrics for surrounding production views
+- Full opt-in UX ruleset for future proposals: native Toggle, Diagnostics section only, default OFF, UserDefaults persistence key documented, full a11y spec
+- Confirmed `share-results` identifier and label must not be renamed if metrics are wired to share call site
+
+**Deliverable:** `.squad/decisions/inbox/ive-metrics-scope-v2.md`
+---
+
+## 2026-05-20T19:26:30Z — MetricKit V1 shipped (Team session)
+
+MetricKit V1 implementation completed. User directives: (1) MetricKit pivot from swift-metrics (2026-05-20T18:50:53), (2) privacy card stays removed (2026-05-20T19:22:50), (3) 9-signpost roster locked (2026-05-20T19:26:30). Build: 49/49 tests pass (was 25). Session log: .squad/log/2026-05-20T19-26-30Z-metrickit-pivot-shipped.md. Orchestration logs: .squad/orchestration-log/2026-05-21T02-26-30Z-{agent-round}.md.

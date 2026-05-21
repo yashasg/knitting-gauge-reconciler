@@ -203,5 +203,122 @@ dependency-add branch.
 
 Drop: `.squad/decisions/inbox/hopper-metrics-scope.md`.
 
+### 2026-05-20T19:26:30-07:00 — MetricKit V3 implementation: pbxproj wiring + ASC docs
+
+**Tasks completed:**
+
+1. **PrivacyInfo.xcprivacy verified:** `plutil -lint` exits 0. Content matches locked V3 posture
+   exactly — `NSPrivacyTracking: false`, empty `NSPrivacyTrackingDomains`, empty
+   `NSPrivacyAccessedAPITypes`, three collected-data-type entries (CrashData, PerformanceData,
+   OtherDiagnosticData) all not-linked, not-tracking, purposes: AppFunctionality + Analytics.
+
+2. **pbxproj wiring applied directly:** The project uses sequential zero-padded 24-char hex UUIDs
+   (`000000000000000000000001`, etc.). New IDs used: `000000000000000000000006` (PBXFileReference)
+   and `000000000000000000000106` (PBXBuildFile). `lastKnownFileType = text.xml.plist` used for
+   `.xcprivacy`. File added to the KnittingGaugeReconciler group and its Resources build phase
+   (`000000000000000000000904`). `xcodebuild -list` → exit 0 post-edit.
+
+3. **PrivacyInfo.xcprivacy confirmed in .app bundle:**
+   `KnittingGaugeReconciler.app/PrivacyInfo.xcprivacy` present after `./app/build.sh test`.
+
+4. **build.sh test: 18/18 pass, exit 0.** All existing GaugeMathTests pass. UI tests pass.
+   Zero compiler warnings.
+
+5. **Zero SPM deps confirmed.** No `Package.resolved`, no `XCRemoteSwiftPackageReference`.
+
+6. **build.sh guards pass:** Package.resolved guard skips silently (no file); otool -L guard
+   only activates on `release` mode and will pass once MetricKit auto-links (system path).
+
+7. **ASC setup notes created:** `docs/app-store-connect-privacy-setup.md` — step-by-step
+   walkthrough, user opt-out path, TestFlight verification steps.
+
+8. **MetricKit linkage approach: auto-link.** `import MetricKit` in Swift source is sufficient
+   with iOS 17.0 deployment target; no explicit Frameworks build phase entry needed.
+
+**Key pbxproj pattern:** This project's hand-crafted pbxproj uses purely sequential IDs —
+safe to edit as text if you strictly follow the zero-padded hex convention and use unique IDs.
+
+**Drop:** `.squad/decisions/inbox/hopper-metrickit-implementation.md`
+
 ## Team updates
 - 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).
+
+### 2026-05-20T18:42:54-07:00 — swift-metrics V2 re-run (issue #9)
+
+**V2 independent review confirms V1 fully (ratification, no disagreements).**
+
+Key facts re-verified:
+- `apple/swift-metrics` latest stable: **2.11.0** (API-confirmed, published
+  2026-05-19; matches V1).
+- Project state: `SWIFT_VERSION = 6.0`, `IPHONEOS_DEPLOYMENT_TARGET = 17.0`,
+  zero `XCRemoteSwiftPackageReference` entries, no `.gitlab-ci.yml`.
+
+**V2 additions over V1 (filling gaps V1 left as prose):**
+
+1. **Exact `build.sh` diff** — `TEST_RUNNER_*` pass-through block, insert
+   immediately after `XCODEBUILD_ARGS+=( … "${ACTION[@]}" )`, before
+   `run_xcodebuild()`. Uses `IFS='=' read -r _kgr_key _kgr_val` + `case`
+   guard to handle values containing `=` without a `grep` pipe.
+2. **Exact §2.3 carve-out wording** — three-clause amendment: (a) build-time
+   only, (b) no runtime network from SPM-fetched packages, (c) any new SPM dep
+   requires a decisions.md entry first.
+3. **Exact `nm -gU | grep` invocation** — two-pass: one for analytics SDK
+   symbols, one for non-NOOP backend symbols (`TestMetrics`, `DebugPrint*`).
+   Run on thin arm64 Release binary post-archive.
+4. **CI YAML snippet** — resolvePackageDependencies step + Package.resolved-
+   keyed cache block for `saas-macos-medium-m1`.
+
+**Key pattern:** `TEST_RUNNER_` prefix is the only documented contract for
+delivering env vars into xcodebuild's launched test runner's
+`ProcessInfo.environment`. Without it, env vars set in the invoking shell are
+silently swallowed at the process boundary.
+
+Drop: `.squad/decisions/inbox/hopper-metrics-scope-v2.md`.
+
+### 2026-05-20T18:50:53-07:00 — MetricKit V3 tooling scope
+
+Architecture pivot: dropped `apple/swift-metrics` SPM dependency in favor of Apple's
+system MetricKit framework (`import MetricKit`). No SPM changes needed; project already
+had zero `XCRemoteSwiftPackageReference` entries and no `Package.resolved`.
+
+**Deliverables:**
+
+1. `.squad/decisions/inbox/hopper-metrickit-scope.md` — full V3 scope document.
+
+2. `app/KnittingGaugeReconciler/PrivacyInfo.xcprivacy` — privacy manifest drafted and
+   created. Declares `NSPrivacyTracking: false`, empty `NSPrivacyAccessedAPITypes`
+   (MetricKit is passive; no required-reason API calls in subscriber code), and three
+   `NSPrivacyCollectedDataTypes` entries: CrashData, PerformanceData,
+   OtherDiagnosticData — all not linked to user, not for tracking, purposes:
+   AppFunctionality + Analytics.
+   **⚠️ Action required:** Tesla/yashasg must add `PrivacyInfo.xcprivacy` to the app
+   target's Resources phase in Xcode before App Store submission.
+
+3. `app/build.sh` — two new gates added:
+   - **Package.resolved telemetry-clean check** (all modes): fails if
+     `swift-metrics|firebase|sentry-cocoa|datadog|amplitude|mixpanel|segment|braze|
+     newrelic|instana|bugsnag` found in Package.resolved.
+   - **otool -L system-dylibs-only check** (release mode, post-build): fails if any
+     non-system dylib is linked (`/usr/lib/`, `/System/Library/`, `@rpath`, etc.
+     are allowed; anything else is an error).
+
+**Key MetricKit facts confirmed:**
+- No Info.plist keys needed for subscription.
+- No entitlements required.
+- iOS 17.0 deployment target is sufficient (MetricKit: iOS 13.0+; MXDiagnosticPayload: iOS 14.0+).
+- `NSPrivacyAccessedAPITypes` empty for plain subscriber code.
+- App Store Connect Analytics receives payloads by default; no explicit toggle needed.
+- First payload arrives ~24h after TestFlight install.
+
+**What V2 supersedes:** swift-metrics SPM pin, KGR_METRICS_BACKEND env var,
+TEST_RUNNER_KGR_* passthrough in build.sh, MetricsTestKit unit-test linkage,
+nm -gU analytics-symbols check.
+
+**What V2 carries forward:** warnings-as-errors gate, iOS 17.0 target,
+saas-macos-medium-m1 blocker, §2.3 carve-out reasoning (reshaped for MetricKit),
+serial iOS UI test constraint.
+---
+
+## 2026-05-20T19:26:30Z — MetricKit V1 shipped (Team session)
+
+MetricKit V1 implementation completed. User directives: (1) MetricKit pivot from swift-metrics (2026-05-20T18:50:53), (2) privacy card stays removed (2026-05-20T19:22:50), (3) 9-signpost roster locked (2026-05-20T19:26:30). Build: 49/49 tests pass (was 25). Session log: .squad/log/2026-05-20T19-26-30Z-metrickit-pivot-shipped.md. Orchestration logs: .squad/orchestration-log/2026-05-21T02-26-30Z-{agent-round}.md.

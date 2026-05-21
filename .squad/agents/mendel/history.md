@@ -94,3 +94,37 @@ Metric instrumentation must add zero blocking work on launch — no consent prom
 
 ## Team updates
 - 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).
+
+## [2026-05-20T18:42:54-07:00] swift-metrics scope V2 (issue #9) — independent research view
+
+**Session:** V2 re-run of the metrics scope research question with stricter ephemeral-sink evaluation.
+
+**Deliverable:** `.squad/decisions/inbox/mendel-metrics-scope-v2.md`
+
+### Key V2 finding: The sink question is the real question
+
+V1 framed all 5 signals (Q1–Q5) as "research questions worth instrumenting." V2 evaluates them against the **actual** sink architecture (in-memory, process-dies, no read path except lldb) and finds:
+
+- **Q3 (30s first-use timer): YES** — meaningful even with an ephemeral sink. This is a developer-session regression check with a clear pass/fail criterion. One session, one attached Xcode, one answer. The only signal that works as designed without additional infrastructure.
+- **Q1/Q2/Q4/Q5: NOT YET** — behaviorally interesting hypotheses that require cross-session aggregation. An ephemeral in-process store loses state on every launch. These are vocabulary placeholders and dogfooding signals, not research signals, until a persistent local store or diagnostics export exists.
+
+### V2 recommendation (not in V1)
+
+Option A (default): Ship V1 as "metrics infrastructure — vocabulary and architecture only." Explicitly label Q1/Q2/Q4/Q5 as deferred pending a read path. Do not claim they answer research questions.
+
+Option B: Add a minimal `#if DEBUG`-only "Export diagnostics JSON" action (hidden developer affordance, share-sheet-based) to make all five signals readable without touching the App Store privacy posture.
+
+### V1 divergences
+
+1. V1 overconfidently framed all 5 signals as research-grade. V2 distinguishes developer-session signals (Q3 only) from cross-session behavioral signals (Q1/Q2/Q4/Q5) that need a read path.
+2. V1 did not recommend deferring signal collection. V2 does — explicitly.
+3. V1 deferred methodology to implementation cycle. V2 addresses it directly (session tagging, test protocol for Q3, follow-on interview requirement for Q4).
+
+### Ratifications from V1
+
+Categorical buckets, not raw values; no wall-clock timestamps; no session IDs; no free-text capture; per-keystroke exclusion; slippery-slope risks; sacred 30s path constraint; population-level questions excluded. All ratified without change.
+---
+
+## 2026-05-20T19:26:30Z — MetricKit V1 shipped (Team session)
+
+MetricKit V1 implementation completed. User directives: (1) MetricKit pivot from swift-metrics (2026-05-20T18:50:53), (2) privacy card stays removed (2026-05-20T19:22:50), (3) 9-signpost roster locked (2026-05-20T19:26:30). Build: 49/49 tests pass (was 25). Session log: .squad/log/2026-05-20T19-26-30Z-metrickit-pivot-shipped.md. Orchestration logs: .squad/orchestration-log/2026-05-21T02-26-30Z-{agent-round}.md.

@@ -276,3 +276,26 @@ spuriously.
 
 ## Team updates
 - 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).
+
+### [2026-05-20T18:42:54-07:00] swift-metrics V2 domain signal re-scope (issue #9)
+
+Independent V2 pass on domain signals for swift-metrics. Deliverable: `.squad/decisions/inbox/jacquard-metrics-scope-v2.md`.
+
+**Ratified from V1:**
+- 4-bucket axis-mismatch shape (both-match / stitch-off-only / row-off-only / both-off), 3% threshold
+- Drift magnitude bands per axis (<3% / 3–10% / 10–25% / >25%), anchored to existing `gaugeStatus` code thresholds
+- Cast-on rounding drift bands (<0.5% / 0.5–2% / ≥2%), tied to existing `castOnRoundingDriftPercent` field
+- Category-only granularity rule (made explicit in V2 — no raw numeric values in metrics)
+- Saved-rec completeness signals (confirmed dependent on metadata wiring)
+
+**V2 divergences:**
+1. **Implausible-input thresholds revised:** V1's <10 st/10cm lower bound falsely flags valid super-bulky gauges (7–9 st/10cm). V2: <7 or >65 st/10cm for stitches; <9 or >90 rows/10cm for rows. Detection of per-inch/per-10cm confusion still works at revised bounds.
+2. **Section-inspected signal dropped:** ContentView renders all sections together with no per-section disclosure affordance — nothing to instrument. Re-evaluate if Edison adds section-level expand/collapse.
+3. **Verdict transitions added (new):** `verdictImproved` (toward Match) and `verdictDegraded` (away from Match) counters. Closest available proxy for "did the tool help the knitter converge on a workable gauge?" Requires `@State var previousVerdict` in ContentView; no `GaugeMath.compute` change.
+
+**Key reusable insight:** Verdict transition direction is the outcome signal missing from most in-app telemetry on calculator tools. Track direction (toward/away from goal state), not just transition count.
+---
+
+## 2026-05-20T19:26:30Z — MetricKit V1 shipped (Team session)
+
+MetricKit V1 implementation completed. User directives: (1) MetricKit pivot from swift-metrics (2026-05-20T18:50:53), (2) privacy card stays removed (2026-05-20T19:22:50), (3) 9-signpost roster locked (2026-05-20T19:26:30). Build: 49/49 tests pass (was 25). Session log: .squad/log/2026-05-20T19-26-30Z-metrickit-pivot-shipped.md. Orchestration logs: .squad/orchestration-log/2026-05-21T02-26-30Z-{agent-round}.md.

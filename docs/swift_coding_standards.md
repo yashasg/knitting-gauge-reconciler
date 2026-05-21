@@ -49,17 +49,18 @@ without an inline comment that names the issue or decision authorizing it.
   inside the math layer (UI surfaces may localise display strings, but the
   underlying numbers must be bit-identical across locales).
 
+The math layer (`GaugeMath.swift`) MUST NOT import `MetricKit`, `os.signpost`, `os`, or any analytics framework. Verdict classification for analytics signposts lives in `GaugeMathMetrics.swift`, called by the view layer after `GaugeMath.compute(...)` returns. This is enforced by `MetricKitSubscriberTests.AC-3` (static file scan) and `AC-4` (runtime recording double).
+
 ### 2.3 No network, no analytics upload
 
 The product charter (issue #1, mitigation 3) forbids network calls. Concretely:
 
 - No `URLSession`, `Network` framework, `WKWebView` external loads, or
   third-party SDK that reaches a remote endpoint.
-- No analytics framework (Firebase, Sentry, Mixpanel, Adjust, AppsFlyer,
-  etc.). On-device-only counters (e.g., a future MetricKit consumer) are
-  acceptable and must not transmit.
 - No remote configuration. Feature flags are environment-driven launch
   arguments (`KGR_*` prefix) or compile-time constants.
+
+User code MUST NOT open sockets, instantiate `URLSession` to telemetry endpoints, or link any third-party analytics SDK (Firebase, Amplitude, Mixpanel, Segment, GoogleAnalytics, Sentry, or equivalents). System frameworks (`MetricKit`) that conduct OS-mediated upload at Apple's schedule, with user opt-out under iOS Settings → Privacy & Security → Analytics & Improvements → Share With App Developers, are PERMITTED. Re-export of `MXMetricPayload` via a developer-owned HTTP endpoint requires a separate §2.3 amendment naming the endpoint URL and stating a retention policy; this is explicitly DEFERRED to V2 and is NOT in scope for V1.
 
 If a future requirement needs network access, it must arrive as a written
 decision in `.squad/decisions.md` first.
@@ -150,6 +151,8 @@ No log statements (`print`, `os_log`, `Logger`) in release builds outside of
 a debug-flag-gated branch (`#if DEBUG` or env-var-gated). The math layer
 must not log at all.
 
+`MXMetricManagerSubscriber.didReceive(_:)` handlers that log payload contents (e.g., `jsonRepresentation()` via `print` or `os_log`) MUST be wrapped in `#if DEBUG`. In release builds, `didReceive(_:)` is a no-op — the data still flows to App Store Connect Analytics via Apple's auto-pipeline, but our process never emits the contents.
+
 ## 3. Tooling
 
 - `xcodebuild` with `-quiet -warnings-as-errors` invoked by `app/build.sh`.
@@ -192,12 +195,6 @@ If a rule here is wrong or has become obsolete, **don't** silently ignore
 it in code review — file an inbox entry titled `tesla-swift-standard-amend-
 <topic>.md` proposing the amendment. The next Scribe pass will merge it.
 
-## 7. Open questions
+## 7. MetricKit
 
-- **Metrics capture (issue #9):** Whether on-device metrics via MetricKit
-  count as "analytics" under §2.3 is under discussion. Until resolved,
-  treat in-process counters (no upload) as allowed and any export path as
-  forbidden.
-- **Localisation:** No localisation today (English-only UI). When the
-  project adopts `String(localized:)`, this guide will need a §2.13 to
-  cover plural and grammar rules.
+RESOLVED 2026-05-20. MetricKit consumption (via `MXMetricManagerSubscriber` and `MXSignpost(_:)`) is in scope. Re-export of payloads to a developer-owned endpoint is forbidden by default — see §2.3 carve-out. The current roster of `MXSignpost` names (9 total) is documented in `.squad/decisions.md`. Any new signpost name requires a Lead review and an addition to `decisions.md`.

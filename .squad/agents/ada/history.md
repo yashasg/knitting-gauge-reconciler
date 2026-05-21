@@ -167,3 +167,42 @@ buckets for counters, and (per §2.3) keep everything on-device.
 
 ## Team updates
 - 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).
+
+### 2026-05-20T18:42:54-07:00 — V2 metrics boundary re-examination (issue #9)
+
+**Task:** Independent V2 re-examination of the GaugeMath math-layer boundary for
+swift-metrics integration. Not anchored to V1.
+
+**V2 stance:** Fully ratifies V1's boundary. Three additions over V1:
+
+1. **Sendable/value-semantics:** `GaugeInputs` and `GaugeMathResult` are trivially
+   `Sendable` (all-primitive value-type structs). This structural asset must be
+   preserved — no reference-type fields. The all-value-type design allows result
+   structs to cross actor boundaries (e.g. into a metrics `actor MetricsStore`)
+   with zero ceremony.
+
+2. **Classifier layer named:** Recommend `GaugeMathMetrics.swift` as a separate
+   pure-function file for drift/cast-on bucket classification. Keeps observability
+   thresholds out of `GaugeMath.swift`. Satisfies the "same contract as GaugeMath"
+   requirement (values in, values out, no side effects).
+
+3. **Test mechanics specified:** Two concrete tests:
+   - Compile-time file-scan: assert `GaugeMath.swift` contains no `import Metrics`
+     or `import os`.
+   - Runtime `RecordingMetricsFactory` swap: bootstrap a recording factory before
+     calling `GaugeMath.compute`, assert zero recorded calls after.
+
+**§2.2 amendment wording proposed** (Tesla to own the actual edit):
+- Three new sub-bullets covering: no metric handles / logging in GaugeMath
+  functions, compile-time `import` prohibition enforced by a Curie test, and
+  classifier-file placement.
+
+**Skill written:** `.squad/skills/gauge-math-metrics-seam/SKILL.md` — reusable
+pattern for pure-math namespaces with caller-side instrumentation in Swift.
+
+**Deliverable:** `.squad/decisions/inbox/ada-metrics-scope-v2.md`
+---
+
+## 2026-05-20T19:26:30Z — MetricKit V1 shipped (Team session)
+
+MetricKit V1 implementation completed. User directives: (1) MetricKit pivot from swift-metrics (2026-05-20T18:50:53), (2) privacy card stays removed (2026-05-20T19:22:50), (3) 9-signpost roster locked (2026-05-20T19:26:30). Build: 49/49 tests pass (was 25). Session log: .squad/log/2026-05-20T19-26-30Z-metrickit-pivot-shipped.md. Orchestration logs: .squad/orchestration-log/2026-05-21T02-26-30Z-{agent-round}.md.

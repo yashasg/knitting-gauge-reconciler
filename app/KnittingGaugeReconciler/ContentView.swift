@@ -1,5 +1,7 @@
 import SwiftUI
 import UIKit
+import MetricKit
+import os.signpost
 
 struct ContentView: View {
     private static let defaults = GaugeTextDefaults()
@@ -17,6 +19,8 @@ struct ContentView: View {
     @State private var showVerdictHelp = initialBool("KGR_SHOW_VERDICT_HELP")
     @State private var showAboutHelp = initialBool("KGR_SHOW_ABOUT_HELP")
     @State private var sharePayload: SharePayload?
+    @State private var previousVerdictBucket: VerdictBucket? = nil
+    @State private var driftBandSignpostFired = false
 
     private var inputs: GaugeInputs {
         GaugeInputs(
@@ -33,7 +37,10 @@ struct ContentView: View {
     }
 
     private var result: GaugeMathResult {
-        GaugeMath.compute(inputs)
+        os_signpost(.begin, log: MetricsSubscriber.log, name: SignpostNames.compute)
+        let r = GaugeMath.compute(inputs)
+        os_signpost(.end, log: MetricsSubscriber.log, name: SignpostNames.compute)
+        return r
     }
 
     var body: some View {
@@ -77,6 +84,39 @@ struct ContentView: View {
                 AboutHelpSheet()
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
+            }
+            .onChange(of: showVerdictHelp) { _, newValue in
+                if newValue {
+                    os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.sheetVerdictHelpOpened)
+                }
+            }
+            .onChange(of: showAboutHelp) { _, newValue in
+                if newValue {
+                    os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.sheetAboutHelpOpened)
+                }
+            }
+            .onChange(of: verdictTitle) { _, newValue in
+                let current = VerdictBucket(verdictTitle: newValue)
+                if let decision = GaugeMathMetrics.classifyVerdictDelta(
+                    previous: previousVerdictBucket,
+                    current: current
+                ) {
+                    switch decision {
+                    case .improved:
+                        os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.verdictImproved)
+                    case .degraded:
+                        os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.verdictDegraded)
+                    }
+                }
+                previousVerdictBucket = current
+            }
+            .onChange(of: abs(result.castOnRoundingDriftPercent) >= 3) { _, isVisible in
+                if isVisible, !driftBandSignpostFired {
+                    os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.castOnDriftBandShown)
+                    driftBandSignpostFired = true
+                } else if !isVisible {
+                    driftBandSignpostFired = false
+                }
             }
         }
     }
@@ -374,6 +414,7 @@ struct ContentView: View {
     }
 
     private func resetToDefaults() {
+        os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.resetTapped)
         patternStitches = Self.defaults.patternStitches
         patternRows = Self.defaults.patternRows
         yourStitches = Self.defaults.yourStitches
@@ -389,8 +430,10 @@ struct ContentView: View {
     private func shareResults() {
         let summary = ResultsExportSummary(inputs: inputs, result: result)
         if let imageURL = renderShareImageURL(summary: summary) {
+            os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareInvoked)
             sharePayload = SharePayload(items: [imageURL])
         } else {
+            os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareFallback)
             sharePayload = SharePayload(items: [ResultsShareTextFormatter.string(inputs: inputs, result: result)])
         }
     }

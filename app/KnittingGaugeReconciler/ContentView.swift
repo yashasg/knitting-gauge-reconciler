@@ -6,6 +6,8 @@ import os.signpost
 struct ContentView: View {
     private static let defaults = GaugeTextDefaults()
 
+    // MARK: - State
+
     @State private var patternStitches = initialText("KGR_PS", defaultValue: "32")
     @State private var patternRows = initialText("KGR_PR", defaultValue: "24")
     @State private var yourStitches = initialText("KGR_YS", defaultValue: "32")
@@ -21,6 +23,12 @@ struct ContentView: View {
     @State private var sharePayload: SharePayload?
     @State private var previousVerdictBucket: VerdictBucket?
     @State private var driftBandSignpostFired = false
+    /// nil until the user taps "Calculate Adjustments".
+    @State private var cachedResult: GaugeMathResult?
+    /// True after any input change following the first successful compute.
+    @State private var isResultStale = false
+
+    // MARK: - Derived
 
     private var inputs: GaugeInputs {
         GaugeInputs(
@@ -36,29 +44,42 @@ struct ContentView: View {
         )
     }
 
-    @State private var cachedResult: GaugeMathResult = GaugeMath.compute(GaugeInputs())
-
-    private var result: GaugeMathResult { cachedResult }
+    /// Always-live result — used for the verdict help sheet so it has content
+    /// even before the first Calculate tap. NOT used for the signpost-tracked
+    /// verdictTitle (which only changes on Calculate).
+    private var liveResult: GaugeMathResult {
+        cachedResult ?? GaugeMath.compute(inputs)
+    }
 
     private func recomputeResult() {
         os_signpost(.begin, log: MetricsSubscriber.log, name: SignpostNames.compute)
         cachedResult = GaugeMath.compute(inputs)
         os_signpost(.end, log: MetricsSubscriber.log, name: SignpostNames.compute)
+        isResultStale = false
     }
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    gaugeCard
-                    reconciliationCard
-                    adjustmentsCard
+                    patternGaugeCard
+                    yourGaugeCard
+                    patternInstructionsCard
+                    requiredAdjustmentsCard
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 24)
             }
-            .background(AppTheme.background.ignoresSafeArea())
+            .background(
+                ZStack {
+                    AppTheme.background
+                    TexturedBackground()
+                }
+                .ignoresSafeArea()
+            )
             .toolbar(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
@@ -79,7 +100,7 @@ struct ContentView: View {
                     .presentationDetents([.medium, .large])
             }
             .sheet(isPresented: $showVerdictHelp) {
-                VerdictHelpSheet(title: verdictTitle, explanation: verdictBody)
+                VerdictHelpSheet(title: sheetVerdictTitle, explanation: sheetVerdictBody)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
@@ -98,6 +119,8 @@ struct ContentView: View {
                     os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.sheetAboutHelpOpened)
                 }
             }
+            // verdict.improved / verdict.degraded fire only when cachedResult changes (i.e. on
+            // Calculate tap), because verdictTitle returns "" while cachedResult is nil.
             .onChange(of: verdictTitle) { _, newValue in
                 let current = VerdictBucket(verdictTitle: newValue)
                 if let decision = GaugeMathMetrics.classifyVerdictDelta(
@@ -113,7 +136,7 @@ struct ContentView: View {
                 }
                 previousVerdictBucket = current
             }
-            .onChange(of: abs(result.castOnRoundingDriftPercent) >= 3) { _, isVisible in
+            .onChange(of: cachedResult.map { abs($0.castOnRoundingDriftPercent) >= 3 } ?? false) { _, isVisible in
                 if isVisible, !driftBandSignpostFired {
                     os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.castOnDriftBandShown)
                     driftBandSignpostFired = true
@@ -121,77 +144,91 @@ struct ContentView: View {
                     driftBandSignpostFired = false
                 }
             }
-            .onChange(of: inputs, initial: true) { _, _ in
-                recomputeResult()
+            // Mark stale when inputs change AFTER a successful compute.
+            // Does NOT recompute — that only happens on Calculate tap.
+            .onChange(of: inputs) { _, _ in
+                if cachedResult != nil {
+                    isResultStale = true
+                }
             }
         }
     }
+
+    // MARK: - Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 4) {
-                Text("Knitting Gauge Reconciler")
-                    .font(.system(.largeTitle, design: .serif).weight(.bold))
-                    .foregroundStyle(AppTheme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                Button {
-                    showAboutHelp = true
-                } label: {
-                    Image(systemName: "questionmark.circle")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(AppTheme.sage)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .accessibilityLabel("About this calculator, more information")
-                .accessibilityHint("Opens an explanation of how this calculator works")
-                .accessibilityIdentifier("about-help-button")
+        HStack(alignment: .center, spacing: 4) {
+            Text("Gauge Reconciler")
+                .font(.system(.largeTitle, design: .serif).weight(.bold))
+                .foregroundStyle(AppTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                showAboutHelp = true
+            } label: {
+                Image(systemName: "questionmark.circle")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(AppTheme.sage)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
-            Text("Type your swatch. See every per-section adjustment — instantly.")
-                .font(.body)
-                .lineSpacing(3)
-                .foregroundStyle(AppTheme.muted)
+            .accessibilityLabel("About this calculator, more information")
+            .accessibilityHint("Opens an explanation of how this calculator works")
+            .accessibilityIdentifier("about-help-button")
         }
     }
 
-    private var gaugeCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            GaugeInputGroup(title: "Pattern gauge (per 10 cm)") {
-                GaugeMeasurementPair {
-                    NumberField(
-                        title: "Pattern stitches",
-                        text: $patternStitches,
-                        unit: "st / 10 cm",
-                        identifier: "pattern-stitches",
-                        fieldWidth: 88
-                    )
-                } trailing: {
-                    NumberField(title: "Pattern rows", text: $patternRows, unit: "rows / 10 cm", identifier: "pattern-rows", fieldWidth: 88)
-                }
-            }
+    // MARK: - Pattern Gauge Card (unified-pill stepper fields)
 
-            GaugeInputGroup(title: "Your swatch (per 10 cm)") {
-                GaugeMeasurementPair {
-                    NumberField(
-                        title: "Your stitches",
-                        text: $yourStitches,
-                        unit: "st / 10 cm",
-                        hint: "measure on a blocked swatch",
-                        identifier: "your-stitches",
-                        fieldWidth: 88
-                    )
-                } trailing: {
-                    NumberField(
-                        title: "Your rows",
-                        text: $yourRows,
-                        unit: "rows / 10 cm",
-                        hint: "same swatch, vertical count",
-                        identifier: "your-rows",
-                        fieldWidth: 88
-                    )
-                }
+    private var patternGaugeCard: some View {
+        GaugeInputGroup(title: "Pattern Gauge", icon: "book.fill", showPerTag: true) {
+            GaugeMeasurementPair {
+                GaugeStepperField(
+                    title: "Stitches",
+                    text: $patternStitches,
+                    unit: "st",
+                    identifier: "pattern-stitches"
+                )
+            } trailing: {
+                GaugeStepperField(
+                    title: "Rows",
+                    text: $patternRows,
+                    unit: "ro",
+                    identifier: "pattern-rows"
+                )
             }
+        }
+    }
 
+    // MARK: - Your Gauge Card (unified-pill stepper fields + live mismatch helpers)
+
+    private var yourGaugeCard: some View {
+        GaugeInputGroup(title: "Your Gauge", icon: "ruler.fill", showPerTag: true) {
+            GaugeMeasurementPair {
+                GaugeStepperField(
+                    title: "Stitches",
+                    text: $yourStitches,
+                    unit: "st",
+                    identifier: "your-stitches",
+                    hasMismatch: inputs.stitchMismatch,
+                    mismatchLabel: "Stitch gauge mismatch detected"
+                )
+            } trailing: {
+                GaugeStepperField(
+                    title: "Rows",
+                    text: $yourRows,
+                    unit: "ro",
+                    identifier: "your-rows",
+                    hasMismatch: inputs.rowMismatch,
+                    mismatchLabel: "Row gauge mismatch detected"
+                )
+            }
+        }
+    }
+
+    // MARK: - Pattern Instructions Card (always visible)
+
+    private var patternInstructionsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
             SectionTitle("Pattern instructions")
             NumberField(title: "Pattern cast-on", text: $patternCastOn, unit: "stitches", identifier: "pattern-cast-on", fieldWidth: 128)
             AdaptiveTwoColumnStack(minColumnWidth: 140) {
@@ -208,90 +245,141 @@ struct ContentView: View {
         .cardStyle()
     }
 
-    private var reconciliationCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionTitle("Reconciliation — both axes")
-            AdaptiveTwoColumnStack(spacing: 14) {
-                HeroMetric(
-                    title: "Stitch-wise (horizontal)",
-                    value: "\(GaugeMath.fmtPct(result.stitchWidthScale))%",
-                    status: gaugeStatus(scale: result.stitchWidthScale),
-                    detail: "Pattern asks \(plain(inputs.patternStitches)) st/10cm · You hit \(plain(inputs.yourStitches)) st/10cm",
-                    identifier: "stitch-hero"
-                )
-            } trailing: {
-                HeroMetric(
-                    title: "Row-wise (vertical)",
-                    value: "\(GaugeMath.fmtPct(result.rowCountScale))%",
-                    status: rowStatus(scale: result.rowCountScale),
-                    detail: "Pattern asks \(plain(inputs.patternRows)) rows/10cm · You hit \(plain(inputs.yourRows)) rows/10cm",
-                    identifier: "row-hero"
-                )
+    // MARK: - Required Adjustments Card (always visible)
+
+    private var requiredAdjustmentsCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header row: title + in-header calculate/recalculate button
+            HStack(alignment: .center, spacing: 12) {
+                Text("Required\nAdjustments")
+                    .font(.system(.largeTitle, design: .serif).weight(.bold))
+                    .foregroundStyle(AppTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+                Button {
+                    recomputeResult()
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: isResultStale ? "arrow.clockwise" : "wand.and.stars")
+                            .font(.footnote.weight(.semibold))
+                        Text(cachedResult == nil ? "Calculate" : "Recalculate")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .foregroundStyle(AppTheme.cream)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        // Full color when: never calculated, or stale (action needed).
+                        // Subdued when fresh — results visible, no action required.
+                        (cachedResult != nil && !isResultStale)
+                            ? AppTheme.sage.opacity(0.5)
+                            : AppTheme.sage
+                    )
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("calculate-button")
+                .accessibilityLabel(cachedResult == nil ? "Calculate Adjustments" : "Recalculate Adjustments")
+                .accessibilityHint("Computes gauge reconciliation adjustments for your pattern")
             }
-            verdictPanel
+
+            if let result = cachedResult {
+                // Results — dimmed when stale to signal a Recalculate tap is needed.
+                Group {
+                    // ① Yoke Depth
+                    numberedSectionCard(number: 1, title: "Yoke Depth", subtitle: "To hit target measurement") {
+                        AdjustmentValuePair(
+                            patternValue: GaugeMath.fmtRows(result.patternYokeRows),
+                            yourValue: result.yokeRowsAtYourGauge,
+                            valueIdentifier: "yoke-your-rows"
+                        )
+                    }
+
+                    // ② Body & Sleeves
+                    numberedSectionCard(number: 2, title: "Body & Sleeves", subtitle: "Length Correction") {
+                        VStack(spacing: 12) {
+                            AdjustmentValuePair(
+                                patternValue: GaugeMath.fmtRows(result.patternBodyRows),
+                                yourValue: result.bodyRowsAtYourGauge,
+                                patternLabel: "Body Rows",
+                                valueIdentifier: "body-your-rows"
+                            )
+                            AdjustmentValuePair(
+                                patternValue: GaugeMath.fmtRows(result.patternSleeveRows),
+                                yourValue: result.sleeveRowsAtYourGauge,
+                                patternLabel: "Sleeve Rows",
+                                valueIdentifier: "sleeve-your-rows"
+                            )
+                        }
+                    }
+
+                    // ③ Shaping Rates
+                    numberedSectionCard(number: 3, title: "Shaping Rates", subtitle: "Increases / Decreases") {
+                        VStack(spacing: 8) {
+                            AdjustmentRow(
+                                name: "Increase-row spacing",
+                                pattern: "Every \(plain(inputs.patternIncreaseSpacing)) rows",
+                                adjusted: "Space every \(GaugeMath.fmtRows(result.adjustedIncreaseSpacing)) rows/rounds"
+                            )
+                            AdjustmentRow(
+                                name: "Cast-on stitches",
+                                pattern: "\(plain(inputs.patternCastOn)) stitches",
+                                adjusted: "Cast on \(result.adjustedCastOn) stitches",
+                                adjustedIdentifier: "cast-on-result",
+                                driftPill: abs(result.castOnRoundingDriftPercent) >= 3
+                                    ? String(format: "%+.0f%% width", result.castOnRoundingDriftPercent)
+                                    : nil
+                            )
+                        }
+                    }
+
+                    actionsCard(result: result)
+                }
+                // Dim stale results to signal they need a Recalculate tap.
+                .opacity(isResultStale ? 0.6 : 1.0)
+            } else {
+                // Pre-calculate placeholder — shown until the first Calculate tap.
+                Text("Enter your gauge above and tap Calculate to see your adjustments.")
+                    .font(.body)
+                    .foregroundStyle(AppTheme.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
+                    .accessibilityIdentifier("adjustments-placeholder")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func numberedSectionCard<Content: View>(
+        number: Int,
+        title: String,
+        subtitle: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 10) {
+                StepCircle(number: number)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(AppTheme.ink)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.muted)
+                }
+            }
+            content()
         }
         .cardStyle()
     }
 
-    private var verdictPanel: some View {
-        HStack(alignment: .center, spacing: 8) {
-            Text(verdictTitle)
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(AppTheme.sage)
-                .accessibilityLabel(verdictAccessibilityLabel)
-            Spacer()
-            Button {
-                showVerdictHelp = true
-            } label: {
-                Image(systemName: "questionmark.circle")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.sage)
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
-            }
-            .accessibilityLabel("More information")
-            .accessibilityHint("Opens a description of this gauge verdict")
-            .accessibilityIdentifier("verdict-help-button")
-        }
-        .padding(14)
-        .background(AppTheme.accentSoft)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(AppTheme.sage, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .accessibilityIdentifier("verdict-panel")
-    }
+    // MARK: - Actions Card (full math, share, reset)
 
-    private var adjustmentsCard: some View {
+    @ViewBuilder
+    private func actionsCard(result: GaugeMathResult) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionTitle("Per-section adjustments")
-            AdjustmentRow(
-                name: "Yoke depth",
-                pattern: sectionPatternDescription(cm: inputs.patternYokeDepth, rows: result.patternYokeRows),
-                adjusted: sectionGuidance(cm: result.adjustedYokeDepth, rows: result.adjustedYokeRows)
-            )
-            AdjustmentRow(
-                name: "Body length",
-                pattern: sectionPatternDescription(cm: inputs.patternBodyLength, rows: result.patternBodyRows),
-                adjusted: sectionGuidance(cm: result.adjustedBodyLength, rows: result.adjustedBodyRows)
-            )
-            AdjustmentRow(
-                name: "Sleeve length",
-                pattern: sectionPatternDescription(cm: inputs.patternSleeveLength, rows: result.patternSleeveRows),
-                adjusted: sectionGuidance(cm: result.adjustedSleeveLength, rows: result.adjustedSleeveRows)
-            )
-            AdjustmentRow(name: "Increase-row spacing", pattern: "Every \(plain(inputs.patternIncreaseSpacing)) rows", adjusted: "Space every \(GaugeMath.fmtRows(result.adjustedIncreaseSpacing)) rows/rounds")
-            AdjustmentRow(
-                name: "Cast-on stitches",
-                pattern: "\(plain(inputs.patternCastOn)) stitches",
-                adjusted: "Cast on \(result.adjustedCastOn) stitches",
-                adjustedIdentifier: "cast-on-result",
-                driftPill: abs(result.castOnRoundingDriftPercent) >= 3
-                    ? String(format: "%+.0f%% width", result.castOnRoundingDriftPercent)
-                    : nil
-            )
-
             Button(action: { showFullMath.toggle() }) {
                 HStack {
                     Text("Show full math")
@@ -305,12 +393,11 @@ struct ContentView: View {
             .buttonStyle(.plain)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(AppTheme.sage)
-            // Identifier and label allow UI tests to find this element reliably as a button.
             .accessibilityIdentifier("disclosure-full-math")
             .accessibilityLabel("Show full math")
 
             if showFullMath {
-                Text(fullMathBreakdown)
+                Text(fullMathBreakdown(result: result))
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(AppTheme.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -327,12 +414,12 @@ struct ContentView: View {
                     .contentShape(Rectangle())
                     .accessibilityIdentifier("reset-defaults")
                 Spacer()
-                Button(action: shareResults) {
+                Button(action: { shareResults(result: result) }) {
                     Label("Share results", systemImage: "square.and.arrow.up")
                         .labelStyle(.titleAndIcon)
                         .frame(minWidth: 100, minHeight: 44)
                         .contentShape(Rectangle())
-                    }
+                }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("share-results")
                 .accessibilityLabel("Share results")
@@ -344,25 +431,30 @@ struct ContentView: View {
         .cardStyle()
     }
 
+    // MARK: - Verdict (signpost-only; derived from cachedResult so it changes only on Calculate tap)
+
+    /// Returns "" when no result exists — prevents spurious signpost fires before first Calculate.
     private var verdictTitle: String {
+        guard let result = cachedResult else { return "" }
+        return verdictTitleComputed(result: result)
+    }
+
+    /// Live verdict for the help sheet — always has content, regardless of Calculate state.
+    private var sheetVerdictTitle: String { verdictTitleComputed(result: liveResult) }
+    private var sheetVerdictBody: String { verdictBodyComputed(result: liveResult) }
+
+    private func verdictTitleComputed(result: GaugeMathResult) -> String {
         let stitchDrift = abs(result.stitchWidthScale - 1)
         let rowDrift = abs(result.rowCountScale - 1)
-
-        if stitchDrift < 0.03, rowDrift < 0.03 {
-            return "Gauge match"
-        }
-        if stitchDrift >= 0.15 || rowDrift >= 0.15 {
-            return "Major mismatch"
-        }
+        if stitchDrift < 0.03, rowDrift < 0.03 { return "Gauge match" }
+        if stitchDrift >= 0.15 || rowDrift >= 0.15 { return "Major mismatch" }
         let stitchOffRange = stitchDrift >= 0.03 && stitchDrift < 0.15
         let rowOffRange = rowDrift >= 0.03 && rowDrift < 0.15
-        if stitchOffRange && rowOffRange {
-            return "Significant drift"
-        }
+        if stitchOffRange && rowOffRange { return "Significant drift" }
         return "Drift"
     }
 
-    private var verdictBody: String {
+    private func verdictBodyComputed(result: GaugeMathResult) -> String {
         let stitchDrift   = abs(result.stitchWidthScale - 1)
         let rowDrift      = abs(result.rowCountScale - 1)
         let stitchPercent = abs(GaugeMath.fmtPct(result.stitchWidthScale) - 100)
@@ -374,7 +466,6 @@ struct ContentView: View {
         let majorNote = (stitchDrift >= 0.15 || rowDrift >= 0.15)
             ? " Over 15% drift — consider re-swatching or changing needle size before proceeding."
             : ""
-
         if !stitchOff && !rowOff {
             return "Both gauges match. Cast on \(result.adjustedCastOn) stitches as written. Knit straight from the pattern — no adjustments needed. Re-check after blocking."
         }
@@ -382,42 +473,29 @@ struct ContentView: View {
             return "Your row gauge matches, but your stitch gauge is \(stitchPercent)% \(stitchDir). Cast on \(result.adjustedCastOn) stitches instead of the pattern's \(Int(inputs.patternCastOn)) to hit the same width. Vertical sections need no adjustment.\(majorNote)"
         }
         if !stitchOff {
-            return "Your stitch gauge matches — cast on \(result.adjustedCastOn) stitches as written. Your row gauge is \(rowPercent)% \(rowDir) than expected; use the adjusted cm targets for each vertical section.\(majorNote)"
+            return "Your stitch gauge matches — cast on \(result.adjustedCastOn) stitches as written. Your row gauge is \(rowPercent)% \(rowDir) than expected; use the row count guidance for each vertical section.\(majorNote)"
         }
-        return "Both axes are off: stitch gauge \(stitchPercent)% \(stitchDir), row gauge \(rowPercent)% \(rowDir). Cast on \(result.adjustedCastOn) stitches (not \(Int(inputs.patternCastOn))) and use the adjusted cm targets for vertical sections.\(majorNote)"
+        return "Both axes are off: stitch gauge \(stitchPercent)% \(stitchDir), row gauge \(rowPercent)% \(rowDir). Cast on \(result.adjustedCastOn) stitches (not \(Int(inputs.patternCastOn))) and use the row count guidance for vertical sections.\(majorNote)"
     }
 
-    private var verdictAccessibilityLabel: String {
-        let stitchPercent = abs(GaugeMath.fmtPct(result.stitchWidthScale) - 100)
-        let rowPercent    = abs(GaugeMath.fmtPct(result.rowCountScale) - 100)
-        let stitchOff = stitchPercent >= 3
-        let rowOff    = rowPercent >= 3
+    // MARK: - Full math breakdown
 
-        if !stitchOff && !rowOff {
-            return "Gauge match. Cast on \(result.adjustedCastOn) stitches. Both axes within 2 percent."
-        }
-        if stitchOff && !rowOff {
-            return "Stitch gauge off \(stitchPercent) percent. Cast on \(result.adjustedCastOn) instead of \(Int(inputs.patternCastOn)) stitches. Row counts as written."
-        }
-        if !stitchOff {
-            return "Row gauge off \(rowPercent) percent. Cast on \(result.adjustedCastOn) stitches as written. Check the adjusted centimetre targets for vertical sections."
-        }
-        return "Both axes off. Cast on \(result.adjustedCastOn) instead of \(Int(inputs.patternCastOn)) stitches. Review section row or round guidance below."
-    }
-
-    private var fullMathBreakdown: String {
+    private func fullMathBreakdown(result: GaugeMathResult) -> String {
         """
         pattern: \(plain(inputs.patternStitches)) st x \(plain(inputs.patternRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.patternStitches / inputs.patternRows)))
         you:     \(plain(inputs.yourStitches)) st x \(plain(inputs.yourRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.yourStitches / inputs.yourRows)))
         stitch width scale = pattern_st / your_st = \(plain(inputs.patternStitches)) / \(plain(inputs.yourStitches)) = \(String(format: "%.3f", result.stitchWidthScale))
         row density ratio  = your_row / pattern_row = \(plain(inputs.yourRows)) / \(plain(inputs.patternRows)) = \(String(format: "%.3f", result.rowCountScale))
         dim correction     = pattern_row / your_row = \(plain(inputs.patternRows)) / \(plain(inputs.yourRows)) = \(String(format: "%.3f", result.dimensionScale))
-        -> vertical dim D becomes D x \(String(format: "%.3f", result.dimensionScale)) cm
-        -> yoke: \(plain(inputs.patternYokeDepth)) cm -> \(GaugeMath.fmtCm(result.adjustedYokeDepth)) cm, about \(GaugeMath.fmtRows(result.adjustedYokeRows)) rows/rounds
+        -> section rows at your gauge = (cm / 10) x your_rows:
+        -> yoke: \(plain(inputs.patternYokeDepth)) cm → knit \(result.yokeRowsAtYourGauge) rows
+        -> body: \(plain(inputs.patternBodyLength)) cm → knit \(result.bodyRowsAtYourGauge) rows
         -> for any horizontal dim, your stitch count produces \(String(format: "%.1f", result.stitchWidthScale * 100))% of the pattern's intended width
         cast-on adjust = your_st / pattern_st x patCastOn = \(plain(inputs.yourStitches))/\(plain(inputs.patternStitches)) x \(plain(inputs.patternCastOn)) = \(result.adjustedCastOn) stitches
         """
     }
+
+    // MARK: - Actions
 
     private func resetToDefaults() {
         os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.resetTapped)
@@ -430,10 +508,15 @@ struct ContentView: View {
         patternBody = Self.defaults.patternBody
         patternSleeve = Self.defaults.patternSleeve
         patternIncreases = Self.defaults.patternIncreases
+        cachedResult = nil
+        isResultStale = false
+        // Reset previousVerdictBucket so no spurious signpost fires when verdictTitle
+        // transitions "" → "" on next render after clearing cachedResult.
+        previousVerdictBucket = nil
     }
 
     @MainActor
-    private func shareResults() {
+    private func shareResults(result: GaugeMathResult) {
         let summary = ResultsExportSummary(inputs: inputs, result: result)
         if let imageURL = renderShareImageURL(summary: summary) {
             os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareInvoked)
@@ -477,20 +560,45 @@ struct ContentView: View {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
     }
+}
 
-    private func sectionPatternDescription(cm: Double, rows: Double) -> String {
-        "\(plain(cm)) cm · about \(GaugeMath.fmtRows(rows)) pattern rows"
-    }
+// MARK: - TexturedBackground
+// Canvas-based dot grid that renders behind all cards. Spacing and dot size are
+// tuned to look like cross-stitch fabric without being noisy. Color is
+// AppTheme.surfaceTextureDot (muted at 30% opacity).
 
-    private func sectionGuidance(cm: Double, rows: Double) -> String {
-        "Knit to \(GaugeMath.fmtCm(cm)) cm · about \(GaugeMath.fmtRows(rows)) rows/rounds"
+private struct TexturedBackground: View {
+    var body: some View {
+        Canvas { context, size in
+            let spacing: CGFloat = 14
+            let dotRadius: CGFloat = 1.2
+            let cols = Int(size.width / spacing) + 2
+            let rows = Int(size.height / spacing) + 2
+            for row in 0...rows {
+                for col in 0...cols {
+                    let x = CGFloat(col) * spacing
+                    let y = CGFloat(row) * spacing
+                    let rect = CGRect(
+                        x: x - dotRadius, y: y - dotRadius,
+                        width: dotRadius * 2, height: dotRadius * 2
+                    )
+                    context.fill(Path(ellipseIn: rect), with: .color(AppTheme.surfaceTextureDot))
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
+
+// MARK: - SharePayload
 
 private struct SharePayload: Identifiable {
     let id = UUID()
     var items: [Any]
 }
+
+// MARK: - VerdictHelpSheet
 
 private struct VerdictHelpSheet: View {
     var title: String
@@ -515,6 +623,8 @@ private struct VerdictHelpSheet: View {
         .accessibilityIdentifier("verdict-help-sheet")
     }
 }
+
+// MARK: - AboutHelpSheet
 
 private struct AboutHelpSheet: View {
     var body: some View {
@@ -560,6 +670,8 @@ private struct AboutHelpSheet: View {
     }
 }
 
+// MARK: - ActivityView
+
 private struct ActivityView: UIViewControllerRepresentable {
     var activityItems: [Any]
 
@@ -569,6 +681,8 @@ private struct ActivityView: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
+
+// MARK: - ResultsShareCard
 
 private struct ResultsShareCard: View {
     var summary: ResultsExportSummary
@@ -693,6 +807,8 @@ private struct ShareSectionRow: View {
     }
 }
 
+// MARK: - GaugeTextDefaults
+
 private struct GaugeTextDefaults {
     let patternStitches = "32"
     let patternRows = "24"
@@ -705,25 +821,211 @@ private struct GaugeTextDefaults {
     let patternIncreases = "6"
 }
 
+// MARK: - GaugeInputGroup
+// Each gauge card is its own raised tile via .cardStyle(). Icons and PER tag
+// are in the header row.
+
 private struct GaugeInputGroup<Content: View>: View {
     var title: String
+    var icon: String? = nil
+    var showPerTag: Bool = false
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionTitle(title)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 8) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(AppTheme.secondary)
+                }
+                Text(title)
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(AppTheme.ink)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+                if showPerTag {
+                    Text("PER 10CM / 4\"")
+                        .font(.caption2.weight(.bold))
+                        .tracking(0.5)
+                        .foregroundStyle(AppTheme.muted)
+                }
+            }
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Color(uiColor: .secondarySystemGroupedBackground))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AppTheme.outline.opacity(0.55), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .cardStyle()
     }
 }
+
+// MARK: - GaugeStepperField
+// Unified capsule: [−  value  +] — one pill, no separate button backgrounds.
+// The minus/plus icons sit inside the same capsule as the value; tapping the
+// value opens the number pad for direct keyboard entry.
+// Unit suffix intentionally omitted — labels above each field communicate units.
+
+private struct GaugeStepperField: View {
+    var title: String
+    @Binding var text: String
+    var unit: String
+    var identifier: String
+    var hasMismatch: Bool = false
+    var mismatchLabel: String? = nil
+
+    private static let range = 1...99
+
+    private var currentValue: Int {
+        if let i = Int(text) { return i }
+        if let d = Double(text) { return Int(d.rounded()) }
+        return 20
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.muted)
+
+            HStack(spacing: 0) {
+                Button {
+                    text = "\(max(Self.range.lowerBound, currentValue - 1))"
+                } label: {
+                    Image(systemName: "minus")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(AppTheme.ink)
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Decrease \(title)")
+                .accessibilityIdentifier("\(identifier)-minus")
+
+                Spacer()
+
+                TextField("", text: $text)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.center)
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(hasMismatch ? AppTheme.mismatchText : AppTheme.ink)
+                    .fixedSize()
+                    .frame(minWidth: 44)
+                    .accessibilityIdentifier("\(identifier)-field")
+
+                Spacer()
+
+                Button {
+                    text = "\(min(Self.range.upperBound, currentValue + 1))"
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(AppTheme.ink)
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Increase \(title)")
+                .accessibilityIdentifier(identifier)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .frame(minHeight: 44)
+            .background(AppTheme.oatmeal)
+            .clipShape(Capsule())
+
+            if let mismatchLabel, hasMismatch {
+                Text(mismatchLabel)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(AppTheme.mismatchText)
+                    .accessibilityIdentifier("\(identifier)-mismatch")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - AdjustmentValuePair
+// Left block: pattern value on cream background (informational).
+// Right block: your value on dark-green background (actionable).
+// Delta badge floats top-right of the green block; hidden when delta == 0.
+
+private struct AdjustmentValuePair: View {
+    var patternValue: Int
+    var yourValue: Int
+    var patternLabel: String = "Pattern Rows"
+    var yourLabel: String = "You Must Knit"
+    var valueIdentifier: String? = nil
+
+    private var delta: Int { yourValue - patternValue }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            // Left: pattern rows (low-contrast, informational)
+            VStack(alignment: .center, spacing: 4) {
+                Text(patternLabel)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.muted)
+                    .multilineTextAlignment(.center)
+                Text("\(patternValue)")
+                    .font(.system(.title, design: .monospaced).weight(.bold))
+                    .foregroundStyle(AppTheme.muted)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(14)
+            .background(AppTheme.oatmeal)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            // Right: your rows (high-contrast, actionable)
+            ZStack(alignment: .topTrailing) {
+                VStack(alignment: .center, spacing: 4) {
+                    Text(yourLabel)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .multilineTextAlignment(.center)
+                    Text("\(yourValue)")
+                        .font(.system(.title, design: .monospaced).weight(.bold))
+                        .foregroundStyle(.white)
+                        .accessibilityIdentifier(valueIdentifier ?? "adjustment-value-your")
+                }
+                .frame(maxWidth: .infinity)
+                .padding(14)
+                .padding(.top, delta != 0 ? 8 : 0)
+                .background(AppTheme.sage)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                if delta != 0 {
+                    Text(delta > 0 ? "+\(delta)" : "\(delta)")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.secondary)
+                        .clipShape(Capsule())
+                        .offset(x: -4, y: -8)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - StepCircle
+
+private struct StepCircle: View {
+    var number: Int
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(AppTheme.secondary)
+            Text("\(number)")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+        }
+        .frame(width: 24, height: 24)
+        .accessibilityHidden(true)
+    }
+}
+
+// MARK: - NumberField (plain pill — used for pattern gauge + pattern instruction inputs)
 
 private struct NumberField: View {
     var title: String
@@ -732,6 +1034,7 @@ private struct NumberField: View {
     var hint: String? = nil
     var identifier: String
     var fieldWidth: CGFloat = 112
+    var inlineUnit: Bool = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -740,9 +1043,7 @@ private struct NumberField: View {
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.muted)
-            TextField(title, text: $text)
-                .keyboardType(.decimalPad)
-                .font(.system(.title3, design: .monospaced).weight(.semibold))
+            fieldView
                 .frame(width: compactFieldWidth, alignment: .leading)
                 .frame(minHeight: 44)
                 .padding(.horizontal, 14)
@@ -756,9 +1057,11 @@ private struct NumberField: View {
                 .contentShape(Rectangle())
                 .accessibilityIdentifier(identifier)
                 .accessibilityLabel("\(title), \(spokenUnit)")
-            Text(unit)
-                .font(.caption)
-                .foregroundStyle(AppTheme.muted)
+            if !inlineUnit {
+                Text(unit)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.muted)
+            }
             if let hint {
                 Text(hint)
                     .font(.caption2)
@@ -770,10 +1073,32 @@ private struct NumberField: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    @ViewBuilder
+    private var fieldView: some View {
+        if inlineUnit {
+            HStack(spacing: 6) {
+                TextField(title, text: $text)
+                    .keyboardType(.decimalPad)
+                    .font(.system(.title3, design: .monospaced).weight(.semibold))
+                Text(unit)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.muted)
+                    .fixedSize()
+                    .accessibilityHidden(true)
+            }
+        } else {
+            TextField(title, text: $text)
+                .keyboardType(.decimalPad)
+                .font(.system(.title3, design: .monospaced).weight(.semibold))
+        }
+    }
+
     private var spokenUnit: String {
         switch unit {
         case "st / 10 cm": "stitches per 10 centimetres"
         case "rows / 10 cm": "rows per 10 centimetres"
+        case "st": "stitches per 10 centimetres"
+        case "ro": "rows per 10 centimetres"
         case "cm": "centimetres"
         default: unit
         }
@@ -787,6 +1112,8 @@ private struct NumberField: View {
         dynamicTypeSize.isAccessibilitySize ? nil : fieldWidth + 28
     }
 }
+
+// MARK: - SectionTitle
 
 private struct SectionTitle: View {
     var title: String
@@ -802,6 +1129,8 @@ private struct SectionTitle: View {
             .accessibilityAddTraits(.isHeader)
     }
 }
+
+// MARK: - AdaptiveTwoColumnStack
 
 private struct AdaptiveTwoColumnStack<Leading: View, Trailing: View>: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -845,6 +1174,8 @@ private struct AdaptiveTwoColumnStack<Leading: View, Trailing: View>: View {
     }
 }
 
+// MARK: - GaugeMeasurementPair
+
 private struct GaugeMeasurementPair<Leading: View, Trailing: View>: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -871,45 +1202,7 @@ private struct GaugeMeasurementPair<Leading: View, Trailing: View>: View {
     }
 }
 
-private struct HeroMetric: View {
-    var title: String
-    var value: String
-    var status: String
-    var detail: String
-    var identifier: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(AppTheme.muted)
-            Text(value)
-                .font(.system(.largeTitle, design: .monospaced).weight(.bold))
-                .minimumScaleFactor(0.7)
-                .foregroundStyle(AppTheme.ink)
-                .accessibilityIdentifier("\(identifier)-value")
-            Text(status)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(sharePillBackground(status))
-                .clipShape(Capsule())
-            Text(detail)
-                .font(.caption)
-                .foregroundStyle(AppTheme.muted)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
-        .background(AppTheme.oatmeal)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .accessibilityIdentifier(identifier)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title), \(value), \(status)")
-        .accessibilityHint(detail)
-    }
-    
-}
+// MARK: - AdjustmentRow (used inside ③ Shaping Rates)
 
 private struct AdjustmentRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -987,6 +1280,8 @@ private struct AdjustmentRow: View {
     }
 }
 
+// MARK: - cardStyle
+
 private extension View {
     func cardStyle() -> some View {
         padding()
@@ -997,6 +1292,8 @@ private extension View {
             .shadow(color: AppTheme.sage.opacity(0.08), radius: 34, x: 0, y: 16)
     }
 }
+
+// MARK: - AppTheme
 
 private enum AppTheme {
     static let background = Color(red: 0.99, green: 0.98, blue: 0.96)
@@ -1012,7 +1309,17 @@ private enum AppTheme {
     static let warningText = Color(red: 0.35, green: 0.26, blue: 0.09)
     static let warningBackground = Color(red: 0.96, green: 0.94, blue: 0.87)
     static let warningAccent = Color(red: 0.78, green: 0.55, blue: 0.17)
+    /// Red for inline gauge mismatch indicators. Semantically "this IS different
+    /// from the pattern" — distinct from warningText (warm amber, "might be wrong").
+    static let mismatchText = Color(red: 0.73, green: 0.10, blue: 0.10)
+    /// Cream text for use on dark backgrounds (e.g. the Calculate CTA button).
+    static let cream = Color(red: 0.97, green: 0.96, blue: 0.92)
+    /// Dot color for the TexturedBackground canvas. Muted at 30% opacity gives
+    /// the subtle cross-stitch fabric look without visual noise.
+    static let surfaceTextureDot = Color(red: 0.27, green: 0.28, blue: 0.26).opacity(0.30)
 }
+
+// MARK: - Helpers
 
 private func initialText(_ environmentKey: String, defaultValue: String) -> String {
     ProcessInfo.processInfo.environment[environmentKey] ?? defaultValue
@@ -1026,7 +1333,6 @@ private func read(_ text: String, defaultValue: Double) -> Double {
     GaugeMath.sanitized(Double(text), default: defaultValue)
 }
 
-
 private func sharePillBackground(_ status: String) -> Color {
     if status == "Match" {
         return AppTheme.sage
@@ -1035,5 +1341,3 @@ private func sharePillBackground(_ status: String) -> Color {
     }
     return AppTheme.secondary
 }
-
-

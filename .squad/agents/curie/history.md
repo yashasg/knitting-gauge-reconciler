@@ -87,3 +87,38 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 - No misleading privacy statements in UI
 
 **Decision:** All changes ready for deployment. Decisions documented in decisions.md.
+
+---
+
+## [2026-05-20T18:19:39-07:00] swift-metrics test scope (issue #9)
+
+**Session:** metrics-scoping (parallel with 7 other Squad members)
+**Drop:** `.squad/decisions/inbox/curie-metrics-scope.md`
+
+### Verification strategy I'm committing to
+
+- **Swift Testing for all metrics unit tests** (§2.9). XCTest stays reserved for UI; **no new UI tests for metrics** — they're invisible, asserting on them through XCUIApplication would require a debug HUD or pasteboard exfiltration. Metrics are validated where assertions are deterministic: the unit/integration layer.
+- **In-process `TestMetricsFactory` we own locally** (≈30 lines, thread-safe via a lock) under `KnittingGaugeReconcilerTests/Support/`. Confirmed swift-metrics' upstream package does **not** ship a test handler — only `NOOPMetricsHandler` and `MultiplexMetricsHandler` are public. Tests assert on labels, dimensions, and **exact counter increment counts** — never on timer durations or wall-clock values.
+- **No new test target.** One file (`MetricsTests.swift`) added to the existing `KnittingGaugeReconcilerTests` target plus the support factory. A separate target would double project churn and simulator boot time (constrained by serial-UI directive).
+- **Determinism guard test:** assert `GaugeMath.compute` records zero metrics signals. If anyone wires a counter into the math layer, this test fails loudly — §2.2 stays defended.
+
+### Isolation rules I'm committing to
+
+- **Never call `MetricsSystem.bootstrap(_:)` from tests.** It's process-global and once-per-process; calling it poisons every later test in the run. Production bootstrap goes through `MetricsBootstrap.installIfNeeded()` invoked only from `@main`; tests use the injectable-factory seam.
+- **Per-test factory, never per-suite.** Each `@Test` gets a fresh local `TestMetricsFactory()`. No `static`, no `@TaskLocal`, no singleton. Counters can't bleed across tests because the instance is gone at end-of-test.
+- **Warning-free under all gating combos.** `#if DEBUG` / env-var gates must compile clean in DEBUG-on, DEBUG-off, gate-set, gate-unset. Any `#if !DEBUG` block that imports `Metrics` must guard the import or §2.1 warnings-as-errors will trip on unused-import.
+- **Pin swift-metrics version explicitly** and confirm 0 diagnostics under Swift 6 strict concurrency on Xcode 26.4 before merge. Sendable conformance on `MetricsFactory`/`CounterHandler` is the known risk surface; ≥ 2.5 is the historical floor.
+
+### UI tests flagged as regression risk if identifiers shift
+
+- `testShareResultsIsSingleAccessibleAffordance` — **high risk** (wrapping the `share-results` button to attach a `share.invoked` counter must not restructure the affordance).
+- `testAllJacquardScenariosAreVisibleInUI` — **medium risk** (live-recalc pipeline touch).
+- `testAboutHelpButtonOpensPullUpSheet` — **low risk** (single tap site).
+- These tests stay metrics-unaware; they're the regression net Edison's identifier-rename rule keeps honest.
+
+### Validation gate (unchanged)
+
+`./app/build.sh test` exits 0, 0 warnings, 25/25 today → N/N after metrics. UI count stays at 7 unless an identifier change forces a same-commit UI test update.
+
+## Team updates
+- 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).

@@ -60,3 +60,37 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 **MVP Recommendation:** Store 4 gauge values + 3 metadata fields. 43.75% data increase → 10x usability improvement. All labels text-based and discoverable; no design-only communication.
 
 **Handoff status:** Ready for design (Ive) and implementation (Edison). See `.squad/decisions.md` (2026-05-19 Evening Session) and orchestration logs for full context.
+
+## [2026-05-20T18:19:39-07:00] Swift metrics scope (GitLab issue #9) — research view
+
+**Session:** Scoping which research questions a local-only counter/gauge/timer could illuminate for issue #9. Constraint: no off-device upload, no PII, no aggregated cross-user data; 30-second first-use path is sacred.
+
+**Deliverable:** `.squad/decisions/inbox/mendel-metrics-scope.md` (5 on-device research questions + scenario-coverage table + out-of-scope list + slippery-slope risks).
+
+### Learnings — questions that DO map to on-device-only signals
+
+- **Q1 — Scenario distribution across the 6 Jacquard branches.** A 6-slot counter keyed by `(stitchWidthScale, rowCountScale)` buckets validates whether row-only drift (Scenarios 2/3) dominates, as the Round-3 persona hypothesis predicted, vs. two-axis (Scenario 6) being a niche. Pure scalar counter, no inputs persisted.
+- **Q2 — Cast-on path engagement (Scenarios 4/5/6).** Counter on `computeActStitches ≠ patStitches` sessions vs. no-change sessions tells us whether Miriam (pre-cast-on, JTBD-1) is a real user path on yashasg's device or whether everything is Donal (mid-project, cast-on already done). Directly tests an unconfirmed Round-3 persona hypothesis.
+- **Q3 — Time-to-first-compute timer.** Elapsed-ms timer from `ContentView` appear to first non-default verdict gives an objective regression alarm for the 30-second sacred path without needing beta complaints. Currently we have only Ive's subjective review.
+- **Q4 — Field re-edit churn per input field.** 4-slot counter for `(ps, pr, ys, yr)` re-edits within ~10s of previous commit identifies confusing field labelling. Tests Donal-persona-derived hypothesis that knitters confuse "pattern" vs "your" and stitch vs row axes.
+- **Q5 — Verdict-help `?` engagement by verdict state.** 4-slot counter keyed by verdict state (Match, Drift, Significant, Major) validates the compact-title-plus-`?` pattern Edison shipped 2026-05-19, and tells us which verdict copy actually deserves elaboration.
+
+### Learnings — questions that DO NOT map to local signals (out of scope)
+
+- **Per-user abandonment / retention** — on-device counter cannot separate yashasg dogfooding from real abandonment.
+- **Wild-population skew** (denser-row vs looser-row prevalence; persona prevalence between Miriam / Donal / Reema / Birgitta) — needs cross-user sample; flagged in Round 3 as unconfirmed and stays unconfirmed.
+- **Share-sheet outcome** (did the PNG actually get sent vs cancelled) — needs OS-level hooks we are not adding plus aggregation.
+- **Outcome metrics** (do users reknit less after using the app) — longitudinal cross-user data + self-report; explicitly NOT achievable from on-device counters.
+- **Time-of-day / day-of-week patterns** — would need wall-clock logging that itself is a privacy/slippery-slope risk; refused.
+- **Accessibility-cohort success rates** (Birgitta — one-handed, low-vision) — must be answered via recruited research, not metrics.
+
+### Slippery-slope items flagged for Tesla / Hopper / privacy review
+
+Raw gauge values stored alongside counters; wall-clock timestamps finer than per-launch; any session/install ID even "anonymous"; capturing free-text inputs (saved-reconciliation labels, pattern/yarn names from Tesla's saved-reconciliations work); a separate on-disk metrics file that survives uninstall via iCloud; `Logger`/`os_log` calls inside `GaugeMath.compute` (already banned by Tesla §2.2 + §2.12); a "diagnostics export" affordance that would naturally pick up metrics. Each is a **risk**, not a recommendation.
+
+### Sacred-path constraint
+
+Metric instrumentation must add zero blocking work on launch — no consent prompt, no first-run dialog, no synchronous I/O. Counters fire on user compute actions, not on launch. The Q3 timer **measures** the 30s path; it must not **gate** it. If a metric ever requires a first-run consent screen, that metric is out of scope by definition.
+
+## Team updates
+- 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).

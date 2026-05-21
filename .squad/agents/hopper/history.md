@@ -170,3 +170,38 @@ Canonical run/build paths used for validation: `app/build.sh`, `app/run.sh`, `ap
 **Rationale:** Concurrent local simulator usage can conflict and destabilize UI test runs.
 
 **Impact on Hopper:** `app/build.sh test` and simulator launch workflows (via `app/run.sh`) must enforce serial simulator access. When orchestrating with Curie and Edison, coordinate to ensure only one simulator is active during test execution.
+
+### 2026-05-20T18:19:39.085-07:00 — swift-metrics scoping (issue #9, tooling view)
+
+**Package integration path recommended:** Xcode-integrated SPM via "Add
+Package Dependencies" against `https://github.com/apple/swift-metrics`,
+pinned `.exact("2.11.0")` (fallback to the `2.6.x` line if the Xcode
+26.x toolchain turns out to be Swift 6.0-only and rejects swift-metrics's
+`swift-tools-version:6.1`). Link `Metrics` to the app target and
+`MetricsTestKit` to the unit-test target only — UI tests stay black-box.
+Commit `Package.resolved` so local and CI runs resolve the same revision.
+No local `Package.swift` / hybrid SwiftPM layout — the project is a plain
+Xcode project today and that should stay true.
+
+**Gating env var proposed:** **`KGR_METRICS_BACKEND`**, single string,
+values `noop` (default, prod) / `inmemory` (in-process via
+`MetricsTestKit.TestMetrics`) / `debug-print` (`#if DEBUG`-only printer
+factory; silently demotes to `noop` in Release). Unset or unrecognised
+values demote to `noop`. No companion `KGR_METRICS_ENABLED` master
+switch — `noop` is already the off state. `build.sh` gets a small
+pass-through block that converts every `KGR_*` env var into a matching
+`TEST_RUNNER_<NAME>=<VALUE>` build setting so the value actually lands
+inside the launched test runner's `ProcessInfo.environment` — no new
+mode, no new flag.
+
+**Key tooling fact reused later:** `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`
+and `OTHER_SWIFT_FLAGS="-warnings-as-errors"` apply to first-party
+targets only; SPM package targets compile with their own `swiftSettings`,
+so upstream package warnings cannot fail our gate. We only need to vet
+*our* consumer code (Sendable holders, deprecated aliases) on the
+dependency-add branch.
+
+Drop: `.squad/decisions/inbox/hopper-metrics-scope.md`.
+
+## Team updates
+- 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).

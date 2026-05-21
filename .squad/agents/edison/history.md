@@ -126,6 +126,79 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 
 **Key learning:** When a truthfulness-limited piece of copy must be removed (not just hidden), delete both the view and its property; a negative assertion in an existing test is sufficient to guard against accidental re-introduction without making the test brittle.
 
+## [2026-05-20T18:19:39-07:00] Metrics scope — SwiftUI view perspective (issue #9)
+
+**Session:** swift-metrics-scope (parallel scoping with 7 other members)
+**Deliverable:** `.squad/decisions/inbox/edison-metrics-scope.md`
+
+### Learnings — UI hooks suitable for metrics
+
+- `GaugeMath.compute` is invoked from one site in ContentView (the
+  `result` computed property). That single line is the right wrap point
+  for a duration timer + invocation counter while keeping §2.2's math
+  boundary intact. Note: it fires on every `body` re-eval, not only on
+  user edits — document the metric semantics accordingly.
+- Input fields: nine `@State` text bindings. `.onChange(of:)` per field
+  is the natural hook, but raw-keystroke events leak typing cadence and
+  flood cardinality on the event axis. The right debounce is
+  **parsed-value-change** (compare `read(text, default:)` Double output
+  to prior), which collapses mistype-and-correct to net-zero.
+- Sheet open events are best caught via `.onChange(of: <Bool flag>)`
+  false→true rather than inside the button action, so launch-arg
+  pre-opened sheets (used by UI tests) still count consistently. We
+  don't track close events — iOS native dismiss has no clean callback
+  through `.sheet(isPresented:)`.
+- Share path: wrap the image-vs-text-fallback branch inside
+  `shareResults()` with a `payload` label so we can see `ImageRenderer`
+  failure rates without instrumenting the renderer itself.
+- Verdict bucket: `verdictTitle`'s four-way switch (Gauge match / Drift /
+  Significant drift / Major mismatch) already classifies the result —
+  hook a counter on `.onChange(of: verdictTitle)` for transitions plus
+  a gauge for current state. Extreme-input signal is free.
+- Cast-on drift pill: same trick — `.onChange` on the `abs(drift) >= 3`
+  predicate matches the existing UI threshold and gives a "rounding
+  drift surfaced" counter without recomputing thresholds.
+- Compact-vs-regular size class is **not** worth tracking on this
+  iPhone-only target; it would be ~100% `.compact` and signal nothing.
+
+### Accessibility-ID stability — non-negotiables
+
+- The 2026-05-19 privacy-card deletion left `privacy-card` as a
+  *negative* identifier asserted in `testAboutHelpButtonOpensPullUpSheet`.
+  No instrumentation may resurrect a view with that ID or with any
+  "Privacy"/"Analytics" copy.
+- `testShareResultsIsSingleAccessibleAffordance` asserts no button label
+  begins with `"Copy"` and no button has identifier `copy-results`,
+  `copy-share-link`, `share-results-link`. Forbids any "Copy
+  diagnostics" / "Export counters" UI — counter inspection goes through
+  Xcode/`po`, never a visible button.
+- `testAllJacquardScenariosAreVisibleInUI` depends on the literal hero
+  percent strings and guidance copy. `.onChange` modifiers are safe
+  (they don't change the accessibility tree); wrapping views with extra
+  containers is not.
+- Instrumentation must add zero new `accessibilityIdentifier` values.
+  All metric hooks are pure `.onChange` / inline call-site closures
+  with no view-tree footprint.
+
+### Gating strategy recommendation
+
+- **Double-gate every metric call site:** compile-time `#if DEBUG` (so
+  release binaries are *physically* free of analytics surface area) AND
+  runtime `ProcessInfo.processInfo.environment["KGR_METRICS_ENABLED"]
+  == "1"` (so DEBUG runs — including Curie's UI test fleet — stay
+  inert by default).
+- The combined defence preserves the 2026-05-19 privacy-card-removal
+  intent: a release build from the App Store contains zero
+  instrumentation, even though we deleted the copy that used to claim
+  this. We get the truthful posture without having to write a brittle
+  claim again.
+- In-memory counters only. No `UserDefaults`, no caches dir, no
+  SwiftData table. No `URLSession`, no third-party SDK, no remote
+  config (§2.3). No `print`/`os_log`/`Logger` in non-DEBUG branches
+  (§2.12).
+- If we ever want Instruments-grade timing, use `os_signpost` — also
+  `#if DEBUG`-gated.
+
 ## [2026-05-20T00:00:00Z] Final Help Overlay UI Changes — Reviewed and Approved
 
 **Session:** help-overlays (Help Overlay UI Finalization)
@@ -146,3 +219,6 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 - No misleading privacy claims
 
 **Status:** Ready for deployment. All decisions documented in decisions.md.
+
+## Team updates
+- 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).

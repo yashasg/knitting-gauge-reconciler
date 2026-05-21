@@ -106,3 +106,49 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 **Deliverable:** UX spec for native `Menu` labeled "Copy results" with TSV, Markdown, CSV, and HTML format options; accessible labels and copied-status feedback; no share/link/URL wording.
 
 **Status:** Approved and implemented by Edison; validated by Curie.
+
+## [2026-05-20T18:19:39-07:00] swift-metrics UX scope (issue #9)
+
+**Session:** swift-metrics-scope (parallel scoping with 7 other members)
+
+**Task:** Scope whether any user-visible UX surface should exist for the
+swift-metrics capture work in issue #9.
+
+**Recommendation:** **NONE.** No user-visible metrics surface in v1. No new
+disclosure copy. Edison's 2026-05-19 privacy-card removal stays; do not add
+replacement copy in this ticket.
+
+**Why (UX rationale):**
+- Single-screen, 30-second calculator. Every new surface competes with the
+  hero numbers and verdict card. A stats/session counter delivers nothing the
+  user came for and reads as surveilling on a local-first app.
+- Math layer sanitises invalid input silently (`GaugeMath.sanitized()`).
+  There is no current failure state worth a toast. Adding one purely to fire
+  a metric event would interrupt the live recalc path that April's issue #1
+  mitigation #3 protected.
+- Debug-only `#if DEBUG`-gated counters are fine **only** if they never ship
+  release, carry no `accessibilityIdentifier` / `accessibilityLabel`, and
+  are reachable only via a hidden gesture. The moment a metric surfaces in a
+  release build with any a11y handle, it re-enters my review.
+- Silence in the UI is honest while nothing is recorded or uploaded. Hedged
+  disclosure copy ("we may capture local metrics…") would re-create exactly
+  the trust-erosion problem that triggered the privacy-card removal.
+
+**Constraint compliance verified:**
+- No conflict with issue #1 (no network egress, no analytics upload).
+- Verbatim non-affiliation line ("Not affiliated with Ravelry, Knit
+  Companion, or any pattern designer…") in `AboutHelpSheet` untouched.
+- Donatello's scope-boundary line untouched.
+- 30-second first-use path preserved — no Calculate button, no modal,
+  no toast.
+- Edison's privacy-card removal reinforced.
+
+**Open guardrail for future tickets:** Any proposal to surface a metric as
+user-visible UI (extreme-input toast, session counter, recompute hint) is a
+fresh UX request, not a metrics-implementation detail. Route it through
+`.squad/decisions/inbox/` with me on the loop.
+
+**Deliverable:** `.squad/decisions/inbox/ive-metrics-scope.md`.
+
+## Team updates
+- 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).

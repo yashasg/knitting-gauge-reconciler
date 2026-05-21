@@ -134,3 +134,36 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 **Validation:** Curie approved per-section adjustment logic from test-engineering perspective. Covered in unit tests and UI expectations.
 
 **Status:** APPROVED and implemented in formatters.
+
+## Learnings
+
+### 2026-05-20 — §2.2 boundary for metrics (issue #9 scoping)
+
+**The §2.2 boundary I'm enforcing for any metrics work:** `GaugeMath.compute`
+and every function reachable from it (`sanitized`, `fmtCm`, `fmtRows`,
+`fmtPct`, and the private `gaugeStatus` / `rowStatus` helpers in the same
+file) take values in and return values out. **Nothing else.** No clock reads,
+no logger, no `os_log`, no metric sink parameter, no static mutable counter
+inside `enum GaugeMath`, no `#if DEBUG` logging escape hatch. Same
+`GaugeInputs` must yield bit-identical `GaugeMathResult` across runs,
+locales, build configs, and process restarts.
+
+**Why this matters for metrics:** Every tempting "instrument the math"
+ask — compute-duration timer, invocation counter, extreme-ratio bucket,
+formatter-call frequency, branch counter for `gaugeStatus` — can be
+satisfied **at the call site** because the values needed (`stitchWidthScale`,
+`rowCountScale`, `castOnRoundingDriftPercent`, raw `Double?` vs sanitized
+output) already cross the boundary. Pushing instrumentation *into* the math
+buys nothing the call site can't get, and costs the determinism contract,
+parallel-test isolation, and the §2.6 caseless-namespace promise. So the
+rule is simple and absolute: **measure around `GaugeMath`, never inside it.**
+
+**Mechanism for callers:** Wrap `GaugeMath.compute(_:)` with
+`ContinuousClock` before/after, classify the returned struct into coarse
+buckets for counters, and (per §2.3) keep everything on-device.
+`GaugeMathTests` need zero changes because the math API is unchanged.
+
+**Decision drop:** `.squad/decisions/inbox/ada-metrics-scope.md`.
+
+## Team updates
+- 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).

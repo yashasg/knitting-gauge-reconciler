@@ -184,6 +184,84 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 
 **Handoff status:** Ready for implementation (Edison) and design (Ive). See `.squad/decisions.md` (2026-05-19 Evening Session) and orchestration logs for full context.
 
+### [2026-05-20T18:19:39-07:00] swift-metrics scope — domain signals vs vanity (issue #9)
+
+Domain scoping for yashasg's observability checklist on the offline iOS
+calculator. Decision drop: `.squad/decisions/inbox/jacquard-metrics-scope.md`.
+
+**What I'd actually want to see locally, and why each is craft-meaningful
+(not vanity):**
+
+1. **Axis-mismatch shape** (counter: match / stitch-only / row-only / both).
+   This is the app's distinctive thesis — row gauge as a peer axis, not an
+   afterthought. The bucket distribution directly tests whether the
+   two-axis UI is earning its weight or whether real users are
+   overwhelmingly single-axis (in which case row-gauge prominence is
+   over-indexed). Threshold matches the existing 3% verdict "Match" band so
+   the metric and the UI agree on what counts as a mismatch.
+
+2. **Drift magnitude buckets per axis** (<3% / 3–10% / 10–25% / >25%).
+   Aligned with existing verdict copy (Match / Drift / Significant drift /
+   Major mismatch). Tells us whether the calculator is mostly a
+   reassurance tool (small drift) or a yarn-substitution tool (large
+   drift) — those imply very different next-feature priorities (rounding
+   refinements vs. blocking advice vs. yarn-fiber metadata). Two axes must
+   stay separate; combining defeats signal #1.
+
+3. **Implausible-input counter** (<10 or >50 st/10 cm; <12 or >70 rows/10
+   cm). Math still produces a number (correct, §2.2 determinism intact),
+   but the answer isn't useful. Fingerprint of the most common typo:
+   stitches-per-inch typed into stitches-per-10cm (5× factor → values
+   cluster near ~5 or ~150). Actionable: a soft input hint or
+   unit-confusion guard.
+
+4. **Cast-on rounding drift bucket** (read off the existing
+   `castOnRoundingDriftPercent` field, buckets <0.5% / 0.5–2% / >2%).
+   The single cast-on-level signal worth capturing. A real population in
+   the >2% bucket is the trigger to add stitch-pattern-repeat-aware
+   rounding — a real math change I'd want to spec before Ada touches it.
+
+5. **Section inspected** (yoke / body / sleeve / increase-spacing) — only
+   if Edison's UI distinguishes them via expand/collapse or similar. Tied
+   directly to the 7 archetypes: top-down vs bottom-up vs raglan/yoke
+   shaping each privilege a different section. If `increase-spacing`
+   traffic is near-zero while row-axis drift is common, that's a UX
+   placement problem, not a math problem.
+
+6. **Saved-reconciliation context completeness** (label edited?
+   stitch-pattern set? blocking state set? etc.) — once Tesla/Edison ship
+   that feature. Direct test of my 2026-05-19 evening stance that raw
+   four-numbers are insufficient. If users overwhelmingly leave defaults
+   blank, we're in the misleading-saved-entry failure mode and should
+   nudge harder or accept it and drop the pretense of reusability.
+
+**Vanity I explicitly rejected:**
+
+- Compute duration, recompute count, render time — perf/tooling signals,
+  Tesla/Hopper's domain, tell me nothing about craft correctness.
+- Raw input values stored as metrics — bucketed signals are enough; raw
+  storage is the saved-rec feature's job (opt-in, explicit user intent).
+- Verdict-copy variant displayed — duplicates the drift-magnitude buckets.
+- Format-function call counts — derivative of `compute()` calls.
+- Time-of-day / day-of-week — lifestyle, not knitting.
+- Toggle-between-adjusted-and-pattern — no such toggle exists; both are
+  shown together by design (row gauge as peer axis, vocabulary cheat
+  sheet).
+
+**Why I keep insisting "domain vs vanity":** in a 0-network offline tool,
+every signal that's not actionable is purely a cost on cognitive load
+and code surface. The bar is: "if this counter spiked, would I change the
+math or change the UI?" — if no, the signal is decorative. Every signal I
+proposed has an explicit named recommendation if it trends.
+
+**Constraints:** every signal is captured at the `ContentView` boundary
+from inputs-as-typed or fields already on `GaugeMathResult`. None require
+touching `GaugeMath.compute` or its helpers — §2.2 determinism intact.
+30-second first-use path safe: O(1) bucket checks; implausible-input
+bucketing must run on the same debounce as live-recalc, otherwise
+mid-keystroke partial values (`3` before the `2` lands) would trip it
+spuriously.
+
 ### [2026-05-19 19:58:36Z] Per-Section Adjustment Semantics — Knitter-Facing Validation
 
 **Task:** Review knitting domain semantics for per-section adjustment guidance.
@@ -195,3 +273,6 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 - The finished measurement target is fixed; rows/rounds are the computed output
 
 **Domain principle:** Knitters think in finished garment dimensions (20 cm yoke width). Their gauge determines the row count needed. This tool preserves that mental model.
+
+## Team updates
+- 2026-05-20T18:19:39-07:00: swift-metrics scoping round (issue #9) completed. 8-agent parallel pass. Decisions merged to decisions.md (now 98,243 bytes).

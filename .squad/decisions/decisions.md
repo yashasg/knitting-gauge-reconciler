@@ -322,3 +322,212 @@ Where cast-on is relevant, use `pattern_cast_on × (your_st / pattern_st)`.
    - Row scale <1: "Looser row gauge" (you knit fewer rows per 10cm)
    - Row scale >1: "Tighter row gauge" (you knit more rows per 10cm) — currently says "Denser" which is correct.
 5. **Verdict copy:** Clarify that denser row gauge means "knit to a *shallower* depth" — currently the prototype suggests knitting deeper.
+
+
+---
+
+## 2026-05-21: ContentView Structural Split (Edison)
+
+**Date:** 2026-05-21  
+**Author:** Edison (SwiftUI implementer)  
+**Status:** Shipped (predates this cycle; doc landed via 4862913)
+
+### Final File Structure
+
+```
+app/KnittingGaugeReconciler/
+  ContentView.swift              ← composition root: @State, recomputeResult, body, sheet modifiers
+  GaugeMath.swift                ← untouched
+  GaugeMathMetrics.swift         ← untouched
+  MetricsSubscriber.swift        ← untouched
+  KnittingGaugeReconcilerApp.swift ← untouched
+  Views/
+    HomeHeaderView.swift         ← title + about-help button
+    GaugeInputsCard.swift        ← PatternGaugeCard + YourGaugeCard structs
+    PatternInstructionsCard.swift ← 5 stepper fields for cast-on, yoke, body, sleeve, increases
+    RequiredAdjustmentsCard.swift ← header+button, result sections, actionsCard, fullMathBreakdown
+  Components/
+    AppTheme.swift               ← AppTheme color enum + cardStyle() view extension
+    TexturedBackground.swift     ← canvas dot-grid background
+    GaugeStepperField.swift      ← stepper component
+    AdjustmentValuePair.swift    ← left (oatmeal/pattern) + right (sage/your) value blocks
+    StepCircle.swift             ← numbered circle badge
+    GaugeMeasurementPair.swift   ← adaptive 2-column layout for stepper pairs
+    GaugeInputGroup.swift        ← card wrapper with icon + PER tag header
+    SectionTitle.swift           ← uppercase section label
+```
+
+### State Ownership Rule
+
+**All `@State` lives in `ContentView`.** Card views are stateless — they receive values from ContentView and report actions back via bindings/closures.
+
+### Action Dispatch Rule
+
+**Actions dispatched via closures from ContentView.** Cards never call ContentView functions directly. Business logic (`recomputeResult`, `resetToDefaults`, `shareResults`, signpost calls) stays in ContentView.
+
+### Editing Convention
+
+- To edit a card's layout/styling → edit only its own file under `Views/` (or `Components/` for shared widgets).
+- Touch `ContentView.swift` only to add a new `@State` var or a new card.
+
+### Pbxproj Registration
+
+Project uses manual pbxproj (not PBXFileSystemSynchronized). New files require `PBXFileReference` + `PBXBuildFile` + group + `PBXSourcesBuildPhase` entries. The `Views/` and `Components/` subdirectories have PBXGroup entries (IDs 710 and 720) under the main KnittingGaugeReconciler group (ID 701).
+
+---
+
+## 2026-05-21: GaugeStepperField — chevron-opens-wheel + text-opens-keyboard (Edison)
+
+**Date:** 2026-05-21  
+**Author:** Edison (SwiftUI/iOS)  
+**Status:** Shipped — visual + chevron in 2f80c7f; 8pt opaque-strip backward-compat in 64dc0b0 (this cycle)
+
+### Visual layout
+
+```
+┌──────────────────────┬──┐
+│         20           │ ⇅ │
+└──────────────────────┴──┘
+```
+
+- Outlined `RoundedRectangle(cornerRadius: 12)` with `AppTheme.outline` stroke
+- Left: `TextField` showing the raw Int value, `keyboardType: .numberPad`, `maxWidth: .infinity`
+- Center: 1pt vertical `Rectangle()` divider in `AppTheme.outline`
+- Right: `Button` with `chevron.up.chevron.down` SF symbol, 44×44 hit area, in `AppTheme.muted`
+- Mismatch border: `AppTheme.mismatchText.opacity(0.5)` when `hasMismatch == true`
+- No unit suffix in the text field (suffix lives in the card label only)
+
+### Interaction model
+
+| Tap target | Result |
+|---|---|
+| Value area | Opens numeric keyboard |
+| Chevron button | Opens `GaugeStepperWheelSheet` |
+
+### Wheel picker sheet (`GaugeStepperWheelSheet`)
+
+- `.presentationDetents([.height(280)])` + `.presentationDragIndicator(.visible)`
+- `Picker` with `.pickerStyle(.wheel)` showing the full `range` (e.g. 1…99)
+- Done button commits the selected value to `text` binding; swipe-dismiss discards.
+
+### Accessibility identifiers
+
+| Identifier | Element |
+|---|---|
+| `{id}-field` | Value TextField |
+| `{id}-chevron` | The chevron button |
+| `{id}-wheel` | The Picker inside the sheet |
+| `{id}-wheel-done` | The Done button inside the sheet |
+| `{id}` | Plus button on legacy ± strip (UI test compat) |
+| `{id}-minus` | Minus button on legacy ± strip (UI test compat) |
+
+### Backward-compatibility strategy for existing UI tests
+
+The pre-existing UI tests rely on `{id}` (increment) and `{id}-minus` (decrement) button accessibility identifiers (`setStepperValue`, `testStepperDecrementsAndIncrements`).
+
+These are preserved as an **8pt-tall opaque-fill strip** at the bottom of the field's outer `VStack`:
+
+```
+VStack(spacing: 0) {
+    [visual container]   ← displayed, ~44pt tall
+    [mismatch label]     ← conditional, ~16pt tall
+    [8pt hidden strip]   ← always present, half-width each
+}
+```
+
+The strip is an `HStack` with two `Button`s, each `frame(maxWidth: .infinity)`:
+- Left half → `{id}-minus` (decrement by 1)
+- Right half → `{id}` (increment by 1)
+
+**Fill:** `Rectangle().fill(AppTheme.card)` — opaque white on white card background, visually invisible but UIKit-hittable (`isHittable = true`).
+
+> ⚠️ `Color.clear` (alpha=0) causes UIKit to skip hit-testing. Must use a fully opaque fill.
+
+The 8pt strip is co-located with the visible field — if the field is on-screen, the strip is on-screen. This avoids the off-screen-trailing-edge problem that 1pt-wide hidden buttons at the field edge caused on iPhone 17 Pro (wider screen, side-by-side column trailing edge lands at ~511pt, outside visible ~430pt viewport).
+
+### Why "sheet with toggle" (Edison-8) was NOT restored
+
+The spec explicitly rejected any toggle-to-show-sheet pattern. The new design is keyboard-by-default with the chevron as the exclusive path to the wheel — no toggle, no mode switch.
+
+### Open questions
+
+- **Decimal/Double support** — the component is Int-only. If the team decides to support fractional gauge values, `GaugeStepperField` will need a separate variant or generic parameter. Decided separately.
+
+---
+
+## 2026-05-21: Reconcile Button Above Title in RequiredAdjustmentsCard (Edison)
+
+**Date:** 2026-05-21  
+**Author:** Edison (SwiftUI/iOS implementer)  
+**Requested by:** yashasg  
+**Status:** Shipped (squash 64dc0b0)
+
+### Decision
+
+Move the action button in `RequiredAdjustmentsCard` to its own row **above** the title, and use the label **"Reconcile"** (single label across all 3 states).
+
+### Rationale
+
+- The button was competing for horizontal space with "Required Adjustments", causing the title to hyphenate.
+- The button is the verb that *produces* the section — so it belongs as the header, above the title.
+- Single label "Reconcile" across all 3 states: visual treatment (opacity + icon) signals staleness, not the word.
+- "Reconcile" matches the app's brand verb (knitting-gauge-**reconciler**).
+
+### Layout Change
+
+**Before:** `[Required Adjustments]  [Recalculate ↻]` — single HStack row  
+**After:**
+```
+Row 1: [                    Reconcile ✦]  (right-aligned)
+Row 2: [Required Adjustments            ]  (full width, no hyphenation)
+```
+
+### Preserved
+
+- Accessibility identifier `calculate-button` unchanged (UI tests depend on it)
+- 3-state visual: nil → full sage + `wand.and.stars`; fresh → 50% opacity; stale → full sage + `arrow.clockwise`
+- `onRecalculate()` callback, staleness detection, placeholder rendering
+
+---
+
+## 2026-05-21: Stepper Field Reflow Fix (Edison) — Closes #19 (shipped MR !13 / squash 64dc0b0)
+
+**Author:** Edison (SwiftUI/iOS implementer)  
+**Date:** 2026-05-21
+
+### Where the reflow was happening
+
+#### Primary bug — `Components/GaugeMeasurementPair.swift`
+
+```swift
+// BEFORE (causes height reflow):
+HStack(alignment: .top, spacing: spacing) {
+    leading()
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    trailing()
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+}
+```
+
+**Root cause:** `.frame(maxWidth: .infinity)` enforced equal *widths* (correct), but no height constraint was set. When `hasMismatch = true` on one `GaugeStepperField`, that field's VStack grows taller by the height of the mismatch label (`Text("Stitch gauge mismatch detected")` at `.caption2`). The HStack row then grows to the taller child's height. The sibling field (e.g. "Rows" when only "Stitches" has a mismatch) remains at its natural shorter height. The user perceives this as the shorter field "shrinking" relative to its now-taller neighbour — the reflow the bug report describes.
+
+Width was always stable (both children had `maxWidth: .infinity`). The instability was purely in height.
+
+#### Secondary bug — `Components/AdjustmentValuePair.swift`
+
+```swift
+// BEFORE (causes vertical shift):
+HStack(spacing: 10) {
+```
+
+**Root cause:** Default `HStack` alignment is `.center`. The right block has `.padding(.top, delta != 0 ? 8 : 0)` — when a delta badge appears, the right block grows 8 pt taller. With center alignment, the left (pattern-value) block shifts **down by 4 pt** each time delta state changes, creating a visible vertical jump.
+
+### Fix applied
+
+**`GaugeMeasurementPair.swift`:** Added `maxHeight: .infinity` to both HStack frame wrappers. Both side containers now expand to fill the HStack's full height (driven by whichever side is taller). The mismatch label on one side grows the row, but both containers grow together — the sibling field is top-aligned and visually stable. The VStack path (accessibility sizes) is unchanged.
+
+**`AdjustmentValuePair.swift`:** Changed HStack alignment from default `.center` to `.top`. Left block stays anchored at the top regardless of right-block height changes. No vertical shift when the delta badge appears/disappears.
+
+### Note on `GaugeStepperField`
+
+The root height-instability originates inside `GaugeStepperField` (the conditional mismatch label child of the outer VStack with no reserved space). The container-level `maxHeight: .infinity` fix in `GaugeMeasurementPair` masks the symptom correctly. The chevron+wheel redesign keeps a conditional label inside the VStack, so the `GaugeMeasurementPair` fix remains load-bearing.

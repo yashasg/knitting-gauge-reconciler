@@ -10,6 +10,12 @@ struct GaugeInputs: Equatable {
     var patternSleeveLength: Double = 45
     var patternIncreaseSpacing: Double = 6
     var patternCastOn: Double = 128
+
+    /// True when the user's stitch count differs from the pattern's.
+    var stitchMismatch: Bool { yourStitches != patternStitches }
+
+    /// True when the user's row count differs from the pattern's.
+    var rowMismatch: Bool { yourRows != patternRows }
 }
 
 struct GaugeMathResult: Equatable {
@@ -26,6 +32,11 @@ struct GaugeMathResult: Equatable {
     var adjustedYokeRows: Double
     var adjustedBodyRows: Double
     var adjustedSleeveRows: Double
+    /// Rows to knit at the user's gauge to achieve the pattern's cm target.
+    /// Formula: round((patternCm / 10) × yourRows).
+    var yokeRowsAtYourGauge: Int
+    var bodyRowsAtYourGauge: Int
+    var sleeveRowsAtYourGauge: Int
     var adjustedIncreaseSpacing: Double
     var adjustedCastOn: Int
     var castOnRoundingDriftPercent: Double
@@ -57,10 +68,32 @@ enum GaugeMath {
             adjustedYokeRows: inputs.patternYokeDepth * dimensionScale * yourRowsPerCm,
             adjustedBodyRows: inputs.patternBodyLength * dimensionScale * yourRowsPerCm,
             adjustedSleeveRows: inputs.patternSleeveLength * dimensionScale * yourRowsPerCm,
+            yokeRowsAtYourGauge: max(1, Int((inputs.patternYokeDepth / 10 * inputs.yourRows).rounded())),
+            bodyRowsAtYourGauge: max(1, Int((inputs.patternBodyLength / 10 * inputs.yourRows).rounded())),
+            sleeveRowsAtYourGauge: max(1, Int((inputs.patternSleeveLength / 10 * inputs.yourRows).rounded())),
             adjustedIncreaseSpacing: inputs.patternIncreaseSpacing * rowCountScale,
             adjustedCastOn: adjustedCastOn,
             castOnRoundingDriftPercent: castOnRoundingDriftPercent
         )
+    }
+
+    /// Clamp a gauge value to the valid wheel range [1, 99].
+    static func clampedGaugeValue(_ value: Int) -> Int {
+        max(1, min(99, value))
+    }
+
+    /// Parse a free-typed gauge string (from the wheel sheet's keyboard fallback) into a
+    /// normalised String suitable for storing in the gauge text bindings.
+    /// - Decimal values are clamped to [1, 99] and emitted as whole numbers where possible.
+    /// - Empty or un-parseable input falls back to the current wheel integer selection.
+    static func parseGaugeTypeText(_ text: String, fallback: Int) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, let d = Double(trimmed) else {
+            return "\(clampedGaugeValue(fallback))"
+        }
+        let clamped = min(max(d, 1), 99)
+        let isWhole = clamped == Double(Int(clamped))
+        return isWhole ? "\(Int(clamped))" : String(format: "%.1f", clamped)
     }
 
     static func sanitized(_ value: Double?, default defaultValue: Double) -> Double {
@@ -164,9 +197,9 @@ enum ResultsShareTextFormatter {
 private struct ResultsExportRowsModel {
     var sections: [ResultsExportSummary.SectionGuidance] {
         [
-            section(name: "Yoke depth", cm: result.adjustedYokeDepth, adjustedRows: result.adjustedYokeRows, patternRows: result.patternYokeRows),
-            section(name: "Body length", cm: result.adjustedBodyLength, adjustedRows: result.adjustedBodyRows, patternRows: result.patternBodyRows),
-            section(name: "Sleeve length", cm: result.adjustedSleeveLength, adjustedRows: result.adjustedSleeveRows, patternRows: result.patternSleeveRows),
+            section(name: "Yoke depth", patternCm: inputs.patternYokeDepth, rowsAtYourGauge: result.yokeRowsAtYourGauge),
+            section(name: "Body length", patternCm: inputs.patternBodyLength, rowsAtYourGauge: result.bodyRowsAtYourGauge),
+            section(name: "Sleeve length", patternCm: inputs.patternSleeveLength, rowsAtYourGauge: result.sleeveRowsAtYourGauge),
             ResultsExportSummary.SectionGuidance(
                 name: "Increase-row spacing",
                 pattern: "Every \(plain(inputs.patternIncreaseSpacing)) rows",
@@ -184,14 +217,14 @@ private struct ResultsExportRowsModel {
         self.result = result
     }
 
-    private func section(name: String, cm: Double, adjustedRows: Double, patternRows: Double) -> ResultsExportSummary.SectionGuidance {
-        let adjusted = "Knit to \(GaugeMath.fmtCm(cm)) cm; about \(GaugeMath.fmtRows(adjustedRows)) rows/rounds"
-        let pattern = "Pattern about \(GaugeMath.fmtRows(patternRows)) rows"
+    private func section(name: String, patternCm: Double, rowsAtYourGauge: Int) -> ResultsExportSummary.SectionGuidance {
+        let pattern = "\(plain(patternCm)) cm"
+        let adjusted = "Knit \(rowsAtYourGauge) rows"
         return ResultsExportSummary.SectionGuidance(
             name: name,
             pattern: pattern,
             adjusted: adjusted,
-            textLine: "• \(name): \(adjusted) (pattern about \(GaugeMath.fmtRows(patternRows)) rows)"
+            textLine: "• \(name): \(plain(patternCm)) cm → knit \(rowsAtYourGauge) rows"
         )
     }
 }

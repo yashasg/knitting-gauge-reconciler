@@ -9,7 +9,7 @@ description: "Knitting Gauge Reconciler — iOS app build loop"
 
 ## Model defaults
 
-Default all Squad agent model selections to `claude-opus-4.7-xhigh`. Exception: Ralph and Scribe must not inherit or use this default.
+Default all Squad agent model selections to `claude-sonnet-4.6`. Exception: Ralph and Scribe must not inherit or use this default (they stay on `claude-haiku-4.5` — cheap mechanical ops).
 
 ## Goals (all five must be ✅ to exit)
 

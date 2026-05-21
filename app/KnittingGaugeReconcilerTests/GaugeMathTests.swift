@@ -153,8 +153,9 @@ struct GaugeMathTests {
         #expect(summary.rowMetric == .init(title: "Row-wise", value: "133%", status: "Much denser"))
         #expect(summary.castOn == "Cast on 144 stitches instead of 128")
         #expect(summary.sections.map(\.name) == ["Yoke depth", "Body length", "Sleeve length", "Increase-row spacing"])
-        #expect(summary.sections[1].adjusted == "Knit to 37.5 cm; about 120 rows/rounds")
-        #expect(summary.sections[1].pattern == "Pattern about 120 rows")
+        // body: (50/10)*32 = 160 rows at user gauge
+        #expect(summary.sections[1].pattern == "50 cm")
+        #expect(summary.sections[1].adjusted == "Knit 160 rows")
     }
 
     @Test func shareTextFormatterIncludesCurrentGaugeAndGuidanceAsFallback() {
@@ -167,9 +168,10 @@ struct GaugeMathTests {
         #expect(summary.contains("• Stitch-wise: 89% (Much tighter)"))
         #expect(summary.contains("• Row-wise: 133% (Much denser)"))
         #expect(summary.contains("• Cast-on: cast on 144 stitches instead of 128"))
-        #expect(summary.contains("• Yoke depth: Knit to 15.0 cm; about 48 rows/rounds (pattern about 48 rows)"))
-        #expect(summary.contains("• Body length: Knit to 37.5 cm; about 120 rows/rounds (pattern about 120 rows)"))
-        #expect(summary.contains("• Sleeve length: Knit to 33.8 cm; about 108 rows/rounds (pattern about 108 rows)"))
+        // rows at your gauge: yoke (20/10)*32=64, body (50/10)*32=160, sleeve (45/10)*32=144
+        #expect(summary.contains("• Yoke depth: 20 cm → knit 64 rows"))
+        #expect(summary.contains("• Body length: 50 cm → knit 160 rows"))
+        #expect(summary.contains("• Sleeve length: 45 cm → knit 144 rows"))
         #expect(summary.contains("• Increase-row spacing: space every 8 rows/rounds (pattern every 6 rows)"))
     }
 
@@ -182,9 +184,92 @@ struct GaugeMathTests {
         #expect(first == second)
         #expect(first.contains("Knitting Gauge Reconciler"))
         #expect(first.contains("Section row/round guidance"))
-        #expect(first.contains("• Body length: Knit to 37.5 cm; about 120 rows/rounds (pattern about 120 rows)"))
+        // body: (50/10)*32 = 160 rows at user gauge
+        #expect(first.contains("• Body length: 50 cm → knit 160 rows"))
         #expect(!first.contains("<table>"))
         #expect(!first.contains("| Section |"))
+    }
+
+    /// yashasg's formula: rowsNeeded = round((patternCm / 10) × yourRowsPer10cm)
+    /// Example: 20cm yoke at 22 ro/10cm → (20/10) × 22 = 44 rows.
+    @Test func sectionRowsAtYourGaugeMatchFormula() {
+        let inputs = GaugeInputs(
+            patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 22,
+            patternYokeDepth: 20, patternBodyLength: 50, patternSleeveLength: 45,
+            patternIncreaseSpacing: 6, patternCastOn: 128
+        )
+        let result = GaugeMath.compute(inputs)
+        #expect(result.yokeRowsAtYourGauge == 44)    // (20/10) × 22 = 44
+        #expect(result.bodyRowsAtYourGauge == 110)   // (50/10) × 22 = 110
+        #expect(result.sleeveRowsAtYourGauge == 99)  // (45/10) × 22 = 99
+    }
+
+    // MARK: - Wheel field clamp + parse bounds
+
+    /// GaugeMath.clampedGaugeValue enforces the [1, 99] wheel range.
+    @Test func wheelFieldClampEnforcesBounds() {
+        #expect(GaugeMath.clampedGaugeValue(0) == 1)
+        #expect(GaugeMath.clampedGaugeValue(-5) == 1)
+        #expect(GaugeMath.clampedGaugeValue(1) == 1)
+        #expect(GaugeMath.clampedGaugeValue(50) == 50)
+        #expect(GaugeMath.clampedGaugeValue(99) == 99)
+        #expect(GaugeMath.clampedGaugeValue(100) == 99)
+        #expect(GaugeMath.clampedGaugeValue(999) == 99)
+    }
+
+    /// A whole-number wheel selection commits as a plain integer string.
+    @Test func gaugeWheelFieldCommitsSelection() {
+        #expect(GaugeMath.parseGaugeTypeText("20", fallback: 20) == "20")
+        #expect(GaugeMath.parseGaugeTypeText("1", fallback: 20) == "1")
+        #expect(GaugeMath.parseGaugeTypeText("99", fallback: 20) == "99")
+        // Out-of-range integers are clamped.
+        #expect(GaugeMath.parseGaugeTypeText("0", fallback: 20) == "1")
+        #expect(GaugeMath.parseGaugeTypeText("100", fallback: 20) == "99")
+    }
+
+    /// Decimal values typed in the keyboard fallback are clamped and preserved where meaningful.
+    @Test func gaugeWheelFieldTypeFallbackParsesDecimal() {
+        // Decimal within range: kept as one decimal place.
+        #expect(GaugeMath.parseGaugeTypeText("22.5", fallback: 20) == "22.5")
+        // Decimal that rounds to a whole number: stripped to integer string.
+        #expect(GaugeMath.parseGaugeTypeText("30.0", fallback: 20) == "30")
+        // Decimal out-of-range: clamped.
+        #expect(GaugeMath.parseGaugeTypeText("0.5", fallback: 20) == "1")
+        #expect(GaugeMath.parseGaugeTypeText("99.9", fallback: 20) == "99")
+        // Empty string: falls back to the fallback integer.
+        #expect(GaugeMath.parseGaugeTypeText("", fallback: 25) == "25")
+        // Un-parseable string: falls back to clamped fallback.
+        #expect(GaugeMath.parseGaugeTypeText("abc", fallback: 30) == "30")
+    }
+
+    // MARK: - Inline mismatch detection
+
+    /// stitchMismatch / rowMismatch are pure boolean derivations from GaugeInputs.
+    @Test func inlineMismatchDetectionMatchVsMismatch() {
+        let matched = GaugeInputs(patternStitches: 20, patternRows: 28, yourStitches: 20, yourRows: 28)
+        #expect(!matched.stitchMismatch)
+        #expect(!matched.rowMismatch)
+
+        let stitchOnly = GaugeInputs(patternStitches: 20, patternRows: 28, yourStitches: 24, yourRows: 28)
+        #expect(stitchOnly.stitchMismatch)
+        #expect(!stitchOnly.rowMismatch)
+
+        let rowOnly = GaugeInputs(patternStitches: 20, patternRows: 28, yourStitches: 20, yourRows: 32)
+        #expect(!rowOnly.stitchMismatch)
+        #expect(rowOnly.rowMismatch)
+
+        let both = GaugeInputs(patternStitches: 20, patternRows: 28, yourStitches: 24, yourRows: 32)
+        #expect(both.stitchMismatch)
+        #expect(both.rowMismatch)
+    }
+
+    // MARK: - Mismatch detection with default values
+
+    /// Default GaugeInputs (ps=32, pr=24, ys=32, yr=32) has row mismatch but not stitch mismatch.
+    @Test func inlineMismatchDefaultInputs() {
+        let defaults = GaugeInputs()
+        #expect(!defaults.stitchMismatch)
+        #expect(defaults.rowMismatch)
     }
 
     private func withGauge(yourStitches: Double, yourRows: Double) -> GaugeInputs {

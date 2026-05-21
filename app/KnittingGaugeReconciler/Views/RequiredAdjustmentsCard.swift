@@ -81,7 +81,7 @@ struct RequiredAdjustmentsCard: View {
 
                     // ③ Shaping Rates
                     numberedSectionCard(number: 3, title: "Shaping Rates", subtitle: "Increases / Decreases") {
-                        VStack(spacing: 8) {
+                        VStack(spacing: 12) {
                             AdjustmentRow(
                                 name: "Increase-row spacing",
                                 pattern: "Every \(plain(inputs.patternIncreaseSpacing)) rows",
@@ -210,11 +210,10 @@ struct RequiredAdjustmentsCard: View {
 }
 
 // MARK: - AdjustmentRow (used only inside RequiredAdjustmentsCard)
+// Tile-based layout matching AdjustmentValuePair chrome:
+// left oatmeal tile (pattern), right sage tile (adjusted).
 
 private struct AdjustmentRow: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
     var name: String
     var pattern: String
     var adjusted: String
@@ -222,66 +221,52 @@ private struct AdjustmentRow: View {
     var driftPill: String? = nil
 
     var body: some View {
-        Group {
-            if shouldCollapse {
-                vertical
-            } else {
-                ViewThatFits(in: .horizontal) {
-                    horizontal
-                    vertical
-                }
-            }
-        }
-        .padding(.vertical, 8)
-    }
-
-    private var shouldCollapse: Bool {
-        horizontalSizeClass == .compact || dynamicTypeSize.isAccessibilitySize
-    }
-
-    private var horizontal: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            labelBlock
-                .frame(minWidth: 148, maxWidth: .infinity, alignment: .leading)
-            valueBlock(alignment: .trailing)
-                .frame(minWidth: 180, alignment: .trailing)
-        }
-    }
-
-    private var vertical: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            labelBlock
-            valueBlock(alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private var labelBlock: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(name)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(AppTheme.ink)
-            Text("Pattern: \(pattern)")
-                .font(.caption)
-                .foregroundStyle(AppTheme.muted)
-        }
-    }
-
-    private func valueBlock(alignment: TextAlignment) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(adjusted)
-                .font(.system(.body, design: .monospaced).weight(.bold))
-                .foregroundStyle(AppTheme.sage)
-                .multilineTextAlignment(alignment)
-                .accessibilityIdentifier(adjustedIdentifier ?? "adjustment-\(name.lowercased().replacingOccurrences(of: " ", with: "-"))-value")
-            if let pill = driftPill {
-                Text(pill)
+        HStack(alignment: .top, spacing: 10) {
+            // Left tile: pattern value (oatmeal background — informational)
+            VStack(alignment: .center, spacing: 4) {
+                Text(name)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(AppTheme.secondary)
-                    .clipShape(Capsule())
+                    .foregroundStyle(AppTheme.muted)
+                    .multilineTextAlignment(.center)
+                Text(pattern)
+                    .font(.system(.body, design: .monospaced).weight(.bold))
+                    .foregroundStyle(AppTheme.muted)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(14)
+            .background(AppTheme.oatmeal)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            // Right tile: adjusted value (sage background — actionable)
+            ZStack(alignment: .topTrailing) {
+                VStack(alignment: .center, spacing: 4) {
+                    Text("Adjusted")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .multilineTextAlignment(.center)
+                    Text(adjusted)
+                        .font(.system(.body, design: .monospaced).weight(.bold))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier(adjustedIdentifier ?? "adjustment-\(name.lowercased().replacingOccurrences(of: " ", with: "-"))-value")
+                }
+                .frame(maxWidth: .infinity)
+                .padding(14)
+                .padding(.top, driftPill != nil ? 8 : 0)
+                .background(AppTheme.sage)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                if let pill = driftPill {
+                    Text(pill)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.secondary)
+                        .clipShape(Capsule())
+                        .offset(x: -4, y: -8)
+                }
             }
         }
     }

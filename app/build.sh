@@ -127,6 +127,18 @@ XCODEBUILD_ARGS+=(
   "${ACTION[@]}"
 )
 
+# ── MetricKit V3: no-third-party-telemetry gate (runs on every mode) ─────────
+# Package.resolved must not reference known telemetry SDKs.
+# MetricKit is a system framework — zero SPM entries expected.
+_PKG_RESOLVED="$PROJECT_DIR/app.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+if [[ -f "$_PKG_RESOLVED" ]]; then
+  _TELEMETRY_PATTERN='swift-metrics|firebase|sentry-cocoa|datadog|amplitude|mixpanel|segment|braze|newrelic|instana|bugsnag'
+  if grep -Eiq "$_TELEMETRY_PATTERN" "$_PKG_RESOLVED"; then
+    echo "error: Package.resolved references a third-party telemetry SDK; only MetricKit (system framework) is permitted" >&2
+    exit 65
+  fi
+fi
+
 run_xcodebuild() {
   set +e
   if command -v xcpretty >/dev/null 2>&1; then
@@ -569,6 +581,24 @@ if [[ "$MODE" == "test" ]]; then
       echo "error: xcodebuild reported success but the xcresult bundle records test failures" >&2
     fi
     exit 65
+  fi
+fi
+
+# ── MetricKit V3: release binary system-dylibs-only gate ─────────────────────
+# Verify no non-system dylib is linked (Curie's linker check).
+# Runs after a successful release build; passes silently for test/build modes.
+if [[ "$MODE" == "release" && "$STATUS" -eq 0 ]]; then
+  _RELEASE_BIN="$DERIVED_DATA_PATH/Build/Products/Release-iphoneos/${SCHEME}.app/${SCHEME}"
+  if [[ -f "$_RELEASE_BIN" ]]; then
+    _NON_SYS="$(otool -L "$_RELEASE_BIN" 2>/dev/null \
+      | awk 'NR>1 {print $1}' \
+      | grep -Ev '^(/usr/lib/|/System/Library/|@rpath/|@executable_path/|@loader_path/)' || true)"
+    if [[ -n "$_NON_SYS" ]]; then
+      echo "error: release binary links non-system dylibs (MetricKit V3 telemetry linker check):" >&2
+      printf '%s\n' "$_NON_SYS" >&2
+      exit 65
+    fi
+    echo "note: release binary passes telemetry linker check (system dylibs only)" >&2
   fi
 fi
 

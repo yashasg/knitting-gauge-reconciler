@@ -7,8 +7,8 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         var name: String
         var yourStitches: String
         var yourRows: String
-        var stitchHero: String
-        var rowHero: String
+        /// String label of the adjusted yoke row count (e.g. "64" — shown in the
+        /// dark-green "You Must Knit" block of AdjustmentValuePair).
         var castOn: String
         var body: String
         var yoke: String
@@ -25,21 +25,17 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         "KGR_INCREASES": "6",
     ]
 
+    // yokeRowsAtYourGauge = (20/10)*yr, bodyRowsAtYourGauge = (50/10)*yr
     private let scenarios = [
-        Scenario(name: "Perfect Match", yourStitches: "32", yourRows: "24", stitchHero: "100%", rowHero: "100%", castOn: "128 stitches", body: "Knit to 50.0 cm · about 120 rows/rounds", yoke: "Knit to 20.0 cm · about 48 rows/rounds", increases: "Space every 6 rows/rounds"),
-        Scenario(name: "Denser Row Only", yourStitches: "32", yourRows: "32", stitchHero: "100%", rowHero: "133%", castOn: "128 stitches", body: "Knit to 37.5 cm · about 120 rows/rounds", yoke: "Knit to 15.0 cm · about 48 rows/rounds", increases: "Space every 8 rows/rounds"),
-        Scenario(name: "Looser Row Only", yourStitches: "32", yourRows: "20", stitchHero: "100%", rowHero: "83%", castOn: "128 stitches", body: "Knit to 60.0 cm · about 120 rows/rounds", yoke: "Knit to 24.0 cm · about 48 rows/rounds", increases: "Space every 5 rows/rounds"),
-        Scenario(name: "Denser Stitch Only", yourStitches: "36", yourRows: "24", stitchHero: "89%", rowHero: "100%", castOn: "144 stitches", body: "Knit to 50.0 cm · about 120 rows/rounds", yoke: "Knit to 20.0 cm · about 48 rows/rounds", increases: "Space every 6 rows/rounds"),
-        Scenario(name: "Looser Stitch Only", yourStitches: "28", yourRows: "24", stitchHero: "114%", rowHero: "100%", castOn: "112 stitches", body: "Knit to 50.0 cm · about 120 rows/rounds", yoke: "Knit to 20.0 cm · about 48 rows/rounds", increases: "Space every 6 rows/rounds"),
-        Scenario(name: "Both Denser", yourStitches: "36", yourRows: "32", stitchHero: "89%", rowHero: "133%", castOn: "144 stitches", body: "Knit to 37.5 cm · about 120 rows/rounds", yoke: "Knit to 15.0 cm · about 48 rows/rounds", increases: "Space every 8 rows/rounds")
+        Scenario(name: "Perfect Match",    yourStitches: "32", yourRows: "24", castOn: "128 stitches", body: "120", yoke: "48",  increases: "Space every 6 rows/rounds"),
+        Scenario(name: "Denser Row Only",  yourStitches: "32", yourRows: "32", castOn: "128 stitches", body: "160", yoke: "64",  increases: "Space every 8 rows/rounds"),
+        Scenario(name: "Looser Row Only",  yourStitches: "32", yourRows: "20", castOn: "128 stitches", body: "100", yoke: "40",  increases: "Space every 5 rows/rounds"),
+        Scenario(name: "Denser Stitch Only", yourStitches: "36", yourRows: "24", castOn: "144 stitches", body: "120", yoke: "48", increases: "Space every 6 rows/rounds"),
+        Scenario(name: "Looser Stitch Only", yourStitches: "28", yourRows: "24", castOn: "112 stitches", body: "120", yoke: "48", increases: "Space every 6 rows/rounds"),
+        Scenario(name: "Both Denser",      yourStitches: "36", yourRows: "32", castOn: "144 stitches", body: "160", yoke: "64",  increases: "Space every 8 rows/rounds")
     ]
 
     func testAllJacquardScenariosAreVisibleInUI() {
-        // Single-launch flow (resolves issue #18 — per-scenario app.terminate() →
-        // app.launch() cycles exposed the test to multi-minute simulator stalls
-        // on relaunch). Instead, launch once with scenario 0's values then drive
-        // the remaining scenarios via in-app field input. This also exercises
-        // the live-recalc path (goal #1) end-to-end.
         let app = XCUIApplication()
         useDefaultDynamicType(app)
         app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
@@ -48,38 +44,43 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         ]) { _, new in new }
         app.launch()
 
-        let yourStitchesField = app.textFields["your-stitches"]
-        let yourRowsField = app.textFields["your-rows"]
-        XCTAssertTrue(yourStitchesField.waitForExistence(timeout: 5))
-        XCTAssertTrue(yourRowsField.waitForExistence(timeout: 5))
+        // Verify stepper + buttons exist (identifier lives on the + button).
+        XCTAssertTrue(app.buttons["your-stitches"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["your-rows"].waitForExistence(timeout: 5))
+
+        // Calculate button must be visible before any results exist.
+        let calculateBtn = app.buttons["calculate-button"]
+        XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
+
+        // Tap Calculate to surface the first scenario's results.
+        scrollToElement(calculateBtn, in: app, requireHittable: true)
+        tapElement(calculateBtn)
 
         let castOnElement = app.staticTexts["cast-on-result"]
         XCTAssertTrue(castOnElement.waitForExistence(timeout: 5))
 
         for (index, scenario) in scenarios.enumerated() {
             if index > 0 {
-                setNumericField(yourStitchesField, to: scenario.yourStitches, in: app)
-                setNumericField(yourRowsField, to: scenario.yourRows, in: app)
-                dismissKeyboard(in: app)
+                setStepperValue(identifier: "your-stitches", to: scenario.yourStitches, in: app)
+                setStepperValue(identifier: "your-rows", to: scenario.yourRows, in: app)
+                // Tap Recalculate to refresh results for the new inputs.
+                scrollToElement(calculateBtn, in: app, requireHittable: true)
+                tapElement(calculateBtn)
+                _ = castOnElement.waitForExistence(timeout: 5)
             }
 
             let expectedCastOnLabel = "Cast on \(scenario.castOn)"
             waitUntil(timeout: 5) { castOnElement.label == expectedCastOnLabel }
 
-            XCTAssertFalse(app.buttons["calculate-button"].exists, scenario.name)
-            XCTAssertTrue(
-                app.staticTexts[scenario.stitchHero].waitForExistence(timeout: 3),
-                "\(scenario.name) stitchHero=\(scenario.stitchHero)"
-            )
-            XCTAssertTrue(
-                app.staticTexts[scenario.rowHero].exists,
-                "\(scenario.name) rowHero=\(scenario.rowHero)"
-            )
             XCTAssertEqual(castOnElement.label, expectedCastOnLabel, scenario.name)
+
+            // Adjusted body and yoke row counts appear in AdjustmentValuePair right blocks.
+            scrollToElement(app.staticTexts[scenario.body], in: app)
             XCTAssertTrue(
                 app.staticTexts[scenario.body].exists,
                 "\(scenario.name) body=\(scenario.body)"
             )
+            scrollToElement(app.staticTexts[scenario.yoke], in: app)
             XCTAssertTrue(
                 app.staticTexts[scenario.yoke].exists,
                 "\(scenario.name) yoke=\(scenario.yoke)"
@@ -91,29 +92,38 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         }
     }
 
-    private func setNumericField(
-        _ field: XCUIElement,
-        to newValue: String,
-        in app: XCUIApplication
-    ) {
-        // Dismiss the keyboard if it's up so the target field isn't covered
-        // when we tap it. Decimal-pad keyboards have no Return key, so the
-        // app exposes a "Done" keyboard accessory (same affordance the user
-        // gets — see ContentView's .toolbar(.keyboard) modifier).
-        dismissKeyboard(in: app)
-        field.tap()
-        _ = app.keyboards.firstMatch.waitForExistence(timeout: 2)
-        // Clear with generous backspaces; per-scenario values are 2–4 digits.
-        let backspaces = String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8)
-        field.typeText(backspaces + newValue)
-    }
+    func testStepperDecrementsAndIncrements() {
+        let app = XCUIApplication()
+        useDefaultDynamicType(app)
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
+            "KGR_YS": "20",
+            "KGR_YR": "24",
+        ]) { _, new in new }
+        app.launch()
 
-    private func dismissKeyboard(in app: XCUIApplication) {
-        let done = app.toolbars.buttons["keyboard-done"]
-        if done.exists && done.isHittable {
-            done.tap()
-            _ = waitUntil(timeout: 1.5) { !app.keyboards.firstMatch.exists }
-        }
+        let plusButton = app.buttons["your-stitches"].firstMatch
+        XCTAssertTrue(plusButton.waitForExistence(timeout: 3))
+        let minusButton = app.buttons["your-stitches-minus"].firstMatch
+        XCTAssertTrue(minusButton.waitForExistence(timeout: 3))
+        let valueField = app.textFields["your-stitches-field"].firstMatch
+        XCTAssertTrue(valueField.waitForExistence(timeout: 3))
+
+        // Tapping + increments the value.
+        scrollToElement(plusButton, in: app, requireHittable: true)
+        tapElement(plusButton)
+        waitUntil(timeout: 2) { valueField.value as? String == "21" }
+        XCTAssertEqual(valueField.value as? String, "21", "Plus button should increment from 20 to 21")
+
+        // Tapping − decrements the value.
+        tapElement(minusButton)
+        waitUntil(timeout: 2) { valueField.value as? String == "20" }
+        XCTAssertEqual(valueField.value as? String, "20", "Minus button should decrement from 21 to 20")
+
+        // Tapping the value field opens the keyboard.
+        dismissKeyboard(in: app)
+        tapElement(valueField)
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "Tapping the value field should open the keyboard")
+        dismissKeyboard(in: app)
     }
 
     func testPrototypeParityControlsAreAvailable() {
@@ -125,6 +135,12 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             "KGR_SHOW_FULL_MATH": "1",
         ]) { _, new in new }
         app.launch()
+
+        // Tap Calculate to surface the adjustments section.
+        let calculateBtn = app.buttons["calculate-button"]
+        XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
+        scrollToElement(calculateBtn, in: app, requireHittable: true)
+        tapElement(calculateBtn)
 
         let showFullMath = app.buttons["disclosure-full-math"].firstMatch
         scrollToElement(showFullMath, in: app)
@@ -140,10 +156,11 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         waitForScrollingToSettle()
         tapElement(reset)
 
+        // After reset, cachedResult is cleared — Calculate button should be present.
         let defaultApp = XCUIApplication()
         useDefaultDynamicType(defaultApp)
         defaultApp.launch()
-        XCTAssertTrue(defaultApp.staticTexts["133%"].waitForExistence(timeout: 3))
+        XCTAssertTrue(defaultApp.buttons["calculate-button"].waitForExistence(timeout: 3))
         defaultApp.terminate()
     }
 
@@ -168,6 +185,8 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     }
 
     func testVerdictHelpButtonOpensPullUpSheet() {
+        // sheetVerdictBody uses liveResult (always-live compute) so it has content
+        // even before the user taps Calculate.
         let app = XCUIApplication()
         useDefaultDynamicType(app)
         app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
@@ -177,7 +196,7 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         ]) { _, new in new }
         app.launch()
 
-        // The ? button opens a pull-up sheet with the full explanation
+        // The sheet opens via the launch env; content is live from inputs.
         let sheet = app.scrollViews["verdict-help-sheet"].firstMatch
         XCTAssertTrue(sheet.waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "re-swatching")).element.waitForExistence(timeout: 2))
@@ -191,6 +210,12 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             "KGR_YR": "32",
         ]) { _, new in new }
         app.launch()
+
+        // Tap Calculate to surface the share button (inside actionsCard).
+        let calculateBtn = app.buttons["calculate-button"]
+        XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
+        scrollToElement(calculateBtn, in: app, requireHittable: true)
+        tapElement(calculateBtn)
 
         let shareButton = app.buttons["share-results"].firstMatch
         scrollToElement(shareButton, in: app, requireHittable: true)
@@ -216,31 +241,36 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         ]) { _, new in new }
         app.launch()
 
-        let patternStitches = app.textFields["pattern-stitches"]
-        let patternRows = app.textFields["pattern-rows"]
+        // Gauge input fields must be side-by-side (not stacked) on a compact phone width.
+        // Pattern gauge fields: identifier lives on the + button of each stepper.
+        let patternStitches = app.buttons["pattern-stitches"]
+        let patternRows = app.buttons["pattern-rows"]
         XCTAssertTrue(patternStitches.waitForExistence(timeout: 2))
         XCTAssertTrue(patternRows.exists)
         assertSideBySide(patternStitches, patternRows)
 
-        let yourStitches = app.textFields["your-stitches"]
-        let yourRows = app.textFields["your-rows"]
+        let yourStitches = app.buttons["your-stitches"]
+        let yourRows = app.buttons["your-rows"]
         XCTAssertTrue(yourStitches.exists)
         XCTAssertTrue(yourRows.exists)
         assertSideBySide(yourStitches, yourRows)
 
-        let stitchHeroValue = app.staticTexts["100%"].firstMatch
-        XCTAssertTrue(stitchHeroValue.waitForExistence(timeout: 2))
-        let rowHeroValue = app.staticTexts["133%"]
-        scrollToElement(rowHeroValue, in: app)
-        XCTAssertTrue(rowHeroValue.exists)
-        assertStackedBelow(rowHeroValue, stitchHeroValue)
+        // Tap Calculate to show the adjustments section.
+        let calculateBtn = app.buttons["calculate-button"]
+        XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
+        scrollToElement(calculateBtn, in: app, requireHittable: true)
+        tapElement(calculateBtn)
 
-        let yokeAdjustment = app.staticTexts["adjustment-yoke-depth-value"]
-        scrollToElement(yokeAdjustment, in: app)
-        XCTAssertTrue(yokeAdjustment.exists)
-        let patternYoke = app.staticTexts["Pattern: 20 cm · about 48 pattern rows"].firstMatch
-        XCTAssertTrue(patternYoke.exists)
-        assertStackedBelow(yokeAdjustment, patternYoke)
+        // Yoke value pair's "You Must Knit" block should be visible after Calculate.
+        let yokeValue = app.staticTexts["yoke-your-rows"]
+        scrollToElement(yokeValue, in: app)
+        XCTAssertTrue(yokeValue.waitForExistence(timeout: 5))
+
+        // Cast-on result must exist and carry the expected label.
+        let castOnElement = app.staticTexts["cast-on-result"]
+        scrollToElement(castOnElement, in: app)
+        XCTAssertTrue(castOnElement.exists)
+        XCTAssertEqual(castOnElement.label, "Cast on 128 stitches")
     }
 
     func testAccessibilityDynamicTypeStacksGaugeMeasurementPairs() {
@@ -255,17 +285,65 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         ]) { _, new in new }
         app.launch()
 
-        let patternStitches = app.textFields["pattern-stitches"]
-        let patternRows = app.textFields["pattern-rows"]
+        let patternStitches = app.buttons["pattern-stitches"]
+        let patternRows = app.buttons["pattern-rows"]
         XCTAssertTrue(patternStitches.waitForExistence(timeout: 2))
         XCTAssertTrue(patternRows.exists)
         assertStackedBelow(patternRows, patternStitches)
 
-        let yourStitches = app.textFields["your-stitches"]
-        let yourRows = app.textFields["your-rows"]
+        let yourStitches = app.buttons["your-stitches"]
+        let yourRows = app.buttons["your-rows"]
         XCTAssertTrue(yourStitches.exists)
         XCTAssertTrue(yourRows.exists)
         assertStackedBelow(yourRows, yourStitches)
+    }
+
+    /// Adjust a GaugeStepperField to a target integer value by tapping + or − repeatedly.
+    /// Reads the current value from the bound text field to compute the required delta.
+    private func setStepperValue(
+        identifier: String,
+        to targetValue: String,
+        in app: XCUIApplication
+    ) {
+        guard let target = Int(targetValue) else { return }
+
+        let field = app.textFields["\(identifier)-field"].firstMatch
+        guard field.waitForExistence(timeout: 3) else {
+            XCTFail("Stepper field '\(identifier)-field' not found")
+            return
+        }
+        scrollToElement(field, in: app)
+        let current = Int(field.value as? String ?? "") ?? 0
+        let delta = target - current
+        guard delta != 0 else { return }
+
+        let buttonId = delta > 0 ? identifier : "\(identifier)-minus"
+        let button = app.buttons[buttonId].firstMatch
+        scrollToElement(button, in: app, requireHittable: true)
+        for _ in 0..<abs(delta) {
+            tapElement(button)
+        }
+        waitForScrollingToSettle()
+    }
+
+    private func setNumericField(
+        _ field: XCUIElement,
+        to newValue: String,
+        in app: XCUIApplication
+    ) {
+        dismissKeyboard(in: app)
+        field.tap()
+        _ = app.keyboards.firstMatch.waitForExistence(timeout: 2)
+        let backspaces = String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8)
+        field.typeText(backspaces + newValue)
+    }
+
+    private func dismissKeyboard(in app: XCUIApplication) {
+        let done = app.toolbars.buttons["keyboard-done"]
+        if done.exists && done.isHittable {
+            done.tap()
+            _ = waitUntil(timeout: 1.5) { !app.keyboards.firstMatch.exists }
+        }
     }
 
     private func assertSideBySide(

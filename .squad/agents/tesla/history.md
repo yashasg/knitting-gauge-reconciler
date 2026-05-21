@@ -8,6 +8,25 @@
 
 ## Learnings
 
+### 2026-05-20T22:37:00-07:00 — HIG Research: Wheel + Keyboard Numeric Input Field
+
+**Session:** tesla-wheel-input-hig (design memo for Edison-9)
+
+**Canonical pattern confirmed:**
+`UITextField` with `inputView = UIPickerView` (two-component: integer wheel | fraction wheel) + `inputAccessoryView = UIToolbar` (Keyboard button + Done button). The picker occupies the keyboard slot at the bottom of the screen — not a sheet, not a popover, not an always-visible inline control. Mode switch to `.decimalPad` is a single toolbar button tap, not a separate screen.
+
+**Key HIG citation:**
+"On iPhone, pickers are typically displayed at the bottom of the screen." (HIG/Pickers) + UIKit `UITextField.inputView` API: "If the value of this property is not nil, the text field uses the view it contains as the first responder's input view, replacing the system keyboard." These two facts together define the pattern. Apple Health (weight), Contacts (label selector), and Settings (birthday) all implement it this way.
+
+**UIKit/SwiftUI seam that surprised me:**
+`UIPickerView` used as `inputView` on a `UITextField` does NOT automatically grant the `.adjustable` VoiceOver trait to the text field. The picker itself is adjustable when focused directly, but when hosted as `inputView`, the owning UITextField needs a subclass that overrides `accessibilityTraits` and implements `accessibilityIncrement()` / `accessibilityDecrement()` to proxy to the picker. This is the most non-obvious part of the pattern — and the part most likely to be skipped, breaking VoiceOver for all users who rely on swipe-up/down adjustment.
+
+**Delivered:**
+- `.squad/decisions/inbox/tesla-wheel-input-hig.md` — design memo for Edison-9
+- `.squad/skills/swiftui-numeric-wheel-keyboard-input/SKILL.md` — reusable pattern (confidence: low)
+
+---
+
 ### 2026-05-20T20:38:28-07:00 — Cleanup Round 2026-05-20 (Architecture Oversight)
 
 **Session:** cleanup-round (Edison audit + Edison/Curie implementation, parallel)

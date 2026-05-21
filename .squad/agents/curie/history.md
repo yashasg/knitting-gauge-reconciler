@@ -8,6 +8,12 @@
 
 ## Learnings
 
+### 2026-05-21T14:14:19Z — Confirmatory cycle after carry-forward chain
+
+- **Sibling xcodebuild check can show transient PIDs.** PID 14864 appeared in the first `pgrep` but was already gone by the time we re-checked (< 1 s later). Always re-verify before aborting a cycle — a single positive hit may be a briefly-lived process, not a competing gate.
+- **xcresult freshness window boundary (~15–30 min) triggers a fresh run correctly.** The predecessor's xcresult was ~16 min old, putting it at the edge. The confirmatory run was clean: exit 0, 56/56, 0 warnings — confirming carry-forward was honest.
+- **Total test count is 56 (48 unit Swift Testing + 8 XCTest UI).** The unit suite previously logged as "49" reflected an earlier counting convention; the actual Swift Testing runner reports 48 tests in 5 suites. No test was lost — counts are consistent cycle-to-cycle.
+
 ### 2026-05-20T20:38:28-07:00 — Cleanup Round 2026-05-20
 
 **Session:** cleanup-round (Edison audit + Edison/Curie implementation, parallel)

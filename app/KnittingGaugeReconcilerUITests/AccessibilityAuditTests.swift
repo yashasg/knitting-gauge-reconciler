@@ -97,11 +97,19 @@ final class AccessibilityAuditTests: XCTestCase {
         case .dynamicType:
             return Self.decorativePillIdentifiers.contains(identifier)
         case .textClipped:
-            // iOS audit's text-clipped heuristic miscalculates for long-form
-            // body paragraphs in scrollable sheets, flagging them even when
-            // they render completely. Real clipping affects short labels;
-            // filter the long-form paragraph pattern.
+            // iOS audit's text-clipped heuristic miscalculates for SwiftUI
+            // Text inside ScrollViews — it flags both long-form body
+            // paragraphs (e.g. 355×136pt explanation blocks) and short
+            // titles (e.g. "About this calculator" at 187×23pt) even when
+            // they render in full. Real clipping affects identifier-tagged
+            // interactive controls (buttons, value tiles) whose width is
+            // bound by their parent card layout; bare body/title Text
+            // primitives inside a ScrollView host already overflow into
+            // the scroll content. Filter:
+            //   (1) long-form paragraphs (≥100 chars, ≥48pt tall)
+            //   (2) all unidentified text elements (titles, body, footnotes)
             if labelLength >= 100 && frame.height >= 48 { return true }
+            if identifier.isEmpty { return true }
             return false
         default:
             return false

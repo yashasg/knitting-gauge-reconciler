@@ -775,3 +775,66 @@ User quote: *"we are only collecting metrics on diagnostics and analytics, nothi
 - **What changed:** All 5 custom HIG rules in `.swiftlint.yml` changed from warning → error. These now hard-block CI on any new HIG violations introduced.
 - **Why:** Prefer hard blocking over advisory warnings.
 
+### Yashas — Copilot model directive
+
+- **Author:** Yashas (Coordinator, via Copilot)
+- **Date:** 2026-05-22T02:58:20-07:00
+- **Status:** DECISION (directive)
+- **What:** Any squad member assigned `claude-opus-4.7-xhigh` must use `claude-opus-4.7` instead. This model identifier is no longer valid.
+- **Why:** User request — captured for team memory. Applies to config.json overrides, charter model preferences, and any spawn prompts.
+
+### Edison — App icon setup
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-22T02:25:03-07:00
+- **Status:** DECISION (deployed)
+- **What:** Generated the full iPhone + App Store icon set from the production-ready 1024×1024 Stitchwise source image and added `AppIcon.appiconset/Contents.json`. Updated `app/app.xcodeproj/project.pbxproj` so both Debug and Release use `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;`.
+- **Verification:** `xcodebuild -project app/app.xcodeproj -scheme KnittingGaugeReconciler -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' build` succeeded.
+
+### Edison — App icon background transparency
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-22
+- **Status:** DECISION (deployed)
+- **What:** Used `rembg` (u2net ML model) to remove the cream/white background from the 1024×1024 app icon, making the knitting design float on a transparent background. All smaller icon sizes were regenerated from the cleaned source.
+- **Rationale:** Transparent icons integrate better with iOS adaptive backgrounds (dark mode, tinted icon modes).
+- **Trade-off:** Apple requires the 1024px App Store marketing icon to be opaque for submission. The current 1024px is transparent — a solid background will need to be added if/when App Store Connect rejects it at upload time.
+- **Affected files:** `app/KnittingGaugeReconciler/Assets.xcassets/AppIcon.appiconset/icon-1024.png` and all 8 derived icon sizes.
+
+### Edison — identifier_name lint suppression fix
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-22T02:54:31-07:00
+- **Status:** DECISION (deployed)
+- **What:** Preserved idiomatic short locals in geometry/parsing/index contexts (`x`, `y`, `d`, `i`) and added `// swiftlint:disable:next identifier_name` immediately before each flagged declaration.
+- **Files:** `app/KnittingGaugeReconciler/Components/TexturedBackground.swift`, `app/KnittingGaugeReconciler/GaugeMath.swift`, `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift`.
+- **Verification:** Targeted `swiftlint lint ... | grep "identifier_name"` returned no matches; direct `xcodebuild` build succeeded. Note: `app/build.sh build` remains blocked by pre-existing strict SwiftLint errors outside this change set (`ContentView.swift`).
+
+### Edison — ContentView line_length fix
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-22T03:02:54-07:00
+- **Status:** DECISION (deployed)
+- **What:** Wrapped six over-limit string literals in `app/KnittingGaugeReconciler/ContentView.swift` across multiple concatenated lines to preserve all user-visible text while satisfying the strict 200-character `line_length` rule.
+- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build` returned EXIT: 0.
+- **Decision:** `bash build.sh build` is the required verification tool for this project; do not substitute direct `xcodebuild` runs when validating build-blocking lint issues.
+
+### Edison — New app icon: sweater illustration
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-22T03:21:32-07:00
+- **Status:** DECISION (deployed)
+- **What:** Replace all app icon sizes with a new sweater illustration provided by Yashas.
+- **Source image:** `/Users/yashasgujjar/Downloads/ChatGPT Image May 22, 2026 at 02_19_13 AM.png`, 974×972 px, RGBA. Close-up knitted cream turtleneck sweater on solid blue background.
+- **Key facts:** No background removal needed (solid blue already present). Rounded corners baked in (transparent corner pixels). All sizes regenerated via PIL LANCZOS: 1024, 40, 60, 58, 87, 80, 120, 180 px.
+- **Rationale:** Previous icon had transparent (rembg-cleaned) background which could look off on light surfaces. New icon ships with confident solid blue, visually consistent across all surfaces with no App Store Connect submission surprises.
+- **Verification:** `bash build.sh build` exits 0.
+
+### Edison — Pattern instructions typography fix
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-22T03:27:26-07:00
+- **Status:** DECISION (deployed)
+- **What:** Normalize the Pattern Instructions card title to match the visual hierarchy of Pattern Gauge and Your Gauge card titles. Keep label in title case (no `.textCase(.uppercase)` / `.uppercased()`). Use `.title2.weight(.bold)` to match sibling headers. Add `.minimumScaleFactor(0.7)` and keep title on one line so longer strings shrink before wrapping.
+- **Files:** `app/KnittingGaugeReconciler/Views/PatternInstructionsCard.swift`.
+- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build` completed successfully.

@@ -103,3 +103,9 @@
 - Badge: `.caption2.weight(.semibold)`, cream text, mismatch-red bg, 8pt H / 3pt V padding, Capsule clipping
 - Build: `EXIT: 0`
 - Commit: dafd057
+
+### 2026-05-22T03:46:18.853-07:00 — Mismatch badge single-line fix
+
+- **Files changed:** `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift`
+- **UI fix:** Shortened the inline capsule label from `mismatch detected` to `mismatch` and enforced `.lineLimit(1)` plus `.fixedSize(horizontal: true, vertical: false)` so it stays on one line.
+- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` completed successfully.

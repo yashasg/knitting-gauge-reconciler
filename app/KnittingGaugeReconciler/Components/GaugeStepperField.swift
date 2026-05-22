@@ -78,9 +78,11 @@ struct GaugeStepperField: View {
     }
 
     private var mismatchBadge: some View {
-        Text("mismatch detected")
+        Text("mismatch")
             .font(.caption2.weight(.semibold))
             .foregroundStyle(AppTheme.cream)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.leading, 8)
             .padding(.trailing, 8)
             .padding(.top, 3)

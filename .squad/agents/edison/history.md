@@ -8,6 +8,16 @@
 
 ## Learnings
 
+### 2026-05-22T04:06:21Z — Remove App Name Heading Per HIG
+
+**Session:** edison-title-removal
+
+- **Files changed:** `app/KnittingGaugeReconciler/ContentView.swift`, `app/KnittingGaugeReconciler/Views/HomeHeaderView.swift`
+- **Title removal:** Removed the visible `Gauge Reconciler` screen heading by dropping the old header view from `ContentView` and leaving the main calculator screen title-free.
+- **Help affordance:** Preserved the trailing about/help control as a dedicated toolbar button with the public `about-help-button` identifier, explicit label/hint, and a 44×44 pt minimum tap target.
+- **Accessibility note:** No extra header work was needed for the first card because `GaugeInputGroup` already marks card titles like `Pattern Gauge` with `.accessibilityAddTraits(.isHeader)`.
+- **Final test result:** `xcodebuild test -scheme KnittingGaugeReconciler -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max'` passed, 0 warnings.
+
 ### 2026-05-21T19:39:52-07:00 — Reconcile Button + Results Heading Polish
 
 **Session:** edison-reconcile-button-heading-polish
@@ -35,6 +45,16 @@
 - **Computation behavior:** Kept the existing MetricKit signpost flow intact, but changed the UX so the reconciliation math is recomputed on every button tap before sheet presentation rather than relying on an inline stale/fresh results state.
 - **Accessibility + layout:** Added a sheet-specific title, summary, and key-action block before the detailed cards, and switched the shaping adjustment row/action layout to accessibility-safe stacking so the sheet scrolls cleanly without clipping at large type sizes.
 - **UI regression coverage:** Updated the jacquard scenario UI test to validate results through the sheet presentation flow instead of assuming inline results on the main scroll view.
+- **Final test result:** 58/58 tests pass, 0 warnings.
+
+### 2026-05-21T20:34:21-07:00 — Native Large Title Navigation Bar
+
+**Session:** edison-large-title-nav
+
+- **Files changed:** `app/KnittingGaugeReconciler/ContentView.swift`, `app/KnittingGaugeReconciler/Views/HomeHeaderView.swift`
+- **Title ownership:** Kept the existing top-level `NavigationStack`, removed the in-scroll page title, and assigned `Gauge Reconciler` to `.navigationTitle(...)` so iOS handles the native large-title → inline collapse behavior.
+- **Help affordance:** Moved the about/help action into the navigation bar trailing toolbar slot with the existing public accessibility identifier `about-help-button`, preserving the sheet-opening behavior without adding card height.
+- **Implementation hygiene:** Repurposed `HomeHeaderView.swift` into a focused `AboutHelpToolbarButton` helper with private binding storage, leaving MetricKit signpost logic in `ContentView.swift` untouched.
 - **Final test result:** 58/58 tests pass, 0 warnings.
 
 ---

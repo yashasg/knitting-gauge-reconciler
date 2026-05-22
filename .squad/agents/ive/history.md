@@ -18,6 +18,7 @@
 
 - 2026-05-21T12:41:13-07:00: The gauge-field mismatch fix must not consume extra vertical space. Preferred pattern: keep equal-width paired fields, carry warning state inside existing field chrome, and move the full mismatch sentence to accessibility payloads / the picker surface.
 - 2026-05-21T19:42:31-07:00: Moving Required Adjustment details into a native sheet is HIG-aligned when the sheet uses native detents, a visible Close button, a state-aware title, and a scrollable body that remains accessible at large text sizes.
+- 2026-05-21T20:30:12-07:00: Apple's single-screen utility apps (Calculator, Compass, Stopwatch, Measure) do not display the app name as a heading — the function is self-evident. For this app, the HIG-aligned choice is to remove the `.largeTitle` "Gauge Reconciler" header entirely, letting the content cards serve as the hero. The info button stays; the title goes. Spec delivered to `.squad/decisions/inbox/ive-app-title-hig-spec.md`.
 
 ## Team Updates
 

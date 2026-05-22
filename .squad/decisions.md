@@ -1,3 +1,119 @@
+## 2026-05-21T21:06:21-07:00 — Edison: Title Removal Summary
+
+- **Date:** 2026-05-21T21:06:21-07:00
+- Removed the visible `Gauge Reconciler` app-name heading from the main calculator screen to match the single-screen utility-app HIG guidance.
+- Kept the trailing about/help affordance in the navigation bar via `AboutHelpToolbarButton`, preserving `about-help-button`, a clear accessibility label/hint, and a 44×44 pt minimum hit area.
+- Confirmed the first card already exposes a header landmark through `GaugeInputGroup` (`Pattern Gauge` gets `.accessibilityAddTraits(.isHeader)`).
+- Verification: `cd app && xcodebuild test -scheme KnittingGaugeReconciler -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max'` passed with 0 warnings.
+
+## 2026-05-21T20:34:21-07:00 — Edison: Native Large Title Navigation Bar
+
+- Replaced the in-scroll `Gauge Reconciler` header with the existing `NavigationStack`'s native `.navigationTitle("Gauge Reconciler")` so the screen now gets standard iOS large-title collapse behavior.
+- Moved the about/help affordance into the navigation bar trailing toolbar item and preserved the public accessibility identifier `about-help-button`.
+- Repurposed `HomeHeaderView.swift` into a small `AboutHelpToolbarButton` helper; no UI tests needed updates, and `xcodebuild test -scheme KnittingGaugeReconciler -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max'` finished with 58/58 passing and 0 warnings.
+
+## 2026-05-21T20:30:12-07:00 — Ive: App Title HIG Spec
+
+**Author:** Ive (UI/UX Designer)  
+**Date:** 2026-05-21T20:30:12-07:00  
+**For:** Edison (Frontend Dev)  
+**Requested by:** Yashas
+
+### HIG Verdict
+
+Apple's single-screen utility apps (Calculator, Compass, Stopwatch, Measure) **do not display the app name as a heading**. The app's function is self-evident from its interface; a redundant title wastes vertical space and adds cognitive chrome that users must skip past. The app icon, Springboard, and any system-level navigation already communicate identity — the content area should serve the task, not brand reinforcement.
+
+### Current Implementation
+
+**File:** `app/KnittingGaugeReconciler/Views/HomeHeaderView.swift`
+
+```swift
+Text("Gauge Reconciler")
+    .font(.system(.largeTitle, design: .serif).weight(.bold))
+    .foregroundStyle(AppTheme.ink)
+```
+
+This renders a prominent serif `.largeTitle` at the top of the single screen — the pattern Apple avoids in its own utilities.
+
+### Recommendation: Remove the title entirely
+
+For a single-screen utility with no navigation stack and no tabs, the HIG-aligned choice is **removal**. The user knows they opened "Gauge Reconciler"; repeating it above the cards adds nothing and costs ~44+ pt of vertical space.
+
+#### What stays
+
+- Keep the **info button** (`questionmark.circle`) for "About this calculator" access. Move it to the trailing edge of the first card or provide it as a subtle glyph in the top-trailing safe area.
+- The **content cards** become the hero. "Pattern Gauge", "Your Gauge", and the verdict speak for the app's purpose.
+
+#### What goes
+
+- The `HomeHeaderView` title text. The entire `Text("Gauge Reconciler")` line and its font/color modifiers.
+
+### Implementation Spec for Edison
+
+#### Option A — Full removal (preferred)
+
+Delete or hollow-out `HomeHeaderView`. The info button can migrate to:
+
+1. **Inline with the first section title** — place it trailing to `SectionTitle("Pattern Gauge")`, or
+2. **Floating in the top-trailing corner** — an unobtrusive 44×44 pt button in the safe-area, outside the scroll view.
+
+**SwiftUI change:**
+
+```swift
+// HomeHeaderView.swift — replace body with info button only
+var body: some View {
+    HStack {
+        Spacer()
+        Button {
+            showAboutHelp = true
+        } label: {
+            Image(systemName: "questionmark.circle")
+                .font(.body.weight(.medium))
+                .foregroundStyle(AppTheme.sage)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("About this calculator")
+        .accessibilityHint("Opens an explanation of how this calculator works")
+        .accessibilityIdentifier("about-help-button")
+    }
+}
+```
+
+Or remove `HomeHeaderView` entirely and embed the info button elsewhere.
+
+#### Option B — Subtle brand mark (fallback, if user wants *something*)
+
+If complete removal feels too stark, use a **de-emphasized caption** that doesn't command attention:
+
+```swift
+Text("Gauge Reconciler")
+    .font(.caption2)
+    .foregroundStyle(.secondary)
+    .textCase(.uppercase)
+    .kerning(0.5)
+```
+
+This echoes a toolbar subtitle or app-store-style watermark — present but ignorable. Place it at the **bottom** of the scroll content, not the top, so it doesn't steal first-read hierarchy from the input cards.
+
+### Accessibility Considerations
+
+1. **No loss of landmark:** If the title is removed, ensure VoiceOver users still get a clear first-focus element. The first card title (`Pattern Gauge`) with `.isHeader` trait serves this role.
+2. **Info button must remain reachable:** 44×44 pt minimum, clear label, early in the focus order.
+3. **No semantic regression:** The app's purpose is communicated by the input labels and verdict, not by a spoken app name at the top.
+
+### Summary for Edison
+
+| Aspect | Spec |
+|--------|------|
+| **Action** | Remove `Text("Gauge Reconciler")` from `HomeHeaderView` |
+| **Font** | N/A (text removed) |
+| **Info button** | Keep; reposition trailing or float in safe area |
+| **Fallback** | If user insists on a title: `.caption2`, `.secondary`, bottom of scroll, uppercase |
+| **A11y** | First card title becomes the semantic header; info button stays 44×44 pt |
+
+This aligns the app with Apple's own single-screen utilities and recovers vertical space for the content that matters.
+
 ## 2026-05-21T14:09:26-07:00 — Edison Implementation: Option D Gauge Mismatch UI
 
 ### 2026-05-21T14:09:26-07:00: Implementation — Gauge Mismatch State (Option D, no vertical growth)

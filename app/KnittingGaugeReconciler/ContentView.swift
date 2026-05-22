@@ -62,7 +62,6 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    HomeHeaderView(showAboutHelp: $showAboutHelp)
                     PatternGaugeCard(patternStitches: $patternStitches, patternRows: $patternRows)
                     YourGaugeCard(
                         yourStitches: $yourStitches,
@@ -96,8 +95,10 @@ struct ContentView: View {
                 }
                 .ignoresSafeArea()
             )
-            .toolbar(.hidden, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    AboutHelpToolbarButton(showAboutHelp: $showAboutHelp)
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") {

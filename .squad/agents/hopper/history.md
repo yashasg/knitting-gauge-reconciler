@@ -44,3 +44,27 @@ xcodebuild test \
   -only-testing KnittingGaugeReconcilerUITests/AccessibilityAuditTests \
   2>&1 | grep -E "(PASS|FAIL|warning|error|audit)"
 ```
+
+---
+
+## 2026-05-22T22:08:27Z — Reviewer Self-Correction Note
+
+**Session:** CI review postmortem  
+**Topic:** Grounding reviewer findings against actual artifacts
+
+In this session, Hopper flagged several findings as blockers for the Fastlane-based CI workflow. On postmortem verification:
+
+- **MR clone failure** (blocker) — Found to be factually incorrect. Actual CI runs using `gitlab_mr` succeed.
+- **Warnings-as-errors dropped** (blocker) — Found to be factually incorrect. `app/app.xcodeproj/project.pbxproj` enforces warnings-as-errors directly (6 occurrences).
+- **SwiftLint cache blocker** — Found to be speculative pattern-matching against generic GitHub Actions footguns, not grounded in this project's macos-26 runner setup.
+- **`CONFIGURATION` propagation issue** — Found to be factually incorrect. GitHub Actions *does* expose `GITHUB_ENV` writes in expression contexts on the same job.
+
+**Lesson for future reviews:** Before flagging blockers, verify claims against the actual repo artifacts:
+- Run logs and CI history (success/failure patterns)
+- Build settings (project.pbxproj, Fastfile, build.sh)
+- Infrastructure state (runner image contents, preinstalled tools)
+- User directives and decisions (repo is not a generic CI/CD setup)
+
+Pattern-matching against generic best practices is less reliable than grounding in this project's specific codebase, configuration, and user intent.
+
+**Recommendation:** On next CI/infra review, include a verification step that cross-references flagged findings against actual artifacts before finalizing the verdict.

@@ -164,6 +164,13 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         waitForScrollingToSettle()
         tapElement(reset)
 
+        // Issue #40: tapping Reset surfaces a destructive confirmation alert
+        // presented at ContentView root (above the Adjustment sheet).
+        let confirmReset = app.alerts.buttons["Reset"].firstMatch
+        XCTAssertTrue(confirmReset.waitForExistence(timeout: 3),
+                      "Reset confirmation alert should appear without dismissing the sheet")
+        tapElement(confirmReset)
+
         // After reset, cachedResult is cleared — Calculate button should be present.
         let defaultApp = XCUIApplication()
         useDefaultDynamicType(defaultApp)
@@ -172,6 +179,54 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         defaultApp.terminate()
     }
 
+    /// Issue #40: tapping "Reset to defaults" inside the Adjustments sheet must
+    /// surface a destructive confirmation alert at ContentView root without
+    /// dismissing the sheet. Cancel keeps everything in place; confirm clears
+    /// state and dismisses the sheet.
+    func testResetConfirmationAlertDoesNotDismissSheet() {
+        let app = XCUIApplication()
+        useDefaultDynamicType(app)
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
+            "KGR_YS": "36",
+            "KGR_YR": "32",
+        ]) { _, new in new }
+        app.launch()
+
+        let calculateBtn = app.buttons["calculate-button"]
+        XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
+        scrollToElement(calculateBtn, in: app, requireHittable: true)
+        tapElement(calculateBtn)
+
+        // Sheet is up.
+        let sheet = app.otherElements["adjustment-sheet"]
+        XCTAssertTrue(sheet.waitForExistence(timeout: 3))
+
+        let reset = app.buttons["reset-defaults"].firstMatch
+        scrollToElement(reset, in: app)
+        XCTAssertTrue(reset.exists)
+        waitForScrollingToSettle()
+        tapElement(reset)
+
+        // The confirmation alert appears AND the underlying sheet is still on screen.
+        let cancelButton = app.alerts.buttons["Cancel"].firstMatch
+        XCTAssertTrue(cancelButton.waitForExistence(timeout: 3),
+                      "Reset should present a confirmation alert, not dismiss the sheet")
+        XCTAssertTrue(sheet.exists, "Adjustment sheet must remain on screen behind the alert")
+
+        // Cancel keeps the sheet open with no destructive effect.
+        tapElement(cancelButton)
+        XCTAssertTrue(sheet.waitForExistence(timeout: 2),
+                      "Canceling the confirmation should leave the sheet open")
+
+        // Re-tap Reset and confirm; sheet should dismiss and inputs reset.
+        tapElement(reset)
+        let confirmReset = app.alerts.buttons["Reset"].firstMatch
+        XCTAssertTrue(confirmReset.waitForExistence(timeout: 3))
+        tapElement(confirmReset)
+
+        // After confirm: sheet dismissed, Calculate button visible again.
+        XCTAssertTrue(app.buttons["calculate-button"].waitForExistence(timeout: 3))
+    }
 
     func testAboutHelpButtonOpensPullUpSheet() {
         let app = XCUIApplication()
@@ -522,7 +577,7 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             if element.exists && (!requireHittable || element.isHittable) {
                 return
             }
-            let surface = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app
+            let surface = preferredScrollSurface(in: app)
             let lower = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))
             let upper = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42))
             switch direction {
@@ -534,6 +589,22 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             waitForScrollingToSettle()
             attempts += 1
         }
+    }
+
+    /// Returns the most likely active scroll surface. When a modal sheet is
+    /// presented (`adjustment-sheet`), the sheet's own ScrollView is the
+    /// correct drag target — `app.scrollViews.firstMatch` may resolve to
+    /// the obscured background ScrollView and scroll gestures there are
+    /// no-ops (#24 follow-up).
+    private func preferredScrollSurface(in app: XCUIApplication) -> XCUIElement {
+        let sheet = app.otherElements["adjustment-sheet"]
+        if sheet.exists {
+            let sheetScroll = sheet.scrollViews.firstMatch
+            if sheetScroll.exists { return sheetScroll }
+            return sheet
+        }
+        let scroll = app.scrollViews.firstMatch
+        return scroll.exists ? scroll : app
     }
 
     private func waitForScrollingToSettle() {

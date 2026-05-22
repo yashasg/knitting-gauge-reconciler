@@ -65,3 +65,13 @@ See `history-archive.md` for earlier 2026-05-21 and 2026-05-20 entries.
 
 ## Team updates
 - 2026-05-22T02:50:32Z: Scribe merged the sheet implementation, polish notes, and the deterministic View Adjustments directive into `decisions.md`, and grouped the shipped app + squad changes for commit under the pull-up-sheet feature record.
+
+### 2026-05-21T21:28:58-07:00 — Restore Native Navigation Title
+
+**Session:** edison-title-fix
+
+- **Files changed:** `app/KnittingGaugeReconciler/ContentView.swift`
+- **Diagnosis:** The `NavigationStack` was still present and `HomeHeaderView.swift` had already been reduced to the `AboutHelpToolbarButton`, but `ContentView` no longer applied `.navigationTitle("Gauge Reconciler")` anywhere inside the stack, so iOS had no large-title navigation bar title to render.
+- **Fix:** Restored `.navigationTitle("Gauge Reconciler")` on the main `ScrollView` inside `NavigationStack`, preserving the native large-title collapse behavior and leaving all MetricKit signpost sites untouched.
+- **Regression check:** Searched the app for `navigationBarHidden`, `toolbar(.hidden)`, inline title display mode, and empty `navigationBarTitle` usage; none were present.
+- **Final test result:** `xcodebuild test -scheme KnittingGaugeReconciler -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max'` passed, 0 warnings visible in the run output.

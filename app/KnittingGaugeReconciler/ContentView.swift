@@ -88,6 +88,7 @@ struct ContentView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 24)
             }
+            .navigationTitle("Gauge Reconciler")
             .background(
                 ZStack {
                     AppTheme.background

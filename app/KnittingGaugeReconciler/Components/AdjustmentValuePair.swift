@@ -55,6 +55,8 @@ struct AdjustmentValuePair: View {
         .padding(14)
         .background(AppTheme.oatmeal)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(patternLabel): \(patternValue)")
     }
 
     private var yourTile: some View {
@@ -79,5 +81,17 @@ struct AdjustmentValuePair: View {
                     .offset(x: -6, y: -6)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(yourTileAccessibilityLabel)
+    }
+
+    private var yourTileAccessibilityLabel: String {
+        if delta == 0 {
+            return "\(yourLabel): \(yourValue), matches pattern"
+        }
+        let deltaPhrase = delta > 0
+            ? "\(delta) more than pattern"
+            : "\(abs(delta)) fewer than pattern"
+        return "\(yourLabel): \(yourValue), \(deltaPhrase)"
     }
 }

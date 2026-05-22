@@ -42,3 +42,12 @@
 - **Detailed archive:** `history-archive-2026-05-22.md` contains full prior session logs
 - **Original archive:** `history-archive.md` from 2026-05-21
 - **Decisions:** `.squad/decisions.md` contains all team decisions (merged 12 inbox files)
+
+## Learnings
+
+### 2026-05-22T02:25:03.715-07:00 — Stitchwise App Icon Setup
+
+- **Files changed:** `app/KnittingGaugeReconciler/Assets.xcassets/AppIcon.appiconset/**`, `app/app.xcodeproj/project.pbxproj`
+- **Asset packaging:** Generated the full iPhone + App Store icon matrix from the approved 1024×1024 source and added an `AppIcon.appiconset/Contents.json` mapping every required idiom/scale slot.
+- **Build setting:** Pointed both Debug and Release at `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;` so simulator builds, TestFlight archives, and App Store uploads resolve the same icon set.
+- **Verification:** `xcodebuild -project app/app.xcodeproj -scheme KnittingGaugeReconciler -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' build` succeeds.

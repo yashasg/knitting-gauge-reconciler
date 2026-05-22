@@ -350,6 +350,8 @@ private struct AdjustmentRow: View {
         .padding(14)
         .background(AppTheme.oatmeal)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(name) in pattern: \(pattern)")
     }
 
     private var adjustedTile: some View {
@@ -390,5 +392,14 @@ private struct AdjustmentRow: View {
                     .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(adjustedTileAccessibilityLabel)
+    }
+
+    private var adjustedTileAccessibilityLabel: String {
+        if let pill = driftPill {
+            return "\(name) adjusted: \(adjusted), \(pill) drift"
+        }
+        return "\(name) adjusted: \(adjusted)"
     }
 }

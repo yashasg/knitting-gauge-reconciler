@@ -4,7 +4,7 @@ import SwiftUI
 
 struct RequiredAdjustmentsCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var showAdjustmentSheet = false
+    @Binding var showAdjustmentSheet: Bool
     @State private var selectedDetent: PresentationDetent = .medium
 
     var cachedResult: GaugeMathResult?
@@ -13,6 +13,24 @@ struct RequiredAdjustmentsCard: View {
     var onRecalculate: () -> Void
     var onReset: () -> Void
     var onShare: (GaugeMathResult) -> [Any]
+
+    init(
+        cachedResult: GaugeMathResult?,
+        inputs: GaugeInputs,
+        showFullMath: Binding<Bool>,
+        showAdjustmentSheet: Binding<Bool>,
+        onRecalculate: @escaping () -> Void,
+        onReset: @escaping () -> Void,
+        onShare: @escaping (GaugeMathResult) -> [Any]
+    ) {
+        self.cachedResult = cachedResult
+        self.inputs = inputs
+        self._showFullMath = showFullMath
+        self._showAdjustmentSheet = showAdjustmentSheet
+        self.onRecalculate = onRecalculate
+        self.onReset = onReset
+        self.onShare = onShare
+    }
 
     private var presentedResult: GaugeMathResult {
         cachedResult ?? GaugeMath.compute(inputs)
@@ -174,6 +192,7 @@ private struct AdjustmentSheetView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Close", action: onClose)
+                        .foregroundStyle(AppTheme.sage)
                 }
             }
             .sheet(item: $sharePayload) { payload in

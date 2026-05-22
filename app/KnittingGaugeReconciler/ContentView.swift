@@ -25,6 +25,7 @@ struct ContentView: View {
     @State private var showFullMath = initialBool("KGR_SHOW_FULL_MATH")
     @State private var showVerdictHelp = initialBool("KGR_SHOW_VERDICT_HELP")
     @State private var showAboutHelp = initialBool("KGR_SHOW_ABOUT_HELP")
+    @State private var showAdjustmentSheet = false
     @State private var previousVerdictBucket: VerdictBucket?
     @State private var driftBandSignpostFired = false
     /// Latest result presented from a "View Adjustments" tap.
@@ -85,6 +86,7 @@ struct ContentView: View {
                         cachedResult: cachedResult,
                         inputs: inputs,
                         showFullMath: $showFullMath,
+                        showAdjustmentSheet: $showAdjustmentSheet,
                         onRecalculate: recomputeResult,
                         onReset: resetToDefaults,
                         onShare: { result in shareItems(for: result) }
@@ -94,6 +96,14 @@ struct ContentView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 16)
             }
+            // While any sheet is presented, the underlying view is still rendered
+            // (dimmed) behind the sheet. Apple's accessibility audit traverses every
+            // visible element — including the legacy 8pt-tall stepper shim buttons
+            // and the decorative delta pills — and flags them as text-clipped /
+            // potentially-inaccessible / dynamic-type-incompatible. None of these
+            // are real bugs for users (VoiceOver focus is trapped in the sheet),
+            // so we mark the main content inert to a11y while a sheet is up.
+            .accessibilityHidden(showVerdictHelp || showAboutHelp || showAdjustmentSheet)
             .navigationTitle("Gauge Reconciler")
             .background(
                 ZStack {

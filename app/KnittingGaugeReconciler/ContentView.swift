@@ -96,14 +96,20 @@ struct ContentView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 16)
             }
-            // While any sheet is presented, the underlying view is still rendered
+            // While a help sheet is presented, the underlying view is still rendered
             // (dimmed) behind the sheet. Apple's accessibility audit traverses every
-            // visible element — including the legacy 8pt-tall stepper shim buttons
-            // and the decorative delta pills — and flags them as text-clipped /
-            // potentially-inaccessible / dynamic-type-incompatible. None of these
-            // are real bugs for users (VoiceOver focus is trapped in the sheet),
-            // so we mark the main content inert to a11y while a sheet is up.
-            .accessibilityHidden(showVerdictHelp || showAboutHelp || showAdjustmentSheet)
+            // visible element — including bare body paragraphs that legitimately
+            // render in full width. Mark the main content inert to a11y while a
+            // *help* sheet is up so the audit focuses on the sheet itself.
+            //
+            // The Adjustment sheet is deliberately NOT included here: doing so makes
+            // SwiftUI propagate the hidden state into the sheet's own accessibility
+            // tree on some iOS versions, which hides the sheet's "Close" button
+            // from XCUITest queries (regression caught by
+            // testAllJacquardScenariosAreVisibleInUI). The audit's element filter
+            // already handles parent stepper-shim and pill noise that surfaces
+            // behind the Adjustment sheet.
+            .accessibilityHidden(showVerdictHelp || showAboutHelp)
             .navigationTitle("Gauge Reconciler")
             .background(
                 ZStack {

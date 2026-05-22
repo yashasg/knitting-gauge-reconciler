@@ -531,3 +531,10 @@ User quote: *"we are only collecting metrics on diagnostics and analytics, nothi
 **Status:** BINDING post-MetricKit-pivot; gates signpost #9 in V3-IMPL
 **Note:** Metrics pivot does not affect domain math. Jacquard's V2 threshold evaluation (when to show cast-on drift band) survives and gates signpost #9 (`cast_on.driftBandShown` in user directive 2026-05-20T19:26:30). This work is in scope for V1 implementation (Edison V3 places signpost #9 behind Jacquard's threshold gate).
 
+
+### Edison — Reconciliation Equal-Width LazyVGrid Layout
+
+**Author:** Edison (Frontend Dev)
+**Date:** 2026-05-21 (current session)
+**Status:** DECISION (layout fix deployed)
+**Note:** The Estimated Reconciliation result pair used a plain HStack with two `.frame(maxWidth: .infinity)` children. When the green result tile carried different intrinsic content or a delta badge, SwiftUI negotiated uneven widths. Swapped to a two-column LazyVGrid with GridItem(.flexible(minimum: 0)) columns, each tile pinned with `.frame(maxWidth: .infinity)`. Delta badge now floats above the green tile instead of adding conditional top padding; box footprint remains stable. Validation: 58/58 tests, 0 warnings.

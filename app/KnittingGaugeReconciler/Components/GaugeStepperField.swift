@@ -20,12 +20,11 @@ struct DeltaPillBadge: View {
             .font(.caption2.weight(.semibold))
             .foregroundStyle(.white)
             .lineLimit(1)
-            .minimumScaleFactor(0.75)
-            .frame(width: 32, height: 32)
-            .background {
-                Circle()
-                    .fill(AppTheme.deltaPill)
-            }
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3) // swiftlint:disable:this missing_min_touch_target
+            .background(AppTheme.deltaPill)
+            .clipShape(Capsule())
             .accessibilityHidden(true)
     }
 }

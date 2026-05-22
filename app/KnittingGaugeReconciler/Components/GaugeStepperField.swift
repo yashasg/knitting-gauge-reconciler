@@ -25,7 +25,13 @@ struct DeltaPillBadge: View {
             .padding(.vertical, 3) // swiftlint:disable:this missing_min_touch_target
             .background(AppTheme.deltaPill)
             .clipShape(Capsule())
+            // Pill is purely decorative — adjacent value tile carries the
+            // semantic value (e.g. "Knit 64 rows, +16 from pattern"). Hide
+            // from VoiceOver and clamp Dynamic Type so it doesn't overflow
+            // its parent tile at accessibility sizes.
             .accessibilityHidden(true)
+            .accessibilityIdentifier("delta-pill")
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 }
 

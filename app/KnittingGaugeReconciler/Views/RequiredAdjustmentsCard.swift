@@ -70,10 +70,7 @@ struct RequiredAdjustmentsCard: View {
                 result: presentedResult,
                 inputs: inputs,
                 showFullMath: $showFullMath,
-                onReset: {
-                    onReset()
-                    showAdjustmentSheet = false
-                },
+                onReset: onReset,
                 onShare: onShare,
                 onClose: { showAdjustmentSheet = false }
             )

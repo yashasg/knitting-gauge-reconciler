@@ -27,6 +27,7 @@ struct ContentView: View {
     @State private var showVerdictHelp = initialBool("KGR_SHOW_VERDICT_HELP")
     @State private var showAboutHelp = initialBool("KGR_SHOW_ABOUT_HELP")
     @State private var showAdjustmentSheet = false
+    @State private var showResetConfirmation = false
     @State private var previousVerdictBucket: VerdictBucket?
     @State private var driftBandSignpostFired = false
     /// Latest result presented from a "View Adjustments" tap.
@@ -89,7 +90,7 @@ struct ContentView: View {
                         showFullMath: $showFullMath,
                         showAdjustmentSheet: $showAdjustmentSheet,
                         onRecalculate: recomputeResult,
-                        onReset: resetToDefaults,
+                        onReset: { showResetConfirmation = true },
                         onShare: { result in shareItems(for: result) }
                     )
                 }
@@ -145,6 +146,21 @@ struct ContentView: View {
                 AboutHelpSheet()
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
+            }
+            // Reset confirmation lives at ContentView root (not inside the
+            // Adjustment sheet's NavigationStack) so it presents above the sheet
+            // without dismissing it. See issue #40.
+            .alert(
+                "Reset to defaults?",
+                isPresented: $showResetConfirmation
+            ) {
+                Button("Reset", role: .destructive) {
+                    resetToDefaults()
+                    showAdjustmentSheet = false
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Clears every stitch and row value you've entered.")
             }
             .onChange(of: showVerdictHelp) { _, newValue in
                 if newValue {

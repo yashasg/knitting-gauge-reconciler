@@ -99,3 +99,27 @@
 ### Session Context
 
 This test run gates the final 5-goal sign-off. Edison's `.accessibilityIdentifier` fix (on separate branch) is ready for merge and needs a follow-up Curie gate. Main itself is clean and ready for release.
+
+---
+
+## 2026-05-22T22:08:27Z — Reviewer Self-Correction Note
+
+**Session:** CI review postmortem  
+**Topic:** Distinguishing blocker bugs from design choices and deferred work
+
+In this session, Curie flagged several findings as blockers for the Fastlane-based CI workflow. On postmortem verification:
+
+- **Release config with Debug tests** (blocker) — Found to be intentional design. Fastfile explicitly builds Release but tests Debug. User confirmed.
+- **Serial UI policy dropped** (blocker) — Found to be user-accepted. CI does not require serial UI testing (distinct from pre-commit).
+- **Canceled-run reporting as failed** (blocker) — Found to be user-accepted behavior.
+- **Coverage/JUnit not uploaded** (issue) — Found to be deferred work, not a bug. User directive: "diagnostics upload deferred" (2026-05-22T15:08:27-07:00).
+- **Jacquard parity not enforced** (issue) — Found to be out of scope for this review cycle.
+
+**Lesson for future reviews:** Before flagging blockers, align with user intent and prior decisions:
+- Read `.squad/decisions.md` for context and user directives
+- Distinguish between actual bugs, design choices, and deferred work
+- Confirm with user rather than assuming CI best practices apply universally
+
+Pattern-matching against CI standards without grounding in user directives leads to false-positive blockers that delay delivery.
+
+**Recommendation:** On next test-execution review, include a decision-alignment step that confirms the scope and design intent before finalizing the verdict.

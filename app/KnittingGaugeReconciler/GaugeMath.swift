@@ -88,6 +88,7 @@ enum GaugeMath {
     /// - Empty or un-parseable input falls back to the current wheel integer selection.
     static func parseGaugeTypeText(_ text: String, fallback: Int) -> String {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
+        // swiftlint:disable:next identifier_name
         guard !trimmed.isEmpty, let d = Double(trimmed) else {
             return "\(clampedGaugeValue(fallback))"
         }

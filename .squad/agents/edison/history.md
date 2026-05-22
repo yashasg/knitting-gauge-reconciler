@@ -51,3 +51,10 @@
 - **Asset packaging:** Generated the full iPhone + App Store icon matrix from the approved 1024×1024 source and added an `AppIcon.appiconset/Contents.json` mapping every required idiom/scale slot.
 - **Build setting:** Pointed both Debug and Release at `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;` so simulator builds, TestFlight archives, and App Store uploads resolve the same icon set.
 - **Verification:** `xcodebuild -project app/app.xcodeproj -scheme KnittingGaugeReconciler -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' build` succeeds.
+
+### 2026-05-22T02:54:31.478-07:00 — identifier_name lint suppressions
+
+- **Files changed:** `app/KnittingGaugeReconciler/Components/TexturedBackground.swift`, `app/KnittingGaugeReconciler/GaugeMath.swift`, `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift`
+- **Decision:** Kept idiomatic short math/loop locals (`x`, `y`, `d`, `i`) and added `// swiftlint:disable:next identifier_name` directly above each declaration instead of renaming them.
+- **Targeted verification:** `swiftlint lint --path KnittingGaugeReconciler/Components/TexturedBackground.swift KnittingGaugeReconciler/GaugeMath.swift KnittingGaugeReconciler/Components/GaugeStepperField.swift | grep "identifier_name"` returns no matches.
+- **Build verification:** Direct `xcodebuild ... build` succeeds; `bash build.sh build` still reports unrelated pre-existing strict SwiftLint errors in `ContentView.swift`, but no `identifier_name` errors remain.

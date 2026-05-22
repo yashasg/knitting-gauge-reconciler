@@ -14,7 +14,9 @@ struct TexturedBackground: View {
             let rows = Int(size.height / spacing) + 2
             for row in 0...rows {
                 for col in 0...cols {
+                    // swiftlint:disable:next identifier_name
                     let x = CGFloat(col) * spacing
+                    // swiftlint:disable:next identifier_name
                     let y = CGFloat(row) * spacing
                     let rect = CGRect(
                         x: x - dotRadius, y: y - dotRadius,

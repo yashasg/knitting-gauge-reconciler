@@ -24,7 +24,9 @@ struct GaugeStepperField: View {
     @State private var showWheelPicker = false
 
     private var currentValue: Int {
+        // swiftlint:disable:next identifier_name
         if let i = Int(text) { return i }
+        // swiftlint:disable:next identifier_name
         if let d = Double(text) { return Int(d.rounded()) }
         return range.lowerBound
     }

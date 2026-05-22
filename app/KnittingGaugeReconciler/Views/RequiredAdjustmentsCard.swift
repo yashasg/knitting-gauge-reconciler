@@ -225,7 +225,7 @@ private struct AdjustmentSheetView: View {
             }
 
             if hasMajorDrift {
-                Text("Over 15% drift — consider re-swatching or changing needle size before proceeding.")
+                Text("Over 15% drift. Consider re-swatching or changing needle size before proceeding.")
                     .font(.footnote)
                     .foregroundStyle(AppTheme.muted)
                     .fixedSize(horizontal: false, vertical: true)

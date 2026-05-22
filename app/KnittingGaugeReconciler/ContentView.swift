@@ -217,11 +217,11 @@ struct ContentView: View {
         let stitchDir = result.stitchWidthScale > 1 ? "wider" : "narrower"
         let rowDir    = result.rowCountScale > 1 ? "denser" : "looser"
         let majorNote = (stitchDrift >= 0.15 || rowDrift >= 0.15)
-            ? " Over 15% drift — consider re-swatching or changing needle size before proceeding."
+            ? " Over 15% drift. Consider re-swatching or changing needle size before proceeding."
             : ""
         if !stitchOff && !rowOff {
             return "Both gauges match. Cast on \(result.adjustedCastOn) stitches as written. " +
-                "Knit straight from the pattern — no adjustments needed. Re-check after blocking."
+                "Knit straight from the pattern. No adjustments needed. Re-check after blocking."
         }
         if stitchOff && !rowOff {
             return (
@@ -232,7 +232,7 @@ struct ContentView: View {
         }
         if !stitchOff {
             return (
-                "Your stitch gauge matches — cast on \(result.adjustedCastOn) stitches as written. " +
+                "Your stitch gauge matches. Cast on \(result.adjustedCastOn) stitches as written. " +
                 "Your row gauge is \(rowPercent)% \(rowDir) than expected; use the row count guidance " +
                 "for each vertical section.\(majorNote)"
             )
@@ -348,7 +348,7 @@ private struct AboutHelpSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                 Text(
-                    "This tool reconciles a two-axis gauge mismatch — " +
+                    "This tool reconciles a two-axis gauge mismatch, " +
                     "the kind that single-number gauge calculators hide. " +
                     "When your stitch gauge matches the pattern " +
                     "but your row gauge is off (or vice versa), every vertical " +
@@ -374,7 +374,7 @@ private struct AboutHelpSheet: View {
                     "Always test a full-size gauge " +
                     "swatch (washed and blocked the way you'll wash and block the finished garment) " +
                     "before starting your " +
-                    "project. Numbers here are a starting point — your finished piece is the final word."
+                    "project. Numbers here are a starting point; your finished piece is the final word."
                 )
                     .font(.body.weight(.semibold))
                     .lineSpacing(4)

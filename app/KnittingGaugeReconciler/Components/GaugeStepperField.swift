@@ -115,6 +115,11 @@ struct GaugeStepperField: View {
                     mismatchBadge(mismatchDeltaText)
                 }
             }
+            // Pin the title row height so the delta pill (caption2 + capsule
+            // padding) cannot push the field downward when mismatch toggles.
+            // Both states (with and without pill) now occupy identical vertical
+            // space, keeping the Calculate button anchored. See GitLab #35.
+            .frame(minHeight: 22, alignment: .leading)
             .padding(.bottom, 8)
 
             HStack(spacing: 0) {

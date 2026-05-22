@@ -56,27 +56,36 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             let closeButton = app.buttons["Close"].firstMatch
             XCTAssertTrue(closeButton.waitForExistence(timeout: 3), scenario.name)
 
-            let castOnElement = app.staticTexts["cast-on-result"]
+            let castOnElement = app.otherElements["cast-on-result"]
             scrollToElement(castOnElement, in: app)
             XCTAssertTrue(castOnElement.waitForExistence(timeout: 5), scenario.name)
 
-            let expectedCastOnLabel = "Cast on \(scenario.castOn)"
+            let expectedCastOnLabel = "Cast-on stitches adjusted: Cast on \(scenario.castOn)"
             waitUntil(timeout: 5) { castOnElement.label == expectedCastOnLabel }
             XCTAssertEqual(castOnElement.label, expectedCastOnLabel, scenario.name)
 
-            scrollToElement(app.staticTexts[scenario.body], in: app)
+            let bodyValue = app.otherElements["body-your-rows"]
+            scrollToElement(bodyValue, in: app)
+            XCTAssertTrue(bodyValue.exists, "\(scenario.name) body=\(scenario.body)")
             XCTAssertTrue(
-                app.staticTexts[scenario.body].exists,
-                "\(scenario.name) body=\(scenario.body)"
+                bodyValue.label.contains(scenario.body),
+                "\(scenario.name) body=\(scenario.body) label=\(bodyValue.label)"
             )
-            scrollToElement(app.staticTexts[scenario.yoke], in: app)
+            let yokeValue = app.otherElements["yoke-your-rows"]
+            scrollToElement(yokeValue, in: app)
+            XCTAssertTrue(yokeValue.exists, "\(scenario.name) yoke=\(scenario.yoke)")
             XCTAssertTrue(
-                app.staticTexts[scenario.yoke].exists,
-                "\(scenario.name) yoke=\(scenario.yoke)"
+                yokeValue.label.contains(scenario.yoke),
+                "\(scenario.name) yoke=\(scenario.yoke) label=\(yokeValue.label)"
             )
+            let increasesValue = app.otherElements["increases-result"]
             XCTAssertTrue(
-                app.staticTexts[scenario.increases].exists,
+                increasesValue.exists,
                 "\(scenario.name) increases=\(scenario.increases)"
+            )
+            XCTAssertTrue(
+                increasesValue.label.contains(scenario.increases),
+                "\(scenario.name) increases=\(scenario.increases) label=\(increasesValue.label)"
             )
             app.terminate()
         }
@@ -251,15 +260,15 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         tapElement(calculateBtn)
 
         // Yoke value pair's "You Must Knit" block should be visible after Calculate.
-        let yokeValue = app.staticTexts["yoke-your-rows"]
+        let yokeValue = app.otherElements["yoke-your-rows"]
         scrollToElement(yokeValue, in: app)
         XCTAssertTrue(yokeValue.waitForExistence(timeout: 5))
 
         // Cast-on result must exist and carry the expected label.
-        let castOnElement = app.staticTexts["cast-on-result"]
+        let castOnElement = app.otherElements["cast-on-result"]
         scrollToElement(castOnElement, in: app)
         XCTAssertTrue(castOnElement.exists)
-        XCTAssertEqual(castOnElement.label, "Cast on 128 stitches")
+        XCTAssertTrue(castOnElement.label.contains("Cast on 128 stitches"), castOnElement.label)
     }
 
     func testAccessibilityDynamicTypeStacksGaugeMeasurementPairs() {

@@ -69,7 +69,6 @@ struct AdjustmentValuePair: View {
                 Text("\(yourValue)")
                     .font(.system(.title, design: .monospaced).weight(.bold))
                     .foregroundStyle(.white)
-                    .accessibilityIdentifier(valueIdentifier ?? "adjustment-value-your")
             }
             .frame(maxWidth: .infinity)
             .padding(14)
@@ -83,6 +82,7 @@ struct AdjustmentValuePair: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(yourTileAccessibilityLabel)
+        .accessibilityIdentifier(valueIdentifier ?? "adjustment-value-your")
     }
 
     private var yourTileAccessibilityLabel: String {

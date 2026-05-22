@@ -156,7 +156,9 @@ private struct AdjustmentSheetView: View {
                             AdjustmentRow(
                                 name: "Increase-row spacing",
                                 pattern: "Every \(plain(inputs.patternIncreaseSpacing)) rows",
-                                adjusted: "Space every \(GaugeMath.fmtRows(result.adjustedIncreaseSpacing)) rows/rounds"
+                                // swiftlint:disable:next line_length
+                                adjusted: "Space every \(GaugeMath.fmtRows(result.adjustedIncreaseSpacing)) rows/rounds",
+                                adjustedIdentifier: "increases-result"
                             )
                             AdjustmentRow(
                                 name: "Cast-on stitches",

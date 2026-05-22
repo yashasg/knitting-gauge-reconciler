@@ -21,7 +21,6 @@ struct ContentView: View {
     @State private var showFullMath = initialBool("KGR_SHOW_FULL_MATH")
     @State private var showVerdictHelp = initialBool("KGR_SHOW_VERDICT_HELP")
     @State private var showAboutHelp = initialBool("KGR_SHOW_ABOUT_HELP")
-    @State private var sharePayload: SharePayload?
     @State private var previousVerdictBucket: VerdictBucket?
     @State private var driftBandSignpostFired = false
     /// Latest result presented from a "View Adjustments" tap.
@@ -82,7 +81,7 @@ struct ContentView: View {
                         showFullMath: $showFullMath,
                         onRecalculate: recomputeResult,
                         onReset: resetToDefaults,
-                        onShare: { result in shareResults(result: result) }
+                        onShare: { result in shareItems(for: result) }
                     )
                 }
                 .padding(.horizontal, 16)
@@ -112,10 +111,6 @@ struct ContentView: View {
                     }
                     .accessibilityIdentifier("keyboard-done")
                 }
-            }
-            .sheet(item: $sharePayload) { payload in
-                ActivityView(activityItems: payload.items)
-                    .presentationDetents([.medium, .large])
             }
             .sheet(isPresented: $showVerdictHelp) {
                 VerdictHelpSheet(title: sheetVerdictTitle, explanation: sheetVerdictBody)
@@ -232,24 +227,22 @@ struct ContentView: View {
     }
 
     @MainActor
-    private func shareResults(result: GaugeMathResult) {
+    private func shareItems(for result: GaugeMathResult) -> [Any] {
         let summary = ResultsExportSummary(inputs: inputs, result: result)
         if let imageURL = renderShareImageURL(summary: summary) {
             os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareInvoked)
-            sharePayload = SharePayload(items: [imageURL])
-        } else {
-            os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareFallback)
-            sharePayload = SharePayload(items: [ResultsShareTextFormatter.string(inputs: inputs, result: result)])
+            return [imageURL]
         }
+
+        os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareFallback)
+        return [ResultsShareTextFormatter.string(inputs: inputs, result: result)]
     }
 
     @MainActor
     private func renderShareImageURL(summary: ResultsExportSummary) -> URL? {
-        let card = ResultsShareCard(summary: summary)
-            .frame(width: 1080)
-            .background(AppTheme.background)
-        let renderer = ImageRenderer(content: card)
-        renderer.scale = 2
+        let renderer = ImageRenderer(content: ShareableView(summary: summary))
+        renderer.proposedSize = .init(width: 390, height: nil)
+        renderer.scale = 3
 
         guard let image = renderer.uiImage, let pngData = image.pngData() else {
             return nil
@@ -276,13 +269,6 @@ struct ContentView: View {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
     }
-}
-
-// MARK: - SharePayload
-
-private struct SharePayload: Identifiable {
-    let id = UUID()
-    var items: [Any]
 }
 
 // MARK: - VerdictHelpSheet
@@ -359,7 +345,7 @@ private struct AboutHelpSheet: View {
 
 // MARK: - ActivityView
 
-private struct ActivityView: UIViewControllerRepresentable {
+struct ActivityView: UIViewControllerRepresentable {
     var activityItems: [Any]
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
@@ -367,131 +353,6 @@ private struct ActivityView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-
-// MARK: - ResultsShareCard
-
-private struct ResultsShareCard: View {
-    var summary: ResultsExportSummary
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 30) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(summary.title)
-                    .font(.system(size: 54, weight: .bold, design: .serif))
-                    .foregroundStyle(AppTheme.ink)
-                Text("Gauge reconciliation results")
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(AppTheme.muted)
-            }
-
-            HStack(alignment: .top, spacing: 24) {
-                ShareGaugeBlock(title: "Pattern gauge", gauge: summary.patternGauge)
-                ShareGaugeBlock(title: "Swatch gauge", gauge: summary.swatchGauge)
-            }
-
-            HStack(alignment: .top, spacing: 24) {
-                ShareMetricBlock(metric: summary.stitchMetric)
-                ShareMetricBlock(metric: summary.rowMetric)
-            }
-
-            Text(summary.castOn)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
-                .foregroundStyle(AppTheme.sage)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(26)
-                .background(AppTheme.accentSoft)
-                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 18) {
-                Text("Section adjustment guidance")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(AppTheme.sage)
-                ForEach(summary.sections, id: \.name) { section in
-                    ShareSectionRow(section: section)
-                }
-            }
-            .padding(26)
-            .background(AppTheme.oatmeal)
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        }
-        .padding(52)
-        .background(AppTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 44, style: .continuous))
-        .padding(40)
-    }
-}
-
-private struct ShareGaugeBlock: View {
-    var title: String
-    var gauge: ResultsExportSummary.GaugePair
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title.uppercased())
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(AppTheme.sage)
-            Text(gauge.stitches)
-                .font(.system(size: 28, weight: .semibold, design: .rounded))
-                .foregroundStyle(AppTheme.ink)
-            Text(gauge.rows)
-                .font(.system(size: 28, weight: .semibold, design: .rounded))
-                .foregroundStyle(AppTheme.ink)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(26)
-        .background(AppTheme.oatmeal)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-    }
-}
-
-private struct ShareMetricBlock: View {
-    var metric: ResultsExportSummary.Metric
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(metric.title.uppercased())
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(AppTheme.muted)
-            Text(metric.value)
-                .font(.system(size: 58, weight: .bold, design: .monospaced))
-                .foregroundStyle(AppTheme.ink)
-            Text(metric.status)
-                .font(.system(size: 23, weight: .bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 8)
-                .background(sharePillBackground(metric.status))
-                .clipShape(Capsule())
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(26)
-        .background(AppTheme.oatmeal)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-    }
-}
-
-private struct ShareSectionRow: View {
-    var section: ResultsExportSummary.SectionGuidance
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 18) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(section.name)
-                    .font(.system(size: 27, weight: .bold))
-                    .foregroundStyle(AppTheme.ink)
-                Text(section.pattern)
-                    .font(.system(size: 21, weight: .medium))
-                    .foregroundStyle(AppTheme.muted)
-            }
-            Spacer(minLength: 20)
-            Text(section.adjusted)
-                .font(.system(size: 25, weight: .bold, design: .monospaced))
-                .foregroundStyle(AppTheme.sage)
-                .multilineTextAlignment(.trailing)
-        }
-        .padding(.vertical, 8)
-    }
 }
 
 // MARK: - GaugeTextDefaults
@@ -522,11 +383,3 @@ private func read(_ text: String, defaultValue: Double) -> Double {
     GaugeMath.sanitized(Double(text), default: defaultValue)
 }
 
-private func sharePillBackground(_ status: String) -> Color {
-    if status == "Match" {
-        return AppTheme.sage
-    } else if status.hasPrefix("Much") {
-        return AppTheme.terracotta
-    }
-    return AppTheme.secondary
-}

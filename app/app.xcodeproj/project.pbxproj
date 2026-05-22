@@ -28,6 +28,7 @@
 		000000000000000000000129 /* GaugeMeasurementPair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000029 /* GaugeMeasurementPair.swift */; };
 		000000000000000000000130 /* GaugeInputGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000030 /* GaugeInputGroup.swift */; };
 		000000000000000000000131 /* SectionTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000031 /* SectionTitle.swift */; };
+		000000000000000000000132 /* ShareableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000032 /* ShareableView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -72,6 +73,7 @@
 		000000000000000000000029 /* GaugeMeasurementPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeMeasurementPair.swift; sourceTree = "<group>"; };
 		000000000000000000000030 /* GaugeInputGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeInputGroup.swift; sourceTree = "<group>"; };
 		000000000000000000000031 /* SectionTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionTitle.swift; sourceTree = "<group>"; };
+		000000000000000000000032 /* ShareableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareableView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -113,6 +115,7 @@
 				000000000000000000000021 /* GaugeInputsCard.swift */,
 				000000000000000000000022 /* PatternInstructionsCard.swift */,
 				000000000000000000000023 /* RequiredAdjustmentsCard.swift */,
+				000000000000000000000032 /* ShareableView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -251,7 +254,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000108, 000000000000000000000109, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000127, 000000000000000000000128, 000000000000000000000129, 000000000000000000000130, 000000000000000000000131); runOnlyForDeploymentPostprocessing = 0; };
+		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000108, 000000000000000000000109, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000127, 000000000000000000000128, 000000000000000000000129, 000000000000000000000130, 000000000000000000000131, 000000000000000000000132); runOnlyForDeploymentPostprocessing = 0; };
 		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107); runOnlyForDeploymentPostprocessing = 0; };
 		000000000000000000000903 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000105); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */

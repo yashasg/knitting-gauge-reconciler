@@ -85,3 +85,13 @@ See `history-archive.md` for earlier 2026-05-21 and 2026-05-20 entries.
 - **Layout + accessibility:** Kept the native drag handle, the toolbar Close button, and all existing adjustment rows/identifiers intact; tightened the sheet container padding and moved the state-aware action guidance into a smaller summary card below the adjustment data.
 - **Presentation:** Standardized the sheet detents to `[.medium, .large]` while still opening large first for accessibility Dynamic Type sizes, and left all MetricKit signpost sites in `ContentView.swift` untouched.
 - **Final test result:** `cd app && xcodebuild test -scheme KnittingGaugeReconciler -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max'` passed (58/58, 0 warnings).
+
+### 2026-05-21T23:46:07-07:00 — Sheet Title + Share Flow Repair
+
+**Session:** edison-sheet-share-fix
+
+- **Files changed:** `app/KnittingGaugeReconciler/ContentView.swift`, `app/KnittingGaugeReconciler/Views/RequiredAdjustmentsCard.swift`, `app/KnittingGaugeReconciler/Views/ShareableView.swift`, `app/KnittingGaugeReconcilerUITests/KnittingGaugeReconcilerUITests.swift`, `app/app.xcodeproj/project.pbxproj`
+- **Sheet navigation:** Restored a real sheet navigation bar by keeping the adjustment content inside its own `NavigationStack`, adding the inline `Adjustments` title, and leaving the toolbar Close action in the natural trailing slot.
+- **Share flow:** Moved the public `share-results` affordance into the sheet toolbar and presented `UIActivityViewController` from inside the sheet view hierarchy so share no longer queues behind the existing adjustments sheet.
+- **Export image:** Replaced the old live-card snapshot path with a dedicated off-screen `ShareableView` rendered via `ImageRenderer` at a fixed 390 pt width, covering your gauge, pattern gauge, reconciliation metrics, required adjustments, and app branding.
+- **Final test result:** `cd app && xcodebuild test -scheme KnittingGaugeReconciler -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max'` passed (58/58, 0 warnings).

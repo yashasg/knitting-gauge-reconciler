@@ -12,7 +12,7 @@ struct RequiredAdjustmentsCard: View {
     @Binding var showFullMath: Bool
     var onRecalculate: () -> Void
     var onReset: () -> Void
-    var onShare: (GaugeMathResult) -> Void
+    var onShare: (GaugeMathResult) -> [Any]
 
     private var presentedResult: GaugeMathResult {
         cachedResult ?? GaugeMath.compute(inputs)
@@ -63,13 +63,13 @@ struct RequiredAdjustmentsCard: View {
 }
 
 private struct AdjustmentSheetView: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var sharePayload: ShareSheetPayload?
 
     var result: GaugeMathResult
     var inputs: GaugeInputs
     @Binding var showFullMath: Bool
     var onReset: () -> Void
-    var onShare: (GaugeMathResult) -> Void
+    var onShare: (GaugeMathResult) -> [Any]
     var onClose: () -> Void
 
     private var requiresAdjustments: Bool {
@@ -157,11 +157,25 @@ private struct AdjustmentSheetView: View {
                 .padding(.bottom, 24)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .navigationTitle("Adjustments")
+            .navigationBarTitleDisplayMode(.inline)
             .background(AppTheme.background.ignoresSafeArea())
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: { sharePayload = ShareSheetPayload(items: onShare(result)) }) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityIdentifier("share-results")
+                    .accessibilityLabel("Share results")
+                    .accessibilityHint("Opens the share sheet with an image of the current results. Copy is available from the share sheet.")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Close", action: onClose)
                 }
+            }
+            .sheet(item: $sharePayload) { payload in
+                ActivityView(activityItems: payload.items)
+                    .presentationDetents([.medium, .large])
             }
         }
         .accessibilityIdentifier("adjustment-sheet")
@@ -246,50 +260,14 @@ private struct AdjustmentSheetView: View {
                     .accessibilityIdentifier("show-full-math")
             }
 
-            Group {
-                if dynamicTypeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Button("Reset to defaults", action: onReset)
-                            .buttonStyle(.plain)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(minHeight: 44)
-                            .contentShape(Rectangle())
-                            .accessibilityIdentifier("reset-defaults")
-                        Button(action: { onShare(result) }) {
-                            Label("Share results", systemImage: "square.and.arrow.up")
-                                .labelStyle(.titleAndIcon)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .frame(minHeight: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("share-results")
-                        .accessibilityLabel("Share results")
-                        .accessibilityHint("Opens the share sheet with an image of the current results. Copy is available from the share sheet.")
-                    }
-                } else {
-                    HStack(alignment: .center, spacing: 12) {
-                        Button("Reset to defaults", action: onReset)
-                            .buttonStyle(.plain)
-                            .frame(minWidth: 100, minHeight: 44)
-                            .contentShape(Rectangle())
-                            .accessibilityIdentifier("reset-defaults")
-                        Spacer()
-                        Button(action: { onShare(result) }) {
-                            Label("Share results", systemImage: "square.and.arrow.up")
-                                .labelStyle(.titleAndIcon)
-                                .frame(minWidth: 100, minHeight: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("share-results")
-                        .accessibilityLabel("Share results")
-                        .accessibilityHint("Opens the share sheet with an image of the current results. Copy is available from the share sheet.")
-                    }
-                }
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(AppTheme.sage)
+            Button("Reset to defaults", action: onReset)
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.sage)
+                .accessibilityIdentifier("reset-defaults")
         }
         .cardStyle()
     }
@@ -308,6 +286,11 @@ private struct AdjustmentSheetView: View {
         cast-on adjust = your_st / pattern_st x patCastOn = \(plain(inputs.yourStitches))/\(plain(inputs.patternStitches)) x \(plain(inputs.patternCastOn)) = \(result.adjustedCastOn) stitches
         """
     }
+}
+
+private struct ShareSheetPayload: Identifiable {
+    let id = UUID()
+    var items: [Any]
 }
 
 // MARK: - AdjustmentRow (used only inside RequiredAdjustmentsCard)

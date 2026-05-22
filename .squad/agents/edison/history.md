@@ -75,3 +75,13 @@ See `history-archive.md` for earlier 2026-05-21 and 2026-05-20 entries.
 - **Fix:** Restored `.navigationTitle("Gauge Reconciler")` on the main `ScrollView` inside `NavigationStack`, preserving the native large-title collapse behavior and leaving all MetricKit signpost sites untouched.
 - **Regression check:** Searched the app for `navigationBarHidden`, `toolbar(.hidden)`, inline title display mode, and empty `navigationBarTitle` usage; none were present.
 - **Final test result:** `xcodebuild test -scheme KnittingGaugeReconciler -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max'` passed, 0 warnings visible in the run output.
+
+### 2026-05-21T23:07:19-07:00 — Adjustment Sheet Content-First Polish
+
+**Session:** edison-sheet-polish
+
+- **Files changed:** `app/KnittingGaugeReconciler/Views/RequiredAdjustmentsCard.swift`
+- **Sheet trim:** Removed the in-body sheet title, summary paragraph, and key-action heading so the first visible content is the actual adjustment cards instead of introductory copy.
+- **Layout + accessibility:** Kept the native drag handle, the toolbar Close button, and all existing adjustment rows/identifiers intact; tightened the sheet container padding and moved the state-aware action guidance into a smaller summary card below the adjustment data.
+- **Presentation:** Standardized the sheet detents to `[.medium, .large]` while still opening large first for accessibility Dynamic Type sizes, and left all MetricKit signpost sites in `ContentView.swift` untouched.
+- **Final test result:** `cd app && xcodebuild test -scheme KnittingGaugeReconciler -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max'` passed (58/58, 0 warnings).

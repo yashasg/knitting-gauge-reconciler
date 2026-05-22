@@ -18,9 +18,7 @@ struct RequiredAdjustmentsCard: View {
         cachedResult ?? GaugeMath.compute(inputs)
     }
 
-    private var availableDetents: Set<PresentationDetent> {
-        dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large]
-    }
+    private let availableDetents: Set<PresentationDetent> = [.medium, .large]
 
     var body: some View {
         Button {
@@ -78,35 +76,16 @@ private struct AdjustmentSheetView: View {
         inputs.stitchMismatch || inputs.rowMismatch
     }
 
-    private var sheetTitle: String {
-        requiresAdjustments ? "Adjustment Summary" : "Reconciliation Result"
+    private var hasMajorDrift: Bool {
+        abs(result.stitchWidthScale - 1) >= 0.15 || abs(result.rowCountScale - 1) >= 0.15
     }
 
-    private var summaryText: String {
-        let stitchDrift = abs(result.stitchWidthScale - 1)
-        let rowDrift = abs(result.rowCountScale - 1)
-        let stitchPercent = abs(GaugeMath.fmtPct(result.stitchWidthScale) - 100)
-        let rowPercent = abs(GaugeMath.fmtPct(result.rowCountScale) - 100)
-        let stitchDir = result.stitchWidthScale > 1 ? "wider" : "narrower"
-        let rowDir = result.rowCountScale > 1 ? "denser" : "looser"
-        let majorNote = (stitchDrift >= 0.15 || rowDrift >= 0.15)
-            ? " Over 15% drift — consider re-swatching or changing needle size before proceeding."
-            : ""
-
-        switch (inputs.stitchMismatch, inputs.rowMismatch) {
-        case (false, false):
-            return "Your stitch and row gauge match the pattern. These results confirm that you can work the pattern as written."
-        case (true, false):
-            return "Your row gauge matches, but your stitch gauge is \(stitchPercent)% \(stitchDir). Use the adjusted cast-on to preserve the pattern's intended width.\(majorNote)"
-        case (false, true):
-            return "Your stitch gauge matches, but your row gauge is \(rowPercent)% \(rowDir). Follow the updated row guidance to preserve the pattern's intended lengths.\(majorNote)"
-        case (true, true):
-            return "Both axes are off: stitch gauge \(stitchPercent)% \(stitchDir), row gauge \(rowPercent)% \(rowDir). Use the updated stitch and row guidance together.\(majorNote)"
-        }
+    private var statusSymbolName: String {
+        requiresAdjustments ? "exclamationmark.circle.fill" : "checkmark.circle.fill"
     }
 
-    private var keyActionHeading: String {
-        requiresAdjustments ? "Key action" : "Next step"
+    private var statusSymbolColor: Color {
+        requiresAdjustments ? AppTheme.secondary : AppTheme.sage
     }
 
     private var keyActionText: String {
@@ -125,30 +104,7 @@ private struct AdjustmentSheetView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(sheetTitle)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(AppTheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-
-                    Text(summaryText)
-                        .font(.body)
-                        .lineSpacing(4)
-                        .foregroundStyle(AppTheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(keyActionHeading)
-                            .font(.headline)
-                            .foregroundStyle(AppTheme.sage)
-                        Text(keyActionText)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(AppTheme.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .cardStyle()
-
+                VStack(alignment: .leading, spacing: 12) {
                     numberedSectionCard(number: 1, title: "Yoke Depth", subtitle: "To hit target measurement") {
                         AdjustmentValuePair(
                             patternValue: GaugeMath.fmtRows(result.patternYokeRows),
@@ -193,9 +149,12 @@ private struct AdjustmentSheetView: View {
                         }
                     }
 
+                    statusCard
                     actionsCard(result: result)
                 }
-                .padding(24)
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .background(AppTheme.background.ignoresSafeArea())
@@ -206,6 +165,31 @@ private struct AdjustmentSheetView: View {
             }
         }
         .accessibilityIdentifier("adjustment-sheet")
+    }
+
+    private var statusCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: statusSymbolName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(statusSymbolColor)
+                    .padding(.top, 1)
+
+                Text(keyActionText)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if hasMajorDrift {
+                Text("Over 15% drift — consider re-swatching or changing needle size before proceeding.")
+                    .font(.footnote)
+                    .foregroundStyle(AppTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .cardStyle()
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder

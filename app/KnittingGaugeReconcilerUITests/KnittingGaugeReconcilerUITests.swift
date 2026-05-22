@@ -153,6 +153,13 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         waitForScrollingToSettle()
         tapElement(reset)
 
+        // Reset is destructive — a confirmation dialog must appear before
+        // any values are cleared.
+        let confirmReset = app.buttons["reset-defaults-confirm"].firstMatch
+        XCTAssertTrue(confirmReset.waitForExistence(timeout: 3),
+                      "Reset must show a destructive confirmation dialog")
+        tapElement(confirmReset)
+
         // After reset, cachedResult is cleared — Calculate button should be present.
         let defaultApp = XCUIApplication()
         useDefaultDynamicType(defaultApp)

@@ -85,6 +85,7 @@ struct RequiredAdjustmentsCard: View {
 
 private struct AdjustmentSheetView: View {
     @State private var sharePayload: ShareSheetPayload?
+    @State private var showResetConfirmation = false
 
     var result: GaugeMathResult
     var inputs: GaugeInputs
@@ -292,14 +293,31 @@ private struct AdjustmentSheetView: View {
                     .accessibilityIdentifier("show-full-math")
             }
 
-            Button("Reset to defaults", action: onReset)
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.sage)
-                .accessibilityIdentifier("reset-defaults")
+            Button(role: .destructive) {
+                showResetConfirmation = true
+            } label: {
+                Text("Reset to defaults")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.red)
+            .accessibilityIdentifier("reset-defaults")
+            .accessibilityHint("Clears all gauge values back to their starting state")
+            .confirmationDialog(
+                "Reset all gauge values?",
+                isPresented: $showResetConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Reset", role: .destructive, action: onReset)
+                    .accessibilityIdentifier("reset-defaults-confirm")
+                Button("Cancel", role: .cancel) {}
+                    .accessibilityIdentifier("reset-defaults-cancel")
+            } message: {
+                Text("This clears every stitch and row value you've entered. You can't undo this.")
+            }
         }
         .cardStyle()
     }

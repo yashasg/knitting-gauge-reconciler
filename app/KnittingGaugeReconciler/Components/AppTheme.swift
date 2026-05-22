@@ -21,6 +21,7 @@ enum AppTheme {
     static let mismatchText     = Color("app-theme-mismatch-text")
     /// Cream text for use on dark backgrounds (e.g. the Calculate CTA button).
     static let cream            = Color("app-theme-cream")
+    static let deltaPill        = Color("app-theme-delta-pill")
     /// Dot color for the TexturedBackground canvas. Alpha baked into Color Set
     /// (0.30 light / 0.10 dark) — gives the subtle cross-stitch fabric look
     /// without visual noise, and recedes further on dark surfaces.

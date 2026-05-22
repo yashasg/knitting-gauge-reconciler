@@ -121,3 +121,10 @@
 ## Scribe Note (2026-05-22T10:54:30Z)
 
 **Decision recorded:** Delta pill mismatch indicator decision merged into .squad/decisions.md from inbox. Build + tests verified passing. See `.squad/decisions.md` (entry dated 2026-05-22T03:48:45-07:00).
+
+### 2026-05-22T03:56:42-07:00 — Delta pills switched to circular olive badges
+
+- **Files changed:** `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift`, `app/KnittingGaugeReconciler/Components/AdjustmentValuePair.swift`, `app/KnittingGaugeReconciler/Components/AppTheme.swift`, `app/KnittingGaugeReconciler/Assets.xcassets/app-theme-delta-pill.colorset/Contents.json`
+- **UI update:** Replaced the signed delta capsules with a shared 32×32 circular badge treatment, keeping white semibold text and switching the badge fill to the approved muted olive tone.
+- **Consistency:** Reused the same circular badge in the gauge stepper label, wheel-picker header, and adjustment summary tile so all `+N` / `-N` indicators match.
+- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` returned `EXIT: 0`.

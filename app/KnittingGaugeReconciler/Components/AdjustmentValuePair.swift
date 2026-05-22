@@ -75,16 +75,8 @@ struct AdjustmentValuePair: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             if delta != 0 {
-                Text(delta > 0 ? "+\(delta)" : "\(delta)")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.top, 4)
-                    .padding(.bottom, 4)
-                    .frame(minHeight: 44)
-                    .background(AppTheme.secondary)
-                    .clipShape(Capsule())
-                    .offset(x: -4, y: -8)
+                DeltaPillBadge(text: delta > 0 ? "+\(delta)" : "\(delta)")
+                    .offset(x: -6, y: -6)
             }
         }
     }

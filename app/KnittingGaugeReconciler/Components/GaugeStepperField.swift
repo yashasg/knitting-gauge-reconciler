@@ -12,6 +12,24 @@ import SwiftUI
 // continue to pass. Color.clear cannot be used — UIKit skips hit-testing on
 // zero-alpha views; the strip uses Rectangle().fill(AppTheme.card) instead.
 
+struct DeltaPillBadge: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .frame(width: 32, height: 32)
+            .background {
+                Circle()
+                    .fill(AppTheme.deltaPill)
+            }
+            .accessibilityHidden(true)
+    }
+}
+
 struct GaugeStepperField: View {
     var title: String
     @Binding var text: String
@@ -84,18 +102,7 @@ struct GaugeStepperField: View {
     }
 
     private func mismatchBadge(_ text: String) -> some View {
-        Text(text)
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(AppTheme.cream)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.leading, 8)
-            .padding(.trailing, 8)
-            .padding(.top, 3)
-            .padding(.bottom, 3)
-            .background(AppTheme.mismatchText)
-            .clipShape(Capsule())
-            .accessibilityHidden(true)
+        DeltaPillBadge(text: text)
     }
 
     var body: some View {
@@ -235,18 +242,7 @@ private struct GaugeStepperWheelSheet: View {
     }
 
     private func mismatchBadge(_ text: String) -> some View {
-        Text(text)
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(AppTheme.cream)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.leading, 8)
-            .padding(.trailing, 8)
-            .padding(.top, 3)
-            .padding(.bottom, 3)
-            .background(AppTheme.mismatchText)
-            .clipShape(Capsule())
-            .accessibilityHidden(true)
+        DeltaPillBadge(text: text)
     }
 
     var body: some View {

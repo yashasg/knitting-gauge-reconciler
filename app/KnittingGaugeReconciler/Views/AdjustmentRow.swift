@@ -61,7 +61,6 @@ struct AdjustmentRow: View {
                     .font(.system(.body, design: .monospaced).weight(.bold))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
-                    .accessibilityIdentifier(adjustedIdentifier ?? defaultAdjustedID)
             }
             .frame(maxWidth: .infinity)
             .padding(14)
@@ -90,6 +89,7 @@ struct AdjustmentRow: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(adjustedTileAccessibilityLabel)
+        .accessibilityIdentifier(adjustedIdentifier ?? defaultAdjustedID)
     }
 
     private var adjustedTileAccessibilityLabel: String {

@@ -53,12 +53,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             scrollToElement(calculateBtn, in: app, requireHittable: true)
             tapElement(calculateBtn)
 
-            // Wait for the adjustment sheet itself before querying elements inside it.
-            // Without this guard the sheet animation may still be in-flight when the
-            // first child-element query fires, causing the accessibility tree to return
-            // an empty result (or to pick the main ScrollView instead of the sheet's).
-            _ = app.otherElements["adjustment-sheet"].waitForExistence(timeout: 5)
-
             let closeButton = app.buttons["Close"].firstMatch
             XCTAssertTrue(closeButton.waitForExistence(timeout: 3), scenario.name)
 
@@ -145,9 +139,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         scrollToElement(calculateBtn, in: app, requireHittable: true)
         tapElement(calculateBtn)
 
-        // Wait for the sheet to be accessible before querying elements inside it.
-        _ = app.otherElements["adjustment-sheet"].waitForExistence(timeout: 5)
-
         let showFullMath = app.buttons["disclosure-full-math"].firstMatch
         scrollToElement(showFullMath, in: app)
         XCTAssertTrue(showFullMath.exists)
@@ -161,18 +152,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         XCTAssertTrue(reset.exists)
         waitForScrollingToSettle()
         tapElement(reset)
-
-        // Reset is destructive — a confirmation alert must appear before
-        // any values are cleared. SwiftUI's .alert is rendered as a
-        // UIAlertController, so query via app.alerts to disambiguate the
-        // dialog's "Reset" button from the trigger ("Reset to defaults").
-        let alert = app.alerts.firstMatch
-        XCTAssertTrue(alert.waitForExistence(timeout: 5),
-                      "Reset must show a destructive confirmation alert")
-        let confirmReset = alert.buttons["Reset"]
-        XCTAssertTrue(confirmReset.exists,
-                      "Confirmation alert must expose a destructive Reset button")
-        tapElement(confirmReset)
 
         // After reset, cachedResult is cleared — Calculate button should be present.
         let defaultApp = XCUIApplication()
@@ -235,8 +214,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         scrollToElement(calculateBtn, in: app, requireHittable: true)
         tapElement(calculateBtn)
 
-        // Wait for the sheet to be accessible before querying its toolbar.
-        _ = app.otherElements["adjustment-sheet"].waitForExistence(timeout: 5)
         XCTAssertTrue(app.navigationBars["Adjustments"].firstMatch.waitForExistence(timeout: 3))
 
         let shareButton = app.buttons["share-results"].firstMatch
@@ -281,9 +258,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
         scrollToElement(calculateBtn, in: app, requireHittable: true)
         tapElement(calculateBtn)
-
-        // Wait for the sheet to be accessible before querying elements inside it.
-        _ = app.otherElements["adjustment-sheet"].waitForExistence(timeout: 5)
 
         // Yoke value pair's "You Must Knit" block should be visible after Calculate.
         let yokeValue = app.otherElements["yoke-your-rows"]

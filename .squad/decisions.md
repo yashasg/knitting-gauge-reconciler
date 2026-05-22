@@ -1,3 +1,23 @@
+## 2026-05-22T04:17:35-07:00 — Edison: Delta pill final shape & color (supersedes circular olive spec)
+
+- **Date:** 2026-05-22T04:17:35-07:00
+- **Author:** Edison (recorded by Scribe)
+- **Area:** SwiftUI / gauge input affordances
+- **Supersedes:** The inbox proposal `edison-pill-style.md` (circular 32×32, olive `app-theme-delta-pill` color asset) — never shipped.
+
+**Decision:** Final implemented form of the signed mismatch indicator is a **capsule** badge filled with the existing warm-brown `AppTheme.secondary` tone (aliased as `AppTheme.deltaPill = secondary`), white `.caption2.weight(.semibold)` text, 8pt horizontal / 3pt vertical padding. Rendered only when `patternValue != userValue`.
+
+**Why:** Three iterations were attempted on top of the circular olive proposal: (a) the circular shape pushed the adjacent text field down because the 32×32 frame exceeded the inline label baseline; (b) the bespoke `app-theme-delta-pill` color asset duplicated tokens already covered by `AppTheme.secondary`. Collapsing the badge back to a capsule and reusing the existing secondary brown removed the layout regression and shrank the palette surface area.
+
+**Implementation notes:**
+- `DeltaPillBadge` in `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift` uses `.clipShape(Capsule())` with `.fixedSize(horizontal: true, vertical: false)` so wide labels like `+10` extend horizontally without wrapping.
+- `AppTheme.deltaPill` is now a semantic alias of `AppTheme.secondary`; no standalone color asset is required.
+- Component is reused in the field header, wheel-picker header, and adjustment summary delta for consistency.
+
+**Verification:** Commits `bde2d87`, `80f14b8`, `673a578`, `3c48771` on `main`. Latest `bash app/build.sh build` → `EXIT: 0`.
+
+---
+
 ## 2026-05-22T03:48:45-07:00 — Edison: Delta pill mismatch indicator
 
 - **Date:** 2026-05-22T03:48:45-07:00

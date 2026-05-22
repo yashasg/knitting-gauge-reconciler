@@ -312,11 +312,13 @@ private struct VerdictHelpSheet: View {
                 Text(title)
                     .font(.title3.weight(.bold))
                     .foregroundStyle(AppTheme.sage)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                 Text(explanation)
                     .font(.body)
                     .lineSpacing(4)
                     .foregroundStyle(AppTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -335,6 +337,7 @@ private struct AboutHelpSheet: View {
                 Text("About this calculator")
                     .font(.title3.weight(.bold))
                     .foregroundStyle(AppTheme.sage)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                 Text(
                     "This tool reconciles a two-axis gauge mismatch — the kind that single-number gauge calculators hide. " +
@@ -344,6 +347,7 @@ private struct AboutHelpSheet: View {
                     .font(.body)
                     .lineSpacing(4)
                     .foregroundStyle(AppTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(
                     "The math is deterministic: dimension correction = pattern_row / your_row. A denser swatch means fewer " +
                     "centimetres are needed to reach the pattern's intended row count; stitch_scale = pattern_st / your_st " +
@@ -352,6 +356,7 @@ private struct AboutHelpSheet: View {
                     .font(.body)
                     .lineSpacing(4)
                     .foregroundStyle(AppTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(
                     "Scope: This tool provides estimates based on your swatch measurements. Always test a full-size gauge " +
                     "swatch (washed and blocked the way you'll wash and block the finished garment) before starting your " +
@@ -360,6 +365,7 @@ private struct AboutHelpSheet: View {
                     .font(.body.weight(.semibold))
                     .lineSpacing(4)
                     .foregroundStyle(AppTheme.warningText)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(AppTheme.warningBackground)
@@ -374,6 +380,7 @@ private struct AboutHelpSheet: View {
                     .font(.footnote.italic())
                     .lineSpacing(3)
                     .foregroundStyle(AppTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("about-non-affiliation")
             }
             .padding()

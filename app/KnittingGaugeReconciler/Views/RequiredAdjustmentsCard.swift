@@ -375,13 +375,19 @@ private struct AdjustmentRow: View {
                 Text(pill)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white)
+                    .lineLimit(1)
                     .padding(.horizontal, 8)
                     .padding(.top, 4)
                     .padding(.bottom, 4)
-                    .frame(minHeight: 44)
                     .background(AppTheme.secondary)
                     .clipShape(Capsule())
                     .offset(x: -4, y: -8)
+                    // Decorative drift indicator — adjacent adjusted tile
+                    // carries the semantic information. Hide from VoiceOver
+                    // and clamp Dynamic Type so it doesn't outgrow the tile.
+                    .accessibilityHidden(true)
+                    .accessibilityIdentifier("drift-pill")
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             }
         }
     }

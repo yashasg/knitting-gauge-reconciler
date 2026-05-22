@@ -89,3 +89,10 @@
 - **Typography:** Promoted the header from the legacy uppercase `SectionTitle` treatment to the same `.title2.weight(.bold)` title styling used by the Pattern Gauge and Your Gauge cards.
 - **Overflow handling:** Added `.minimumScaleFactor(0.7)` with a single-line constraint so “Pattern Instructions” shrinks before wrapping.
 - **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` returned build success.
+
+### 2026-05-22T03:40:00.414-07:00 — Inline mismatch badge replaces triangle indicator
+
+- **Files changed:** `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift`
+- **UI treatment:** Replaced the red warning triangle on mismatched gauge fields with a slim inline capsule badge reading `mismatch detected`, positioned beside the `Stitches` / `Rows` labels so the warning reads as metadata instead of a floating icon.
+- **Consistency:** Applied the same capsule treatment in the wheel picker sheet header while preserving the existing mismatch summary copy and accessibility messaging.
+- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` returned `EXIT: 0`.

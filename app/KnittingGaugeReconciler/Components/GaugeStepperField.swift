@@ -77,12 +77,31 @@ struct GaugeStepperField: View {
         mismatchSentence == nil ? [.height(280)] : [.medium, .large]
     }
 
+    private var mismatchBadge: some View {
+        Text("mismatch detected")
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(AppTheme.cream)
+            .padding(.leading, 8)
+            .padding(.trailing, 8)
+            .padding(.top, 3)
+            .padding(.bottom, 3)
+            .background(AppTheme.mismatchText)
+            .clipShape(Capsule())
+            .accessibilityHidden(true)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.muted)
-                .padding(.bottom, 8)
+            HStack(alignment: .center, spacing: 8) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.muted)
+
+                if hasMismatch {
+                    mismatchBadge
+                }
+            }
+            .padding(.bottom, 8)
 
             HStack(spacing: 0) {
                 TextField("", text: $text)
@@ -111,17 +130,6 @@ struct GaugeStepperField: View {
                         .font(.caption.weight(.medium))
                         .foregroundStyle(AppTheme.muted)
                         .frame(width: 44, height: 44)
-                        .overlay(alignment: .topTrailing) {
-                            if hasMismatch {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(AppTheme.mismatchText)
-                                    .padding(.top, 8)
-                                    .padding(.trailing, 6)
-                                    .allowsHitTesting(false)
-                                    .accessibilityHidden(true)
-                            }
-                        }
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -216,27 +224,37 @@ private struct GaugeStepperWheelSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(AppTheme.ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal)
-                .padding(.top)
-                .padding(.bottom, mismatchLabel == nil ? 4 : 12)
+            HStack(alignment: .center, spacing: 8) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(AppTheme.ink)
+
+                if mismatchLabel != nil {
+                    Text("mismatch detected")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(AppTheme.cream)
+                        .padding(.leading, 8)
+                        .padding(.trailing, 8)
+                        .padding(.top, 3)
+                        .padding(.bottom, 3)
+                        .background(AppTheme.mismatchText)
+                        .clipShape(Capsule())
+                        .accessibilityHidden(true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal)
+            .padding(.top)
+            .padding(.bottom, mismatchLabel == nil ? 4 : 12)
 
             if let mismatchLabel {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(AppTheme.mismatchText)
-                        .accessibilityHidden(true)
-                    Text(mismatchLabel)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.mismatchText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityIdentifier("\(identifier)-warning-summary")
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 8)
+                Text(mismatchLabel)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.mismatchText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+                    .accessibilityIdentifier("\(identifier)-warning-summary")
             }
 
             Picker(title, selection: $selectedValue) {

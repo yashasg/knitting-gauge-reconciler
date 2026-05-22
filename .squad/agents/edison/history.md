@@ -96,3 +96,10 @@
 - **UI treatment:** Replaced the red warning triangle on mismatched gauge fields with a slim inline capsule badge reading `mismatch detected`, positioned beside the `Stitches` / `Rows` labels so the warning reads as metadata instead of a floating icon.
 - **Consistency:** Applied the same capsule treatment in the wheel picker sheet header while preserving the existing mismatch summary copy and accessibility messaging.
 - **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` returned `EXIT: 0`.
+
+## 2026-05-22 — Inline Mismatch Badge UI
+
+- Replaced red triangle mismatch indicator with slim capsule badge ("mismatch detected") inline with Rows/Stitches labels
+- Badge: `.caption2.weight(.semibold)`, cream text, mismatch-red bg, 8pt H / 3pt V padding, Capsule clipping
+- Build: `EXIT: 0`
+- Commit: dafd057

@@ -1,3 +1,18 @@
+## 2026-05-22T10:40:00Z — Edison: Inline mismatch badge
+
+- **Date:** 2026-05-22T10:40:00Z
+- **Author:** Edison
+- **Area:** SwiftUI / gauge input affordances
+
+**Decision:** Replace the red triangle mismatch indicator with a slim inline capsule badge that reads `mismatch detected` beside the `Stitches` and `Rows` labels.
+
+**Why:** The floating triangle read like a generic alert glyph rather than field metadata. Inline placement makes the mismatch state immediately attributable to the specific measurement label. A compact pill preserves emphasis without introducing a chunky, button-like control.
+
+**Implementation notes:** Badge styling: `.caption2.weight(.semibold)`, cream text, mismatch-red background, compact 8pt horizontal / 3pt vertical padding, `Capsule()` clipping. The same mismatch conditional logic remains in place; only the visual treatment changed. The wheel picker sheet header uses the same inline badge treatment while retaining the existing explanatory summary text below.
+
+**Verification:** `cd app && bash build.sh build 2>&1; echo "EXIT: $?"` → Result: `EXIT: 0`
+
+
 ## 2026-05-21T21:06:21-07:00 — Edison: Title Removal Summary
 
 - **Date:** 2026-05-21T21:06:21-07:00

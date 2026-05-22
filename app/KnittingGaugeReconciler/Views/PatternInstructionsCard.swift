@@ -11,7 +11,19 @@ struct PatternInstructionsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionTitle("Pattern instructions")
+            HStack(alignment: .center, spacing: 8) {
+                Image(systemName: "list.bullet.clipboard.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(AppTheme.secondary)
+                    .accessibilityHidden(true)
+                Text("Pattern Instructions")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(AppTheme.ink)
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+            }
             GaugeStepperField(
                 title: "Cast-on stitches",
                 text: $patternCastOn,

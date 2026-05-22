@@ -65,3 +65,27 @@
 - **Change:** Wrapped six long user-facing string literals in concatenated multi-line forms so the text stays identical while meeting the strict 200-character `line_length` cap.
 - **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` now ends with `EXIT: 0` and no `error:` output.
 - **Decision:** Treat `bash build.sh build` as the required source of truth for frontend build verification instead of running `xcodebuild` directly.
+
+### 2026-05-22T03:16:40.823-07:00 — App icon background removal
+
+- **Files changed:** `app/KnittingGaugeReconciler/Assets.xcassets/AppIcon.appiconset/icon-1024.png` + all 8 derived sizes
+- **Tool used:** `rembg[cpu]` (ML-based u2net model) for clean separation of knitting design from cream/white background. No manual tolerance-tuning needed — model handled the gradient background correctly.
+- **Result:** Corner (0,0) = `(0,0,0,0)` (transparent), center (512,512) = `(128,124,48,255)` (opaque olive/design pixel).
+- **All sizes regenerated:** icon-20@2x, icon-20@3x, icon-29@2x, icon-29@3x, icon-40@2x, icon-40@3x, icon-60@2x, icon-60@3x all re-derived from cleaned 1024px source via PIL LANCZOS resize.
+- **Apple note:** The 1024px App Store marketing icon is left transparent per user request; App Store Connect may require a solid background at submission time.
+- **Build verification:** `bash build.sh build` exits 0.
+
+### 2026-05-22T03:21:32.372-07:00 — App icon replaced with sweater illustration
+
+- **Files changed:** `app/KnittingGaugeReconciler/Assets.xcassets/AppIcon.appiconset/icon-1024.png` + all 8 derived sizes
+- **Source:** `/Users/yashasgujjar/Downloads/ChatGPT Image May 22, 2026 at 02_19_13 AM.png` (974×972 RGBA, cream turtleneck sweater on solid blue background)
+- **No background removal needed:** Source image already has a proper solid blue background; rounded corners are baked into the image as transparent pixels at the extremes — iOS will apply its own corner mask at render time.
+- **All sizes regenerated:** PIL LANCZOS resize from RGBA source to all required icon sizes.
+- **Build verification:** `bash build.sh build` exits 0.
+
+### 2026-05-22T03:27:26.322-07:00 — Pattern instructions title hierarchy fix
+
+- **Files changed:** `app/KnittingGaugeReconciler/Views/PatternInstructionsCard.swift`
+- **Typography:** Promoted the header from the legacy uppercase `SectionTitle` treatment to the same `.title2.weight(.bold)` title styling used by the Pattern Gauge and Your Gauge cards.
+- **Overflow handling:** Added `.minimumScaleFactor(0.7)` with a single-line constraint so “Pattern Instructions” shrinks before wrapping.
+- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` returned build success.

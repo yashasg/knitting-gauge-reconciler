@@ -298,8 +298,11 @@ private struct AdjustmentSheetView: View {
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.sage)
+                .foregroundStyle(.red)
                 .accessibilityIdentifier("reset-defaults")
+                .accessibilityHint(
+                    "Destructive: clears every stitch and row value you've entered."
+                )
         }
         .cardStyle()
     }

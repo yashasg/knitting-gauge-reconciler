@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 import UIKit
 import MetricKit
@@ -219,7 +220,8 @@ struct ContentView: View {
             ? " Over 15% drift — consider re-swatching or changing needle size before proceeding."
             : ""
         if !stitchOff && !rowOff {
-            return "Both gauges match. Cast on \(result.adjustedCastOn) stitches as written. Knit straight from the pattern — no adjustments needed. Re-check after blocking."
+            return "Both gauges match. Cast on \(result.adjustedCastOn) stitches as written. " +
+                "Knit straight from the pattern — no adjustments needed. Re-check after blocking."
         }
         if stitchOff && !rowOff {
             return (
@@ -346,8 +348,10 @@ private struct AboutHelpSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                 Text(
-                    "This tool reconciles a two-axis gauge mismatch — the kind that single-number gauge calculators hide. " +
-                    "When your stitch gauge matches the pattern but your row gauge is off (or vice versa), every vertical " +
+                    "This tool reconciles a two-axis gauge mismatch — " +
+                    "the kind that single-number gauge calculators hide. " +
+                    "When your stitch gauge matches the pattern " +
+                    "but your row gauge is off (or vice versa), every vertical " +
                     "section ends up the wrong length unless you adjust the row counts."
                 )
                     .font(.body)
@@ -355,8 +359,10 @@ private struct AboutHelpSheet: View {
                     .foregroundStyle(AppTheme.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(
-                    "The math is deterministic: dimension correction = pattern_row / your_row. A denser swatch means fewer " +
-                    "centimetres are needed to reach the pattern's intended row count; stitch_scale = pattern_st / your_st " +
+                    "The math is deterministic: dimension correction = pattern_row / your_row. " +
+                    "A denser swatch means fewer " +
+                    "centimetres are needed to reach the pattern's intended row count; " +
+                    "stitch_scale = pattern_st / your_st " +
                     "describes horizontal width."
                 )
                     .font(.body)
@@ -364,8 +370,10 @@ private struct AboutHelpSheet: View {
                     .foregroundStyle(AppTheme.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(
-                    "Scope: This tool provides estimates based on your swatch measurements. Always test a full-size gauge " +
-                    "swatch (washed and blocked the way you'll wash and block the finished garment) before starting your " +
+                    "Scope: This tool provides estimates based on your swatch measurements. " +
+                    "Always test a full-size gauge " +
+                    "swatch (washed and blocked the way you'll wash and block the finished garment) " +
+                    "before starting your " +
                     "project. Numbers here are a starting point — your finished piece is the final word."
                 )
                     .font(.body.weight(.semibold))
@@ -382,7 +390,10 @@ private struct AboutHelpSheet: View {
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     .accessibilityIdentifier("about-scope")
-                Text("Not affiliated with Ravelry, Knit Companion, or any pattern designer. Gauge math is conventional knitting arithmetic from open craft literature.")
+                Text(
+                    "Not affiliated with Ravelry, Knit Companion, or any pattern designer." +
+                    " Gauge math is conventional knitting arithmetic from open craft literature."
+                )
                     .font(.footnote.italic())
                     .lineSpacing(3)
                     .foregroundStyle(AppTheme.muted)
@@ -396,44 +407,3 @@ private struct AboutHelpSheet: View {
         .accessibilityIdentifier("about-help-sheet")
     }
 }
-
-// MARK: - ActivityView
-
-struct ActivityView: UIViewControllerRepresentable {
-    var activityItems: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-
-// MARK: - GaugeTextDefaults
-
-private struct GaugeTextDefaults {
-    let patternStitches = "32"
-    let patternRows = "24"
-    let yourStitches = "32"
-    let yourRows = "32"
-    let patternCastOn = "128"
-    let patternYoke = "20"
-    let patternBody = "50"
-    let patternSleeve = "45"
-    let patternIncreases = "6"
-}
-
-// MARK: - Helpers
-
-private func initialText(_ environmentKey: String, defaultValue: String) -> String {
-    ProcessInfo.processInfo.environment[environmentKey] ?? defaultValue
-}
-
-private func initialBool(_ environmentKey: String) -> Bool {
-    ProcessInfo.processInfo.environment[environmentKey] == "1"
-}
-
-private func read(_ text: String, defaultValue: Double) -> Double {
-    GaugeMath.sanitized(Double(text), default: defaultValue)
-}
-

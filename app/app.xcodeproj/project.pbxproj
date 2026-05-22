@@ -31,6 +31,8 @@
 		000000000000000000000131 /* SectionTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000031 /* SectionTitle.swift */; };
 		000000000000000000000132 /* ShareableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000032 /* ShareableView.swift */; };
 		000000000000000000000133 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000033 /* Assets.xcassets */; };
+		000000000000000000000134 /* ContentViewHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000034 /* ContentViewHelpers.swift */; };
+		000000000000000000000135 /* AdjustmentRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000035 /* AdjustmentRow.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,6 +80,8 @@
 		000000000000000000000031 /* SectionTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionTitle.swift; sourceTree = "<group>"; };
 		000000000000000000000032 /* ShareableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareableView.swift; sourceTree = "<group>"; };
 		000000000000000000000033 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		000000000000000000000034 /* ContentViewHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentViewHelpers.swift; sourceTree = "<group>"; };
+		000000000000000000000035 /* AdjustmentRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdjustmentRow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -102,6 +106,7 @@
 			children = (
 				000000000000000000000001 /* KnittingGaugeReconcilerApp.swift */,
 				000000000000000000000002 /* ContentView.swift */,
+				000000000000000000000034 /* ContentViewHelpers.swift */,
 				000000000000000000000003 /* GaugeMath.swift */,
 				000000000000000000000008 /* MetricsSubscriber.swift */,
 				000000000000000000000009 /* GaugeMathMetrics.swift */,
@@ -120,6 +125,7 @@
 				000000000000000000000021 /* GaugeInputsCard.swift */,
 				000000000000000000000022 /* PatternInstructionsCard.swift */,
 				000000000000000000000023 /* RequiredAdjustmentsCard.swift */,
+				000000000000000000000035 /* AdjustmentRow.swift */,
 				000000000000000000000032 /* ShareableView.swift */,
 			);
 			path = Views;
@@ -260,7 +266,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000108, 000000000000000000000109, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000127, 000000000000000000000128, 000000000000000000000129, 000000000000000000000130, 000000000000000000000131, 000000000000000000000132); runOnlyForDeploymentPostprocessing = 0; };
+		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000108, 000000000000000000000109, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000127, 000000000000000000000128, 000000000000000000000129, 000000000000000000000130, 000000000000000000000131, 000000000000000000000132, 000000000000000000000134, 000000000000000000000135); runOnlyForDeploymentPostprocessing = 0; };
 		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107); runOnlyForDeploymentPostprocessing = 0; };
 		000000000000000000000903 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000105, 000000000000000000000115); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */

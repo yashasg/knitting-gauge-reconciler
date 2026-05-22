@@ -55,6 +55,43 @@ final class AccessibilityAuditTests: XCTestCase {
         "Close"
     ]
 
+    /// Apple's accessibility-audit subsystem intermittently throws
+    /// `Error Domain=com.apple.accessibilityAudit Code=-902
+    /// "Invalid target app <pid>"` on freshly-launched simulator apps
+    /// during the first audit invocation of a UI-test iteration. The
+    /// failure is purely an infra race in the audit/runner handshake —
+    /// rerunning the same call ~50ms later succeeds. `xcodebuild`'s
+    /// `-retry-tests-on-failure` only catches this *after* a full test
+    /// teardown/relaunch cycle (~10s), which fails the gate twice before
+    /// finally passing. Wrap the audit in a tight in-test retry to absorb
+    /// the flake at its source and keep the gate green on the first
+    /// iteration. See GitLab issue #37.
+    private func performAccessibilityAuditWithFlakeRetry(
+        maxAttempts: Int = 4,
+        backoff: TimeInterval = 0.25
+    ) throws {
+        var attempt = 1
+        while true {
+            do {
+                try app.performAccessibilityAudit { issue in
+                    self.ignore(issue)
+                }
+                return
+            } catch let error as NSError
+                where error.domain == "com.apple.accessibilityAudit"
+                && error.code == -902
+                && attempt < maxAttempts {
+                print(
+                    "[A11Y AUDIT] transient infra flake (\(error.localizedDescription)) " +
+                    "— retry attempt \(attempt + 1) of \(maxAttempts)"
+                )
+                Thread.sleep(forTimeInterval: backoff * Double(attempt))
+                attempt += 1
+                continue
+            }
+        }
+    }
+
     private func ignore(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
         let identifier = issue.element?.identifier ?? ""
         let frame = issue.element?.frame ?? .zero
@@ -139,9 +176,7 @@ final class AccessibilityAuditTests: XCTestCase {
         _ = app.buttons["calculate-button"].waitForExistence(timeout: 3)
 
         // Run the full audit — catches missing labels, contrast, hit targets, etc.
-        try app.performAccessibilityAudit { issue in
-            self.ignore(issue)
-        }
+        try performAccessibilityAuditWithFlakeRetry()
     }
 
     /// Opens the Adjustments sheet and audits it.
@@ -153,9 +188,7 @@ final class AccessibilityAuditTests: XCTestCase {
         // Wait for sheet
         _ = app.otherElements["adjustment-sheet"].waitForExistence(timeout: 3)
 
-        try app.performAccessibilityAudit { issue in
-            self.ignore(issue)
-        }
+        try performAccessibilityAuditWithFlakeRetry()
     }
 
     /// Opens the About help sheet and audits it.
@@ -166,8 +199,6 @@ final class AccessibilityAuditTests: XCTestCase {
 
         _ = app.otherElements["about-help-sheet"].waitForExistence(timeout: 3)
 
-        try app.performAccessibilityAudit { issue in
-            self.ignore(issue)
-        }
+        try performAccessibilityAuditWithFlakeRetry()
     }
 }

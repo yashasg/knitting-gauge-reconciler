@@ -206,6 +206,15 @@ private struct AdjustmentSheetView: View {
                 ActivityView(activityItems: payload.items)
                     .presentationDetents([.medium, .large])
             }
+            .alert(
+                "Reset all gauge values?",
+                isPresented: $showResetConfirmation
+            ) {
+                Button("Reset", role: .destructive, action: onReset)
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This clears every stitch and row value you've entered. You can't undo this.")
+            }
         }
         .accessibilityIdentifier("adjustment-sheet")
     }
@@ -306,18 +315,6 @@ private struct AdjustmentSheetView: View {
             .foregroundStyle(.red)
             .accessibilityIdentifier("reset-defaults")
             .accessibilityHint("Clears all gauge values back to their starting state")
-            .confirmationDialog(
-                "Reset all gauge values?",
-                isPresented: $showResetConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Reset", role: .destructive, action: onReset)
-                    .accessibilityIdentifier("reset-defaults-confirm")
-                Button("Cancel", role: .cancel) {}
-                    .accessibilityIdentifier("reset-defaults-cancel")
-            } message: {
-                Text("This clears every stitch and row value you've entered. You can't undo this.")
-            }
         }
         .cardStyle()
     }

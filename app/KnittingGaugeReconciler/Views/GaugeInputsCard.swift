@@ -34,6 +34,8 @@ struct YourGaugeCard: View {
     @Binding var yourRows: String
     var stitchMismatch: Bool
     var rowMismatch: Bool
+    var stitchDelta: Int
+    var rowDelta: Int
 
     var body: some View {
         GaugeInputGroup(title: "Your Gauge", icon: "ruler.fill", showPerTag: true) {
@@ -44,7 +46,8 @@ struct YourGaugeCard: View {
                     unit: "st",
                     identifier: "your-stitches",
                     hasMismatch: stitchMismatch,
-                    mismatchLabel: "Stitch gauge mismatch detected"
+                    mismatchLabel: "Stitch gauge mismatch detected",
+                    mismatchDelta: stitchDelta
                 )
             } trailing: {
                 GaugeStepperField(
@@ -53,7 +56,8 @@ struct YourGaugeCard: View {
                     unit: "ro",
                     identifier: "your-rows",
                     hasMismatch: rowMismatch,
-                    mismatchLabel: "Row gauge mismatch detected"
+                    mismatchLabel: "Row gauge mismatch detected",
+                    mismatchDelta: rowDelta
                 )
             }
         }

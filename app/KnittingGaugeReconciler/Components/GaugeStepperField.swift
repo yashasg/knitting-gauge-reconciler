@@ -20,6 +20,7 @@ struct GaugeStepperField: View {
     var range: ClosedRange<Int> = 1...99
     var hasMismatch: Bool = false
     var mismatchLabel: String? = nil
+    var mismatchDelta: Int? = nil
 
     @State private var showWheelPicker = false
 
@@ -77,8 +78,13 @@ struct GaugeStepperField: View {
         mismatchSentence == nil ? [.height(280)] : [.medium, .large]
     }
 
-    private var mismatchBadge: some View {
-        Text("mismatch")
+    private var mismatchDeltaText: String? {
+        guard hasMismatch, let mismatchDelta else { return nil }
+        return mismatchDelta >= 0 ? "+\(mismatchDelta)" : "\(mismatchDelta)"
+    }
+
+    private func mismatchBadge(_ text: String) -> some View {
+        Text(text)
             .font(.caption2.weight(.semibold))
             .foregroundStyle(AppTheme.cream)
             .lineLimit(1)
@@ -99,8 +105,8 @@ struct GaugeStepperField: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.muted)
 
-                if hasMismatch {
-                    mismatchBadge
+                if let mismatchDeltaText {
+                    mismatchBadge(mismatchDeltaText)
                 }
             }
             .padding(.bottom, 8)
@@ -186,6 +192,7 @@ struct GaugeStepperField: View {
                 range: range,
                 identifier: identifier,
                 mismatchLabel: mismatchSentence,
+                mismatchDeltaText: mismatchDeltaText,
                 isPresented: $showWheelPicker
             )
             .presentationDetents(sheetDetents)
@@ -202,6 +209,7 @@ private struct GaugeStepperWheelSheet: View {
     let range: ClosedRange<Int>
     let identifier: String
     let mismatchLabel: String?
+    let mismatchDeltaText: String?
     @Binding var isPresented: Bool
 
     @State private var selectedValue: Int
@@ -212,6 +220,7 @@ private struct GaugeStepperWheelSheet: View {
         range: ClosedRange<Int>,
         identifier: String,
         mismatchLabel: String?,
+        mismatchDeltaText: String?,
         isPresented: Binding<Bool>
     ) {
         self.title = title
@@ -219,9 +228,25 @@ private struct GaugeStepperWheelSheet: View {
         self.range = range
         self.identifier = identifier
         self.mismatchLabel = mismatchLabel
+        self.mismatchDeltaText = mismatchDeltaText
         self._isPresented = isPresented
         let initial = Int(text.wrappedValue) ?? range.lowerBound
         self._selectedValue = State(initialValue: initial.clamped(to: range))
+    }
+
+    private func mismatchBadge(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(AppTheme.cream)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.leading, 8)
+            .padding(.trailing, 8)
+            .padding(.top, 3)
+            .padding(.bottom, 3)
+            .background(AppTheme.mismatchText)
+            .clipShape(Capsule())
+            .accessibilityHidden(true)
     }
 
     var body: some View {
@@ -231,17 +256,8 @@ private struct GaugeStepperWheelSheet: View {
                     .font(.headline)
                     .foregroundStyle(AppTheme.ink)
 
-                if mismatchLabel != nil {
-                    Text("mismatch detected")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(AppTheme.cream)
-                        .padding(.leading, 8)
-                        .padding(.trailing, 8)
-                        .padding(.top, 3)
-                        .padding(.bottom, 3)
-                        .background(AppTheme.mismatchText)
-                        .clipShape(Capsule())
-                        .accessibilityHidden(true)
+                if let mismatchDeltaText {
+                    mismatchBadge(mismatchDeltaText)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

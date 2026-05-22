@@ -109,3 +109,9 @@
 - **Files changed:** `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift`
 - **UI fix:** Shortened the inline capsule label from `mismatch detected` to `mismatch` and enforced `.lineLimit(1)` plus `.fixedSize(horizontal: true, vertical: false)` so it stays on one line.
 - **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` completed successfully.
+
+### 2026-05-22T03:48:45-07:00 — Delta pills replace mismatch badge
+
+- **Files changed:** `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift`, `app/KnittingGaugeReconciler/Views/GaugeInputsCard.swift`, `app/KnittingGaugeReconciler/ContentView.swift`
+- **UI update:** Replaced the inline `mismatch` badge with signed delta pills (`+N` / `-N`) computed as `patternValue - userValue`, and mirrored the same pill in the wheel picker header while keeping existing mismatch accessibility copy and warning summary text.
+- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` and `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh test 2>&1; echo "EXIT: $?"` both completed successfully.

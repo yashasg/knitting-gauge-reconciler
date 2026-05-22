@@ -70,7 +70,9 @@ struct ContentView: View {
                         yourStitches: $yourStitches,
                         yourRows: $yourRows,
                         stitchMismatch: inputs.stitchMismatch,
-                        rowMismatch: inputs.rowMismatch
+                        rowMismatch: inputs.rowMismatch,
+                        stitchDelta: Int(inputs.patternStitches - inputs.yourStitches),
+                        rowDelta: Int(inputs.patternRows - inputs.yourRows)
                     )
                     PatternInstructionsCard(
                         patternCastOn: $patternCastOn,

@@ -204,12 +204,24 @@ struct ContentView: View {
             return "Both gauges match. Cast on \(result.adjustedCastOn) stitches as written. Knit straight from the pattern — no adjustments needed. Re-check after blocking."
         }
         if stitchOff && !rowOff {
-            return "Your row gauge matches, but your stitch gauge is \(stitchPercent)% \(stitchDir). Cast on \(result.adjustedCastOn) stitches instead of the pattern's \(Int(inputs.patternCastOn)) to hit the same width. Vertical sections need no adjustment.\(majorNote)"
+            return (
+                "Your row gauge matches, but your stitch gauge is \(stitchPercent)% \(stitchDir). " +
+                "Cast on \(result.adjustedCastOn) stitches instead of the pattern's \(Int(inputs.patternCastOn)) " +
+                "to hit the same width. Vertical sections need no adjustment.\(majorNote)"
+            )
         }
         if !stitchOff {
-            return "Your stitch gauge matches — cast on \(result.adjustedCastOn) stitches as written. Your row gauge is \(rowPercent)% \(rowDir) than expected; use the row count guidance for each vertical section.\(majorNote)"
+            return (
+                "Your stitch gauge matches — cast on \(result.adjustedCastOn) stitches as written. " +
+                "Your row gauge is \(rowPercent)% \(rowDir) than expected; use the row count guidance " +
+                "for each vertical section.\(majorNote)"
+            )
         }
-        return "Both axes are off: stitch gauge \(stitchPercent)% \(stitchDir), row gauge \(rowPercent)% \(rowDir). Cast on \(result.adjustedCastOn) stitches (not \(Int(inputs.patternCastOn))) and use the row count guidance for vertical sections.\(majorNote)"
+        return (
+            "Both axes are off: stitch gauge \(stitchPercent)% \(stitchDir), row gauge \(rowPercent)% \(rowDir). " +
+            "Cast on \(result.adjustedCastOn) stitches (not \(Int(inputs.patternCastOn))) and use the row count " +
+            "guidance for vertical sections.\(majorNote)"
+        )
     }
 
     // MARK: - Actions
@@ -312,15 +324,27 @@ private struct AboutHelpSheet: View {
                     .font(.title3.weight(.bold))
                     .foregroundStyle(AppTheme.sage)
                     .accessibilityAddTraits(.isHeader)
-                Text("This tool reconciles a two-axis gauge mismatch — the kind that single-number gauge calculators hide. When your stitch gauge matches the pattern but your row gauge is off (or vice versa), every vertical section ends up the wrong length unless you adjust the row counts.")
+                Text(
+                    "This tool reconciles a two-axis gauge mismatch — the kind that single-number gauge calculators hide. " +
+                    "When your stitch gauge matches the pattern but your row gauge is off (or vice versa), every vertical " +
+                    "section ends up the wrong length unless you adjust the row counts."
+                )
                     .font(.body)
                     .lineSpacing(4)
                     .foregroundStyle(AppTheme.ink)
-                Text("The math is deterministic: dimension correction = pattern_row / your_row. A denser swatch means fewer centimetres are needed to reach the pattern's intended row count; stitch_scale = pattern_st / your_st describes horizontal width.")
+                Text(
+                    "The math is deterministic: dimension correction = pattern_row / your_row. A denser swatch means fewer " +
+                    "centimetres are needed to reach the pattern's intended row count; stitch_scale = pattern_st / your_st " +
+                    "describes horizontal width."
+                )
                     .font(.body)
                     .lineSpacing(4)
                     .foregroundStyle(AppTheme.ink)
-                Text("Scope: This tool provides estimates based on your swatch measurements. Always test a full-size gauge swatch (washed and blocked the way you'll wash and block the finished garment) before starting your project. Numbers here are a starting point — your finished piece is the final word.")
+                Text(
+                    "Scope: This tool provides estimates based on your swatch measurements. Always test a full-size gauge " +
+                    "swatch (washed and blocked the way you'll wash and block the finished garment) before starting your " +
+                    "project. Numbers here are a starting point — your finished piece is the final word."
+                )
                     .font(.body.weight(.semibold))
                     .lineSpacing(4)
                     .foregroundStyle(AppTheme.warningText)

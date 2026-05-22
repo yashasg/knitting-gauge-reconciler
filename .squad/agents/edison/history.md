@@ -58,3 +58,10 @@
 - **Decision:** Kept idiomatic short math/loop locals (`x`, `y`, `d`, `i`) and added `// swiftlint:disable:next identifier_name` directly above each declaration instead of renaming them.
 - **Targeted verification:** `swiftlint lint --path KnittingGaugeReconciler/Components/TexturedBackground.swift KnittingGaugeReconciler/GaugeMath.swift KnittingGaugeReconciler/Components/GaugeStepperField.swift | grep "identifier_name"` returns no matches.
 - **Build verification:** Direct `xcodebuild ... build` succeeds; `bash build.sh build` still reports unrelated pre-existing strict SwiftLint errors in `ContentView.swift`, but no `identifier_name` errors remain.
+
+### 2026-05-22T03:02:54.927-07:00 — ContentView line_length fix
+
+- **Files changed:** `app/KnittingGaugeReconciler/ContentView.swift`
+- **Change:** Wrapped six long user-facing string literals in concatenated multi-line forms so the text stays identical while meeting the strict 200-character `line_length` cap.
+- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` now ends with `EXIT: 0` and no `error:` output.
+- **Decision:** Treat `bash build.sh build` as the required source of truth for frontend build verification instead of running `xcodebuild` directly.

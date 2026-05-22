@@ -302,7 +302,7 @@ private struct AdjustmentSheetView: View {
                     .accessibilityIdentifier("show-full-math")
             }
 
-            Button(role: .destructive) {
+            Button {
                 showResetConfirmation = true
             } label: {
                 Text("Reset to defaults")

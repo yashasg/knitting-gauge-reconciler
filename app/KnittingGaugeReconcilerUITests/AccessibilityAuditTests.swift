@@ -44,7 +44,7 @@ final class AccessibilityAuditTests: XCTestCase {
     /// tile. The adjacent value tile carries the spoken information, so we
     /// allow the audit to skip these specific elements.
     private static let decorativePillIdentifiers: Set<String> = [
-        "delta-pill", "drift-pill"
+        "delta-pill", "drift-pill", "per-tag"
     ]
 
     /// System bar buttons (provided via `Button("Close", ...)` etc.) carry

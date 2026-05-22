@@ -29,6 +29,17 @@ struct GaugeInputGroup<Content: View>: View {
                         .font(.caption2.weight(.bold))
                         .tracking(0.5)
                         .foregroundStyle(AppTheme.muted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .fixedSize(horizontal: false, vertical: true)
+                        // Decorative per-unit tag — the gauge values
+                        // themselves include the "/ 10 cm" suffix in their
+                        // VoiceOver labels. Hide from VoiceOver and clamp
+                        // Dynamic Type so it cannot overflow the HStack
+                        // header row at accessibility sizes.
+                        .accessibilityHidden(true)
+                        .accessibilityIdentifier("per-tag")
+                        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                 }
             }
             content()

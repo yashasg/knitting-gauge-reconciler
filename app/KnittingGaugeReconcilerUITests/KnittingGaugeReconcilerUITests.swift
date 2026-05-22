@@ -162,13 +162,16 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         waitForScrollingToSettle()
         tapElement(reset)
 
-        // Reset is destructive — a confirmation dialog must appear before
-        // any values are cleared. Confirmation dialogs (UIAlertController
-        // under the hood) don't reliably propagate accessibilityIdentifier
-        // in iOS UI tests, so match the destructive action by its label.
-        let confirmReset = app.buttons["Reset"].firstMatch
-        XCTAssertTrue(confirmReset.waitForExistence(timeout: 3),
-                      "Reset must show a destructive confirmation dialog")
+        // Reset is destructive — a confirmation alert must appear before
+        // any values are cleared. SwiftUI's .alert is rendered as a
+        // UIAlertController, so query via app.alerts to disambiguate the
+        // dialog's "Reset" button from the trigger ("Reset to defaults").
+        let alert = app.alerts.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 5),
+                      "Reset must show a destructive confirmation alert")
+        let confirmReset = alert.buttons["Reset"]
+        XCTAssertTrue(confirmReset.exists,
+                      "Confirmation alert must expose a destructive Reset button")
         tapElement(confirmReset)
 
         // After reset, cachedResult is cleared — Calculate button should be present.

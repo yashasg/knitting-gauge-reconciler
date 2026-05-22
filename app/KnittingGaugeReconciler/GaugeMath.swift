@@ -198,14 +198,28 @@ enum ResultsShareTextFormatter {
 private struct ResultsExportRowsModel {
     var sections: [ResultsExportSummary.SectionGuidance] {
         [
-            section(name: "Yoke depth", patternCm: inputs.patternYokeDepth, rowsAtYourGauge: result.yokeRowsAtYourGauge),
-            section(name: "Body length", patternCm: inputs.patternBodyLength, rowsAtYourGauge: result.bodyRowsAtYourGauge),
-            section(name: "Sleeve length", patternCm: inputs.patternSleeveLength, rowsAtYourGauge: result.sleeveRowsAtYourGauge),
+            section(
+                name: "Yoke depth",
+                patternCm: inputs.patternYokeDepth,
+                rowsAtYourGauge: result.yokeRowsAtYourGauge
+            ),
+            section(
+                name: "Body length",
+                patternCm: inputs.patternBodyLength,
+                rowsAtYourGauge: result.bodyRowsAtYourGauge
+            ),
+            section(
+                name: "Sleeve length",
+                patternCm: inputs.patternSleeveLength,
+                rowsAtYourGauge: result.sleeveRowsAtYourGauge
+            ),
             ResultsExportSummary.SectionGuidance(
                 name: "Increase-row spacing",
                 pattern: "Every \(plain(inputs.patternIncreaseSpacing)) rows",
                 adjusted: "Space every \(GaugeMath.fmtRows(result.adjustedIncreaseSpacing)) rows/rounds",
-                textLine: "• Increase-row spacing: space every \(GaugeMath.fmtRows(result.adjustedIncreaseSpacing)) rows/rounds (pattern every \(plain(inputs.patternIncreaseSpacing)) rows)"
+                textLine: "• Increase-row spacing: space every " +
+                    "\(GaugeMath.fmtRows(result.adjustedIncreaseSpacing)) rows/rounds " +
+                    "(pattern every \(plain(inputs.patternIncreaseSpacing)) rows)"
             )
         ]
     }
@@ -218,7 +232,9 @@ private struct ResultsExportRowsModel {
         self.result = result
     }
 
-    private func section(name: String, patternCm: Double, rowsAtYourGauge: Int) -> ResultsExportSummary.SectionGuidance {
+    private func section(
+        name: String, patternCm: Double, rowsAtYourGauge: Int
+    ) -> ResultsExportSummary.SectionGuidance {
         let pattern = "\(plain(patternCm)) cm"
         let adjusted = "Knit \(rowsAtYourGauge) rows"
         return ResultsExportSummary.SectionGuidance(
@@ -229,7 +245,6 @@ private struct ResultsExportRowsModel {
         )
     }
 }
-
 
 func plain(_ value: Double) -> String {
     value.rounded() == value ? String(Int(value)) : fixed(value, places: 2).trimmingTrailingZeroes()

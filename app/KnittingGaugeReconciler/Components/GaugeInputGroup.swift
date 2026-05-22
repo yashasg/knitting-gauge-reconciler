@@ -6,7 +6,7 @@ import SwiftUI
 
 struct GaugeInputGroup<Content: View>: View {
     var title: String
-    var icon: String? = nil
+    var icon: String?
     var showPerTag: Bool = false
     @ViewBuilder var content: () -> Content
 

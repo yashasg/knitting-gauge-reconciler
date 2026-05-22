@@ -183,12 +183,16 @@ private struct AdjustmentSheetView: View {
             .background(AppTheme.background.ignoresSafeArea())
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(action: { sharePayload = ShareSheetPayload(items: onShare(result)) }) {
-                        Image(systemName: "square.and.arrow.up")
-                    }
+                    Button(
+                        action: { sharePayload = ShareSheetPayload(items: onShare(result)) },
+                        label: { Image(systemName: "square.and.arrow.up") }
+                    )
                     .accessibilityIdentifier("share-results")
                     .accessibilityLabel("Share results")
-                    .accessibilityHint("Opens the share sheet with an image of the current results. Copy is available from the share sheet.")
+                    .accessibilityHint(
+                        "Opens the share sheet with an image of the current results." +
+                        " Copy is available from the share sheet."
+                    )
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Close", action: onClose)
@@ -256,16 +260,19 @@ private struct AdjustmentSheetView: View {
     @ViewBuilder
     private func actionsCard(result: GaugeMathResult) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Button(action: { showFullMath.toggle() }) {
-                HStack {
-                    Text("Show full math")
-                    Spacer()
-                    Image(systemName: showFullMath ? "chevron.up" : "chevron.down")
-                        .font(.caption.weight(.bold))
+            Button(
+                action: { showFullMath.toggle() },
+                label: {
+                    HStack {
+                        Text("Show full math")
+                        Spacer()
+                        Image(systemName: showFullMath ? "chevron.up" : "chevron.down")
+                            .font(.caption.weight(.bold))
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-            }
+            )
             .buttonStyle(.plain)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(AppTheme.sage)
@@ -295,6 +302,7 @@ private struct AdjustmentSheetView: View {
         .cardStyle()
     }
 
+    // swiftlint:disable line_length
     private func fullMathBreakdown(result: GaugeMathResult) -> String {
         """
         pattern: \(plain(inputs.patternStitches)) st x \(plain(inputs.patternRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.patternStitches / inputs.patternRows)))
@@ -309,97 +317,5 @@ private struct AdjustmentSheetView: View {
         cast-on adjust = your_st / pattern_st x patCastOn = \(plain(inputs.yourStitches))/\(plain(inputs.patternStitches)) x \(plain(inputs.patternCastOn)) = \(result.adjustedCastOn) stitches
         """
     }
-}
-
-private struct ShareSheetPayload: Identifiable {
-    let id = UUID()
-    var items: [Any]
-}
-
-// MARK: - AdjustmentRow (used only inside RequiredAdjustmentsCard)
-// Tile-based layout matching AdjustmentValuePair chrome:
-// left oatmeal tile (pattern), right sage tile (adjusted).
-
-private struct AdjustmentRow: View {
-    var name: String
-    var pattern: String
-    var adjusted: String
-    var adjustedIdentifier: String? = nil
-    var driftPill: String? = nil
-
-    var body: some View {
-        GaugeMeasurementPair(spacing: 10) {
-            patternTile
-        } trailing: {
-            adjustedTile
-        }
-    }
-
-    private var patternTile: some View {
-        VStack(alignment: .center, spacing: 4) {
-            Text(name)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(AppTheme.muted)
-                .multilineTextAlignment(.center)
-            Text(pattern)
-                .font(.system(.body, design: .monospaced).weight(.bold))
-                .foregroundStyle(AppTheme.muted)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(14)
-        .background(AppTheme.oatmeal)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(name) in pattern: \(pattern)")
-    }
-
-    private var adjustedTile: some View {
-        ZStack(alignment: .topTrailing) {
-            VStack(alignment: .center, spacing: 4) {
-                Text("Adjusted")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.white.opacity(0.85))
-                    .multilineTextAlignment(.center)
-                Text(adjusted)
-                    .font(.system(.body, design: .monospaced).weight(.bold))
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.center)
-                    .accessibilityIdentifier(adjustedIdentifier ?? "adjustment-\(name.lowercased().replacingOccurrences(of: " ", with: "-"))-value")
-            }
-            .frame(maxWidth: .infinity)
-            .padding(14)
-            .padding(.top, driftPill != nil ? 8 : 0)
-            .background(AppTheme.sage)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-            if let pill = driftPill {
-                Text(pill)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .padding(.horizontal, 8)
-                    .padding(.top, 4)
-                    .padding(.bottom, 4)
-                    .background(AppTheme.secondary)
-                    .clipShape(Capsule())
-                    .offset(x: -4, y: -8)
-                    // Decorative drift indicator — adjacent adjusted tile
-                    // carries the semantic information. Hide from VoiceOver
-                    // and clamp Dynamic Type so it doesn't outgrow the tile.
-                    .accessibilityHidden(true)
-                    .accessibilityIdentifier("drift-pill")
-                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(adjustedTileAccessibilityLabel)
-    }
-
-    private var adjustedTileAccessibilityLabel: String {
-        if let pill = driftPill {
-            return "\(name) adjusted: \(adjusted), \(pill) drift"
-        }
-        return "\(name) adjusted: \(adjusted)"
-    }
+    // swiftlint:enable line_length
 }

@@ -12,7 +12,7 @@ struct AdjustmentValuePair: View {
     var yourValue: Int
     var patternLabel: String = "Pattern Rows"
     var yourLabel: String = "You Must Knit"
-    var valueIdentifier: String? = nil
+    var valueIdentifier: String?
 
     private var delta: Int { yourValue - patternValue }
 

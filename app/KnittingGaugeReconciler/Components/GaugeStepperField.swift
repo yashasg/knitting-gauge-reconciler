@@ -42,8 +42,8 @@ struct GaugeStepperField: View {
     var identifier: String
     var range: ClosedRange<Int> = 1...99
     var hasMismatch: Bool = false
-    var mismatchLabel: String? = nil
-    var mismatchDelta: Int? = nil
+    var mismatchLabel: String?
+    var mismatchDelta: Int?
 
     @State private var showWheelPicker = false
 

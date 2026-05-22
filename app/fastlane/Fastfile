@@ -1,0 +1,139 @@
+opt_out_usage
+
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Sync certificates and provisioning profiles"
+  lane :certs do
+    match(type: "appstore", readonly: false)
+  end
+
+  desc "Build and test (CI)"
+  lane :ci do |options|
+    configuration = options[:configuration] || "Debug"
+    swiftlint(
+      mode: :lint,
+      config_file: "../.swiftlint.yml",
+      reporter: "xcode",
+      strict: false      # HIG rules are already :error in .swiftlint.yml
+    )
+    xcodebuild(
+      project: "app.xcodeproj",
+      scheme: "KnittingGaugeReconciler",
+      configuration: configuration,
+      sdk: "iphonesimulator",
+      destination: "generic/platform=iOS Simulator",
+      build: true,
+      xcargs: "CODE_SIGNING_ALLOWED=NO",
+      derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data")
+    )
+    run_tests(
+      project: "app.xcodeproj",
+      scheme: "KnittingGaugeReconciler",
+      configuration: "Debug",
+      derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data"),
+      devices: ["iPhone 17 Pro"],
+      code_coverage: true,
+      xcargs: "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 30",
+      output_files: "xcodebuild-test.log",
+      output_types: "junit",
+      output_directory: "../.build"
+    )
+    run_tests(
+      project: "app.xcodeproj",
+      scheme: "KnittingGaugeReconciler",
+      configuration: "Debug",
+      derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data"),
+      devices: ["iPhone 17 Pro"],
+      xcargs: "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 120",
+      output_files: "xcodebuild-uitest.log",
+      output_types: "junit",
+      output_directory: "../.build"
+    )
+  end
+
+  desc "Build without code signing (CI validation)"
+  lane :build do |options|
+    configuration = options[:configuration] || "Debug"
+    xcodebuild(
+      project: "app.xcodeproj",
+      scheme: "KnittingGaugeReconciler",
+      configuration: configuration,
+      sdk: "iphonesimulator",
+      destination: "generic/platform=iOS Simulator",
+      build: true,
+      xcargs: "CODE_SIGNING_ALLOWED=NO",
+      derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data")
+    )
+  end
+
+  desc "Run XCTest suite without code signing (CI)"
+  lane :test do
+    run_tests(
+      project: "app.xcodeproj",
+      scheme: "KnittingGaugeReconciler",
+      configuration: "Debug",
+      derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data"),
+      devices: ["iPhone 17 Pro"],
+      code_coverage: true,
+      xcargs: "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 30",
+      output_files: "xcodebuild-test.log",
+      output_types: "junit",
+      output_directory: "../.build"
+    )
+  end
+
+  desc "Build and upload to TestFlight. Optional: bump:patch|minor|major"
+  lane :beta do |options|
+    match(type: "appstore", readonly: true)
+    increment_version_number(bump_type: options[:bump]) if options[:bump]
+    increment_build_number(
+      build_number: latest_testflight_build_number(
+        app_identifier: "com.yashasg.knitting-guage-reconciler",
+        version: get_version_number
+      ) + 1
+    )
+    build_app(
+      project: "app.xcodeproj",
+      scheme: "KnittingGaugeReconciler",
+      export_method: "app-store"
+    )
+    upload_to_testflight(skip_waiting_for_build_processing: true)
+  end
+
+  desc "Build and submit to App Store. Optional: bump:patch|minor|major"
+  lane :release do |options|
+    match(type: "appstore", readonly: true)
+    increment_version_number(bump_type: options[:bump]) if options[:bump]
+    increment_build_number(
+      build_number: latest_testflight_build_number(
+        app_identifier: "com.yashasg.knitting-guage-reconciler",
+        version: get_version_number
+      ) + 1
+    )
+    build_app(
+      project: "app.xcodeproj",
+      scheme: "KnittingGaugeReconciler",
+      export_method: "app-store"
+    )
+    upload_to_app_store(
+      submit_for_review: false,
+      automatic_release: false
+    )
+  end
+end

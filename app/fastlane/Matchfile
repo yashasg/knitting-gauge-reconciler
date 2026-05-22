@@ -1,0 +1,6 @@
+git_url("https://gitlab.com/yashasg/fastlane_hisa.git")
+storage_mode("git")
+type("appstore")
+app_identifier(["com.yashasg.knitting-guage-reconciler"])
+username("hisa62016@gmail.com")
+readonly(true)

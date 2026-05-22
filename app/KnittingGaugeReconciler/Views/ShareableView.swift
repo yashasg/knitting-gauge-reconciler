@@ -45,6 +45,7 @@ struct ShareableView: View {
             HStack(spacing: 8) {
                 Image(systemName: "wand.and.stars")
                     .font(.caption.weight(.semibold))
+                    .accessibilityHidden(true)
                 Text("Gauge Reconciler")
                     .font(.caption.weight(.semibold))
                 Spacer()
@@ -125,7 +126,9 @@ private struct ShareableMetricCard: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .padding(.top, 6)
+                .padding(.bottom, 6)
+                .frame(minHeight: 44)
                 .background(shareMetricBackground(metric.status))
                 .clipShape(Capsule())
         }

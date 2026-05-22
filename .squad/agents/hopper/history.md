@@ -16,3 +16,30 @@
 
 - **2026-05-20T19:26:30Z:** MetricKit V1 shipped. Canonical tooling state locked: `app/KnittingGaugeReconciler.xcodeproj`, serial iOS UI testing enforced, zero SPM deps, PrivacyInfo.xcprivacy in Resources phase.
 - **2026-05-21T14:15:00Z:** Curie confirmatory test cycle: 56/56 pass, 0 warnings, ~2m57s, committed 7cbdff4.
+
+## 2026-05-22T00:37:04-07:00 — HIG Automation Wired
+
+**Task:** Wire SwiftLint HIG rules + XCUITest accessibility audit  
+**Requested by:** Yashas
+
+### What shipped
+
+**Part 1 — SwiftLint**
+- Created `.swiftlint.yml` at repo root with 5 custom HIG-targeted rules: `no_hardcoded_font_size`, `no_uppercased_in_code`, `navigation_stack_in_sheet`, `color_literal_rgb`, `missing_min_touch_target`. Enabled `accessibility_label_for_image` opt-in rule. Disabled `todo` and `trailing_comma`.
+- Added lint step to `app/build.sh` (runs before every `run_xcodebuild` call). Gracefully skips if swiftlint not installed.
+- Updated `docs/swift_coding_standards.md` §3 to document SwiftLint as official tooling, added §3.1 (pre-commit hook setup) and §3.2 (HIG rule table).
+
+**Part 2 — Accessibility Audit Tests**
+- Created `app/KnittingGaugeReconcilerUITests/AccessibilityAuditTests.swift` with 3 tests: `testMainScreenAccessibility`, `testAdjustmentSheetAccessibility`, `testAboutSheetAccessibility` — each calls `performAccessibilityAudit()`.
+- Patched `app/app.xcodeproj/project.pbxproj` to register `AccessibilityAuditTests.swift` in the `KnittingGaugeReconcilerUITests` target (new IDs `000000000000000000000015` / `000000000000000000000115`).
+
+**Part 3 — Build verified** — build passed post-changes.
+
+### Run the audit in isolation
+```bash
+xcodebuild test \
+  -scheme KnittingGaugeReconciler \
+  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -only-testing KnittingGaugeReconcilerUITests/AccessibilityAuditTests \
+  2>&1 | grep -E "(PASS|FAIL|warning|error|audit)"
+```

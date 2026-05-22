@@ -17,6 +17,7 @@ struct GaugeInputGroup<Content: View>: View {
                     Image(systemName: icon)
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(AppTheme.secondary)
+                        .accessibilityHidden(true)
                 }
                 Text(title)
                     .font(.title2.weight(.bold))

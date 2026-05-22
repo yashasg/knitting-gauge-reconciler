@@ -7,6 +7,10 @@ import os.signpost
 struct ContentView: View {
     private static let defaults = GaugeTextDefaults()
 
+    // MARK: - Adaptive layout
+
+    @ScaledMetric(relativeTo: .body) private var cardSpacing: CGFloat = 12
+
     // MARK: - State
 
     @State private var patternStitches = initialText("KGR_PS", defaultValue: "32")
@@ -60,7 +64,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: cardSpacing) {
                     PatternGaugeCard(patternStitches: $patternStitches, patternRows: $patternRows)
                     YourGaugeCard(
                         yourStitches: $yourStitches,
@@ -85,7 +89,8 @@ struct ContentView: View {
                     )
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 24)
+                .padding(.top, 8)
+                .padding(.bottom, 16)
             }
             .navigationTitle("Gauge Reconciler")
             .background(
@@ -289,7 +294,7 @@ private struct VerdictHelpSheet: View {
                     .lineSpacing(4)
                     .foregroundStyle(AppTheme.ink)
             }
-            .padding(24)
+            .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(AppTheme.background.ignoresSafeArea())
@@ -319,7 +324,7 @@ private struct AboutHelpSheet: View {
                     .font(.body.weight(.semibold))
                     .lineSpacing(4)
                     .foregroundStyle(AppTheme.warningText)
-                    .padding(14)
+                    .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(AppTheme.warningBackground)
                     .overlay(alignment: .leading) {
@@ -335,7 +340,7 @@ private struct AboutHelpSheet: View {
                     .foregroundStyle(AppTheme.muted)
                     .accessibilityIdentifier("about-non-affiliation")
             }
-            .padding(24)
+            .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(AppTheme.background.ignoresSafeArea())

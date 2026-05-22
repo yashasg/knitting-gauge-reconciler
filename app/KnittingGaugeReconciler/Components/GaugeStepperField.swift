@@ -100,19 +100,21 @@ struct GaugeStepperField: View {
                 Rectangle()
                     .fill(AppTheme.outline)
                     .frame(width: 1)
-                    .padding(.vertical, 8)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
+                    .frame(minHeight: 44)
 
                 Button {
                     showWheelPicker = true
                 } label: {
                     Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(AppTheme.muted)
                         .frame(width: 44, height: 44)
                         .overlay(alignment: .topTrailing) {
                             if hasMismatch {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.system(size: 12, weight: .bold))
+                                    .font(.caption2.weight(.bold))
                                     .foregroundStyle(AppTheme.mismatchText)
                                     .padding(.top, 8)
                                     .padding(.trailing, 6)
@@ -218,21 +220,22 @@ private struct GaugeStepperWheelSheet: View {
                 .font(.headline)
                 .foregroundStyle(AppTheme.ink)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
+                .padding(.horizontal)
+                .padding(.top)
                 .padding(.bottom, mismatchLabel == nil ? 4 : 12)
 
             if let mismatchLabel {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(AppTheme.mismatchText)
+                        .accessibilityHidden(true)
                     Text(mismatchLabel)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.mismatchText)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier("\(identifier)-warning-summary")
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal)
                 .padding(.bottom, 8)
             }
 
@@ -252,8 +255,8 @@ private struct GaugeStepperWheelSheet: View {
             .font(.body.weight(.semibold))
             .foregroundStyle(AppTheme.sage)
             .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.horizontal)
+            .padding(.vertical)
             .accessibilityIdentifier("\(identifier)-wheel-done")
         }
         .background(AppTheme.card)

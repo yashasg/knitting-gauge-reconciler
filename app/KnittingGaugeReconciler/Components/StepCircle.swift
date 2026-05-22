@@ -5,6 +5,8 @@ import SwiftUI
 struct StepCircle: View {
     var number: Int
 
+    @ScaledMetric(relativeTo: .caption) private var size: CGFloat = 24
+
     var body: some View {
         ZStack {
             Circle()
@@ -13,7 +15,7 @@ struct StepCircle: View {
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.white)
         }
-        .frame(width: 24, height: 24)
+        .frame(width: size, height: size)
         .accessibilityHidden(true)
     }
 }

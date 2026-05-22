@@ -1,0 +1,49 @@
+included:
+  - app/KnittingGaugeReconciler
+
+excluded:
+  - app/KnittingGaugeReconcilerTests
+  - app/KnittingGaugeReconcilerUITests
+
+# Opt-in rules relevant to HIG compliance
+opt_in_rules:
+  - accessibility_label_for_image
+  - accessibility_trait_for_button
+
+# Disable noisy rules that don't apply
+disabled_rules:
+  - todo
+  - trailing_comma
+
+# Custom rules — HIG compliance
+custom_rules:
+  no_hardcoded_font_size:
+    name: "Hardcoded font size"
+    message: "Use semantic font styles (.headline, .body, etc.) instead of .font(.system(size:)). Hardcoded sizes don't scale with Dynamic Type. (HIG §Typography)"
+    regex: '\.font\(\.system\(size:'
+    severity: error
+
+  no_uppercased_in_code:
+    name: "String .uppercased() in SwiftUI Text"
+    message: "Use .textCase(.uppercase) modifier instead of .uppercased() — screen readers interpret pre-uppercased strings as acronyms. (HIG §Accessibility)"
+    regex: 'Text\([^)]*\.uppercased\(\)'
+    severity: error
+
+  navigation_stack_in_sheet:
+    name: "NavigationStack inside sheet"
+    message: "Avoid wrapping sheet content in NavigationStack unless actual navigation occurs. Competing gestures can suppress swipe-to-dismiss. (HIG §Navigation)"
+    regex: '\.sheet\b[^}]*NavigationStack'
+    multiline_matching: true
+    severity: error
+
+  color_literal_rgb:
+    name: "Hardcoded RGB color"
+    message: "Use adaptive Color Assets (.xcassets) for structural colors so dark mode works. Fixed Color(red:green:blue:) values break in dark mode. (HIG §Color)"
+    regex: 'Color\(red:\s*\d+\.\d+,\s*green:\s*\d+\.\d+,\s*blue:\s*\d+\.\d+'
+    severity: error
+
+  missing_min_touch_target:
+    name: "Potential touch target below 44pt"
+    message: "Buttons with .padding(.vertical, N) where N < 12 may fall below the 44pt minimum touch target. Use .frame(minHeight: 44) as a backstop. (HIG §Buttons)"
+    regex: '\.padding\(\.vertical,\s*([0-9]|1[01])\b'
+    severity: error

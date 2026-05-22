@@ -10,7 +10,8 @@ struct SectionTitle: View {
     }
 
     var body: some View {
-        Text(title.uppercased())
+        Text(title)
+            .textCase(.uppercase)
             .font(.caption.weight(.bold))
             .foregroundStyle(AppTheme.sage)
             .accessibilityAddTraits(.isHeader)

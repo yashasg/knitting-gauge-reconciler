@@ -157,10 +157,35 @@ must not log at all.
 
 - `xcodebuild` with `-quiet -warnings-as-errors` invoked by `app/build.sh`.
 - `xcpretty` for human-readable test output (already wired by `build.sh`).
-- No SwiftFormat / SwiftLint config in-repo as of this writing. The
-  `-warnings-as-errors` plus this guide are the enforcement surface. If we
-  later adopt SwiftFormat, its config must encode the rules in this
-  document and be applied as a pre-commit hook, not a CI-only check.
+- **SwiftLint** is configured at `.swiftlint.yml` (repo root) and runs as part of `app/build.sh` before every xcodebuild invocation. It must also be wired as a pre-commit hook — see §3.1.
+
+### 3.1 SwiftLint and pre-commit hook
+
+`brew install swiftlint` (0.63.2+). The config at `.swiftlint.yml` encodes all rules below. To install as a pre-commit hook:
+
+```bash
+cat > .git/hooks/pre-commit << 'EOF'
+#!/usr/bin/env bash
+if command -v swiftlint &>/dev/null; then
+  swiftlint lint --config .swiftlint.yml --reporter xcode
+fi
+EOF
+chmod +x .git/hooks/pre-commit
+```
+
+### 3.2 HIG compliance rules (SwiftLint custom_rules)
+
+These rules catch Human Interface Guideline violations before review. All are encoded in `.swiftlint.yml` and are authoritative — do not suppress without an inline comment citing the HIG section:
+
+| Rule ID | Severity | What it catches |
+|---|---|---|
+| `no_hardcoded_font_size` | error | `.font(.system(size:))` — use semantic styles for Dynamic Type (HIG §Typography) |
+| `no_uppercased_in_code` | error | `Text(…).uppercased()` — use `.textCase(.uppercase)` so VoiceOver doesn't read as acronym (HIG §Accessibility) |
+| `navigation_stack_in_sheet` | error | `NavigationStack` inside `.sheet` — competing gestures suppress swipe-to-dismiss (HIG §Navigation) |
+| `color_literal_rgb` | error | `Color(red:green:blue:)` — use Color Assets for dark mode (HIG §Color) |
+| `missing_min_touch_target` | error | `.padding(.vertical, N)` where N < 12 — may drop below 44 pt hit target (HIG §Buttons) |
+
+Also enabled: `accessibility_label_for_image` (opt-in built-in rule).
 
 ## 4. Resolution rules
 

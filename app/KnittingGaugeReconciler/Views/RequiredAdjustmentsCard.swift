@@ -29,13 +29,16 @@ struct RequiredAdjustmentsCard: View {
             HStack(spacing: 8) {
                 Image(systemName: "wand.and.stars")
                     .font(.footnote.weight(.semibold))
+                    .accessibilityHidden(true)
                 Text("View Adjustments")
                     .font(.subheadline.weight(.semibold))
             }
             .foregroundStyle(AppTheme.cream)
             .frame(minWidth: 176)
             .padding(.horizontal, 18)
-            .padding(.vertical, 8)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
+            .frame(minHeight: 44)
             .background(AppTheme.sage)
             .clipShape(Capsule())
         }
@@ -152,9 +155,9 @@ private struct AdjustmentSheetView: View {
                     statusCard
                     actionsCard(result: result)
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal)
                 .padding(.top, 8)
-                .padding(.bottom, 24)
+                .padding(.bottom)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .navigationTitle("Adjustments")
@@ -188,6 +191,7 @@ private struct AdjustmentSheetView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(statusSymbolColor)
                     .padding(.top, 1)
+                    .accessibilityHidden(true)
 
                 Text(keyActionText)
                     .font(.subheadline.weight(.semibold))
@@ -353,7 +357,9 @@ private struct AdjustmentRow: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.top, 4)
+                    .padding(.bottom, 4)
+                    .frame(minHeight: 44)
                     .background(AppTheme.secondary)
                     .clipShape(Capsule())
                     .offset(x: -4, y: -8)

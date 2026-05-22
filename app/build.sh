@@ -151,6 +151,14 @@ run_xcodebuild() {
   set -e
 }
 
+# HIG compliance lint
+if command -v swiftlint &>/dev/null; then
+  echo "→ SwiftLint (HIG rules)..."
+  swiftlint lint --config "$(dirname "$PROJECT_DIR")/.swiftlint.yml" --reporter xcode
+else
+  echo "⚠ SwiftLint not installed — skipping HIG lint (brew install swiftlint)"
+fi
+
 run_xcodebuild
 
 SIMULATOR_BUSY_LAUNCH_FAILURE='Application failed preflight checks|reason: Busy|Application launch for .* did not return a process handle nor launch error|NSPOSIXErrorDomain Code=3 "No such process"|Invalid device state|Mach error -308|Channel disconnected'

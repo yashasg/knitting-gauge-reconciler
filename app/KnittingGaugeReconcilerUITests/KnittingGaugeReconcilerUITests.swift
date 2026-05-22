@@ -210,6 +210,61 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "re-swatching")).element.waitForExistence(timeout: 2))
     }
 
+    /// Issue #25: VoiceOver users must be able to dismiss help sheets without
+    /// the drag-to-dismiss gesture. Both help sheets expose a Close button
+    /// with a ≥44pt hit target.
+    func testHelpSheetsExposeAccessibleCloseButton() {
+        let app = XCUIApplication()
+        useDefaultDynamicType(app)
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
+            "KGR_YS": "32",
+            "KGR_YR": "24",
+            "KGR_SHOW_ABOUT_HELP": "1",
+        ]) { _, new in new }
+        app.launch()
+
+        let aboutSheet = app.scrollViews["about-help-sheet"].firstMatch
+        XCTAssertTrue(aboutSheet.waitForExistence(timeout: 3))
+
+        let aboutClose = app.buttons["about-help-close"].firstMatch
+        XCTAssertTrue(aboutClose.waitForExistence(timeout: 2), "About sheet must expose a Close button (#25)")
+        XCTAssertTrue(aboutClose.isHittable, "About sheet Close button must be hittable (#38)")
+        // HIG 44×44pt hit region is enforced source-side via
+        // .frame(width:44, height:44).contentShape(Rectangle()) on the Button.
+        // XCUITest on iOS 26 reports the SF Symbol's visible glyph bounds
+        // (~42×42pt) regardless of the wrapping layout frame, so we cannot
+        // assert the hit-region size from .frame here. Functional dismissal
+        // (below) and the AccessibilityAuditTests hit-region audit
+        // (with "Close" exemption via systemToolbarLabels) cover the rest.
+        tapElement(aboutClose)
+        XCTAssertFalse(app.scrollViews["about-help-sheet"].waitForExistence(timeout: 2),
+                       "Tapping Close must dismiss the About sheet")
+    }
+
+    func testVerdictHelpSheetExposesAccessibleCloseButton() {
+        let app = XCUIApplication()
+        useDefaultDynamicType(app)
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
+            "KGR_YS": "36",
+            "KGR_YR": "32",
+            "KGR_SHOW_VERDICT_HELP": "1",
+        ]) { _, new in new }
+        app.launch()
+
+        let verdictSheet = app.scrollViews["verdict-help-sheet"].firstMatch
+        XCTAssertTrue(verdictSheet.waitForExistence(timeout: 3))
+
+        let verdictClose = app.buttons["verdict-help-close"].firstMatch
+        XCTAssertTrue(verdictClose.waitForExistence(timeout: 2), "Verdict sheet must expose a Close button (#25)")
+        XCTAssertTrue(verdictClose.isHittable, "Verdict sheet Close button must be hittable")
+        // See testHelpSheetsExposeAccessibleCloseButton for rationale: HIG hit
+        // region is enforced source-side; XCUITest reports glyph bounds, not
+        // the layout/hit-test frame, so we rely on functional dismissal.
+        tapElement(verdictClose)
+        XCTAssertFalse(app.scrollViews["verdict-help-sheet"].waitForExistence(timeout: 2),
+                       "Tapping Close must dismiss the Verdict sheet")
+    }
+
     func testShareResultsIsSingleAccessibleAffordance() {
         let app = XCUIApplication()
         useDefaultDynamicType(app)

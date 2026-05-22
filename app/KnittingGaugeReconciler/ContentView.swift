@@ -314,96 +314,136 @@ private struct VerdictHelpSheet: View {
     var title: String
     var explanation: String
 
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text(title)
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(AppTheme.sage)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
-                Text(explanation)
-                    .font(.body)
-                    .lineSpacing(4)
-                    .foregroundStyle(AppTheme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
+        VStack(spacing: 0) {
+            HelpSheetHeader(closeIdentifier: "verdict-help-close") { dismiss() }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(title)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(AppTheme.sage)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(explanation)
+                        .font(.body)
+                        .lineSpacing(4)
+                        .foregroundStyle(AppTheme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("verdict-help-sheet")
         }
         .background(AppTheme.background.ignoresSafeArea())
-        .accessibilityIdentifier("verdict-help-sheet")
     }
 }
 
 // MARK: - AboutHelpSheet
 
 private struct AboutHelpSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("About this calculator")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(AppTheme.sage)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
-                Text(
-                    "This tool reconciles a two-axis gauge mismatch, " +
-                    "the kind that single-number gauge calculators hide. " +
-                    "When your stitch gauge matches the pattern " +
-                    "but your row gauge is off (or vice versa), every vertical " +
-                    "section ends up the wrong length unless you adjust the row counts."
-                )
-                    .font(.body)
-                    .lineSpacing(4)
-                    .foregroundStyle(AppTheme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(
-                    "The math is deterministic: dimension correction = pattern_row / your_row. " +
-                    "A denser swatch means fewer " +
-                    "centimetres are needed to reach the pattern's intended row count; " +
-                    "stitch_scale = pattern_st / your_st " +
-                    "describes horizontal width."
-                )
-                    .font(.body)
-                    .lineSpacing(4)
-                    .foregroundStyle(AppTheme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(
-                    "Scope: This tool provides estimates based on your swatch measurements. " +
-                    "Always test a full-size gauge " +
-                    "swatch (washed and blocked the way you'll wash and block the finished garment) " +
-                    "before starting your " +
-                    "project. Numbers here are a starting point; your finished piece is the final word."
-                )
-                    .font(.body.weight(.semibold))
-                    .lineSpacing(4)
-                    .foregroundStyle(AppTheme.warningText)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(AppTheme.warningBackground)
-                    .overlay(alignment: .leading) {
-                        Rectangle()
-                            .frame(width: 3)
-                            .foregroundStyle(AppTheme.warningAccent)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    .accessibilityIdentifier("about-scope")
-                Text(
-                    "Not affiliated with Ravelry, Knit Companion, or any pattern designer." +
-                    " Gauge math is conventional knitting arithmetic from open craft literature."
-                )
-                    .font(.footnote.italic())
-                    .lineSpacing(3)
-                    .foregroundStyle(AppTheme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("about-non-affiliation")
+        VStack(spacing: 0) {
+            HelpSheetHeader(closeIdentifier: "about-help-close") { dismiss() }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("About this calculator")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(AppTheme.sage)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(
+                        "This tool reconciles a two-axis gauge mismatch, " +
+                        "the kind that single-number gauge calculators hide. " +
+                        "When your stitch gauge matches the pattern " +
+                        "but your row gauge is off (or vice versa), every vertical " +
+                        "section ends up the wrong length unless you adjust the row counts."
+                    )
+                        .font(.body)
+                        .lineSpacing(4)
+                        .foregroundStyle(AppTheme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(
+                        "The math is deterministic: dimension correction = pattern_row / your_row. " +
+                        "A denser swatch means fewer " +
+                        "centimetres are needed to reach the pattern's intended row count; " +
+                        "stitch_scale = pattern_st / your_st " +
+                        "describes horizontal width."
+                    )
+                        .font(.body)
+                        .lineSpacing(4)
+                        .foregroundStyle(AppTheme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(
+                        "Scope: This tool provides estimates based on your swatch measurements. " +
+                        "Always test a full-size gauge " +
+                        "swatch (washed and blocked the way you'll wash and block the finished garment) " +
+                        "before starting your " +
+                        "project. Numbers here are a starting point; your finished piece is the final word."
+                    )
+                        .font(.body.weight(.semibold))
+                        .lineSpacing(4)
+                        .foregroundStyle(AppTheme.warningText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(AppTheme.warningBackground)
+                        .overlay(alignment: .leading) {
+                            Rectangle()
+                                .frame(width: 3)
+                                .foregroundStyle(AppTheme.warningAccent)
+                                .accessibilityHidden(true)
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .accessibilityIdentifier("about-scope")
+                    Text(
+                        "Not affiliated with Ravelry, Knit Companion, or any pattern designer." +
+                        " Gauge math is conventional knitting arithmetic from open craft literature."
+                    )
+                        .font(.footnote.italic())
+                        .lineSpacing(3)
+                        .foregroundStyle(AppTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("about-non-affiliation")
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("about-help-sheet")
         }
         .background(AppTheme.background.ignoresSafeArea())
-        .accessibilityIdentifier("about-help-sheet")
+    }
+}
+
+// MARK: - HelpSheetHeader
+
+/// Custom drag-handle-friendly header for help sheets. Avoids the
+/// NavigationStack-in-sheet anti-pattern (#24) while providing a 44×44pt
+/// trailing Close button (#25) so VoiceOver users can dismiss the sheet
+/// without relying on the drag indicator.
+private struct HelpSheetHeader: View {
+    let closeIdentifier: String
+    let onClose: () -> Void
+
+    var body: some View {
+        HStack {
+            Spacer()
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .imageScale(.medium)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(AppTheme.sage)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Close")
+            .accessibilityIdentifier(closeIdentifier)
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 4)
     }
 }

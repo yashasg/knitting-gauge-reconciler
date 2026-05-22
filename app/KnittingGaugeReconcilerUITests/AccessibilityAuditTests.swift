@@ -101,6 +101,17 @@ final class AccessibilityAuditTests: XCTestCase {
            (identifier.isEmpty && frame == .zero && label.isEmpty) {
             return true
         }
+        // Off-screen elements (frame.x or frame.y negative beyond the screen,
+        // or positioned outside the application's bounds) cannot be perceived
+        // or interacted with by users. The iOS 26 audit infrastructure walks
+        // the entire view tree including off-screen subviews — flagging
+        // contrast/dynamic-type/hit-region issues on these is a false
+        // positive. Filter any element whose origin is well outside the
+        // application's visible window.
+        let appFrame = XCUIApplication().frame
+        if frame != .zero && !appFrame.intersects(frame) {
+            return true
+        }
         // System toolbar buttons (NavigationStack `Close`, share, help)
         // use Apple's default styling and sizing; HIG carves out an explicit
         // exception for system bars. Audit contrast/hit-region complaints

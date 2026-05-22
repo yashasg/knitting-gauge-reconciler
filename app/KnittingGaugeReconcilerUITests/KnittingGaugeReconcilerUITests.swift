@@ -45,8 +45,8 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             ]) { _, new in new }
             app.launch()
 
-            XCTAssertTrue(app.buttons["your-stitches"].waitForExistence(timeout: 5))
-            XCTAssertTrue(app.buttons["your-rows"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.otherElements["your-stitches"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.otherElements["your-rows"].waitForExistence(timeout: 5))
 
             let calculateBtn = app.buttons["calculate-button"]
             XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
@@ -91,7 +91,14 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         }
     }
 
-    func testStepperDecrementsAndIncrements() {
+    func testStepperFieldOpensWheelAndKeyboard() {
+        // The user-facing stepper has two affordances:
+        //   1) Tap the value/text area → numeric keyboard opens (direct entry).
+        //   2) Tap the chevron (⇅) → wheel picker sheet opens.
+        // The wheel sheet's Done button commits the picked value back to the
+        // field. This test exercises both paths. The legacy 8pt-tall ± button
+        // strip has been removed; the previous off-by-one assertions were
+        // testing a UI-test scaffold, not a user-facing affordance.
         let app = XCUIApplication()
         useDefaultDynamicType(app)
         app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
@@ -100,27 +107,31 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         ]) { _, new in new }
         app.launch()
 
-        let plusButton = app.buttons["your-stitches"].firstMatch
-        XCTAssertTrue(plusButton.waitForExistence(timeout: 3))
-        let minusButton = app.buttons["your-stitches-minus"].firstMatch
-        XCTAssertTrue(minusButton.waitForExistence(timeout: 3))
         let valueField = app.textFields["your-stitches-field"].firstMatch
         XCTAssertTrue(valueField.waitForExistence(timeout: 3))
-
-        scrollToElement(plusButton, in: app, requireHittable: true)
-        tapElement(plusButton)
-        waitUntil(timeout: 2) { self.numericFieldValue(valueField) == 21 }
-        XCTAssertEqual(numericFieldValue(valueField), 21, "Plus button should increment from 20 to 21")
-
-        tapElement(minusButton)
-        waitUntil(timeout: 2) { self.numericFieldValue(valueField) == 20 }
-        XCTAssertEqual(numericFieldValue(valueField), 20, "Minus button should decrement from 21 to 20")
+        XCTAssertEqual(numericFieldValue(valueField), 20, "Field should reflect launch env KGR_YS=20")
 
         // Tapping the value field opens the keyboard.
-        dismissKeyboard(in: app)
+        scrollToElement(valueField, in: app, requireHittable: true)
         tapElement(valueField)
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "Tapping the value field should open the keyboard")
+        XCTAssertTrue(
+            app.keyboards.firstMatch.waitForExistence(timeout: 3),
+            "Tapping the value field should open the keyboard"
+        )
         dismissKeyboard(in: app)
+
+        // Tapping the chevron opens the wheel picker sheet; Done commits.
+        let chevron = app.buttons["your-stitches-chevron"].firstMatch
+        XCTAssertTrue(chevron.waitForExistence(timeout: 3))
+        scrollToElement(chevron, in: app, requireHittable: true)
+        tapElement(chevron)
+
+        let wheelDone = app.buttons["your-stitches-wheel-done"].firstMatch
+        XCTAssertTrue(wheelDone.waitForExistence(timeout: 3), "Wheel picker sheet should open")
+        tapElement(wheelDone)
+
+        waitUntil(timeout: 2) { self.numericFieldValue(valueField) != nil }
+        XCTAssertNotNil(numericFieldValue(valueField), "Field should expose a numeric value after wheel commit")
     }
 
     func testPrototypeParityControlsAreAvailable() {
@@ -240,15 +251,14 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         app.launch()
 
         // Gauge input fields must be side-by-side (not stacked) on a compact phone width.
-        // Pattern gauge fields: identifier lives on the + button of each stepper.
-        let patternStitches = app.buttons["pattern-stitches"]
-        let patternRows = app.buttons["pattern-rows"]
+        let patternStitches = app.otherElements["pattern-stitches"]
+        let patternRows = app.otherElements["pattern-rows"]
         XCTAssertTrue(patternStitches.waitForExistence(timeout: 2))
         XCTAssertTrue(patternRows.exists)
         assertSideBySide(patternStitches, patternRows)
 
-        let yourStitches = app.buttons["your-stitches"]
-        let yourRows = app.buttons["your-rows"]
+        let yourStitches = app.otherElements["your-stitches"]
+        let yourRows = app.otherElements["your-rows"]
         XCTAssertTrue(yourStitches.exists)
         XCTAssertTrue(yourRows.exists)
         assertSideBySide(yourStitches, yourRows)
@@ -283,14 +293,14 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         ]) { _, new in new }
         app.launch()
 
-        let patternStitches = app.buttons["pattern-stitches"]
-        let patternRows = app.buttons["pattern-rows"]
+        let patternStitches = app.otherElements["pattern-stitches"]
+        let patternRows = app.otherElements["pattern-rows"]
         XCTAssertTrue(patternStitches.waitForExistence(timeout: 2))
         XCTAssertTrue(patternRows.exists)
         assertStackedBelow(patternRows, patternStitches)
 
-        let yourStitches = app.buttons["your-stitches"]
-        let yourRows = app.buttons["your-rows"]
+        let yourStitches = app.otherElements["your-stitches"]
+        let yourRows = app.otherElements["your-rows"]
         XCTAssertTrue(yourStitches.exists)
         XCTAssertTrue(yourRows.exists)
         assertStackedBelow(yourRows, yourStitches)
@@ -348,34 +358,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
 
         tapElement(app.buttons["your-rows-wheel-done"])
         app.terminate()
-    }
-
-    /// Adjust a GaugeStepperField to a target integer value by tapping + or − repeatedly.
-    /// Reads the current value from the bound text field to compute the required delta.
-    private func setStepperValue(
-        identifier: String,
-        to targetValue: String,
-        in app: XCUIApplication
-    ) {
-        guard let target = Int(targetValue) else { return }
-
-        let field = app.textFields["\(identifier)-field"].firstMatch
-        guard field.waitForExistence(timeout: 3) else {
-            XCTFail("Stepper field '\(identifier)-field' not found")
-            return
-        }
-        scrollToElement(field, in: app)
-        let current = numericFieldValue(field) ?? 0
-        let delta = target - current
-        guard delta != 0 else { return }
-
-        let buttonId = delta > 0 ? identifier : "\(identifier)-minus"
-        let button = app.buttons[buttonId].firstMatch
-        scrollToElement(button, in: app, requireHittable: true)
-        for _ in 0..<abs(delta) {
-            tapElement(button)
-        }
-        waitForScrollingToSettle()
     }
 
     private func setNumericField(

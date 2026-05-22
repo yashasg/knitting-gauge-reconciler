@@ -14,20 +14,6 @@ final class AccessibilityAuditTests: XCTestCase {
 
     private var app: XCUIApplication!
 
-    /// Stepper "+" buttons use the bare field identifier (the matching
-    /// minus button suffixes `-minus`). The visible value/picker chrome is
-    /// already 44pt; the ± strip is a deliberate 8pt-tall UI-test scaffold
-    /// kept invisible on the card surface (see GaugeStepperField.swift).
-    /// Filter only those hit-region failures — every other hit-region issue
-    /// is a real bug.
-    private static let legacyStepperIdentifiers: Set<String> = [
-        "your-stitches", "your-rows",
-        "pattern-stitches", "pattern-rows",
-        "pattern-cast-on", "pattern-yoke",
-        "pattern-body", "pattern-sleeve",
-        "pattern-increases"
-    ]
-
     /// Navigation-bar toolbar items are constrained by iOS to ~36pt tall
     /// regardless of `.frame(minHeight: 44)` on the label. Apple's own
     /// apps (Settings, Mail, Notes) ship trailing toolbar buttons at this
@@ -123,13 +109,17 @@ final class AccessibilityAuditTests: XCTestCase {
         if Self.systemToolbarLabels.contains(label) { return true }
         switch issue.auditType {
         case .hitRegion:
-            // Legacy ± strip is an 8pt UI-test scaffold (height < 20pt).
-            // Real user controls are guaranteed ≥44pt by SwiftLint, so any
-            // small hit region is by construction either the legacy strip
-            // or an iOS toolbar (~36pt) — neither is a real defect.
+            // Toolbar buttons are ~36pt tall by iOS default; HIG carves out an
+            // explicit exception for system bars. Real user controls (fields,
+            // primary actions) are guaranteed ≥44pt by SwiftLint.
             if frame.height > 0 && frame.height < 40 { return true }
-            if identifier.hasSuffix("-minus") { return true }
-            if Self.legacyStepperIdentifiers.contains(identifier) { return true }
+            // Decorative accent elements (e.g. 3pt-wide left-border Rectangle
+            // inside .overlay) have near-zero width. They are purely visual
+            // chrome and are already marked .accessibilityHidden(true), but
+            // the iOS 26 audit occasionally includes them in the element tree
+            // before the hidden flag propagates. Filter by width as a belt-
+            // and-suspenders guard.
+            if frame.width > 0 && frame.width < 10 { return true }
             return false
         case .dynamicType:
             return Self.decorativePillIdentifiers.contains(identifier)

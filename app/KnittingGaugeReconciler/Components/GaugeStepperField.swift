@@ -5,12 +5,6 @@ import SwiftUI
 // Tap the value/text area → numeric keyboard opens (direct entry).
 // Tap the chevron (⇅) → wheel picker sheet opens.
 // Unit suffix intentionally omitted — labels above each field communicate units.
-//
-// Backward-compat note: the legacy +/- button accessibility identifiers
-// (`{identifier}` and `{identifier}-minus`) are preserved as an 8pt-tall
-// opaque-but-invisible strip below the visual container so existing UI tests
-// continue to pass. Color.clear cannot be used — UIKit skips hit-testing on
-// zero-alpha views; the strip uses Rectangle().fill(AppTheme.card) instead.
 
 struct DeltaPillBadge: View {
     let text: String
@@ -173,33 +167,12 @@ struct GaugeStepperField: View {
                         lineWidth: 1.5
                     )
             )
-
-            // ── Legacy ± strip (8pt tall, visually invisible on white card) ───────
-            // UI tests rely on `{identifier}` (increment) and `{identifier}-minus`
-            // (decrement) button identifiers. These opaque-white buttons sit just
-            // below the visual field — always on-screen when the field is visible.
-            HStack(spacing: 0) {
-                Button {
-                    text = "\(max(range.lowerBound, currentValue - 1))"
-                } label: {
-                    Rectangle().fill(AppTheme.card)
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-                .accessibilityLabel("Decrease \(title)")
-                .accessibilityIdentifier("\(identifier)-minus")
-
-                Button {
-                    text = "\(min(range.upperBound, currentValue + 1))"
-                } label: {
-                    Rectangle().fill(AppTheme.card)
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-                .accessibilityLabel("Increase \(title)")
-                .accessibilityIdentifier(identifier)
-            }
-            .frame(height: 8)
+            // Expose the entire field container as a single accessibility node
+            // so UI tests can locate the field by its bare identifier
+            // (`app.otherElements[identifier]`). The visible TextField + chevron
+            // retain their own child identifiers for tap-targeted interaction.
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(identifier)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .sheet(isPresented: $showWheelPicker) {

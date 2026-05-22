@@ -36,45 +36,34 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     ]
 
     func testAllJacquardScenariosAreVisibleInUI() {
-        let app = XCUIApplication()
-        useDefaultDynamicType(app)
-        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
-            "KGR_YS": scenarios[0].yourStitches,
-            "KGR_YR": scenarios[0].yourRows,
-        ]) { _, new in new }
-        app.launch()
+        for scenario in scenarios {
+            let app = XCUIApplication()
+            useDefaultDynamicType(app)
+            app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
+                "KGR_YS": scenario.yourStitches,
+                "KGR_YR": scenario.yourRows,
+            ]) { _, new in new }
+            app.launch()
 
-        // Verify stepper + buttons exist (identifier lives on the + button).
-        XCTAssertTrue(app.buttons["your-stitches"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["your-rows"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["your-stitches"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["your-rows"].waitForExistence(timeout: 5))
 
-        // Calculate button must be visible before any results exist.
-        let calculateBtn = app.buttons["calculate-button"]
-        XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
+            let calculateBtn = app.buttons["calculate-button"]
+            XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
+            scrollToElement(calculateBtn, in: app, requireHittable: true)
+            tapElement(calculateBtn)
 
-        // Tap Calculate to surface the first scenario's results.
-        scrollToElement(calculateBtn, in: app, requireHittable: true)
-        tapElement(calculateBtn)
+            let closeButton = app.buttons["Close"].firstMatch
+            XCTAssertTrue(closeButton.waitForExistence(timeout: 3), scenario.name)
 
-        let castOnElement = app.staticTexts["cast-on-result"]
-        XCTAssertTrue(castOnElement.waitForExistence(timeout: 5))
-
-        for (index, scenario) in scenarios.enumerated() {
-            if index > 0 {
-                setStepperValue(identifier: "your-stitches", to: scenario.yourStitches, in: app)
-                setStepperValue(identifier: "your-rows", to: scenario.yourRows, in: app)
-                // Tap Recalculate to refresh results for the new inputs.
-                scrollToElement(calculateBtn, in: app, requireHittable: true)
-                tapElement(calculateBtn)
-                _ = castOnElement.waitForExistence(timeout: 5)
-            }
+            let castOnElement = app.staticTexts["cast-on-result"]
+            scrollToElement(castOnElement, in: app)
+            XCTAssertTrue(castOnElement.waitForExistence(timeout: 5), scenario.name)
 
             let expectedCastOnLabel = "Cast on \(scenario.castOn)"
             waitUntil(timeout: 5) { castOnElement.label == expectedCastOnLabel }
-
             XCTAssertEqual(castOnElement.label, expectedCastOnLabel, scenario.name)
 
-            // Adjusted body and yoke row counts appear in AdjustmentValuePair right blocks.
             scrollToElement(app.staticTexts[scenario.body], in: app)
             XCTAssertTrue(
                 app.staticTexts[scenario.body].exists,
@@ -89,6 +78,7 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
                 app.staticTexts[scenario.increases].exists,
                 "\(scenario.name) increases=\(scenario.increases)"
             )
+            app.terminate()
         }
     }
 

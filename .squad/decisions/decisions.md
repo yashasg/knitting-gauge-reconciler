@@ -531,3 +531,87 @@ HStack(spacing: 10) {
 ### Note on `GaugeStepperField`
 
 The root height-instability originates inside `GaugeStepperField` (the conditional mismatch label child of the outer VStack with no reserved space). The container-level `maxHeight: .infinity` fix in `GaugeMeasurementPair` masks the symptom correctly. The chevron+wheel redesign keeps a conditional label inside the VStack, so the `GaugeMeasurementPair` fix remains load-bearing.
+
+---
+
+## 2026-05-21: Required Adjustment Sheet Recommendation (Ive)
+
+**Date:** 2026-05-21  
+**Author:** Ive (UI/UX Designer)  
+**Status:** Approved with conditions; later superseded in part by same-session user directive
+
+### Decision
+
+Moving the long-form Required Adjustments content into a native SwiftUI `.sheet` is the correct iPhone pattern for this result surface. The proposed UX should use native `.medium`/`.large` detents, a visible Close button, a state-aware title, and a scrollable body that remains accessible at large Dynamic Type sizes.
+
+### Ive conditions (recorded)
+
+- Auto-present only when at least one axis needs adjustment.
+- Keep a compact persistent summary + reopen affordance on the main screen.
+- Allow reopening without recompute when a cached result exists.
+
+### Outcome
+
+The later Copilot/user directive in this session overrode those three conditions and locked the shipped behavior to a deterministic always-open sheet, a renamed `View Adjustments` button, and no caching. Ive's native-sheet, detent, Close-button, and accessibility guidance remained applicable and was implemented.
+
+---
+
+## 2026-05-21: Reconcile Button + Heading Polish (Edison)
+
+**Date:** 2026-05-21  
+**Author:** Edison (Frontend Dev)  
+**Status:** Shipped
+
+### Decision
+
+Polish `RequiredAdjustmentsCard.swift` so the main CTA reads as a centered, prominent action and the results heading reads as a subordinate section header rather than a second page title.
+
+### Implementation
+
+- Center the button instead of trailing-aligning it.
+- Increase button prominence with `minWidth: 176` and slightly roomier horizontal padding.
+- Downgrade the Estimated Reconciliation / Required Adjustments heading to `.title3.weight(.bold)`.
+
+### Validation
+
+58/58 tests passed, 0 warnings.
+
+---
+
+## 2026-05-21: Required Adjustment as Native Sheet (Edison)
+
+**Date:** 2026-05-21  
+**Author:** Edison (Frontend Dev)  
+**Status:** Shipped
+
+### Decision
+
+Replace the inline Required Adjustments block with a native SwiftUI `.sheet` presented from the primary CTA. The sheet becomes the focused result surface for reconciliation details.
+
+### Implementation
+
+- Rename the CTA from `Reconcile` to `View Adjustments`.
+- Remove the inline results section from the main scroll view.
+- Recompute reconciliation on every tap immediately before presentation.
+- Present a sheet with `.medium` / `.large` detents, drag indicator, visible Close button, state-aware title, and accessibility-safe scrollable body.
+- Update UI regression coverage to validate the sheet-based flow.
+
+### Validation
+
+58/58 tests passed, 0 warnings.
+
+---
+
+## 2026-05-21T19:50:32-07:00: User Directive — Deterministic View Adjustments Sheet
+
+**By:** Yashas (via Copilot)
+
+### Locked behavior
+
+1. The sheet always presents when the `View Adjustments` button is tapped, even for a perfect gauge match.
+2. `Reconcile` is renamed to `View Adjustments`; that button is the reopen affordance.
+3. No caching: reconciliation math recomputes on every tap.
+
+### Effect
+
+This directive supersedes the earlier Ive recommendation to auto-present only on mismatch, keep a compact inline summary, and reopen from cached results. The shipped UX is deterministic and sheet-first.

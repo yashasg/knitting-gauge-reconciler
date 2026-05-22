@@ -3,57 +3,152 @@ import SwiftUI
 // MARK: - RequiredAdjustmentsCard
 
 struct RequiredAdjustmentsCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var showAdjustmentSheet = false
+    @State private var selectedDetent: PresentationDetent = .medium
+
     var cachedResult: GaugeMathResult?
-    var isResultStale: Bool
     var inputs: GaugeInputs
     @Binding var showFullMath: Bool
     var onRecalculate: () -> Void
     var onReset: () -> Void
     var onShare: (GaugeMathResult) -> Void
 
+    private var presentedResult: GaugeMathResult {
+        cachedResult ?? GaugeMath.compute(inputs)
+    }
+
+    private var availableDetents: Set<PresentationDetent> {
+        dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large]
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // ROW 1: Reconcile button, right-aligned
-            HStack {
-                Spacer()
-                Button {
-                    onRecalculate()
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: isResultStale ? "arrow.clockwise" : "wand.and.stars")
-                            .font(.footnote.weight(.semibold))
-                        Text("Reconcile")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                    .foregroundStyle(AppTheme.cream)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        // Full color when: never calculated, or stale (action needed).
-                        // Subdued when fresh — results visible, no action required.
-                        (cachedResult != nil && !isResultStale)
-                            ? AppTheme.sage.opacity(0.5)
-                            : AppTheme.sage
-                    )
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("calculate-button")
-                .accessibilityLabel("Reconcile Adjustments")
-                .accessibilityHint("Computes gauge reconciliation adjustments for your pattern")
+        Button {
+            selectedDetent = dynamicTypeSize.isAccessibilitySize ? .large : .medium
+            onRecalculate()
+            showAdjustmentSheet = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "wand.and.stars")
+                    .font(.footnote.weight(.semibold))
+                Text("View Adjustments")
+                    .font(.subheadline.weight(.semibold))
             }
+            .foregroundStyle(AppTheme.cream)
+            .frame(minWidth: 176)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 8)
+            .background(AppTheme.sage)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .accessibilityIdentifier("calculate-button")
+        .accessibilityLabel("View Adjustments")
+        .accessibilityHint("Computes gauge reconciliation adjustments and opens the results sheet")
+        .sheet(isPresented: $showAdjustmentSheet) {
+            AdjustmentSheetView(
+                result: presentedResult,
+                inputs: inputs,
+                showFullMath: $showFullMath,
+                onReset: {
+                    onReset()
+                    showAdjustmentSheet = false
+                },
+                onShare: onShare,
+                onClose: { showAdjustmentSheet = false }
+            )
+            .presentationDetents(availableDetents, selection: $selectedDetent)
+            .presentationDragIndicator(.visible)
+        }
+    }
+}
 
-            // ROW 2: title, full width — no hyphenation
-            Text("Required Adjustments")
-                .font(.system(.largeTitle, design: .serif).weight(.bold))
-                .foregroundStyle(AppTheme.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
+private struct AdjustmentSheetView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-            if let result = cachedResult {
-                // Results — dimmed when stale to signal a Recalculate tap is needed.
-                Group {
-                    // ① Yoke Depth
+    var result: GaugeMathResult
+    var inputs: GaugeInputs
+    @Binding var showFullMath: Bool
+    var onReset: () -> Void
+    var onShare: (GaugeMathResult) -> Void
+    var onClose: () -> Void
+
+    private var requiresAdjustments: Bool {
+        inputs.stitchMismatch || inputs.rowMismatch
+    }
+
+    private var sheetTitle: String {
+        requiresAdjustments ? "Adjustment Summary" : "Reconciliation Result"
+    }
+
+    private var summaryText: String {
+        let stitchDrift = abs(result.stitchWidthScale - 1)
+        let rowDrift = abs(result.rowCountScale - 1)
+        let stitchPercent = abs(GaugeMath.fmtPct(result.stitchWidthScale) - 100)
+        let rowPercent = abs(GaugeMath.fmtPct(result.rowCountScale) - 100)
+        let stitchDir = result.stitchWidthScale > 1 ? "wider" : "narrower"
+        let rowDir = result.rowCountScale > 1 ? "denser" : "looser"
+        let majorNote = (stitchDrift >= 0.15 || rowDrift >= 0.15)
+            ? " Over 15% drift — consider re-swatching or changing needle size before proceeding."
+            : ""
+
+        switch (inputs.stitchMismatch, inputs.rowMismatch) {
+        case (false, false):
+            return "Your stitch and row gauge match the pattern. These results confirm that you can work the pattern as written."
+        case (true, false):
+            return "Your row gauge matches, but your stitch gauge is \(stitchPercent)% \(stitchDir). Use the adjusted cast-on to preserve the pattern's intended width.\(majorNote)"
+        case (false, true):
+            return "Your stitch gauge matches, but your row gauge is \(rowPercent)% \(rowDir). Follow the updated row guidance to preserve the pattern's intended lengths.\(majorNote)"
+        case (true, true):
+            return "Both axes are off: stitch gauge \(stitchPercent)% \(stitchDir), row gauge \(rowPercent)% \(rowDir). Use the updated stitch and row guidance together.\(majorNote)"
+        }
+    }
+
+    private var keyActionHeading: String {
+        requiresAdjustments ? "Key action" : "Next step"
+    }
+
+    private var keyActionText: String {
+        switch (inputs.stitchMismatch, inputs.rowMismatch) {
+        case (false, false):
+            return "Work from the pattern as written. No stitch or row adjustments are needed."
+        case (true, false):
+            return "Cast on \(result.adjustedCastOn) stitches instead of \(plain(inputs.patternCastOn))."
+        case (false, true):
+            return "Keep the pattern cast-on, then follow the updated row counts and shaping cadence below."
+        case (true, true):
+            return "Cast on \(result.adjustedCastOn) stitches and follow the updated row counts throughout."
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(sheetTitle)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(AppTheme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+
+                    Text(summaryText)
+                        .font(.body)
+                        .lineSpacing(4)
+                        .foregroundStyle(AppTheme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(keyActionHeading)
+                            .font(.headline)
+                            .foregroundStyle(AppTheme.sage)
+                        Text(keyActionText)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(AppTheme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .cardStyle()
+
                     numberedSectionCard(number: 1, title: "Yoke Depth", subtitle: "To hit target measurement") {
                         AdjustmentValuePair(
                             patternValue: GaugeMath.fmtRows(result.patternYokeRows),
@@ -62,7 +157,6 @@ struct RequiredAdjustmentsCard: View {
                         )
                     }
 
-                    // ② Body & Sleeves
                     numberedSectionCard(number: 2, title: "Body & Sleeves", subtitle: "Length Correction") {
                         VStack(spacing: 12) {
                             AdjustmentValuePair(
@@ -80,7 +174,6 @@ struct RequiredAdjustmentsCard: View {
                         }
                     }
 
-                    // ③ Shaping Rates
                     numberedSectionCard(number: 3, title: "Shaping Rates", subtitle: "Increases / Decreases") {
                         VStack(spacing: 12) {
                             AdjustmentRow(
@@ -102,18 +195,17 @@ struct RequiredAdjustmentsCard: View {
 
                     actionsCard(result: result)
                 }
-                // Dim stale results to signal they need a Recalculate tap.
-                .opacity(isResultStale ? 0.6 : 1.0)
-            } else {
-                // Pre-calculate placeholder — shown until the first Reconcile tap.
-                Text("Enter your gauge above and tap Reconcile to see your adjustments.")
-                    .font(.body)
-                    .foregroundStyle(AppTheme.muted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 8)
-                    .accessibilityIdentifier("adjustments-placeholder")
+                .padding(24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(AppTheme.background.ignoresSafeArea())
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close", action: onClose)
+                }
             }
         }
+        .accessibilityIdentifier("adjustment-sheet")
     }
 
     @ViewBuilder
@@ -170,23 +262,47 @@ struct RequiredAdjustmentsCard: View {
                     .accessibilityIdentifier("show-full-math")
             }
 
-            HStack(alignment: .center, spacing: 12) {
-                Button("Reset to defaults", action: onReset)
-                    .buttonStyle(.plain)
-                    .frame(minWidth: 100, minHeight: 44)
-                    .contentShape(Rectangle())
-                    .accessibilityIdentifier("reset-defaults")
-                Spacer()
-                Button(action: { onShare(result) }) {
-                    Label("Share results", systemImage: "square.and.arrow.up")
-                        .labelStyle(.titleAndIcon)
-                        .frame(minWidth: 100, minHeight: 44)
-                        .contentShape(Rectangle())
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Button("Reset to defaults", action: onReset)
+                            .buttonStyle(.plain)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                            .accessibilityIdentifier("reset-defaults")
+                        Button(action: { onShare(result) }) {
+                            Label("Share results", systemImage: "square.and.arrow.up")
+                                .labelStyle(.titleAndIcon)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("share-results")
+                        .accessibilityLabel("Share results")
+                        .accessibilityHint("Opens the share sheet with an image of the current results. Copy is available from the share sheet.")
+                    }
+                } else {
+                    HStack(alignment: .center, spacing: 12) {
+                        Button("Reset to defaults", action: onReset)
+                            .buttonStyle(.plain)
+                            .frame(minWidth: 100, minHeight: 44)
+                            .contentShape(Rectangle())
+                            .accessibilityIdentifier("reset-defaults")
+                        Spacer()
+                        Button(action: { onShare(result) }) {
+                            Label("Share results", systemImage: "square.and.arrow.up")
+                                .labelStyle(.titleAndIcon)
+                                .frame(minWidth: 100, minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("share-results")
+                        .accessibilityLabel("Share results")
+                        .accessibilityHint("Opens the share sheet with an image of the current results. Copy is available from the share sheet.")
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("share-results")
-                .accessibilityLabel("Share results")
-                .accessibilityHint("Opens the share sheet with an image of the current results. Copy is available from the share sheet.")
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(AppTheme.sage)
@@ -222,52 +338,58 @@ private struct AdjustmentRow: View {
     var driftPill: String? = nil
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            // Left tile: pattern value (oatmeal background — informational)
+        GaugeMeasurementPair(spacing: 10) {
+            patternTile
+        } trailing: {
+            adjustedTile
+        }
+    }
+
+    private var patternTile: some View {
+        VStack(alignment: .center, spacing: 4) {
+            Text(name)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.muted)
+                .multilineTextAlignment(.center)
+            Text(pattern)
+                .font(.system(.body, design: .monospaced).weight(.bold))
+                .foregroundStyle(AppTheme.muted)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(14)
+        .background(AppTheme.oatmeal)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var adjustedTile: some View {
+        ZStack(alignment: .topTrailing) {
             VStack(alignment: .center, spacing: 4) {
-                Text(name)
+                Text("Adjusted")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(AppTheme.muted)
+                    .foregroundStyle(Color.white.opacity(0.85))
                     .multilineTextAlignment(.center)
-                Text(pattern)
+                Text(adjusted)
                     .font(.system(.body, design: .monospaced).weight(.bold))
-                    .foregroundStyle(AppTheme.muted)
+                    .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
+                    .accessibilityIdentifier(adjustedIdentifier ?? "adjustment-\(name.lowercased().replacingOccurrences(of: " ", with: "-"))-value")
             }
             .frame(maxWidth: .infinity)
             .padding(14)
-            .background(AppTheme.oatmeal)
+            .padding(.top, driftPill != nil ? 8 : 0)
+            .background(AppTheme.sage)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-            // Right tile: adjusted value (sage background — actionable)
-            ZStack(alignment: .topTrailing) {
-                VStack(alignment: .center, spacing: 4) {
-                    Text("Adjusted")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.white.opacity(0.85))
-                        .multilineTextAlignment(.center)
-                    Text(adjusted)
-                        .font(.system(.body, design: .monospaced).weight(.bold))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                        .accessibilityIdentifier(adjustedIdentifier ?? "adjustment-\(name.lowercased().replacingOccurrences(of: " ", with: "-"))-value")
-                }
-                .frame(maxWidth: .infinity)
-                .padding(14)
-                .padding(.top, driftPill != nil ? 8 : 0)
-                .background(AppTheme.sage)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                if let pill = driftPill {
-                    Text(pill)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(AppTheme.secondary)
-                        .clipShape(Capsule())
-                        .offset(x: -4, y: -8)
-                }
+            if let pill = driftPill {
+                Text(pill)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(AppTheme.secondary)
+                    .clipShape(Capsule())
+                    .offset(x: -4, y: -8)
             }
         }
     }

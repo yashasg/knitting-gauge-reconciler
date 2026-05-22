@@ -8,6 +8,15 @@
 
 ## Learnings
 
+### 2026-05-21T19:39:52-07:00 — Reconcile Button + Results Heading Polish
+
+**Session:** edison-reconcile-button-heading-polish
+
+- **Files changed:** `app/KnittingGaugeReconciler/Views/RequiredAdjustmentsCard.swift`
+- **Heading typography:** Reduced the results section heading (`Required Adjustments`, the on-screen Estimated Reconciliation heading) from `largeTitle` serif to `.title3.weight(.bold)` so it reads as a section header under the app title instead of a second page title.
+- **Button alignment + size:** Replaced the right-aligned `HStack` wrapper with a centered button frame (`.frame(maxWidth: .infinity, alignment: .center)`) and made the CTA more prominent by increasing its width to a 176 pt minimum plus wider horizontal padding, without changing label text, color, action, or adding vertical growth.
+- **Final test result:** 58/58 tests pass, 0 warnings.
+
 ### 2026-05-21T19:20:26-07:00 — Reconciliation Result Boxes Equal Width
 
 **Session:** edison-reconciliation-equal-width
@@ -17,8 +26,22 @@
 - **Regression note:** I tried to add a UI regression for the tile containers, but SwiftUI exposed the container identifiers unreliably in the accessibility tree once the rows moved off-screen. I kept the production fix surgical and left the existing stable UI contract untouched.
 - **Final test result:** 58/58 tests pass, 0 warnings.
 
+### 2026-05-21T20:15:00-07:00 — Required Adjustment Sheet Pull-Up
+
+**Session:** edison-adjustment-sheet-impl
+
+- **Files changed:** `app/KnittingGaugeReconciler/ContentView.swift`, `app/KnittingGaugeReconciler/Views/RequiredAdjustmentsCard.swift`, `app/KnittingGaugeReconcilerUITests/KnittingGaugeReconcilerUITests.swift`
+- **Sheet structure:** Moved the inline Required Adjustments presentation into a native SwiftUI `.sheet` launched by the single `View Adjustments` CTA, with a visible Close button, medium/large detents, and automatic large-only presentation for accessibility Dynamic Type sizes.
+- **Computation behavior:** Kept the existing MetricKit signpost flow intact, but changed the UX so the reconciliation math is recomputed on every button tap before sheet presentation rather than relying on an inline stale/fresh results state.
+- **Accessibility + layout:** Added a sheet-specific title, summary, and key-action block before the detailed cards, and switched the shaping adjustment row/action layout to accessibility-safe stacking so the sheet scrolls cleanly without clipping at large type sizes.
+- **UI regression coverage:** Updated the jacquard scenario UI test to validate results through the sheet presentation flow instead of assuming inline results on the main scroll view.
+- **Final test result:** 58/58 tests pass, 0 warnings.
+
 ---
 
 ## Archive
 
 See `history-archive.md` for earlier 2026-05-21 and 2026-05-20 entries.
+
+## Team updates
+- 2026-05-22T02:50:32Z: Scribe merged the sheet implementation, polish notes, and the deterministic View Adjustments directive into `decisions.md`, and grouped the shipped app + squad changes for commit under the pull-up-sheet feature record.

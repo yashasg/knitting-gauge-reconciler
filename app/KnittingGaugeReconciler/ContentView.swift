@@ -24,10 +24,8 @@ struct ContentView: View {
     @State private var sharePayload: SharePayload?
     @State private var previousVerdictBucket: VerdictBucket?
     @State private var driftBandSignpostFired = false
-    /// nil until the user taps "Calculate Adjustments".
+    /// Latest result presented from a "View Adjustments" tap.
     @State private var cachedResult: GaugeMathResult?
-    /// True after any input change following the first successful compute.
-    @State private var isResultStale = false
 
     // MARK: - Derived
 
@@ -46,8 +44,8 @@ struct ContentView: View {
     }
 
     /// Always-live result — used for the verdict help sheet so it has content
-    /// even before the first Calculate tap. NOT used for the signpost-tracked
-    /// verdictTitle (which only changes on Calculate).
+    /// even before the first View Adjustments tap. NOT used for the signpost-tracked
+    /// verdictTitle (which only changes on sheet presentation).
     private var liveResult: GaugeMathResult {
         cachedResult ?? GaugeMath.compute(inputs)
     }
@@ -56,7 +54,6 @@ struct ContentView: View {
         os_signpost(.begin, log: MetricsSubscriber.log, name: SignpostNames.compute)
         cachedResult = GaugeMath.compute(inputs)
         os_signpost(.end, log: MetricsSubscriber.log, name: SignpostNames.compute)
-        isResultStale = false
     }
 
     // MARK: - Body
@@ -82,7 +79,6 @@ struct ContentView: View {
                     )
                     RequiredAdjustmentsCard(
                         cachedResult: cachedResult,
-                        isResultStale: isResultStale,
                         inputs: inputs,
                         showFullMath: $showFullMath,
                         onRecalculate: recomputeResult,
@@ -140,7 +136,7 @@ struct ContentView: View {
                 }
             }
             // verdict.improved / verdict.degraded fire only when cachedResult changes (i.e. on
-            // Calculate tap), because verdictTitle returns "" while cachedResult is nil.
+            // View Adjustments tap), because verdictTitle returns "" while cachedResult is nil.
             .onChange(of: verdictTitle) { _, newValue in
                 let current = VerdictBucket(verdictTitle: newValue)
                 if let decision = GaugeMathMetrics.classifyVerdictDelta(
@@ -164,19 +160,12 @@ struct ContentView: View {
                     driftBandSignpostFired = false
                 }
             }
-            // Mark stale when inputs change AFTER a successful compute.
-            // Does NOT recompute — that only happens on Calculate tap.
-            .onChange(of: inputs) { _, _ in
-                if cachedResult != nil {
-                    isResultStale = true
-                }
-            }
         }
     }
 
-    // MARK: - Verdict (signpost-only; derived from cachedResult so it changes only on Calculate tap)
+    // MARK: - Verdict (signpost-only; derived from cachedResult so it changes only on sheet presentation)
 
-    /// Returns "" when no result exists — prevents spurious signpost fires before first Calculate.
+    /// Returns "" when no result exists — prevents spurious signpost fires before first sheet presentation.
     private var verdictTitle: String {
         guard let result = cachedResult else { return "" }
         return verdictTitleComputed(result: result)
@@ -235,7 +224,6 @@ struct ContentView: View {
         patternSleeve = Self.defaults.patternSleeve
         patternIncreases = Self.defaults.patternIncreases
         cachedResult = nil
-        isResultStale = false
         // Reset previousVerdictBucket so no spurious signpost fires when verdictTitle
         // transitions "" → "" on next render after clearing cachedResult.
         previousVerdictBucket = nil

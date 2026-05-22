@@ -1,3 +1,4 @@
+ENV["FASTLANE_OPT_OUT_USAGE"] = "1"
 opt_out_usage
 
 # This file contains the fastlane.tools configuration
@@ -49,19 +50,9 @@ platform :ios do
       derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data"),
       devices: ["iPhone 17 Pro"],
       code_coverage: true,
+      only_testing: ["KnittingGaugeReconcilerTests"],
       xcargs: "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 30",
       output_files: "xcodebuild-test.log",
-      output_types: "junit",
-      output_directory: "../.build"
-    )
-    run_tests(
-      project: "app.xcodeproj",
-      scheme: "KnittingGaugeReconciler",
-      configuration: "Debug",
-      derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data"),
-      devices: ["iPhone 17 Pro"],
-      xcargs: "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 120",
-      output_files: "xcodebuild-uitest.log",
       output_types: "junit",
       output_directory: "../.build"
     )

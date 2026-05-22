@@ -654,3 +654,124 @@ User quote: *"we are only collecting metrics on diagnostics and analytics, nothi
 **Date:** 2026-05-21 (current session)
 **Status:** DECISION (layout fix deployed)
 **Note:** The Estimated Reconciliation result pair used a plain HStack with two `.frame(maxWidth: .infinity)` children. When the green result tile carried different intrinsic content or a delta badge, SwiftUI negotiated uneven widths. Swapped to a two-column LazyVGrid with GridItem(.flexible(minimum: 0)) columns, each tile pinned with `.frame(maxWidth: .infinity)`. Delta badge now floats above the green tile instead of adding conditional top padding; box footprint remains stable. Validation: 58/58 tests, 0 warnings.
+
+---
+
+## 2026-05-22 Inbox Decisions (Merged from .squad/decisions/inbox/)
+
+### Ive — Dark Mode Color Spec for `AppTheme`
+
+- **Author:** Ive (UI/UX Designer)
+- **Date:** 2026-05-22T01:45:35-07:00
+- **For:** Edison
+- **Requested by:** Yashas
+- **Source file:** `app/KnittingGaugeReconciler/Components/AppTheme.swift`
+- **Color space:** sRGB component values in 0–1 decimals
+- **Naming convention:** Use kebab-case asset names prefixed with `app-theme-`, mapped 1:1 from the `AppTheme` token name.
+- **Status:** DECISION (spec delivered; Edison implements)
+- **Note:** Dark mode color table with 16 tokens. Light values as `Any Appearance` entries, dark values as `Dark` entries. `surfaceTextureDot` includes alpha (0.10). `terracotta` and `mismatchText` remain numerically identical across both appearances.
+
+### Edison — Non-color HIG SwiftLint fixes
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-22T08:50:01Z
+- **Status:** DECISION (deployed)
+- **What changed:** 
+  - Updated `SectionTitle` to use `Text(title).textCase(.uppercase)` so VoiceOver reads the source string naturally.
+  - Added 44 pt minimum-height backstops at every reported under-sized tap-target site while preserving visual padding by splitting vertical padding modifiers.
+  - Marked context-free SF Symbols as decorative in `GaugeInputGroup`, `ShareableView`, and the `RequiredAdjustmentsCard` CTA/status row.
+  - Hid the warning triangle in `GaugeStepperWheelSheet` from accessibility because the adjacent mismatch text already carries the full meaning.
+- **Verification:** SwiftLint check returned no remaining non-color HIG findings in targeted files. (xcodebuild test blocked by pre-existing `AccessibilityAuditTests.swift` main-actor isolation errors unrelated to these UI edits.)
+
+### Edison — AppTheme color assets migration
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-22T01:57Z
+- **Status:** DECISION (deployed)
+- **What changed:** Move all structural `AppTheme` colors from hardcoded `Color(red:green:blue:)` values into named `Assets.xcassets` color sets with light/dark appearances. Added `Assets.xcassets` with 16 named color sets, updated `AppTheme.swift` to use `Color("asset-name")`, baked the texture-dot alpha into its asset, and registered the catalog in `app.xcodeproj` resources.
+- **Why:** Clears the `color_literal_rgb` HIG SwiftLint violations and makes the palette adaptive in dark mode instead of locking the UI to light-only RGB literals.
+- **Verification:** Filtered SwiftLint check returns no `color_literal_rgb` violations. App build succeeds on available iOS Simulator (`iPhone 17 Pro Max`).
+
+### Edison — Sheet polish summary
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-21T23:07:19-07:00
+- **Status:** DECISION (deployed)
+- **What changed:** Trimmed `app/KnittingGaugeReconciler/Views/RequiredAdjustmentsCard.swift` so adjustment cards are the first visible sheet content, removing the in-body title/intro copy. Kept native sheet affordances, preserved existing adjustment rows and accessibility contracts. Moved state-aware guidance into a smaller summary card below the data rows. Reduced top padding so medium detent presentation feels tighter on small screens.
+- **Verification:** `xcodebuild test` passed (58/58, 0 warnings).
+
+### Edison — Sheet/share fix
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-21T23:58Z
+- **Status:** DECISION (deployed)
+- **What changed:** Restored the adjustments sheet title with an inline navigation bar title: `Adjustments`. Moved the `share-results` control into the sheet toolbar and present the share sheet from inside the adjustments sheet hierarchy so it no longer queues behind the existing sheet. Replaced the old share snapshot with `Views/ShareableView.swift`, an off-screen fixed-width `ImageRenderer` export that includes pattern gauge, your gauge, reconciliation metrics, required adjustments, and Gauge Reconciler branding.
+- **Verification:** Regression coverage passed (58/58, 0 warnings).
+
+### Edison — Spacing tighten
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-22T00:37Z
+- **Status:** DECISION (deployed)
+- **What changed:** Reduced main `ContentView` stack spacing from 18 pt to 12 pt. Trimmed scroll content padding to 8 pt top / 16 pt bottom. Tightened shared `.cardStyle()` inset to 12 pt, shrinking the main cards through the shared wrapper without changing card colors, borders, corners, or accessibility identifiers.
+- **Verification:** Test suite passed (58/58, 0 warnings).
+
+### Edison — Title fix
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-22T04:00Z
+- **Status:** DECISION (deployed)
+- **What changed:** Restored the native iOS navigation title by adding `.navigationTitle("Gauge Reconciler")` back to the main `ScrollView` inside `NavigationStack` in `app/KnittingGaugeReconciler/ContentView.swift`. Confirmed `HomeHeaderView.swift` currently only owns the `AboutHelpToolbarButton`; it was not the source of the missing title. Searched for navigation-bar suppression and found no hiding modifiers.
+- **Verification:** `xcodebuild test` completed successfully.
+
+### Edison — Title removal summary
+
+- **Author:** Edison (Frontend Dev)
+- **Date:** 2026-05-22T04:06:21Z
+- **Status:** DECISION (reversed by subsequent title-fix decision)
+- **Note:** This decision was superseded by the Edison Title fix (2026-05-22T04:00Z). Title is now restored.
+
+### Hopper — Fastlane fixes
+
+- **Author:** Hopper (Tooling Dev)
+- **Date:** 2026-05-22
+- **Status:** DECISION (deployed)
+- **What changed:**
+  1. `certs` lane: Added `readonly: false` to `match(type: "appstore", readonly: false)` so the lane can create or renew certificates.
+  2. Scheme names: Fixed three `run_tests` calls to use `scheme: "KnittingGaugeReconciler"` (project's actual scheme) instead of non-existent schemes like `"AppTests"` and `"KnittingGaugeReconcilerUITests"`.
+  3. `Appfile`: Added `team_id("YOUR_TEAM_ID")` placeholder after the `apple_id` line. Yashas must fill in the real 10-character Team ID from developer.apple.com.
+- **Files changed:** `app/fastlane/Fastfile`, `app/fastlane/Appfile`
+- **Why:** Without these fixes, CI/test runs were broken (non-existent schemes), certificate management failed silently, and multi-team accounts would error.
+
+### Hopper — GitLab issues from Ive's design audit
+
+- **Author:** Hopper (Tooling Dev)
+- **Coordinator:** Yashas
+- **Date:** 2026-05-22
+- **Status:** DECISION (7 issues created)
+- **What changed:** Created 7 GitLab issues from Ive's design audit findings (5 Critical, 2 High). All issues labeled with `ux` and severity (`critical` or `high`).
+- **Critical issues:** #20 (no dark mode), #21 (touch target violation), #22 (AdjustmentValuePair grouping)
+- **High issues:** #23 (destructive affordance), #24 (NavigationStack in sheet), #25 (help sheet dismiss), #26 (SectionTitle VoiceOver)
+- **Repository:** https://gitlab.com/yashasg/knitting-gauge-reconciler
+- **Next steps:** Team should prioritize critical issues (app store submission blockers) first: #20, #21, #22.
+
+### Hopper — HIG automation (SwiftLint + accessibility audit)
+
+- **Author:** Hopper (Tooling Dev)
+- **Date:** 2026-05-22T00:37:04-07:00
+- **Requested by:** Yashas
+- **Status:** DECISION (deployed)
+- **What changed:** Wired SwiftLint configuration with 5 custom HIG rules (`no_hardcoded_font_size`, `no_uppercased_in_code`, `navigation_stack_in_sheet`, `color_literal_rgb`, `missing_min_touch_target`) and created `AccessibilityAuditTests.swift` in `KnittingGaugeReconcilerUITests` for continuous accessibility auditing.
+- **SwiftLint integration:** Runs in `app/build.sh` before every `xcodebuild` invocation. Pre-commit hook wired per `docs/swift_coding_standards.md` §3.1.
+- **Accessibility tests:** `testMainScreenAccessibility`, `testAdjustmentSheetAccessibility`, `testAboutSheetAccessibility`. Requires iOS 17+ simulator.
+- **Files created/modified:** `.swiftlint.yml`, `app/build.sh`, `app/KnittingGaugeReconcilerUITests/AccessibilityAuditTests.swift`, `app/app.xcodeproj/project.pbxproj`, `docs/swift_coding_standards.md`
+- **Caveats:** `performAccessibilityAudit()` requires iOS 17+. `navigation_stack_in_sheet` rule uses multiline matching; complex sheet bodies may produce false positives. SwiftLint warnings do NOT fail the build (severity: warning) — promote to error if stricter enforcement desired.
+
+### Yashas — SwiftLint HIG rules error severity
+
+- **Author:** Yashas (Coordinator, via Copilot)
+- **Date:** 2026-05-22
+- **Status:** DECISION (deployed)
+- **What changed:** All 5 custom HIG rules in `.swiftlint.yml` changed from warning → error. These now hard-block CI on any new HIG violations introduced.
+- **Why:** Prefer hard blocking over advisory warnings.
+

@@ -45,8 +45,8 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             ]) { _, new in new }
             app.launch()
 
-            XCTAssertTrue(app.otherElements["your-stitches"].waitForExistence(timeout: 5))
-            XCTAssertTrue(app.otherElements["your-rows"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.textFields["your-stitches-field"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.textFields["your-rows-field"].waitForExistence(timeout: 5))
 
             let calculateBtn = app.buttons["calculate-button"]
             XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
@@ -251,14 +251,14 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         app.launch()
 
         // Gauge input fields must be side-by-side (not stacked) on a compact phone width.
-        let patternStitches = app.otherElements["pattern-stitches"]
-        let patternRows = app.otherElements["pattern-rows"]
+        let patternStitches = app.textFields["pattern-stitches-field"]
+        let patternRows = app.textFields["pattern-rows-field"]
         XCTAssertTrue(patternStitches.waitForExistence(timeout: 2))
         XCTAssertTrue(patternRows.exists)
         assertSideBySide(patternStitches, patternRows)
 
-        let yourStitches = app.otherElements["your-stitches"]
-        let yourRows = app.otherElements["your-rows"]
+        let yourStitches = app.textFields["your-stitches-field"]
+        let yourRows = app.textFields["your-rows-field"]
         XCTAssertTrue(yourStitches.exists)
         XCTAssertTrue(yourRows.exists)
         assertSideBySide(yourStitches, yourRows)
@@ -293,14 +293,14 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         ]) { _, new in new }
         app.launch()
 
-        let patternStitches = app.otherElements["pattern-stitches"]
-        let patternRows = app.otherElements["pattern-rows"]
+        let patternStitches = app.textFields["pattern-stitches-field"]
+        let patternRows = app.textFields["pattern-rows-field"]
         XCTAssertTrue(patternStitches.waitForExistence(timeout: 2))
         XCTAssertTrue(patternRows.exists)
         assertStackedBelow(patternRows, patternStitches)
 
-        let yourStitches = app.otherElements["your-stitches"]
-        let yourRows = app.otherElements["your-rows"]
+        let yourStitches = app.textFields["your-stitches-field"]
+        let yourRows = app.textFields["your-rows-field"]
         XCTAssertTrue(yourStitches.exists)
         XCTAssertTrue(yourRows.exists)
         assertStackedBelow(yourRows, yourStitches)

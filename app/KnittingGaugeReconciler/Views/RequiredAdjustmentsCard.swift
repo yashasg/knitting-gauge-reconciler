@@ -120,7 +120,11 @@ private struct AdjustmentSheetView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            AdjustmentSheetHeader(
+                onShare: { sharePayload = ShareSheetPayload(items: onShare(result)) },
+                onClose: onClose
+            )
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     numberedSectionCard(number: 1, title: "Yoke Depth", subtitle: "To hit target measurement") {
@@ -177,31 +181,11 @@ private struct AdjustmentSheetView: View {
                 .padding(.bottom)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .navigationTitle("Adjustments")
-            .navigationBarTitleDisplayMode(.inline)
-            .background(AppTheme.background.ignoresSafeArea())
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(
-                        action: { sharePayload = ShareSheetPayload(items: onShare(result)) },
-                        label: { Image(systemName: "square.and.arrow.up") }
-                    )
-                    .accessibilityIdentifier("share-results")
-                    .accessibilityLabel("Share results")
-                    .accessibilityHint(
-                        "Opens the share sheet with an image of the current results." +
-                        " Copy is available from the share sheet."
-                    )
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close", action: onClose)
-                        .foregroundStyle(AppTheme.sage)
-                }
-            }
-            .sheet(item: $sharePayload) { payload in
-                ActivityView(activityItems: payload.items)
-                    .presentationDetents([.medium, .large])
-            }
+        }
+        .background(AppTheme.background.ignoresSafeArea())
+        .sheet(item: $sharePayload) { payload in
+            ActivityView(activityItems: payload.items)
+                .presentationDetents([.medium, .large])
         }
         .accessibilityIdentifier("adjustment-sheet")
     }
@@ -320,4 +304,56 @@ private struct AdjustmentSheetView: View {
         """
     }
     // swiftlint:enable line_length
+}
+
+// MARK: - AdjustmentSheetHeader
+
+/// Custom header for `AdjustmentSheetView`. Replaces a `NavigationStack`
+/// toolbar (#24 — Apple HIG: do not nest `NavigationStack` inside sheets
+/// without real multi-level navigation). Provides a 44×44pt leading Share
+/// button, a centered inline title, and a 44×44pt trailing Close button.
+private struct AdjustmentSheetHeader: View {
+    let onShare: () -> Void
+    let onClose: () -> Void
+
+    var body: some View {
+        ZStack {
+            Text("Adjustments")
+                .font(.headline)
+                .foregroundStyle(AppTheme.ink)
+                .accessibilityAddTraits(.isHeader)
+
+            HStack {
+                Button(action: onShare) {
+                    Image(systemName: "square.and.arrow.up")
+                        .imageScale(.medium)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(AppTheme.sage)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityIdentifier("share-results")
+                .accessibilityLabel("Share results")
+                .accessibilityHint(
+                    "Opens the share sheet with an image of the current results." +
+                    " Copy is available from the share sheet."
+                )
+
+                Spacer()
+
+                Button(action: onClose) {
+                    Text("Close")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(AppTheme.sage)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Close")
+                .accessibilityIdentifier("adjustment-sheet-close")
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 4)
+        .padding(.bottom, 4)
+    }
 }

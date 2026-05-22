@@ -335,7 +335,8 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         scrollToElement(calculateBtn, in: app, requireHittable: true)
         tapElement(calculateBtn)
 
-        XCTAssertTrue(app.navigationBars["Adjustments"].firstMatch.waitForExistence(timeout: 3))
+        XCTAssertTrue(app.otherElements["adjustment-sheet"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Adjustments"].firstMatch.waitForExistence(timeout: 3))
 
         let shareButton = app.buttons["share-results"].firstMatch
         XCTAssertTrue(shareButton.waitForExistence(timeout: 3))

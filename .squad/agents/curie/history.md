@@ -148,3 +148,17 @@ Pattern-matching against CI standards without grounding in user directives leads
 
 **New regime:** The app is the source of truth. `prototype/` is archival only, not a reference, spec, or test oracle. Drift audits are against `.squad/decisions.md` and Tesla directives, never against the prototype.
 
+
+### 2026-05-23T08:25:00Z — Fastlane CI test shape override (from hopper-3)
+
+The new Fastlane CI shape adopted from cocktail-batch-dilution supersedes prior accepted CI design:
+- Release-config-builds-Debug-tests split (removed)
+- Serial UI policy (dropped)  
+- Canceled-as-failed behavior (removed)
+
+The `ci` and `test` lanes now rely on the shared `KnittingGaugeReconciler` scheme as the source of truth for test participation, without lane-level `only_testing` filters. This is a design-level change approved by Tesla as part of the fastlane-from-cocktail integration (user directive 2026-05-23T01:01:48-07:00).
+
+**Impact on Curie's charter:** The CI test decisions documented in your prior learnings (test scope, serial policy, failure reporting) are now superseded. Future test work should align with the scheme-driven model, not the prior lane-explicit model.
+
+**For session memory:** If you need to debug CI test behavior, the Fastlane `ci` lane now delegates to the scheme definition. Check `app/app.xcodeproj/xcshareddata/xcschemes/KnittingGaugeReconciler.xcscheme` for the actual test targets and parallelization settings, not the Fastlane lane code.
+

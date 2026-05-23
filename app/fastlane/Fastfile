@@ -139,7 +139,7 @@ platform :ios do
       xcargs: ["CODE_SIGNING_ALLOWED=NO", options[:xcargs]].compact.join(" "),
       derived_data_path: lane_derived_data_path(options)
     )
-    run_tests(**lane_test_options(options))
+    run_tests(**lane_test_options(options.merge(configuration: "Debug")))
   end
 
   desc "Build without distribution"

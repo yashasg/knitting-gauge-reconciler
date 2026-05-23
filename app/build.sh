@@ -14,7 +14,7 @@ COMPILER_INDEX_STORE_ENABLE="${COMPILER_INDEX_STORE_ENABLE:-YES}"
 usage() {
   echo "Usage: $0 [build|test|release]"
   echo "  build   Build via Fastlane without distribution"
-  echo "  test    Run tests via Fastlane"
+  echo "  test    Run the unified Fastlane ci lane (lint + build + test)"
   echo "  release Build a Release configuration via Fastlane without distribution"
 }
 
@@ -159,7 +159,7 @@ case "$MODE" in
     SDK="${SDK:-iphonesimulator}"
     ;;
   test)
-    LANE="test"
+    LANE="ci"
     CONFIGURATION="${CONFIGURATION:-Debug}"
     SDK="${SDK:-iphonesimulator}"
     ;;
@@ -181,7 +181,9 @@ esac
 
 acquire_build_lock
 telemetry_preflight
-run_swiftlint
+if [[ "$MODE" != "test" ]]; then
+  run_swiftlint
+fi
 
 if [[ "$MODE" != "release" ]]; then
   resolve_simulator_context
@@ -217,7 +219,7 @@ fastlane_args=(
   "xcargs:${xcargs[*]}"
 )
 
-if [[ "$LANE" == "build" ]]; then
+if [[ "$LANE" == "build" || "$LANE" == "ci" ]]; then
   fastlane_args+=(
     "sdk:${SDK}"
     "destination:${DESTINATION}"
@@ -227,9 +229,8 @@ if [[ "$LANE" == "build" ]]; then
   fi
 fi
 
-if [[ "$LANE" == "test" ]]; then
+if [[ "$MODE" == "test" ]]; then
   fastlane_args+=(
-    "destination:${DESTINATION}"
     "device:${FASTLANE_TEST_DEVICE}"
     "output_directory:${BUILD_DIR}"
   )

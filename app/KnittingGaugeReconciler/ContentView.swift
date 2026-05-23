@@ -78,6 +78,12 @@ struct ContentView: View {
                         stitchDelta: Int(inputs.patternStitches - inputs.yourStitches),
                         rowDelta: Int(inputs.patternRows - inputs.yourRows)
                     )
+                    HeroTilesView(result: liveResult)
+                    VerdictCard(
+                        result: liveResult,
+                        patternCastOn: inputs.patternCastOn,
+                        onVerdictHelp: { showVerdictHelp = true }
+                    )
                     PatternInstructionsCard(
                         patternCastOn: $patternCastOn,
                         patternYoke: $patternYoke,

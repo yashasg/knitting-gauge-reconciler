@@ -72,7 +72,7 @@ platform :ios do
     match(type: "appstore", readonly: false)
   end
 
-  desc "Build and test (CI)"
+  desc "Build and test with scheme-defined scope (CI)"
   lane :ci do |options|
     configuration = options[:configuration] || "Debug"
     swiftlint(
@@ -98,7 +98,6 @@ platform :ios do
       derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data"),
       devices: ["iPhone 17 Pro"],
       code_coverage: true,
-      only_testing: ["KnittingGaugeReconcilerTests"],
       xcargs: "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 30",
       output_files: "xcodebuild-test.log",
       output_types: "junit",
@@ -121,7 +120,7 @@ platform :ios do
     )
   end
 
-  desc "Run XCTest suite without code signing (CI)"
+  desc "Run scheme-defined XCTest suite without code signing (CI)"
   lane :test do
     run_tests(
       project: APP_PROJECT,

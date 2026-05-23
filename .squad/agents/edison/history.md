@@ -5,6 +5,7 @@
 - **Project:** A knitting gauge reconciler that converts patterns between stitch/row gauges.
 - **Role:** Frontend Dev
 - **Joined:** 2026-05-19T07:11:08.646Z
+- **Simulator environment (2026-05-22T21:18Z):** iPhone 17 Pro validated for app/run.sh launcher (no hang issues post-Hopper fix).
 
 ## Current Session Learnings (2026-05-22)
 

@@ -1,5 +1,34 @@
 ---
 
+### 2026-05-22T21:00:32-07:00: Hopper decision — isolate app/run.sh build workspace
+**By:** Hopper
+**What:** `app/run.sh` continues to delegate compilation to `app/build.sh`, but it does so with its own `.build/run-build` workspace and `COMPILER_INDEX_STORE_ENABLE=NO`.
+
+**Why:** The shared `.build/derived-data` tree had accumulated an enormous Xcode index store (`Index.noindex/DataStore/v5` with 65535 entries), so the next `./app/run.sh` appeared broken because it spent minutes deleting DerivedData before any visible output. A dedicated run workspace preserves the architecture Tesla asked for (`run.sh` calls `build.sh`) without reusing the bloated shared cleanup target.
+
+**Operational note:** Verify `app/run.sh` with two back-to-back launches after tooling changes; the second run is the one that catches DerivedData/index-store cleanup regressions.
+
+---
+
+### 2026-05-22T21:05:41-07:00: User clarification on app/run.sh fix scope (Tesla / Copilot)
+**By:** Tesla (via Copilot)
+**What:** `app/run.sh` should call `app/build.sh` (not duplicate its xcodebuild logic and not skip the build step). This is now the AUTHORITATIVE TEAM RULE.
+
+**Context:**
+- Symptom reported: `./app/run.sh` does not exit, does not produce output, does not do anything visible — a silent hang.
+- Likely cause: run.sh tries to do its own xcodebuild/simulator orchestration and gets stuck (waiting on simctl, blocking on a `--console` flag, missing `wait` resolution, etc.), OR it does nothing useful because the build step is missing entirely.
+- The CORRECT architecture per Tesla intent: run.sh is a thin wrapper that delegates the build to build.sh, then handles install + launch on the simulator for interactive use.
+
+**Fix spec (Hopper completed 2b7e1da + 5cdbc67):**
+1. ✅ run.sh MUST invoke build.sh to perform the build (don't duplicate xcodebuild logic).
+2. ✅ run.sh handles the post-build steps build.sh doesn't: simulator boot, install the .app, launch the app on the booted simulator.
+3. ✅ Must exit cleanly when the launch completes (or when the app crashes/exits) — no infinite wait, no blocking `--console` unless explicitly requested via a flag.
+4. ✅ Honor existing build.sh contracts (release/build config, foreign-app preflight, -quiet flag for xcodebuild).
+5. ✅ run.sh now calls build.sh with isolated workspace (regression fixed by Hopper).
+
+---
+
+
 ### 2026-05-22: Curie — Final test run verdict
 
 - **Author:** Curie (QA)

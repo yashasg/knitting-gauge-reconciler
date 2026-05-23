@@ -14,6 +14,8 @@
 
 **Result:** PASS — exit code 0, all 61 tests pass, 0 SwiftLint violations.
 
+**Note (2026-05-22T21:18Z):** `run.sh` now isolates its build workspace (`.build/run-build`) and disables index-store accumulation; if your tests share derived-data, expect cleaner runs.
+
 **Test counts:** 48 unit + 13 UI = 61 total. All passed. This is the first run to report 61 tests (13 UI); the +5 UI delta from the prior 56-test baseline reflects new UI tests added with the Jacquard + compact-width work.
 
 **testAllJacquardScenariosAreVisibleInUI:** Passed — but only after build.sh's flake-rerun guard fired. The first iteration ended with a simulator SIGTERM (not an assertion failure). build.sh correctly classified this as a "signal-term flake" and issued a full simulator erase+reboot+rerun. The rerun passed cleanly (78.6 s). All 6 unit-level Jacquard scenarios also passed on first iteration.

@@ -86,6 +86,33 @@ trap 'rm -f "$LOG_FILE"; rm -rf "$LOCK_DIR"' EXIT
 rm -rf "$DERIVED_DATA_PATH" 2>/dev/null \
   || { sleep 1 && rm -rf "$DERIVED_DATA_PATH" 2>/dev/null || true; }
 
+# Foreign-app preflight (#42): when other personal Xcode projects (e.g.
+# com.yashasgujjar.uvburntimer) install their app bundles on the shared
+# 'iPhone 17 Pro' simulator, they steal focus during UI tests and produce
+# `Wait for com.yashasgujjar.<app> to idle` timeouts. Uninstall any
+# com.yashasg* / com.yashasgujjar.* bundle that is not part of this
+# project before we run our own tests. Best-effort; never fatal — we
+# already hold the build.sh lock here so siblings of *this* project are
+# guaranteed not to be racing us on the simulator.
+if [[ "$MODE" != "release" && -n "$SIMULATOR_UDID" ]]; then
+  _LISTAPPS_RAW="$(xcrun simctl listapps "$SIMULATOR_UDID" 2>/dev/null || true)"
+  if [[ -n "$_LISTAPPS_RAW" ]]; then
+    # `simctl listapps` returns a plist; bundle IDs appear as
+    #     CFBundleIdentifier = "com.example.app";
+    # Split on `"` and take the value field.
+    printf '%s' "$_LISTAPPS_RAW" \
+      | /usr/bin/awk -F '"' '/CFBundleIdentifier =/ { print $2 }' \
+      | grep -E '^com\.yashasg(ujjar)?\.' \
+      | grep -v '^com\.yashasg\.KnittingGaugeReconciler' \
+      | while IFS= read -r _bid; do
+          [[ -n "$_bid" ]] || continue
+          echo "→ foreign-app preflight: uninstall $_bid" >&2
+          xcrun simctl uninstall "$SIMULATOR_UDID" "$_bid" >/dev/null 2>&1 || true
+        done
+  fi
+  unset _LISTAPPS_RAW
+fi
+
 if [[ "$MODE" == "test" ]]; then
   RESULT_BUNDLE_PATH="${RESULT_BUNDLE_PATH:-$DERIVED_DATA_PATH/Logs/Test/${SCHEME}.xcresult}"
   rm -rf "$RESULT_BUNDLE_PATH"

@@ -8,6 +8,15 @@
 
 ## Learnings
 
+### 2026-05-22T19:27:12-07:00 — Prototype-parity heuristic retired team-wide
+
+- The prototype-parity heuristic was retired team-wide on 2026-05-22 after the hero-tiles incident.
+- The recurring "final-review parallel sweep" pattern is dissolved.
+- `app/ContentView` and `.squad/decisions.md` are the spec.
+- `prototype/` is archival except for Curie §2.9 test vectors.
+
+---
+
 ### 2025-08-01T00:00:00Z — Work Loop Completed: All 5 Goals Met
 
 - Work loop completed successfully with all 5 goals met (61 tests passing, 0 SwiftLint violations, UX/math/scenario approvals carried forward).

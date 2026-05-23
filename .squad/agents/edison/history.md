@@ -42,6 +42,7 @@
 - **Prototype parity is necessary but not sufficient** — visual quality and hierarchy decisions are separate approval gates owned by Tesla (2026-05-22T19:23:34-07:00).
 - **UI changes require explicit approval** — future UI work is not auto-pickup-eligible from prototype-parity drift. Explicit Tesla sign-off required before implementation (charter updated).
 - **Accessibility compound operations** — `.accessibilityElement(children: .ignore)` suppresses child `.accessibilityIdentifier` visibility in XCUITest (undocumented, critical).
+- **Main-screen nav title location** — the user-facing main screen title lives in `app/KnittingGaugeReconciler/ContentView.swift` at the root `NavigationStack` via `.navigationTitle(...)`.
 
 ## Verification Status
 

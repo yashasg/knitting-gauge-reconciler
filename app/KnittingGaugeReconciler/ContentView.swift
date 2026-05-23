@@ -113,7 +113,7 @@ struct ContentView: View {
             // already handles parent stepper-shim and pill noise that surfaces
             // behind the Adjustment sheet.
             .accessibilityHidden(showVerdictHelp || showAboutHelp)
-            .navigationTitle("Gauge Reconciler")
+            .navigationTitle("Stitchwise")
             .background(
                 ZStack {
                     AppTheme.background

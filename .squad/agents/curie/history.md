@@ -14,6 +14,8 @@
 
 **Result:** PASS — exit code 0, all 61 tests pass, 0 SwiftLint violations.
 
+**Note (2026-05-22T21:18Z):** `run.sh` now isolates its build workspace (`.build/run-build`) and disables index-store accumulation; if your tests share derived-data, expect cleaner runs.
+
 **Test counts:** 48 unit + 13 UI = 61 total. All passed. This is the first run to report 61 tests (13 UI); the +5 UI delta from the prior 56-test baseline reflects new UI tests added with the Jacquard + compact-width work.
 
 **testAllJacquardScenariosAreVisibleInUI:** Passed — but only after build.sh's flake-rerun guard fired. The first iteration ended with a simulator SIGTERM (not an assertion failure). build.sh correctly classified this as a "signal-term flake" and issued a full simulator erase+reboot+rerun. The rerun passed cleanly (78.6 s). All 6 unit-level Jacquard scenarios also passed on first iteration.
@@ -123,3 +125,26 @@ In this session, Curie flagged several findings as blockers for the Fastlane-bas
 Pattern-matching against CI standards without grounding in user directives leads to false-positive blockers that delay delivery.
 
 **Recommendation:** On next test-execution review, include a decision-alignment step that confirms the scope and design intent before finalizing the verdict.
+
+### 2026-05-22T21:50:00-07:00 — VerdictCard removed from main UI; UI test audit pending
+
+**Change:** Edison-1 removed `VerdictCard(...)` from `ContentView.swift` per Tesla directive 2026-05-22T21:30:00-07:00. VerdictCard.swift file preserved for export/future use, but no longer instantiated on the main screen.
+
+**Implication for Curie:** If any XCUITest in `KnittingGaugeReconcilerUITests/` queries for VerdictCard elements, verdicts, or verdict-related UI state on the main screen, those test expectations need updating in the next cycle (likely #45 or follow-up to this batch). Verdict logic is still validated in unit tests (GaugeMathTests); UI expectations should reflect the revised hierarchy (inputs + adjustments only, no visible verdict card).
+
+**Cross-ref:** Ive-1 postmortem in `.squad/decisions.md` explains the design principle: main screen is task-execution surface (inputs + adjustments), not analysis display. Verdict enum/math preserved for ShareableView export and accessibility labels.
+
+---
+
+## 2026-05-22T20:37:00-07:00 — Prototype-parity governance purge + §2.9 carveout withdrawn
+
+**Session:** scribe-orchestration-2026-05-22  
+
+**Context:** Tesla retired the team-wide prototype-parity heuristic after the hero-tiles incident (2026-05-22T19:27:12-07:00). Follow-up directive 2026-05-22T19:39:36-07:00 **withdrew the Curie §2.9 carveout** that treated `prototype/tests/gauge-math.test.js` as a sanctioned test-vector source.
+
+**Change to §2.9:** Scenario-coverage rules are re-anchored to Jacquard-defined craft scenarios sourced from Jacquard's charter and `.squad/decisions.md`, NOT from `prototype/tests/gauge-math.test.js`. The prototype is archival. Every Jacquard-defined craft scenario (from team decisions, not from prototype) must have a matching Swift test.
+
+**Implication for Curie:** Charter updated. Test vectors come from Jacquard and `.squad/decisions.md`. `docs/swift_coding_standards.md` §2.9 updated to match. See directives 2026-05-22T19:39:36-07:00 in `.squad/decisions.md`.
+
+**New regime:** The app is the source of truth. `prototype/` is archival only, not a reference, spec, or test oracle. Drift audits are against `.squad/decisions.md` and Tesla directives, never against the prototype.
+

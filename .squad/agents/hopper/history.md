@@ -10,7 +10,23 @@
 
 <!-- Recent learnings; archive to history-archive.md when exceeding 15360 bytes -->
 
-**Last entry:** 2026-05-20T19:26:30Z — MetricKit V1 shipped. Build: 49/49 tests pass. All MetricKit and swift-metrics work archived. See history-archive.md for comprehensive phase notes.
+**Last entry:** 2026-05-22T21:50Z — run.sh GUI fix completed (Hopper-1); VerdictCard removed from main UI (Edison-1). Inbox decisions merged and orchestration logs written.
+
+### 2026-05-22T21:00:32-07:00 — run.sh GUI surfacing (Hopper-1)
+
+**Commit:** bf311a9
+
+**What:** Added `open -a Simulator` to `app/run.sh` to bring the iOS Simulator GUI to foreground. Prior `simctl launch` returned a PID but did not surface Simulator.app, leaving the user with no visible output or interactive surface.
+
+**Context:** App runs but user sees nothing — silent appearance of success is indistinguishable from a hang if the Simulator window is not brought to focus.
+
+**Verification:** Two back-to-back simulator launches on iPhone 17 Pro; all tests pass (62/62).
+
+**Cross-ref:** Edison-1 (VerdictCard revert, 515ab51) and Ive-1 (design postmortem). All work merged to decisions.md and orchestration logs written.
+
+**Last entry:** 2026-05-22T21:18Z — run.sh silent hang fix completed (Hopper). Inbox decisions merged (copilot-runsh-must-call-buildsh.md + hopper-run-build-isolation.md). Orchestration log + session log written.
+
+- **2026-05-22T21:00:32-07:00:** `./app/run.sh` could appear frozen before any build output because it delegated into `app/build.sh`'s shared `.build/derived-data` cleanup and got stuck deleting a bloated `Index.noindex/DataStore/v5` tree (observed 65535 entries). Fix pattern in commits `2b7e1da` + `5cdbc67`: keep `run.sh` delegating to `build.sh`, but isolate it onto `.build/run-build` and set `COMPILER_INDEX_STORE_ENABLE=NO`; verified two consecutive simulator launches on iPhone 17 Pro.
 
 ## Team Updates
 
@@ -68,3 +84,5 @@ In this session, Hopper flagged several findings as blockers for the Fastlane-ba
 Pattern-matching against generic best practices is less reliable than grounding in this project's specific codebase, configuration, and user intent.
 
 **Recommendation:** On next CI/infra review, include a verification step that cross-references flagged findings against actual artifacts before finalizing the verdict.
+
+- **2026-05-22T21:25:37-07:00:** Follow-up on `app/run.sh`: a returned `simctl launch` PID is necessary but not sufficient for user-visible success. If `Simulator.app` is not opened first, the app can launch into a headless booted simulator and look like the script "just builds." Preferred verification for run-script fixes: process/GUI evidence (Simulator running, device window/screenshot visible) over PID-only checks.

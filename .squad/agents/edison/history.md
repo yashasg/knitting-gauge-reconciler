@@ -5,45 +5,50 @@
 - **Project:** A knitting gauge reconciler that converts patterns between stitch/row gauges.
 - **Role:** Frontend Dev
 - **Joined:** 2026-05-19T07:11:08.646Z
+- **Simulator environment (2026-05-22T21:18Z):** iPhone 17 Pro validated for app/run.sh launcher (no hang issues post-Hopper fix).
 
 ## Current Session Learnings (2026-05-22)
 
-- **Dark mode assetization:** Migrating hardcoded RGB colors to named Assets.xcassets unlocks adaptive light/dark appearances and clears `color_literal_rgb` HIG violations. Strategy: keep colors warm and textile-like; backgrounds shift to brown-black, cards lift lighter, semantic accents brighten, texture dots invert to low-opacity light specks.
-- **VoiceOver text casing:** Use `.textCase(.uppercase)` instead of `.uppercased()` so VoiceOver reads the source string naturally rather than as an acronym.
-- **Touch target + decorative fixes:** 44 pt minimum-height backstops at under-sized sites. Mark context-free SF Symbols as decorative. Hid warning triangles when adjacent text carries full meaning.
-- **Title restoration:** App name heading was removed per HIG guidance (utility apps are self-evident), but `navigationTitle` must still be present for accessibility context — restored `.navigationTitle("Gauge Reconciler")` to ScrollView inside NavigationStack.
+### 2026-05-22T21:30:00-07:00 — VerdictCard revert (Edison-1)
 
-## Session Summary (2026-05-22)
+**What:** Removed `VerdictCard(...)` from `ContentView.swift`, completing the rollback of MR !35's main-screen additions per Tesla directive 2026-05-22T21:30:00-07:00.
 
-- **ive-3:** Dark mode color spec delivered (16 tokens, warm palette, asset naming convention).
-- **edison-5:** Non-color HIG fixes deployed (4 touch targets, VoiceOver casing, decorative symbols, accessibility trap).
-- **edison-6:** AppTheme color assets migration complete (Assets.xcassets created, AppTheme.swift refactored, `color_literal_rgb` violations cleared).
-- **Prior sessions:** Sheet polish, spacing tighten, title fix all logged and merged to decisions.md.
+**Kept:** `Verdict` math/types/tiering remain intact (`GaugeMathMetrics.swift` including `majorMismatch`, plus ContentView verdict computed properties/signpost logic). `app/KnittingGaugeReconciler/Views/VerdictCard.swift` stays in the codebase.
 
-## Key Files Touched (2026-05-22)
+**Share/export note:** `ShareableView` still compiles after the revert and does not currently instantiate `VerdictCard`; the preserved view file is retained for export-related/future verdict presentation rather than main-screen placement.
 
-- `app/KnittingGaugeReconciler/Components/AppTheme.swift` — Migrated to asset-based colors
-- `app/KnittingGaugeReconciler/Components/SectionTitle.swift` — `.textCase(.uppercase)` fix
-- `app/KnittingGaugeReconciler/Views/ShareableView.swift` — Decorative symbol hiding
-- `app/KnittingGaugeReconciler/Views/RequiredAdjustmentsCard.swift` — Touch targets, symbol hiding
-- `app/KnittingGaugeReconciler/Sheets/GaugeStepperWheelSheet.swift` — Accessibility trap fix
-- `app/Assets.xcassets/` — Created with 16 Color Sets (light/dark appearances)
-- `app/app.xcodeproj/project.pbxproj` — Asset catalog registered
+**Why:** Tesla rejected the always-visible verdict copy on hierarchy/visual-quality grounds. Do not add prominent cards to `ContentView` without explicit Tesla sign-off.
+
+**Commit:** 515ab51 | **Build:** `EXIT: 0` | **Tests:** 62/62 pass
+
+**Lesson:** This is the second same-day Tesla rejection of MR !35's visible `ContentView` additions — first hero tiles, now the verdict card. Prototype-parity sweeps can produce UI Tesla rejects on sight. Scope boundary: keep verdict math/types available for non-main-screen surfaces (export/help flows), but remove rejected presentation from the primary hierarchy.
+
+### Prior Sessions
+
+- **2026-05-22 earlier:** Dark mode assetization, VoiceOver text casing, touch target fixes, title restoration, AppTheme color assets migration complete (16 tokens, warm palette).
+- **Full detailed archive:** `history-archive.md` contains the complete 2026-05-22 (pre-VerdictCard work), 2026-05-21, and earlier sessions.
 
 ## Verification Status
 
 - **Lint:** SwiftLint non-color HIG rules and `color_literal_rgb` both clean (0 violations)
-- **Tests:** 58/58 pass, 0 warnings
+- **Tests:** 62/62 pass, 0 warnings
 - **Build:** Succeeds on iPhone 17 Pro Max simulator
-- **Blockers:** Pre-existing `AccessibilityAuditTests.swift` main-actor isolation (unrelated)
+- **VerdictCard removal:** Confirmed VerdictCard not rendered in main screen, preserved file for future use
 
 ## See Also
 
-- **Detailed archive:** `history-archive-2026-05-22.md` contains full prior session logs
-- **Original archive:** `history-archive.md` from 2026-05-21
-- **Decisions:** `.squad/decisions.md` contains all team decisions (merged 12 inbox files)
+- **Detailed archive:** `history-archive.md` contains full prior session logs
+- **Decisions:** `.squad/decisions.md` contains all team decisions (merged 3 inbox files 2026-05-22T21:50Z)
+
+
 
 ## Learnings
+
+### 2026-05-22T21:30:00-07:00 — Second Tesla veto of MR !35 main-screen additions
+
+- **Pattern:** This is the second same-day Tesla rejection of MR !35's visible `ContentView` additions — first hero tiles, now the verdict card.
+- **Lesson:** Prototype-parity sweeps can produce UI Tesla rejects on sight; do not add always-visible cards to `ContentView` without explicit Tesla sign-off.
+- **Scope boundary:** Keep verdict math/types available for non-main-screen surfaces (for example export/help flows), but remove rejected presentation from the primary hierarchy.
 
 ### 2026-05-22T02:25:03.715-07:00 — Stitchwise App Icon Setup
 
@@ -103,6 +108,16 @@
 - Badge: `.caption2.weight(.semibold)`, cream text, mismatch-red bg, 8pt H / 3pt V padding, Capsule clipping
 - Build: `EXIT: 0`
 - Commit: dafd057
+
+### 2026-05-22T21:30:00-07:00 — VerdictCard revert (Edison-1)
+
+**What:** Removed `VerdictCard(...)` from `ContentView.swift`, completing the rollback of MR !35's main-screen additions per Tesla directive 2026-05-22T21:30:00-07:00.
+
+**Kept:** Verdict enum, math/tiering logic (`majorMismatch`, verdict computed properties), and VerdictCard.swift view file (for export/future use).
+
+**Cross-ref:** Ive-1 postmortem explains the design error: both hero tiles and VerdictCard are diagnostic analysis, not actionable inputs. Verdict logic is sound, but the on-screen card belongs in ShareableView export or accessibility payloads, not the main hierarchy.
+
+**Commit:** 515ab51 | **Build:** `EXIT: 0` | **Tests:** 62/62 pass
 
 ### 2026-05-22T03:46:18.853-07:00 — Mismatch badge single-line fix
 
@@ -167,3 +182,19 @@
 **Main HEAD:** 07ef822 (tree clean, production-ready)
 
 **Handoff:** Ready for yashasg. Next: Edison must merge `fix/cast-on-result-a11y-identifier` with Curie gate OR abandon with decision note.
+
+### 2026-05-22T19:23:34-07:00 — Tesla-veto pattern
+
+- **Lesson:** Prototype parity is necessary but not sufficient; visual quality is a separate approval gate owned by Tesla.
+- **Key file:** `app/KnittingGaugeReconciler/ContentView.swift` — removed the `HeroTilesView(result: liveResult)` call site from the main screen while keeping VerdictCard in place.
+
+## 2026-05-22T20:37:00-07:00 — Hero tiles revert + prototype-parity governance purge
+
+**Session:** scribe-orchestration-2026-05-22  
+
+**Context:** Tesla rejected hero stitch/row % tiles from main UI. Prototype parity is not an end state; it must be validated against platform conventions, domain mental models, real-estate tradeoffs, and first-principles information hierarchy. The "final-review parallel sweep" pattern against the prototype is retired.
+
+**New regime:** The app is the source of truth. `prototype/` is archival/sketch only, not a UI, hierarchy, copy, or interaction spec. Drift audits are against `.squad/decisions.md` and Tesla directives, never against the prototype. See directives 2026-05-22T19:23:34-07:00 through 2026-05-22T19:39:36-07:00 in `.squad/decisions.md`.
+
+**Implication for Edison:** Future UI/UX work is not auto-pickup-eligible from prototype-parity drift issues. UI changes require explicit Tesla sign-off before implementation. Charter updated; see `.squad/agents/edison/charter.md`.
+

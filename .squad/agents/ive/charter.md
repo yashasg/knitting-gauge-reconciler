@@ -47,7 +47,8 @@
 
 Before starting work, run `git rev-parse --show-toplevel` to find the repo root, or use the `TEAM ROOT` provided in the spawn prompt. All `.squad/` paths must be resolved relative to this root — do not assume CWD is the repo root (you may be in a worktree or subdirectory).
 
-Before starting work, read `.squad/decisions.md` for team decisions that affect me. Read Mendel's persona output before designing flows — design without personas is decoration.
+Before starting work, read `.squad/decisions.md` for team decisions that affect me. Read Mendel's persona output before designing flows — design without personas is decoration. The app is the source of truth. `prototype/` is archival/sketch only — not a UI, hierarchy, copy, or interaction spec.
+Drift audits are against `.squad/decisions.md` and Tesla directives, never against the prototype.
 
 After making a decision others should know, write it to `.squad/decisions/inbox/ive-{brief-slug}.md` — the Scribe will merge it.
 

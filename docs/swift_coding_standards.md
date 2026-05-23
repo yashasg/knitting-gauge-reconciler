@@ -121,9 +121,10 @@ a private `init` for pure-function namespaces. Already established in
   simulator races. Don't reintroduce `parallel: true`.
 - A test that flakes more than once must be deleted or rewritten — see
   Curie's charter. Quarantine via `@Test(.disabled)` is not allowed.
-- Every Jacquard scenario in `prototype/tests/gauge-math.test.js` has at
-  least one matching Swift test. New gauge edge cases land as Swift tests
-  first, then propagate back to the prototype if relevant.
+- Every Jacquard-defined craft scenario sourced from Jacquard's charter and
+  `.squad/decisions.md` has at least one matching Swift test. New gauge edge
+  cases land as Swift tests first and, when they become team knowledge,
+  should be recorded through Jacquard's charter or decision flow.
 
 ### 2.10 Concurrency
 

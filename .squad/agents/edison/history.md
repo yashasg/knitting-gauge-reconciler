@@ -85,3 +85,11 @@
 
 - **Detailed archive:** `history-archive.md` contains full prior session logs (2026-05-22 early sessions, 2026-05-21, earlier)
 - **Decisions:** `.squad/decisions.md` contains all team decisions and UI specifications
+
+### 2026-05-23T02:27:08-07:00 — Verdict/Major Mismatch removal follow-up
+
+**What:** Removed the lingering verdict-family summary card from `RequiredAdjustmentsCard.swift`, deleted unused `VerdictCard.swift` and `GaugeMathPresentation.swift`, and removed their Xcode project entries.
+
+**Why the earlier removal was incomplete:** Commit `515ab51` only removed the `VerdictCard(...)` call site from `ContentView.swift`. The same rejection-family UI still survived as the inline `statusCard` inside `AdjustmentSheetView` (summary + over-15%-drift warning), and the unused verdict view/presentation files stayed wired into the project.
+
+**Verification:** `swiftlint lint --config ../.swiftlint.yml --reporter xcode` → 0 violations. `app/build.sh build` → success. `app/build.sh test` still hits the pre-existing UI failures around `testAllJacquardScenariosAreVisibleInUI` / `testCompactWidthKeepsNumericFieldsSideBySideWhenTheyFit` not finding `cast-on-result`.

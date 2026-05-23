@@ -90,35 +90,6 @@ private struct AdjustmentSheetView: View {
     var onShare: (GaugeMathResult) -> [Any]
     var onClose: () -> Void
 
-    private var requiresAdjustments: Bool {
-        inputs.stitchMismatch || inputs.rowMismatch
-    }
-
-    private var hasMajorDrift: Bool {
-        abs(result.stitchWidthScale - 1) >= 0.15 || abs(result.rowCountScale - 1) >= 0.15
-    }
-
-    private var statusSymbolName: String {
-        requiresAdjustments ? "exclamationmark.circle.fill" : "checkmark.circle.fill"
-    }
-
-    private var statusSymbolColor: Color {
-        requiresAdjustments ? AppTheme.secondary : AppTheme.sage
-    }
-
-    private var keyActionText: String {
-        switch (inputs.stitchMismatch, inputs.rowMismatch) {
-        case (false, false):
-            return "Work from the pattern as written. No stitch or row adjustments are needed."
-        case (true, false):
-            return "Cast on \(result.adjustedCastOn) stitches instead of \(plain(inputs.patternCastOn))."
-        case (false, true):
-            return "Keep the pattern cast-on, then follow the updated row counts and shaping cadence below."
-        case (true, true):
-            return "Cast on \(result.adjustedCastOn) stitches and follow the updated row counts throughout."
-        }
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             AdjustmentSheetHeader(
@@ -173,7 +144,6 @@ private struct AdjustmentSheetView: View {
                         }
                     }
 
-                    statusCard
                     actionsCard(result: result)
                 }
                 .padding(.horizontal)
@@ -190,32 +160,6 @@ private struct AdjustmentSheetView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("adjustment-sheet")
-    }
-
-    private var statusCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: statusSymbolName)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(statusSymbolColor)
-                    .padding(.top, 1)
-                    .accessibilityHidden(true)
-
-                Text(keyActionText)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if hasMajorDrift {
-                Text("Over 15% drift. Consider re-swatching or changing needle size before proceeding.")
-                    .font(.footnote)
-                    .foregroundStyle(AppTheme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .cardStyle()
-        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder

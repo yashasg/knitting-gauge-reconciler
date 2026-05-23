@@ -476,9 +476,11 @@ for s in specs:
   # badly enough that erase+boot didn't clear it on the first pass —
   # do a heavier reset (shutdown all sims + erase + boot) and try the
   # same rerun once more. Only one extra attempt. The fixture is
-  # narrow: every failure must be a recognized whole-target bootstrap
-  # variant (no per-test SIGTERMs, no unknown failures, no real
-  # assertion failures).
+  # narrow: every failure must be either a recognized whole-target
+  # bootstrap variant or a bare per-test SIGTERM (the same string we
+  # already classify as a flake on the first pass at line 332). We
+  # explicitly do *not* escalate on unknown failures or real assertion
+  # failures.
   bootstrap_only_rerun_failures() {
     local b="$1"
     if [[ ! -d "$b" ]]; then return 1; fi
@@ -489,6 +491,7 @@ for s in specs:
     set +e
     printf '%s' "$sj" | /usr/bin/python3 -c '
 import json, sys
+PER_TEST = "Test crashed with signal term."
 RUNNER_BOOTSTRAP = "Test crashed with signal term while preparing to run tests"
 RUNNER_INSTALL_FAILED = "Failed to install or launch the test runner"
 RUNNER_LAUNCH_FAILED = "Simulator device failed to launch"
@@ -506,7 +509,12 @@ if not failures:
     sys.exit(2)
 for f in failures:
     text = (f.get("failureText") or "").strip()
-    if not (RUNNER_BOOTSTRAP in text
+    # PER_TEST is a substring of RUNNER_BOOTSTRAP, so gate it on exact
+    # equality to mirror the first-pass matcher (build.sh:361) and
+    # avoid accidentally accepting unrelated text that happens to
+    # contain the bare SIGTERM phrase.
+    if not (text == PER_TEST
+            or RUNNER_BOOTSTRAP in text
             or RUNNER_INSTALL_FAILED in text
             or RUNNER_LAUNCH_FAILED in text
             or FBS_NIL in text

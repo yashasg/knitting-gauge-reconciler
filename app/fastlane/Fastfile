@@ -23,7 +23,7 @@ require "xcodeproj"
 default_platform(:ios)
 
 # CI env vars for release lanes:
-# - ASC auth: ASC_API_KEY_JSON containing {"key_id","issuer_id","key"} JSON
+# - ASC auth: set ASC_API_KEY_JSON or write app/fastlane/asc_api_key.json
 # - Signing: MATCH_PASSWORD, MATCH_KEYCHAIN_PASSWORD, optional WWDR_CERT_PATH
 APP_PROJECT = File.expand_path("../app.xcodeproj", __dir__)
 APPFILE_PATH = File.expand_path("Appfile", __dir__)
@@ -32,6 +32,8 @@ APP_SCHEME = "KnittingGaugeReconciler"
 BUILD_OUTPUT_DIRECTORY = "."
 BUILD_LOG_PATH = "../.build/gym"
 CI_KEYCHAIN_NAME = "fastlane_tmp_keychain"
+ASC_API_KEY_PATH = File.expand_path("asc_api_key.json", __dir__)
+ASC_API_KEY_PATH_DISPLAY = "app/fastlane/asc_api_key.json"
 ASC_LEGACY_ENV_VARS = %w[
   FASTLANE_USER
   FASTLANE_PASSWORD
@@ -180,7 +182,16 @@ platform :ios do
     clear_legacy_asc_auth_env
 
     api_key_json_raw = ENV["ASC_API_KEY_JSON"]
-    UI.user_error!("Missing ASC_API_KEY_JSON") if api_key_json_raw.to_s.empty?
+    api_key_source = "ASC_API_KEY_JSON"
+
+    if api_key_json_raw.to_s.empty?
+      if File.exist?(ASC_API_KEY_PATH)
+        api_key_json_raw = File.read(ASC_API_KEY_PATH)
+        api_key_source = ASC_API_KEY_PATH_DISPLAY
+      else
+        UI.user_error!("Set ASC_API_KEY_JSON env var or place asc_api_key.json at #{ASC_API_KEY_PATH_DISPLAY}")
+      end
+    end
 
     begin
       api_key_json = JSON.parse(api_key_json_raw)
@@ -190,9 +201,9 @@ platform :ios do
         key_content: api_key_json.fetch("key")
       )
     rescue JSON::ParserError => error
-      UI.user_error!("ASC_API_KEY_JSON is not valid JSON: #{error.message}")
+      UI.user_error!("#{api_key_source} is not valid JSON: #{error.message}")
     rescue KeyError => error
-      UI.user_error!("ASC_API_KEY_JSON is missing required field: #{error.message}")
+      UI.user_error!("#{api_key_source} is missing required field: #{error.message}")
     end
   end
 

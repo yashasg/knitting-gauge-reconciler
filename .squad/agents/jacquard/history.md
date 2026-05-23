@@ -28,3 +28,14 @@ MetricKit V1 implementation completed. Signpost #9 (`cast_on.driftBandShown`) ga
 ## Earlier Sessions
 
 (See history-archive.md for full timeline of cast_on rounding drift threshold evaluation, Scenario 6 divergence investigation, and prior domain math reviews.)
+
+## 2026-05-22T20:37:00-07:00 — Prototype-parity governance purge + scenario-coverage standard update
+
+**Session:** scribe-orchestration-2026-05-22  
+
+**Context:** Tesla retired the team-wide prototype-parity heuristic (2026-05-22T19:27:12-07:00). Follow-up directive 2026-05-22T19:39:36-07:00 re-anchors all scenario-coverage standards to **Jacquard-defined craft scenarios** sourced from Jacquard's charter and `.squad/decisions.md`, not from `prototype/tests/gauge-math.test.js`.
+
+**Implication for Jacquard:** Scenario definitions remain the canonical source for test vector coverage across Curie and the Swift test suite. Jacquard's domain knowledge (knitting craft, gauge math, edge cases) drives the scenarios. The prototype is no longer consulted for scenario authority.
+
+**New regime:** The app is the source of truth. `prototype/` is archival/sketch only, not a reference, spec, or test oracle. Drift audits are against `.squad/decisions.md` and Tesla directives, never against the prototype. Charter updated; see `.squad/agents/jacquard/charter.md`.
+

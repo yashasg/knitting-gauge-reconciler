@@ -123,3 +123,16 @@ In this session, Curie flagged several findings as blockers for the Fastlane-bas
 Pattern-matching against CI standards without grounding in user directives leads to false-positive blockers that delay delivery.
 
 **Recommendation:** On next test-execution review, include a decision-alignment step that confirms the scope and design intent before finalizing the verdict.
+
+## 2026-05-22T20:37:00-07:00 — Prototype-parity governance purge + §2.9 carveout withdrawn
+
+**Session:** scribe-orchestration-2026-05-22  
+
+**Context:** Tesla retired the team-wide prototype-parity heuristic after the hero-tiles incident (2026-05-22T19:27:12-07:00). Follow-up directive 2026-05-22T19:39:36-07:00 **withdrew the Curie §2.9 carveout** that treated `prototype/tests/gauge-math.test.js` as a sanctioned test-vector source.
+
+**Change to §2.9:** Scenario-coverage rules are re-anchored to Jacquard-defined craft scenarios sourced from Jacquard's charter and `.squad/decisions.md`, NOT from `prototype/tests/gauge-math.test.js`. The prototype is archival. Every Jacquard-defined craft scenario (from team decisions, not from prototype) must have a matching Swift test.
+
+**Implication for Curie:** Charter updated. Test vectors come from Jacquard and `.squad/decisions.md`. `docs/swift_coding_standards.md` §2.9 updated to match. See directives 2026-05-22T19:39:36-07:00 in `.squad/decisions.md`.
+
+**New regime:** The app is the source of truth. `prototype/` is archival only, not a reference, spec, or test oracle. Drift audits are against `.squad/decisions.md` and Tesla directives, never against the prototype.
+

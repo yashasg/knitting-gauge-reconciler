@@ -167,3 +167,19 @@
 **Main HEAD:** 07ef822 (tree clean, production-ready)
 
 **Handoff:** Ready for yashasg. Next: Edison must merge `fix/cast-on-result-a11y-identifier` with Curie gate OR abandon with decision note.
+
+### 2026-05-22T19:23:34-07:00 — Tesla-veto pattern
+
+- **Lesson:** Prototype parity is necessary but not sufficient; visual quality is a separate approval gate owned by Tesla.
+- **Key file:** `app/KnittingGaugeReconciler/ContentView.swift` — removed the `HeroTilesView(result: liveResult)` call site from the main screen while keeping VerdictCard in place.
+
+## 2026-05-22T20:37:00-07:00 — Hero tiles revert + prototype-parity governance purge
+
+**Session:** scribe-orchestration-2026-05-22  
+
+**Context:** Tesla rejected hero stitch/row % tiles from main UI. Prototype parity is not an end state; it must be validated against platform conventions, domain mental models, real-estate tradeoffs, and first-principles information hierarchy. The "final-review parallel sweep" pattern against the prototype is retired.
+
+**New regime:** The app is the source of truth. `prototype/` is archival/sketch only, not a UI, hierarchy, copy, or interaction spec. Drift audits are against `.squad/decisions.md` and Tesla directives, never against the prototype. See directives 2026-05-22T19:23:34-07:00 through 2026-05-22T19:39:36-07:00 in `.squad/decisions.md`.
+
+**Implication for Edison:** Future UI/UX work is not auto-pickup-eligible from prototype-parity drift issues. UI changes require explicit Tesla sign-off before implementation. Charter updated; see `.squad/agents/edison/charter.md`.
+

@@ -123,3 +123,20 @@ MetricKit V1 implementation completed. 9 signpost names locked by user directive
 Edison ✅ | Curie ✅ | Mendel ✅ | Jacquard ✅ | Ive ✅ | **Tesla ✅**
 
 **Next:** Handoff to yashasg. Team ready for release.
+
+## 2026-05-22T20:37:00-07:00 — Prototype-parity governance purge team-wide + follow-up carveout withdrawal
+
+**Session:** scribe-orchestration-2026-05-22  
+
+**Events:**
+1. **2026-05-22T19:23:34-07:00:** Tesla rejected hero stitch/row % tiles from main UI (prototype parity is not justification). User directive: tiles removed from ContentView.
+2. **2026-05-22T19:25:30-07:00:** User directive issued: Tesla sign-off required for all visible UI changes before implementation. Prototype-parity drift is not auto-approval authority.
+3. **2026-05-22T19:27:12-07:00:** User directive issued: Prototype is NOT the spec. The app is the source of truth. Drift audits against the prototype are regression. Charters amended for Edison, Ive, Curie, Jacquard, Ralph.
+4. **2026-05-22T19:39:36-07:00:** User directive issued: Prototype is irrelevant, not a test oracle. Curie §2.9 carveout for `prototype/tests/gauge-math.test.js` is withdrawn. Scenario coverage re-anchored to Jacquard decisions and `.squad/decisions.md`.
+
+**Governance change:** Prototype-parity heuristic fully retired. "Final-review parallel sweeps" against the prototype are dissolved. Squad memory shifts from prototype-centered to decisions.md-centered. Ralph's auto-merge loop rejects issues rationale-ed on prototype diff. UI changes pause for Tesla sign-off.
+
+**Charter amendments applied:** Edison, Ive, Curie, Jacquard, Ralph all updated. See `.squad/decisions.md` (directives merged 2026-05-22T20:37Z).
+
+**Lesson:** When retiring a heuristic team-wide, do not preserve "sanctioned uses" without explicit user sign-off. Carveouts are how a retired pattern leaks back in. (Applied: Curie §2.9 carveout withdrawn on first follow-up.)
+

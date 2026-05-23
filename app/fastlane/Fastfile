@@ -47,6 +47,14 @@ def release_bundle_identifier
   bundle_identifier
 end
 
+
+def release_version_number
+  get_version_number(
+    xcodeproj: APP_PROJECT,
+    target: APP_TARGET
+  )
+end
+
 platform :ios do
   desc "Sync certificates and provisioning profiles"
   lane :certs do
@@ -125,16 +133,41 @@ platform :ios do
     UI.user_error!("fastlane app_identifier=#{fastlane_app_identifier} does not match #{APP_TARGET} Release bundle ID #{configured_bundle_identifier}")
   end
 
+  private_lane :next_testflight_build_number_for_release do |options|
+    options ||= {}
+    version = release_version_number
+    latest_build_number = nil
+
+    begin
+      latest_build_number = latest_testflight_build_number(
+        app_identifier: fastlane_app_identifier,
+        version: version,
+        initial_build_number: 0,
+        api_key: options[:api_key]
+      )
+    rescue StandardError => error
+      raise unless error.message.to_s.match?(/Could not find a build|No build/i)
+    end
+
+    if latest_build_number.nil?
+      UI.important("No TestFlight build found for version #{version}; falling back to latest build across all versions")
+      latest_build_number = latest_testflight_build_number(
+        app_identifier: fastlane_app_identifier,
+        initial_build_number: 0,
+        api_key: options[:api_key]
+      )
+    end
+
+    latest_build_number.to_i + 1
+  end
+
   desc "Build and upload to TestFlight. Optional: bump:patch|minor|major"
   lane :beta do |options|
     ensure_release_configuration_matches
     match(type: "appstore", readonly: true)
     increment_version_number(bump_type: options[:bump]) if options[:bump]
     increment_build_number(
-      build_number: latest_testflight_build_number(
-        app_identifier: fastlane_app_identifier,
-        version: get_version_number
-      ) + 1
+      build_number: next_testflight_build_number_for_release
     )
     build_app(
       project: APP_PROJECT,
@@ -150,10 +183,7 @@ platform :ios do
     match(type: "appstore", readonly: true)
     increment_version_number(bump_type: options[:bump]) if options[:bump]
     increment_build_number(
-      build_number: latest_testflight_build_number(
-        app_identifier: fastlane_app_identifier,
-        version: get_version_number
-      ) + 1
+      build_number: next_testflight_build_number_for_release
     )
     build_app(
       project: APP_PROJECT,

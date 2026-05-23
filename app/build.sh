@@ -146,10 +146,10 @@ foreign_app_preflight() {
 }
 
 run_fastlane() {
-  command -v bundle >/dev/null 2>&1 || fail "bundle not found; install Bundler to run Fastlane"
+  command -v fastlane >/dev/null 2>&1 || fail "fastlane not found; install via: brew install fastlane"
   local lane="$1"
   shift
-  (cd "$PROJECT_DIR" && bundle exec fastlane "$lane" "$@")
+  (cd "$PROJECT_DIR" && fastlane "$lane" "$@")
 }
 
 case "$MODE" in

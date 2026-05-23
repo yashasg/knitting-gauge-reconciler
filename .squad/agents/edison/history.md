@@ -93,3 +93,11 @@
 **Why the earlier removal was incomplete:** Commit `515ab51` only removed the `VerdictCard(...)` call site from `ContentView.swift`. The same rejection-family UI still survived as the inline `statusCard` inside `AdjustmentSheetView` (summary + over-15%-drift warning), and the unused verdict view/presentation files stayed wired into the project.
 
 **Verification:** `swiftlint lint --config ../.swiftlint.yml --reporter xcode` → 0 violations. `app/build.sh build` → success. `app/build.sh test` still hits the pre-existing UI failures around `testAllJacquardScenariosAreVisibleInUI` / `testCompactWidthKeepsNumericFieldsSideBySideWhenTheyFit` not finding `cast-on-result`.
+
+---
+
+### 2026-05-23T09:44Z — MR !37 & !38 Merged to Main (Tesla-4 background agent)
+
+**Status:** ✅ Merged to main on GitLab
+
+MR !38 (VerdictCard and GaugeMathPresentation full removal) merged to main. Related commit: `efcb810`. Also MR !37 (nav title → Stitchwise) landed simultaneously (SHA `12ac758`). No conflicts. VerdictCard/Major Mismatch saga finally closed.

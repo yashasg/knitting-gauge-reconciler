@@ -161,3 +161,17 @@ Tesla has validated the CD workflow end-to-end on cocktail side; KGR's path now 
 - GitHub Actions CD workflow ready
 
 **Lesson:** When cherry-pick conflicts arise due to deep dependency trees, full branch merge is more reliable than manual conflict resolution — preserves all test/integration points and reduces hidden regressions.
+
+---
+
+### 2026-05-23T10:06Z — ASC Auth File Fallback (Hopper-11 background agent)
+
+**Status:** ✅ Commit fbd5fd0 merged to main via MR !39
+
+**Problem:** GitHub Actions CD workflow step-level environment variable scoping prevented Fastlane from accessing ASC_API_KEY_JSON in the release step. The env var was only visible in the write step, not in the later fastlane execution step.
+
+**Solution:** Modified Fastlane to fall back to reading `app/fastlane/asc_api_key.json` when `ENV["ASC_API_KEY_JSON"]` is absent. Preserves local dev flows (env var override) while fixing CI execution (file-based fallback).
+
+**Root cause:** Step-level `env:` directives in GitHub Actions do not carry forward automatically. The write-to-file action is the stable on-disk artifact that persists between steps.
+
+**Consequence:** Fastlane release workflows now work in GitHub Actions. Main branch (commit e786f37) is ready for CD execution with correct ASC authentication handling.

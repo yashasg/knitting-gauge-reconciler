@@ -234,3 +234,17 @@ Tesla-4 background agent merged two GitLab merge requests to main:
 - **MR !38:** Complete VerdictCard and GaugeMathPresentation removal — SHA `efcb810`
 
 No conflicts. Sibling worktree cleaned up. Main is up-to-date locally. VerdictCard/Major Mismatch saga closed.
+
+---
+
+### 2026-05-23T10:06Z — MR !39 Merged to Main (Tesla-5 background agent)
+
+**Status:** ✅ Merge commit e786f37 — MR !39 merged
+
+**Details:** Merged fix/asc-auth-from-file branch (hopper-11 work) into main. This branch adds ASC authentication file fallback for GitHub Actions CD workflow.
+
+**Change:** Fastlane now checks `ENV["ASC_API_KEY_JSON"]` first, then falls back to reading `app/fastlane/asc_api_key.json` on disk when the env var is absent.
+
+**Impact:** Fixes GitHub Actions CD workflow step-level env scoping issue. Release workflows can now proceed with correct App Store Connect authentication.
+
+**Local status:** Main pulled locally after merge. Ready for next CD phases.

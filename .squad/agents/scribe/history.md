@@ -25,3 +25,17 @@ Merged four inbox decisions into `decisions.md`, wrote orchestration/session log
 - **Orchestration log:** `.squad/orchestration-log/2026-05-22T10:36:24Z-edison.md` created to capture edison-13 Pattern Instructions typography fix (commit 2e4f8b9, issue #31 closed).
 - **Session log:** `.squad/log/2026-05-22T10:36:24Z-typography-fix.md` written.
 - **Archive gate:** No decisions older than 7 days; no history files >= 15KB requiring summarization.
+
+### 2026-05-23T10:06Z — ASC Auth File Fallback Session Closure
+
+**Session:** Closed spawned agents hopper-11 and tesla-5  
+**Work:** Fixed GitHub Actions CD workflow step-level env scoping issue
+
+- **Inbox processed:** hopper-asc-auth-file-fallback.md merged to decisions.md
+- **Orchestration log:** Created 2026-05-23T1006Z-hopper-11.md and 2026-05-23T1006Z-tesla-5.md
+- **Session log:** Wrote 2026-05-23T1006Z-asc-auth-file-fallback.md documenting the env-scoping gotcha and file-fallback solution
+- **Agent histories:** Appended hopper-11 and tesla-5 entries to respective history.md files
+- **Commits:** fbd5fd0 (hopper fix) and e786f37 (tesla merge)
+- **Archive gate:** 1 inbox decision processed; no backlog
+
+**Lesson:** CD workflow step-level env vars require fallback to stable on-disk artifacts when those artifacts persist between steps. GitHub Actions env isolation is by design; Fastlane's dual-source auth strategy (env + file) is the right answer.

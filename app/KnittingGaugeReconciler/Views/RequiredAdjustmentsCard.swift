@@ -182,11 +182,13 @@ private struct AdjustmentSheetView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppTheme.background.ignoresSafeArea())
         .sheet(item: $sharePayload) { payload in
             ActivityView(activityItems: payload.items)
                 .presentationDetents([.medium, .large])
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("adjustment-sheet")
     }
 
@@ -349,7 +351,7 @@ private struct AdjustmentSheetHeader: View {
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Close")
-                .accessibilityIdentifier("adjustment-sheet-close")
+                .accessibilityIdentifier("Close")
             }
         }
         .padding(.horizontal, 8)

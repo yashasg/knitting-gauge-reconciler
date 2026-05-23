@@ -615,3 +615,26 @@ Replace the inline Required Adjustments block with a native SwiftUI `.sheet` pre
 ### Effect
 
 This directive supersedes the earlier Ive recommendation to auto-present only on mismatch, keep a compact inline summary, and reopen from cached results. The shipped UX is deterministic and sheet-first.
+
+---
+
+## 2026-05-23: bundle exec removal from build.sh
+
+**Date:** 2026-05-23  
+**Author:** Hopper  
+**Branch:** feat/fastlane-from-cocktail  
+**Commit:** 003d8ea
+
+### Decision
+
+`app/build.sh` invokes `fastlane` directly (no `bundle exec`); `.github/workflows/cd.yml` keeps `bundle exec fastlane`.
+
+### Rationale
+
+- **Local:** The Bundler 4.0.11 pin in `app/Gemfile.lock` requires Ruby 3.x. System macOS Ruby (2.6) cannot satisfy it, producing a `Gem::GemNotFoundException` at `bundle exec` time. Calling `fastlane` directly bypasses Bundler entirely and relies on Homebrew fastlane being on PATH (`brew install fastlane`). This matches the cocktail-batch-dilution CI workflow precedent.
+- **CI:** `.github/workflows/cd.yml` uses `ruby/setup-ruby@v1` with `bundler-cache: true` and Ruby 3.4, so Bundler is properly available and `bundle exec` works correctly there. No change to cd.yml is needed or desirable.
+
+### Affected files
+
+- `app/build.sh` — `run_fastlane()` now checks `command -v fastlane` and calls it directly
+- `.github/workflows/cd.yml` — unchanged; `bundle exec fastlane` retained

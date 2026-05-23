@@ -114,11 +114,14 @@ Three sequential Hopper agent spawns executed a convergence of KGR's build syste
 
 **Hopper-7:** Aligned Fastlane CI lane to cocktail's unified `ci` lane pattern. The scheme now drives test scope; `build.sh build` retains its own lane for interactive use, while `build.sh test` routes through the `ci` lane for consistency with CI/CD.
 
+**Hopper-8:** Removed `bundle exec` from app/build.sh's run_fastlane() function. System Ruby 2.6 cannot satisfy Bundler 4.0.11 pin; Bundler 4.x requires Ruby 3.x. Direct fastlane invocation via Homebrew path works on local. CI workflow (cd.yml) retains `bundle exec fastlane` because Ruby 3.4 is properly provisioned by `ruby/setup-ruby@v1` action. Commit 003d8ea on feat/fastlane-from-cocktail.
+
 ### Key Technical Decisions
 
 - **Build.sh as thin wrapper:** build.sh handles lock management, preflight checks (MetricKit, SwiftLint, foreign-app uninstall), and simulator UDID/name resolution, but delegates actual xcodebuild/test execution to Fastlane.
 - **Scheme as test scope source of truth:** Fastlane's test scope is now driven by the shared `KnittingGaugeReconciler` Xcode scheme, eliminating lane-level `only_testing` filters.
 - **Backwards compatibility:** `app/run.sh` continues to work unchanged; it sets `BUILD_DIR=$RUN_BUILD_DIR COMPILER_INDEX_STORE_ENABLE=NO DESTINATION=...` before calling `build.sh build`, and build.sh forwards those settings into Fastlane.
+- **Local vs. CI Ruby mismatch:** System macOS Ruby cannot run modern Bundler versions. Local build.sh calls fastlane directly (Homebrew path); CI uses ruby/setup-ruby with Ruby 3.4 to provision proper Bundler support. Both paths are correct for their environments.
 
 ### Verification
 

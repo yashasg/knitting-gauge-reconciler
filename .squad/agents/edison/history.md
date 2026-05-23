@@ -46,6 +46,12 @@
 
 ## Learnings
 
+### 2026-05-22T21:30:00-07:00 — Second Tesla veto of MR !35 main-screen additions
+
+- **Pattern:** This is the second same-day Tesla rejection of MR !35's visible `ContentView` additions — first hero tiles, now the verdict card.
+- **Lesson:** Prototype-parity sweeps can produce UI Tesla rejects on sight; do not add always-visible cards to `ContentView` without explicit Tesla sign-off.
+- **Scope boundary:** Keep verdict math/types available for non-main-screen surfaces (for example export/help flows), but remove rejected presentation from the primary hierarchy.
+
 ### 2026-05-22T02:25:03.715-07:00 — Stitchwise App Icon Setup
 
 - **Files changed:** `app/KnittingGaugeReconciler/Assets.xcassets/AppIcon.appiconset/**`, `app/app.xcodeproj/project.pbxproj`

@@ -1323,3 +1323,150 @@ The main screen is a *task-execution surface*, not an *analysis display surface*
 3. **Is it analysis/diagnosis?** (Verdict, percentages, comparison metrics?) — No → belongs in export, help, AX labels, or *implicit* visual feedback (color changes, icon states).
 
 If a component's purpose is to *judge or summarize* the relationship between inputs, it is analysis. Move it off the main screen. The knitter's task is "figure out how many stitches to cast on," not "judge my gauge relationship." The app serves the task, not the curiosity about the judgment.
+
+---
+
+## 2026-05-23T01:00:00-07:00: Hopper — Fastlane Integration Plan (read-only analysis)
+
+**Author:** Hopper (Tooling Dev)  
+**Date:** 2026-05-23T00:00:00-07:00  
+**Status:** PROPOSAL (no changes made, analysis only)
+
+Hopper performed a read-only comparison of KGR's Fastlane setup against Tesla's external `cocktail-batch-dilution` Fastlane configuration. No edits were made to either project during this analysis.
+
+### Summary
+
+The external app's Fastfile adds substantial release-hardening that KGR lacks:
+- App Store Connect API key auth (vs current Apple ID session-based flow)
+- CI-only temp keychain setup and optional WWDR import
+- Explicit signing-context extraction from `match`
+- Release bundle-ID validation against Xcode project
+- Build-number fallback logic for new-version uploads
+- Shared `build_release_artifact` helper reducing duplication in `beta`/`release` lanes
+
+CI lanes are structurally similar except the external app uses scheme-driven test selection and app-specific `trial_override` arguments (not applicable to KGR).
+
+### Key differences
+
+| Aspect | KGR | cocktail-batch-dilution | Recommendation |
+|--------|-----|------------------------|-----------------|
+| ASC auth | Apple ID session | API key + JSON | **WORTH STEALING** |
+| Bundle-ID safety | No preflight check | `ensure_release_configuration_matches` | **WORTH STEALING** |
+| CI signing | Inline `match` only | Temp keychain + optional WWDR + manual export | **WORTH STEALING** (selective pieces) |
+| Build-number fallback | `latest_testflight_build_number(...)+1` | `next_testflight_build_number_for_release` with fallback | **WORTH STEALING** |
+| Plugin layer | None | `fastlane-plugin-versioning` | Optional; KGR lacks `CURRENT_PROJECT_VERSION` |
+| Appfile team_id | `team_id("YOUR_TEAM_ID")` placeholder | Omitted | **CONFLICTS** — KGR's placeholder is deliberate |
+| CI test structure | Explicit `only_testing` filter in lane | Scheme-driven, no lane filter | **CONFLICTS** — KGR's explicit scoping is intentional |
+
+### Proposed integration sequence (if approved)
+
+1. Bundle-ID preflight guard (safest, isolated)
+2. ASC API key auth + explicit lane plumbing
+3. Build-number fallback helper
+4. (Deferred) Plugin-backed Xcodeproj versioning
+5. (Deferred) CI release-signing hardening
+
+**Tesla decision required:** Appetite for adopting these improvements and handling new secret-store wiring for ASC API key.
+
+---
+
+## 2026-05-23T01:01:48-07:00: User directive — Adopt cocktail-batch-dilution Fastlane patterns (all 5 items)
+
+**By:** Tesla (via Copilot)  
+**Status:** DIRECTIVE (approved for implementation)
+
+### What
+
+Implement all 5 Fastlane improvements identified in Hopper's cocktail comparison (2026-05-23):
+
+1. **Bundle ID + Team ID contract:** Keep KGR's bundle ID (`com.yashasg.KnittingGaugeReconciler`). Adopt cocktail's Team ID pattern. Add preflight guard comparing Fastlane `app_identifier` against `app.xcodeproj` `PRODUCT_BUNDLE_IDENTIFIER`.
+2. **ASC auth:** Switch from Apple ID session flow to App Store Connect API key (env vars: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_FILEPATH` or `ASC_KEY_CONTENT_B64`).
+3. **Build numbering:** Adopt cocktail's "no prior TestFlight build for this version" fallback handler.
+4. **CI test shape:** Adopt cocktail's scheme-driven `ci` / `test` lanes. **⚠️ This explicitly overrides prior CI design choices** — Release-config-builds-Debug-tests split, serial UI policy dropped, canceled-as-failed behavior superseded.
+5. **Signing hardening:** Adopt cocktail's temp keychain, optional WWDR import, manual signing block.
+
+### Why
+
+Cross-app convergence. The iOS apps should share tooling shape where it makes sense. The CI test choices previously accepted as design were actually workarounds; cocktail's pattern is the better baseline.
+
+### Implementation order (lowest risk first)
+
+1. Bundle ID guard + Team ID swap
+2. Build numbering helper
+3. ASC API key auth (new env vars required from CI)
+4. CI test shape (overrides existing design — commits in this batch supersede prior CI decisions)
+5. Signing hardening (final — temp keychain interacts with runner environment)
+
+### Branch
+
+`feat/fastlane-from-cocktail` off `main`. Each item is its own commit. Single MR.
+
+### Secrets Tesla must provide
+
+Before steps 3 + 5 ship:
+- App Store Connect API key (ID, issuer ID, key file or base64)
+- Match passphrase (if using `match`) or signing-cert env paths
+
+### Affected prior decisions (to be updated post-merge)
+
+- "Release config builds Debug tests" — superseded by item #4
+- "Serial UI policy" — superseded by item #4
+- "Canceled runs report as failed" — superseded by item #4
+
+---
+
+## 2026-05-23T01:01:48-07:00: Hopper — Fastlane Integration — SHIPPED
+
+**Author:** Hopper (Tooling Dev)  
+**Date:** 2026-05-23T01:01:48-07:00  
+**Status:** SHIPPED on branch `feat/fastlane-from-cocktail`  
+**MR:** Draft MR !36  
+**Commits:** 472c733, fdee865, abd6c9f, 477759a, de9575a, 914f01f, 537b6cb (ASC auth single-JSON-blob fixup)
+
+### What shipped
+
+Implemented all 5 Fastlane improvements from the cocktail-batch-dilution comparison:
+
+1. ✅ Adopted cocktail's Team ID in `app/fastlane/Appfile`; kept KGR's bundle ID `com.yashasg.KnittingGaugeReconciler`.
+2. ✅ Added preflight guard comparing Fastlane `app_identifier` against `project.pbxproj` `PRODUCT_BUNDLE_IDENTIFIER`; aborts release lanes on drift.
+3. ✅ Added TestFlight build-number helper; falls back cleanly when current version has no prior TestFlight build.
+4. ✅ Switched release auth to App Store Connect API key (env vars: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_FILEPATH` / `ASC_KEY_CONTENT_B64`).
+5. ✅ Ported release-signing hardening: CI temp keychain, optional WWDR import, `match`-derived signing context, manual export wiring.
+
+### CI test shape (active)
+
+The Fastlane CI test shape now follows cocktail's pattern:
+- `ci` builds the shared `KnittingGaugeReconciler` scheme and runs tests from that scheme without lane-level `only_testing` filter.
+- `test` also runs the scheme-defined test scope.
+- The shared Xcode scheme is the source of truth for CI test participation.
+
+### Superseded assumptions
+
+This shipped shape supersedes prior accepted Fastlane CI assumptions:
+- Release-config-build / Debug-test split (removed)
+- Serial-UI CI policy (removed)
+- Canceled-as-failed behavior (removed)
+
+Tesla explicitly approved the override.
+
+### CI env-var contract
+
+**App Store Connect auth:**
+- `ASC_KEY_ID`
+- `ASC_ISSUER_ID`
+- Exactly one of: `ASC_KEY_FILEPATH` or `ASC_KEY_CONTENT_B64`
+
+**Signing / release lanes:**
+- `MATCH_PASSWORD`
+- `MATCH_KEYCHAIN_PASSWORD`
+- Optional: `WWDR_CERT_PATH`
+- Existing credentials for `fastlane_hisa` match repository
+
+### Validation notes
+
+- `ruby -c app/fastlane/Fastfile` after each commit (syntax verified)
+- No lanes executed in-session (secrets intentionally not configured)
+- MR !36 awaiting CI variables from Tesla before merge
+
+---
+

@@ -140,3 +140,22 @@ Edison ✅ | Curie ✅ | Mendel ✅ | Jacquard ✅ | Ive ✅ | **Tesla ✅**
 
 **Lesson:** When retiring a heuristic team-wide, do not preserve "sanctioned uses" without explicit user sign-off. Carveouts are how a retired pattern leaks back in. (Applied: Curie §2.9 carveout withdrawn on first follow-up.)
 
+
+### 2026-05-23T08:25:00Z — Fastlane integration MR !36 (draft, pending CI secrets)
+
+**Status:** Draft MR opened on branch `feat/fastlane-from-cocktail`. Implementation complete; awaiting:
+- `ASC_API_KEY_JSON` (single-JSON-blob App Store Connect API key)
+- `MATCH_PASSWORD` (for cert/profile signing)
+- `MATCH_KEYCHAIN_PASSWORD` (for CI keychain setup)
+
+**What shipped:**
+1. Bundle ID guard + Team ID swap (472c733)
+2. Build number fallback for new-version uploads (fdee865)
+3. ASC auth conversion to API key (abd6c9f, 477759a, 537b6cb fixup)
+4. CI test shape adoption — scheme-driven lanes (de9575a) **⚠️ Explicitly overrides prior CI design**
+5. Signing hardening — temp keychain, optional WWDR, manual export (914f01f)
+
+**CI design override approved:** User directive 2026-05-23T01:01:48-07:00 explicitly approved overriding prior Fastlane CI decisions (Release-config-builds, serial UI policy, canceled-as-failed). The new scheme-driven test shape is now canonical.
+
+**Next step:** Provide CI env vars; review and merge MR !36.
+

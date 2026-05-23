@@ -12,10 +12,11 @@
 
 ### Learnings
 
+- **2026-05-23T03:28:48-07:00:** Bundle ID is now intentionally the ASC typo'd identifier `com.yashasg.knitting-guage-reconciler` (plus `Tests`/`UITests` suffixes for test bundles) so Fastlane Match/CD can sign against the existing KnitFit ASC app `6772098335`. Future correction to `gauge` would require creating a brand-new ASC app entry.
 - **2026-05-23T03:01:49-07:00:** GitHub Actions `env:` scope is step-local unless promoted to job/workflow env or written via `GITHUB_ENV`. A secret wired only on the "Write App Store Connect API key" step is not visible to the later Fastlane upload step, so release tooling should prefer the already-written `app/fastlane/asc_api_key.json` file as the cross-step contract and keep `ASC_API_KEY_JSON` only as an optional override.
 - **2026-05-23T01:52Z:** Bundler pin in `app/Gemfile.lock` (Bundler 4.0.11) requires Ruby 3.x; system macOS Ruby (2.6) cannot satisfy it, causing `find_spec_for_exe` errors at `bundle exec` time. Calling `fastlane` directly (Homebrew install on PATH via `brew install fastlane`) bypasses Bundler entirely and works on any Ruby version. CI keeps `bundle exec` because it provisions Ruby 3.4 + bundler-cache via `ruby/setup-ruby@v1` before invoking Fastlane.
 
-**Last entry:** 2026-05-23T03:01:49-07:00 — GitHub Actions step-level env scoping gotcha documented; ASC auth now prefers the persisted JSON file for cross-step Fastlane usage.
+**Last entry:** 2026-05-23T03:28:48-07:00 — Bundle ID pivoted to ASC's typo'd `com.yashasg.knitting-guage-reconciler`; future rename would require a new ASC app.
 
 ### 2026-05-22T21:00:32-07:00 — run.sh GUI surfacing (Hopper-1)
 

@@ -141,3 +141,22 @@ MR !36 (11-commit stack) awaits Tesla's GitHub Secrets setup:
 - Optional: `WWDR_CERT_PATH`
 
 Tesla has validated the CD workflow end-to-end on cocktail side; KGR's path now matches. Ready to merge once secrets are configured.
+
+---
+
+### 2026-05-23T02:12:30Z — MR !36 Merged; Cherry-Pick Escalation Resolved
+
+**Status:** ✅ MR !36 shipped to main (commit 6d89671)
+
+**Cherry-pick attempt (hopper-10):** Attempted direct cherry-pick of commit 7320a75 (Fastfile UI-test skip) onto main. Conflict detected: main's Fastfile predates the entire feat/fastlane-from-cocktail integration branch, making surgical cherry-pick impossible without resolving complex dependencies.
+
+**Decision:** Escalated to full MR merge. tesla-3 merged the entire feat/fastlane-from-cocktail branch as MR !36 (11 commits, 6d89671), ensuring atomic Fastlane integration with all dependencies intact.
+
+**Outcome:** Full Fastlane integration delivered atomically:
+- Build.sh delegates to Fastlane (thin wrapper pattern preserved)
+- Scheme-driven test scope
+- App Store Connect API-key auth
+- CI-only signing hardening
+- GitHub Actions CD workflow ready
+
+**Lesson:** When cherry-pick conflicts arise due to deep dependency trees, full branch merge is more reliable than manual conflict resolution — preserves all test/integration points and reduces hidden regressions.

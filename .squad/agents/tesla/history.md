@@ -200,3 +200,25 @@ GitHub Secrets must be set up before workflow can run in production:
 
 **Action:** Configure GitHub Secrets, then MR !36 is ready to merge.
 
+---
+
+### 2026-05-23T02:12:30Z — MR !36 Fastlane Integration Merged to Main
+
+**Merge Commit:** 6d89671  
+**Branch:** feat/fastlane-from-cocktail  
+**Commits merged:** 11 total (d8f73c5 .. b64ec0e + prior stack)
+
+**Status:** ✅ Shipped to main
+
+Full Fastlane CI/CD integration now live:
+- test, ci, beta, release lanes
+- App Store Connect JSON authentication
+- Enhanced signing with CI-only keychain + optional WWDR
+- build.sh → Fastlane delegation (thin wrapper pattern)
+- Scheme-driven test scope (KnittingGaugeReconciler scheme authoritative)
+- No bundle exec in local build.sh (Homebrew fastlane)
+- GitHub Actions CD workflow (.github/workflows/cd.yml) ready for secrets
+
+**Cherry-pick escalation (hopper-10):** Attempted direct cherry-pick of 7320a75 (Fastfile UI-test skip) aborted due to conflict with pre-integration Fastfile on main. Escalated to full MR merge as designed — merge atomic and preserves all dependencies.
+
+**Next phase:** Secrets configuration (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_FILEPATH/CONTENT_B64, MATCH_PASSWORD, MATCH_KEYCHAIN_PASSWORD) for CD execution.

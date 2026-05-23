@@ -124,6 +124,7 @@ XCODEBUILD_ARGS=(
   -scheme "$SCHEME"
   -configuration "$CONFIGURATION"
   -derivedDataPath "$DERIVED_DATA_PATH"
+  -quiet
   "${DESTINATION_ARGS[@]}"
 )
 if [[ "$MODE" == "test" ]]; then
@@ -474,6 +475,7 @@ for s in specs:
     -configuration "$CONFIGURATION"
     -derivedDataPath "$DERIVED_DATA_PATH"
     "${DESTINATION_ARGS[@]}"
+    -quiet
     -parallel-testing-enabled NO
     -resultBundlePath "$rerun_bundle"
   )

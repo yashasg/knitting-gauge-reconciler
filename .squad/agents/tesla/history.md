@@ -159,3 +159,44 @@ Edison ✅ | Curie ✅ | Mendel ✅ | Jacquard ✅ | Ive ✅ | **Tesla ✅**
 
 **Next step:** Provide CI env vars; review and merge MR !36.
 
+---
+
+## 2026-05-23 — MR !36 Fastlane + GitHub Actions CD Ready for Secrets
+
+**Status:** Awaiting GitHub Secrets configuration  
+**Branch:** feat/fastlane-from-cocktail  
+**Commit stack:** 11 commits (d8f73c5, fcd8d8a, b64ec0e + prior work)
+
+### What's Ready
+
+MR !36 is complete and validated. Includes:
+- GitHub Actions CD workflow (`.github/workflows/cd.yml`) — adapted from cocktail pattern
+- Build.sh refactored to delegate to Fastlane lanes
+- Fastlane Fastfile with unified `ci` lane, scheme-driven test scope, cocktail-style release signing
+
+All technical work verified on main. No Fastlane lanes executed in-session (secrets intentionally not configured).
+
+### What's Blocking CD Execution
+
+GitHub Secrets must be set up before workflow can run in production:
+
+**App Store Connect auth (required):**
+- `ASC_KEY_ID`
+- `ASC_ISSUER_ID`
+- exactly one of: `ASC_KEY_FILEPATH` or `ASC_KEY_CONTENT_B64`
+
+**Signing/release (required for release lanes):**
+- `MATCH_PASSWORD`
+- `MATCH_KEYCHAIN_PASSWORD`
+- optional: `WWDR_CERT_PATH`
+- Note: existing credentials for `fastlane_hisa` match repository must exist in CI
+
+### Validation Status
+
+✅ Workflow structure matches cocktail pattern  
+✅ Build.sh Fastlane delegation verified  
+✅ CI lane scheme-driven test scope working  
+✅ Cocktail CD workflow end-to-end validated by Tesla  
+
+**Action:** Configure GitHub Secrets, then MR !36 is ready to merge.
+

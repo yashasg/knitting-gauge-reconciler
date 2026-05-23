@@ -7,194 +7,50 @@
 - **Joined:** 2026-05-19T07:11:08.646Z
 - **Simulator environment (2026-05-22T21:18Z):** iPhone 17 Pro validated for app/run.sh launcher (no hang issues post-Hopper fix).
 
-## Current Session Learnings (2026-05-22)
+## Current Status (2026-05-23)
 
-### 2026-05-22T21:30:00-07:00 — VerdictCard revert (Edison-1)
+**Latest work:** Delta pill final shape & color decision (2026-05-22T04:17:35-07:00). Implemented as warm-brown capsule badge with white semibold text, reusing AppTheme.secondary color (aliased as deltaPill).
 
-**What:** Removed `VerdictCard(...)` from `ContentView.swift`, completing the rollback of MR !35's main-screen additions per Tesla directive 2026-05-22T21:30:00-07:00.
+**Verification:** 62/62 tests pass, 0 SwiftLint violations, build succeeds.
 
-**Kept:** `Verdict` math/types/tiering remain intact (`GaugeMathMetrics.swift` including `majorMismatch`, plus ContentView verdict computed properties/signpost logic). `app/KnittingGaugeReconciler/Views/VerdictCard.swift` stays in the codebase.
+## Recent Sessions
 
-**Share/export note:** `ShareableView` still compiles after the revert and does not currently instantiate `VerdictCard`; the preserved view file is retained for export-related/future verdict presentation rather than main-screen placement.
+### 2026-05-22T04:17:35-07:00 — Delta Pill Final Shape & Color (supersedes circular olive spec)
 
-**Why:** Tesla rejected the always-visible verdict copy on hierarchy/visual-quality grounds. Do not add prominent cards to `ContentView` without explicit Tesla sign-off.
+**Decision:** Delta pills are **capsule** badges (not circular) filled with existing warm-brown `AppTheme.secondary`, white `.caption2.weight(.semibold)` text, 8pt H / 3pt V padding.
 
-**Commit:** 515ab51 | **Build:** `EXIT: 0` | **Tests:** 62/62 pass
+**Why:** Three iterations were attempted on top of circular olive design: (a) circular shape caused layout regression with adjacent field; (b) bespoke color asset duplicated existing secondary brown. Capsule + reused secondary color removed regression and simplified palette.
 
-**Lesson:** This is the second same-day Tesla rejection of MR !35's visible `ContentView` additions — first hero tiles, now the verdict card. Prototype-parity sweeps can produce UI Tesla rejects on sight. Scope boundary: keep verdict math/types available for non-main-screen surfaces (export/help flows), but remove rejected presentation from the primary hierarchy.
+**Implementation:** `DeltaPillBadge` in `GaugeStepperField.swift` uses `.clipShape(Capsule())` with `.fixedSize(horizontal: true, vertical: false)`. Component reused in field header, wheel-picker header, adjustment summary for consistency.
 
-### Prior Sessions
+**Verification:** Commits bde2d87, 80f14b8, 673a578, 3c48771 on main. `bash app/build.sh build` → EXIT: 0.
 
-- **2026-05-22 earlier:** Dark mode assetization, VoiceOver text casing, touch target fixes, title restoration, AppTheme color assets migration complete (16 tokens, warm palette).
-- **Full detailed archive:** `history-archive.md` contains the complete 2026-05-22 (pre-VerdictCard work), 2026-05-21, and earlier sessions.
+### 2026-05-22T21:30:00-07:00 — VerdictCard Main-Screen Revert (Edison-1)
+
+**What:** Removed `VerdictCard(...)` from `ContentView.swift`, completing rollback of MR !35's main-screen additions per Tesla directive.
+
+**Kept:** `Verdict` enum, math/tiering logic, and VerdictCard.swift view file (for export/future use).
+
+**Why:** Tesla rejected always-visible verdict card on hierarchy/visual-quality grounds. Second same-day rejection of MR !35 main-screen additions (first hero tiles, now verdict card).
+
+**Lesson:** Prototype-parity sweeps can produce UI Tesla rejects on sight. Do not add prominent cards to `ContentView` without explicit sign-off. Scope: keep verdict logic available for non-main-screen surfaces (export, help flows), remove rejected presentation from primary hierarchy.
+
+**Commit:** 515ab51 | Build: EXIT: 0 | Tests: 62/62 pass
+
+## Key Learnings & Patterns
+
+- **Prototype parity is necessary but not sufficient** — visual quality and hierarchy decisions are separate approval gates owned by Tesla (2026-05-22T19:23:34-07:00).
+- **UI changes require explicit approval** — future UI work is not auto-pickup-eligible from prototype-parity drift. Explicit Tesla sign-off required before implementation (charter updated).
+- **Accessibility compound operations** — `.accessibilityElement(children: .ignore)` suppresses child `.accessibilityIdentifier` visibility in XCUITest (undocumented, critical).
 
 ## Verification Status
 
-- **Lint:** SwiftLint non-color HIG rules and `color_literal_rgb` both clean (0 violations)
-- **Tests:** 62/62 pass, 0 warnings
-- **Build:** Succeeds on iPhone 17 Pro Max simulator
-- **VerdictCard removal:** Confirmed VerdictCard not rendered in main screen, preserved file for future use
+- **Build:** Succeeds on iPhone 17 Pro / Pro Max simulator
+- **Tests:** 62/62 pass (49 Swift Testing + 13 XCTest UI), 0 failures
+- **Lint:** SwiftLint clean (0 violations, including identifier_name, line_length, color_literal_rgb)
+- **Compiler:** 0 warnings (SWIFT_TREAT_WARNINGS_AS_ERRORS=YES)
 
 ## See Also
 
-- **Detailed archive:** `history-archive.md` contains full prior session logs
-- **Decisions:** `.squad/decisions.md` contains all team decisions (merged 3 inbox files 2026-05-22T21:50Z)
-
-
-
-## Learnings
-
-### 2026-05-22T21:30:00-07:00 — Second Tesla veto of MR !35 main-screen additions
-
-- **Pattern:** This is the second same-day Tesla rejection of MR !35's visible `ContentView` additions — first hero tiles, now the verdict card.
-- **Lesson:** Prototype-parity sweeps can produce UI Tesla rejects on sight; do not add always-visible cards to `ContentView` without explicit Tesla sign-off.
-- **Scope boundary:** Keep verdict math/types available for non-main-screen surfaces (for example export/help flows), but remove rejected presentation from the primary hierarchy.
-
-### 2026-05-22T02:25:03.715-07:00 — Stitchwise App Icon Setup
-
-- **Files changed:** `app/KnittingGaugeReconciler/Assets.xcassets/AppIcon.appiconset/**`, `app/app.xcodeproj/project.pbxproj`
-- **Asset packaging:** Generated the full iPhone + App Store icon matrix from the approved 1024×1024 source and added an `AppIcon.appiconset/Contents.json` mapping every required idiom/scale slot.
-- **Build setting:** Pointed both Debug and Release at `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;` so simulator builds, TestFlight archives, and App Store uploads resolve the same icon set.
-- **Verification:** `xcodebuild -project app/app.xcodeproj -scheme KnittingGaugeReconciler -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' build` succeeds.
-
-### 2026-05-22T02:54:31.478-07:00 — identifier_name lint suppressions
-
-- **Files changed:** `app/KnittingGaugeReconciler/Components/TexturedBackground.swift`, `app/KnittingGaugeReconciler/GaugeMath.swift`, `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift`
-- **Decision:** Kept idiomatic short math/loop locals (`x`, `y`, `d`, `i`) and added `// swiftlint:disable:next identifier_name` directly above each declaration instead of renaming them.
-- **Targeted verification:** `swiftlint lint --path KnittingGaugeReconciler/Components/TexturedBackground.swift KnittingGaugeReconciler/GaugeMath.swift KnittingGaugeReconciler/Components/GaugeStepperField.swift | grep "identifier_name"` returns no matches.
-- **Build verification:** Direct `xcodebuild ... build` succeeds; `bash build.sh build` still reports unrelated pre-existing strict SwiftLint errors in `ContentView.swift`, but no `identifier_name` errors remain.
-
-### 2026-05-22T03:02:54.927-07:00 — ContentView line_length fix
-
-- **Files changed:** `app/KnittingGaugeReconciler/ContentView.swift`
-- **Change:** Wrapped six long user-facing string literals in concatenated multi-line forms so the text stays identical while meeting the strict 200-character `line_length` cap.
-- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` now ends with `EXIT: 0` and no `error:` output.
-- **Decision:** Treat `bash build.sh build` as the required source of truth for frontend build verification instead of running `xcodebuild` directly.
-
-### 2026-05-22T03:16:40.823-07:00 — App icon background removal
-
-- **Files changed:** `app/KnittingGaugeReconciler/Assets.xcassets/AppIcon.appiconset/icon-1024.png` + all 8 derived sizes
-- **Tool used:** `rembg[cpu]` (ML-based u2net model) for clean separation of knitting design from cream/white background. No manual tolerance-tuning needed — model handled the gradient background correctly.
-- **Result:** Corner (0,0) = `(0,0,0,0)` (transparent), center (512,512) = `(128,124,48,255)` (opaque olive/design pixel).
-- **All sizes regenerated:** icon-20@2x, icon-20@3x, icon-29@2x, icon-29@3x, icon-40@2x, icon-40@3x, icon-60@2x, icon-60@3x all re-derived from cleaned 1024px source via PIL LANCZOS resize.
-- **Apple note:** The 1024px App Store marketing icon is left transparent per user request; App Store Connect may require a solid background at submission time.
-- **Build verification:** `bash build.sh build` exits 0.
-
-### 2026-05-22T03:21:32.372-07:00 — App icon replaced with sweater illustration
-
-- **Files changed:** `app/KnittingGaugeReconciler/Assets.xcassets/AppIcon.appiconset/icon-1024.png` + all 8 derived sizes
-- **Source:** `/Users/yashasgujjar/Downloads/ChatGPT Image May 22, 2026 at 02_19_13 AM.png` (974×972 RGBA, cream turtleneck sweater on solid blue background)
-- **No background removal needed:** Source image already has a proper solid blue background; rounded corners are baked into the image as transparent pixels at the extremes — iOS will apply its own corner mask at render time.
-- **All sizes regenerated:** PIL LANCZOS resize from RGBA source to all required icon sizes.
-- **Build verification:** `bash build.sh build` exits 0.
-
-### 2026-05-22T03:27:26.322-07:00 — Pattern instructions title hierarchy fix
-
-- **Files changed:** `app/KnittingGaugeReconciler/Views/PatternInstructionsCard.swift`
-- **Typography:** Promoted the header from the legacy uppercase `SectionTitle` treatment to the same `.title2.weight(.bold)` title styling used by the Pattern Gauge and Your Gauge cards.
-- **Overflow handling:** Added `.minimumScaleFactor(0.7)` with a single-line constraint so “Pattern Instructions” shrinks before wrapping.
-- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` returned build success.
-
-### 2026-05-22T03:40:00.414-07:00 — Inline mismatch badge replaces triangle indicator
-
-- **Files changed:** `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift`
-- **UI treatment:** Replaced the red warning triangle on mismatched gauge fields with a slim inline capsule badge reading `mismatch detected`, positioned beside the `Stitches` / `Rows` labels so the warning reads as metadata instead of a floating icon.
-- **Consistency:** Applied the same capsule treatment in the wheel picker sheet header while preserving the existing mismatch summary copy and accessibility messaging.
-- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` returned `EXIT: 0`.
-
-## 2026-05-22 — Inline Mismatch Badge UI
-
-- Replaced red triangle mismatch indicator with slim capsule badge ("mismatch detected") inline with Rows/Stitches labels
-- Badge: `.caption2.weight(.semibold)`, cream text, mismatch-red bg, 8pt H / 3pt V padding, Capsule clipping
-- Build: `EXIT: 0`
-- Commit: dafd057
-
-### 2026-05-22T21:30:00-07:00 — VerdictCard revert (Edison-1)
-
-**What:** Removed `VerdictCard(...)` from `ContentView.swift`, completing the rollback of MR !35's main-screen additions per Tesla directive 2026-05-22T21:30:00-07:00.
-
-**Kept:** Verdict enum, math/tiering logic (`majorMismatch`, verdict computed properties), and VerdictCard.swift view file (for export/future use).
-
-**Cross-ref:** Ive-1 postmortem explains the design error: both hero tiles and VerdictCard are diagnostic analysis, not actionable inputs. Verdict logic is sound, but the on-screen card belongs in ShareableView export or accessibility payloads, not the main hierarchy.
-
-**Commit:** 515ab51 | **Build:** `EXIT: 0` | **Tests:** 62/62 pass
-
-### 2026-05-22T03:46:18.853-07:00 — Mismatch badge single-line fix
-
-- **Files changed:** `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift`
-- **UI fix:** Shortened the inline capsule label from `mismatch detected` to `mismatch` and enforced `.lineLimit(1)` plus `.fixedSize(horizontal: true, vertical: false)` so it stays on one line.
-- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` completed successfully.
-
-### 2026-05-22T03:48:45-07:00 — Delta pills replace mismatch badge
-
-- **Files changed:** `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift`, `app/KnittingGaugeReconciler/Views/GaugeInputsCard.swift`, `app/KnittingGaugeReconciler/ContentView.swift`
-- **UI update:** Replaced the inline `mismatch` badge with signed delta pills (`+N` / `-N`) computed as `patternValue - userValue`, and mirrored the same pill in the wheel picker header while keeping existing mismatch accessibility copy and warning summary text.
-- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` and `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh test 2>&1; echo "EXIT: $?"` both completed successfully.
-
----
-
-## Scribe Note (2026-05-22T10:54:30Z)
-
-**Decision recorded:** Delta pill mismatch indicator decision merged into .squad/decisions.md from inbox. Build + tests verified passing. See `.squad/decisions.md` (entry dated 2026-05-22T03:48:45-07:00).
-
-### 2026-05-22T03:56:42-07:00 — Delta pills switched to circular olive badges
-
-- **Files changed:** `app/KnittingGaugeReconciler/Components/GaugeStepperField.swift`, `app/KnittingGaugeReconciler/Components/AdjustmentValuePair.swift`, `app/KnittingGaugeReconciler/Components/AppTheme.swift`, `app/KnittingGaugeReconciler/Assets.xcassets/app-theme-delta-pill.colorset/Contents.json`
-- **UI update:** Replaced the signed delta capsules with a shared 32×32 circular badge treatment, keeping white semibold text and switching the badge fill to the approved muted olive tone.
-- **Consistency:** Reused the same circular badge in the gauge stepper label, wheel-picker header, and adjustment summary tile so all `+N` / `-N` indicators match.
-- **Verification:** `cd /Users/yashasgujjar/dev/knitting-gauge-reconciler/app && bash build.sh build 2>&1; echo "EXIT: $?"` returned `EXIT: 0`.
-
----
-
-## 2025-08-01T00:00:00Z — A11y Identifier Fix & Goal 5 Achieved
-
-**Session:** a11y-identifier-fix  
-**Outcome:** ✅ All 5 goals achieved and signed off
-
-### A11y Identifier Placement Fix
-
-**Problem:** `.accessibilityIdentifier` placed on child `Text` views were not visible to XCUITest queries because `.accessibilityElement(children: .ignore)` collapses the subtree AND suppresses child identifier visibility.
-
-**Solution:** Move `.accessibilityIdentifier(...)` from child views to the container `ZStack` element (the view that carries `.accessibilityElement`).
-
-**Files changed:**
-- `app/KnittingGaugeReconciler/Views/AdjustmentRow.swift` — Moved identifier to adjustedTile container
-- `app/KnittingGaugeReconciler/Components/AdjustmentValuePair.swift` — Moved identifier to yourTile container
-- `app/KnittingGaugeReconciler/Views/RequiredAdjustmentsCard.swift` — Added `adjustedIdentifier: "increases-result"` to Increase-row
-- `app/KnittingGaugeReconcilerUITests/KnittingGaugeReconcilerUITests.swift` — Updated test queries to use `app.otherElements[identifier]` instead of `app.staticTexts[identifier]`
-
-**Key learning:** `.accessibilityElement(children: .ignore)` is a compound operation:
-1. Collapses VoiceOver subtree (expected)
-2. **Also** makes child `.accessibilityIdentifier` invisible to XCUITest automation (undocumented, critical)
-
-**Verification:** Branch ready for merge; all tests pass on this branch.
-
-**Branch:** `fix/cast-on-result-a11y-identifier`
-
-### Session Goals: 5/5 ✅
-
-- **Goal 1:** Working app — exit 0, 61/61 tests pass ✅ (Curie verified)
-- **Goal 2:** UI/UX approved — 4 inputs live-calc, a11y identifiers + VoiceOver labels ✅ (Ive confirmed)
-- **Goal 3:** All 6 Jacquard scenarios in tests ✅ (Mendel confirmed)
-- **Goal 4:** JS→Swift formula approved ✅ (Jacquard confirmed)
-- **Goal 5:** 61/61 tests, 0 SwiftLint violations, 0 warnings ✅ (Curie verified with SWIFT_TREAT_WARNINGS_AS_ERRORS=YES)
-
-**Main HEAD:** 07ef822 (tree clean, production-ready)
-
-**Handoff:** Ready for yashasg. Next: Edison must merge `fix/cast-on-result-a11y-identifier` with Curie gate OR abandon with decision note.
-
-### 2026-05-22T19:23:34-07:00 — Tesla-veto pattern
-
-- **Lesson:** Prototype parity is necessary but not sufficient; visual quality is a separate approval gate owned by Tesla.
-- **Key file:** `app/KnittingGaugeReconciler/ContentView.swift` — removed the `HeroTilesView(result: liveResult)` call site from the main screen while keeping VerdictCard in place.
-
-## 2026-05-22T20:37:00-07:00 — Hero tiles revert + prototype-parity governance purge
-
-**Session:** scribe-orchestration-2026-05-22  
-
-**Context:** Tesla rejected hero stitch/row % tiles from main UI. Prototype parity is not an end state; it must be validated against platform conventions, domain mental models, real-estate tradeoffs, and first-principles information hierarchy. The "final-review parallel sweep" pattern against the prototype is retired.
-
-**New regime:** The app is the source of truth. `prototype/` is archival/sketch only, not a UI, hierarchy, copy, or interaction spec. Drift audits are against `.squad/decisions.md` and Tesla directives, never against the prototype. See directives 2026-05-22T19:23:34-07:00 through 2026-05-22T19:39:36-07:00 in `.squad/decisions.md`.
-
-**Implication for Edison:** Future UI/UX work is not auto-pickup-eligible from prototype-parity drift issues. UI changes require explicit Tesla sign-off before implementation. Charter updated; see `.squad/agents/edison/charter.md`.
-
+- **Detailed archive:** `history-archive.md` contains full prior session logs (2026-05-22 early sessions, 2026-05-21, earlier)
+- **Decisions:** `.squad/decisions.md` contains all team decisions and UI specifications

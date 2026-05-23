@@ -91,3 +91,46 @@ Pattern-matching against generic best practices is less reliable than grounding 
 - **2026-05-23T01:27:13-07:00:** Cross-CI host CD pattern: keep GitHub Actions manual-only (`workflow_dispatch`), clone the GitLab source-of-truth repo at job runtime via `GITLAB_PAT`, validate and pass the raw `ASC_API_KEY_JSON` blob for Fastlane App Store Connect auth, generate a temporary Match keychain password, install Apple WWDR on the runner, and run the Fastlane test gate before `beta`/`release`. Reuse host-agnostic paths/env contracts (`DERIVED_DATA_PATH`, `MATCH_PASSWORD`, `MATCH_KEYCHAIN_PASSWORD`, `WWDR_CERT_PATH`) so the same Fastlane release lanes work across GitLab/GitHub CI.
 - **2026-05-23T01:36:40-07:00:** `app/build.sh` is now a thin Fastlane delegator for `build`/`test` (and local `release` builds): the direct `xcodebuild` call path is gone. Preserve build-time-only behavior in the wrapper — SwiftLint, MetricKit telemetry preflight, simulator destination/env translation, build lock, and the foreign-app simulator uninstall preflight still run before `bundle exec fastlane ...`; `run.sh` keeps working by passing `BUILD_DIR`, `DESTINATION`, and `COMPILER_INDEX_STORE_ENABLE` through to Fastlane's derived-data / destination settings.
 - **2026-05-23T01:40:00-07:00:** Fastlane now has a dual surface on purpose: the unified `ci` lane is the authoritative lint + build + test entry for local CI-style validation (`./app/build.sh test`), while standalone `build`, `test`, `beta`, and `release` lanes remain for local run/install flow and CD. Keep `app/run.sh` on the build-only wrapper path so its env-var overrides still feed Fastlane without paying for a redundant test pass.
+
+---
+
+## 2026-05-23 — Fastlane Integration Sprint (Hopper-5, 6, 7)
+
+**Status:** ✅ Complete  
+**Branch:** feat/fastlane-from-cocktail  
+**Commits:** d8f73c5 (Hopper-5), fcd8d8a (Hopper-6), b64ec0e (Hopper-7)  
+
+### What Happened
+
+Three sequential Hopper agent spawns executed a convergence of KGR's build system toward `cocktail-batch-dilution`'s Fastlane + GitHub Actions CD workflow:
+
+**Hopper-5:** Adopted cocktail's `.github/workflows/cd.yml` and adapted it to KGR's project paths and `.build/` layout. CD workflow now in place.
+
+**Hopper-6:** Refactored `app/build.sh` to delegate build/test operations to Fastlane lanes instead of direct xcodebuild. This preserves wrapper-level concerns (locking, preflight, simulator management) while centralizing the actual build/test lifecycle in Fastlane.
+
+**Hopper-7:** Aligned Fastlane CI lane to cocktail's unified `ci` lane pattern. The scheme now drives test scope; `build.sh build` retains its own lane for interactive use, while `build.sh test` routes through the `ci` lane for consistency with CI/CD.
+
+### Key Technical Decisions
+
+- **Build.sh as thin wrapper:** build.sh handles lock management, preflight checks (MetricKit, SwiftLint, foreign-app uninstall), and simulator UDID/name resolution, but delegates actual xcodebuild/test execution to Fastlane.
+- **Scheme as test scope source of truth:** Fastlane's test scope is now driven by the shared `KnittingGaugeReconciler` Xcode scheme, eliminating lane-level `only_testing` filters.
+- **Backwards compatibility:** `app/run.sh` continues to work unchanged; it sets `BUILD_DIR=$RUN_BUILD_DIR COMPILER_INDEX_STORE_ENABLE=NO DESTINATION=...` before calling `build.sh build`, and build.sh forwards those settings into Fastlane.
+
+### Verification
+
+All commits validated on main; no Fastlane lanes were executed in-session (secrets intentionally not configured per Tesla's gating).
+
+### Deliverables for Team
+
+- GitHub Actions workflow file (`.github/workflows/cd.yml`)
+- Updated Fastlane Fastfile with unified `ci` lane and cocktail-style release signing
+- Refactored `app/build.sh` delegating to Fastlane
+
+### Dependencies / Blockers
+
+MR !36 (11-commit stack) awaits Tesla's GitHub Secrets setup:
+- App Store Connect API keys (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_FILEPATH` or `ASC_KEY_CONTENT_B64`)
+- Signing credentials (`MATCH_PASSWORD`, `MATCH_KEYCHAIN_PASSWORD`)
+- Optional: `WWDR_CERT_PATH`
+
+Tesla has validated the CD workflow end-to-end on cocktail side; KGR's path now matches. Ready to merge once secrets are configured.

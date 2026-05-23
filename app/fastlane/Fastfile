@@ -1,6 +1,8 @@
 ENV["FASTLANE_OPT_OUT_USAGE"] = "1"
 opt_out_usage
 
+require "xcodeproj"
+
 # This file contains the fastlane.tools configuration
 # You can find the documentation at https://docs.fastlane.tools
 #
@@ -18,6 +20,33 @@ opt_out_usage
 
 default_platform(:ios)
 
+APP_PROJECT = File.expand_path("../app.xcodeproj", __dir__)
+APPFILE_PATH = File.expand_path("Appfile", __dir__)
+APP_TARGET = "KnittingGaugeReconciler"
+APP_SCHEME = "KnittingGaugeReconciler"
+
+
+def fastlane_app_identifier
+  appfile_line = File.readlines(APPFILE_PATH).find { |line| line =~ /^\s*app_identifier\(/ }
+  app_identifier = appfile_line&.match(/app_identifier\(["']([^"']+)["']\)/)&.captures&.first
+  UI.user_error!("Unable to read app_identifier from #{APPFILE_PATH}") if app_identifier.to_s.empty?
+
+  app_identifier
+end
+
+
+def release_bundle_identifier
+  project = Xcodeproj::Project.open(APP_PROJECT)
+  target = project.targets.find { |candidate| candidate.name == APP_TARGET }
+  UI.user_error!("Unable to find Xcode target #{APP_TARGET} in #{APP_PROJECT}") unless target
+
+  config = target.build_configurations.find { |candidate| candidate.name == "Release" } || target.build_configurations.first
+  bundle_identifier = config.build_settings["PRODUCT_BUNDLE_IDENTIFIER"]
+  UI.user_error!("Unable to resolve PRODUCT_BUNDLE_IDENTIFIER for #{APP_TARGET}") if bundle_identifier.to_s.empty?
+
+  bundle_identifier
+end
+
 platform :ios do
   desc "Sync certificates and provisioning profiles"
   lane :certs do
@@ -34,8 +63,8 @@ platform :ios do
       strict: false      # HIG rules are already :error in .swiftlint.yml
     )
     xcodebuild(
-      project: "app.xcodeproj",
-      scheme: "KnittingGaugeReconciler",
+      project: APP_PROJECT,
+      scheme: APP_SCHEME,
       configuration: configuration,
       sdk: "iphonesimulator",
       destination: "generic/platform=iOS Simulator",
@@ -44,8 +73,8 @@ platform :ios do
       derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data")
     )
     run_tests(
-      project: "app.xcodeproj",
-      scheme: "KnittingGaugeReconciler",
+      project: APP_PROJECT,
+      scheme: APP_SCHEME,
       configuration: "Debug",
       derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data"),
       devices: ["iPhone 17 Pro"],
@@ -62,8 +91,8 @@ platform :ios do
   lane :build do |options|
     configuration = options[:configuration] || "Debug"
     xcodebuild(
-      project: "app.xcodeproj",
-      scheme: "KnittingGaugeReconciler",
+      project: APP_PROJECT,
+      scheme: APP_SCHEME,
       configuration: configuration,
       sdk: "iphonesimulator",
       destination: "generic/platform=iOS Simulator",
@@ -76,8 +105,8 @@ platform :ios do
   desc "Run XCTest suite without code signing (CI)"
   lane :test do
     run_tests(
-      project: "app.xcodeproj",
-      scheme: "KnittingGaugeReconciler",
+      project: APP_PROJECT,
+      scheme: APP_SCHEME,
       configuration: "Debug",
       derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data"),
       devices: ["iPhone 17 Pro"],
@@ -89,19 +118,27 @@ platform :ios do
     )
   end
 
+  private_lane :ensure_release_configuration_matches do
+    configured_bundle_identifier = release_bundle_identifier
+    next if configured_bundle_identifier == fastlane_app_identifier
+
+    UI.user_error!("fastlane app_identifier=#{fastlane_app_identifier} does not match #{APP_TARGET} Release bundle ID #{configured_bundle_identifier}")
+  end
+
   desc "Build and upload to TestFlight. Optional: bump:patch|minor|major"
   lane :beta do |options|
+    ensure_release_configuration_matches
     match(type: "appstore", readonly: true)
     increment_version_number(bump_type: options[:bump]) if options[:bump]
     increment_build_number(
       build_number: latest_testflight_build_number(
-        app_identifier: "com.yashasg.knitting-guage-reconciler",
+        app_identifier: fastlane_app_identifier,
         version: get_version_number
       ) + 1
     )
     build_app(
-      project: "app.xcodeproj",
-      scheme: "KnittingGaugeReconciler",
+      project: APP_PROJECT,
+      scheme: APP_SCHEME,
       export_method: "app-store"
     )
     upload_to_testflight(skip_waiting_for_build_processing: true)
@@ -109,17 +146,18 @@ platform :ios do
 
   desc "Build and submit to App Store. Optional: bump:patch|minor|major"
   lane :release do |options|
+    ensure_release_configuration_matches
     match(type: "appstore", readonly: true)
     increment_version_number(bump_type: options[:bump]) if options[:bump]
     increment_build_number(
       build_number: latest_testflight_build_number(
-        app_identifier: "com.yashasg.knitting-guage-reconciler",
+        app_identifier: fastlane_app_identifier,
         version: get_version_number
       ) + 1
     )
     build_app(
-      project: "app.xcodeproj",
-      scheme: "KnittingGaugeReconciler",
+      project: APP_PROJECT,
+      scheme: APP_SCHEME,
       export_method: "app-store"
     )
     upload_to_app_store(

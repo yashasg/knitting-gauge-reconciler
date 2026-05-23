@@ -3,8 +3,9 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_SCRIPT="$PROJECT_DIR/build.sh"
-BUILD_DIR="$PROJECT_DIR/.build"
-DERIVED_DATA_DIR="$BUILD_DIR/derived-data"
+BUILD_ROOT_DIR="${BUILD_DIR:-$PROJECT_DIR/.build}"
+RUN_BUILD_DIR="${RUN_BUILD_DIR:-$BUILD_ROOT_DIR/run-build}"
+DERIVED_DATA_DIR="$RUN_BUILD_DIR/derived-data"
 PRODUCTS_DIR="$DERIVED_DATA_DIR/Build/Products/Debug-iphonesimulator"
 
 DEFAULT_SIMULATOR_NAME="$(sed -n 's/^SIMULATOR_NAME="${SIMULATOR_NAME:-\(.*\)}"$/\1/p' "$BUILD_SCRIPT" | head -n 1)"
@@ -84,14 +85,14 @@ if [[ -z "$BUILD_DESTINATION" ]]; then
   BUILD_DESTINATION="platform=iOS Simulator,id=${SIMULATOR_UDID}"
 fi
 
-if ! DESTINATION="$BUILD_DESTINATION" "$BUILD_SCRIPT" build; then
+if ! BUILD_DIR="$RUN_BUILD_DIR" COMPILER_INDEX_STORE_ENABLE=NO DESTINATION="$BUILD_DESTINATION" "$BUILD_SCRIPT" build; then
   fail "build failed"
 fi
 
 APP_BUNDLE="$(find_app_bundle)"
 [[ -n "$APP_BUNDLE" ]] || fail "no built .app product found in $PRODUCTS_DIR"
 
-STAGED_DIR="$BUILD_DIR/run"
+STAGED_DIR="$BUILD_ROOT_DIR/run"
 STAGED_APP="$STAGED_DIR/$(basename "$APP_BUNDLE")"
 rm -rf "$STAGED_DIR"
 mkdir -p "$STAGED_DIR"

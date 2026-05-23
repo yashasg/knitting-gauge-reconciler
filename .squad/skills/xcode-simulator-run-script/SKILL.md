@@ -14,9 +14,12 @@ Use this when adding a local run command for an Xcode iOS app that already has a
 
 - Delegate compilation to the existing build script instead of duplicating `xcodebuild` flags.
 - Preserve simulator overrides (`SIMULATOR_NAME`, `SIMULATOR_UDID`, `DESTINATION`) and resolve a UDID for `simctl` install/launch.
-- Locate the built simulator `.app` under the same DerivedData products path used by the build script.
+- For interactive launch scripts, point the delegated build at an isolated workspace (for example `.build/run-build`) instead of the shared test/build DerivedData root; shared `Index.noindex` trees can make the next `rm -rf DerivedData` look hung.
+- Set `COMPILER_INDEX_STORE_ENABLE=NO` on the delegated run-build when you do not need Xcode indexing artifacts; this keeps the isolated run workspace small enough for repeat invocations.
+- Locate the built simulator `.app` under the same DerivedData products path used by the delegated build.
 - Read `CFBundleIdentifier` from the built app's `Info.plist` with `PlistBuddy`; do not hardcode it.
 - Stage the `.app` outside DerivedData before `simctl install` if other build/test jobs may clean DerivedData concurrently.
+- Validate with two consecutive run-script executions; the first proves build/install/launch, the second catches DerivedData cleanup regressions.
 
 ## Examples
 

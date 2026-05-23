@@ -12,6 +12,8 @@
 
 **Last entry:** 2026-05-20T19:26:30Z — MetricKit V1 shipped. Build: 49/49 tests pass. All MetricKit and swift-metrics work archived. See history-archive.md for comprehensive phase notes.
 
+- **2026-05-22T21:00:32-07:00:** `./app/run.sh` could appear frozen before any build output because it delegated into `app/build.sh`'s shared `.build/derived-data` cleanup and got stuck deleting a bloated `Index.noindex/DataStore/v5` tree (observed 65535 entries). Fix pattern in `2b7e1da`: keep `run.sh` delegating to `build.sh`, but isolate it onto `.build/run-build` and set `COMPILER_INDEX_STORE_ENABLE=NO`; verified two consecutive simulator launches.
+
 ## Team Updates
 
 - **2026-05-20T19:26:30Z:** MetricKit V1 shipped. Canonical tooling state locked: `app/KnittingGaugeReconciler.xcodeproj`, serial iOS UI testing enforced, zero SPM deps, PrivacyInfo.xcprivacy in Resources phase.

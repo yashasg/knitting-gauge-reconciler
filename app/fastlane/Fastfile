@@ -76,6 +76,44 @@ def match_env_key(suffix)
   "sigh_#{fastlane_app_identifier}_appstore_#{suffix}"
 end
 
+
+def lane_derived_data_path(options)
+  options[:derived_data_path] || ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data")
+end
+
+
+def lane_destination(options)
+  options[:destination] || ENV["DESTINATION"] || "generic/platform=iOS Simulator"
+end
+
+
+def lane_test_options(options, extra_xcargs: nil)
+  test_options = {
+    project: APP_PROJECT,
+    scheme: APP_SCHEME,
+    configuration: options[:configuration] || "Debug",
+    derived_data_path: lane_derived_data_path(options),
+    code_coverage: true,
+    xcargs: [
+      "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 30",
+      extra_xcargs,
+      options[:xcargs]
+    ].compact.join(" "),
+    output_files: options[:output_files] || "xcodebuild-test.log",
+    output_types: options[:output_types] || "junit",
+    output_directory: options[:output_directory] || "../.build"
+  }
+
+  destination = lane_destination(options)
+  if options[:destination] || ENV["DESTINATION"]
+    test_options[:destination] = destination
+  else
+    test_options[:devices] = [options[:device] || ENV["SIMULATOR_NAME"] || "iPhone 17 Pro"]
+  end
+
+  test_options
+end
+
 platform :ios do
   desc "Sync certificates and provisioning profiles"
   lane :certs do
@@ -95,55 +133,36 @@ platform :ios do
       project: APP_PROJECT,
       scheme: APP_SCHEME,
       configuration: configuration,
-      sdk: "iphonesimulator",
-      destination: "generic/platform=iOS Simulator",
+      sdk: options[:sdk] || "iphonesimulator",
+      destination: lane_destination(options),
       build: true,
-      xcargs: "CODE_SIGNING_ALLOWED=NO",
-      derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data")
+      xcargs: ["CODE_SIGNING_ALLOWED=NO", options[:xcargs]].compact.join(" "),
+      derived_data_path: lane_derived_data_path(options)
     )
-    run_tests(
-      project: APP_PROJECT,
-      scheme: APP_SCHEME,
-      configuration: "Debug",
-      derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data"),
-      devices: ["iPhone 17 Pro"],
-      code_coverage: true,
-      xcargs: "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 30",
-      output_files: "xcodebuild-test.log",
-      output_types: "junit",
-      output_directory: "../.build"
-    )
+    run_tests(**lane_test_options(options))
   end
 
-  desc "Build without code signing (CI validation)"
+  desc "Build without distribution"
   lane :build do |options|
     configuration = options[:configuration] || "Debug"
     xcodebuild(
       project: APP_PROJECT,
       scheme: APP_SCHEME,
       configuration: configuration,
-      sdk: "iphonesimulator",
-      destination: "generic/platform=iOS Simulator",
+      sdk: options[:sdk] || "iphonesimulator",
+      destination: lane_destination(options),
       build: true,
-      xcargs: "CODE_SIGNING_ALLOWED=NO",
-      derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data")
+      xcargs: [
+        (options[:allow_codesigning] == "true" ? nil : "CODE_SIGNING_ALLOWED=NO"),
+        options[:xcargs]
+      ].compact.join(" "),
+      derived_data_path: lane_derived_data_path(options)
     )
   end
 
-  desc "Run scheme-defined XCTest suite without code signing (CI)"
-  lane :test do
-    run_tests(
-      project: APP_PROJECT,
-      scheme: APP_SCHEME,
-      configuration: "Debug",
-      derived_data_path: ENV.fetch("DERIVED_DATA_PATH", "../.build/xcode-derived-data"),
-      devices: ["iPhone 17 Pro"],
-      code_coverage: true,
-      xcargs: "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 30",
-      output_files: "xcodebuild-test.log",
-      output_types: "junit",
-      output_directory: "../.build"
-    )
+  desc "Run scheme-defined XCTest suite without distribution"
+  lane :test do |options|
+    run_tests(**lane_test_options(options))
   end
 
   private_lane :ensure_release_configuration_matches do

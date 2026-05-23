@@ -5,6 +5,7 @@ import MetricKit
 import os.signpost
 // Components and Views are in separate files under Components/ and Views/
 
+// swiftlint:disable:next type_body_length
 struct ContentView: View {
     private static let defaults = GaugeTextDefaults()
 

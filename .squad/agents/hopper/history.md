@@ -10,6 +10,10 @@
 
 <!-- Recent learnings; archive to history-archive.md when exceeding 15360 bytes -->
 
+### Learnings
+
+- **2026-05-23T01:52Z:** Bundler pin in `app/Gemfile.lock` (Bundler 4.0.11) requires Ruby 3.x; system macOS Ruby (2.6) cannot satisfy it, causing `find_spec_for_exe` errors at `bundle exec` time. Calling `fastlane` directly (Homebrew install on PATH via `brew install fastlane`) bypasses Bundler entirely and works on any Ruby version. CI keeps `bundle exec` because it provisions Ruby 3.4 + bundler-cache via `ruby/setup-ruby@v1` before invoking Fastlane.
+
 **Last entry:** 2026-05-22T21:50Z — run.sh GUI fix completed (Hopper-1); VerdictCard removed from main UI (Edison-1). Inbox decisions merged and orchestration logs written.
 
 ### 2026-05-22T21:00:32-07:00 — run.sh GUI surfacing (Hopper-1)

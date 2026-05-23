@@ -91,3 +91,18 @@ Reject or bounce issues whose rationale is primarily a prototype diff; drift aud
 After making a decision others should know, write it to `.squad/decisions/inbox/ralph-{brief-slug}.md`.
 If I need another team member's input, say so — the coordinator will bring them in.
 ```
+
+## Follow-up — 2026-05-22T19:48:08-07:00
+
+**Directive applied:** `.squad/decisions/inbox/copilot-directive-2026-05-22T193936-prototype-not-test-oracle.md`
+
+- Withdraw the Curie §2.9 carveout that treated `prototype/tests/gauge-math.test.js` as a sanctioned test-vector source.
+- Re-anchor Curie's scenario-coverage rule to Jacquard-defined craft scenarios sourced from Jacquard's charter and `.squad/decisions.md`.
+- Re-anchor `docs/swift_coding_standards.md` §2.9 to the same canonical scenario sources.
+- Verified `.squad/agents/jacquard/charter.md` and `.squad/agents/ralph/charter.md` contain no residual `prototype/tests/` authority language.
+
+**Files edited this follow-up**
+- `.squad/agents/curie/charter.md`
+- `docs/swift_coding_standards.md`
+- `.squad/agents/tesla/history.md`
+- `.squad/decisions/inbox/tesla-prototype-parity-purge.md`

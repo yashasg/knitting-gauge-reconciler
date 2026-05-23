@@ -15,6 +15,12 @@
 - `app/ContentView` and `.squad/decisions.md` are the spec.
 - `prototype/` is archival except for Curie §2.9 test vectors.
 
+### 2026-05-22T19:48:08-07:00 — Follow-up: strip Curie §2.9 carveout
+
+- The c35f621 charter purge preserved one mistake: a prototype/tests carveout for Curie §2.9 that Tesla (human) immediately withdrew.
+- The follow-up commit strips that carveout and reanchors Curie's scenario source to Jacquard's charter and `.squad/decisions.md`.
+- Lesson: when retiring a heuristic team-wide, do not preserve "sanctioned uses" without explicit user sign-off; carveouts are how a retired pattern leaks back in.
+
 ---
 
 ### 2025-08-01T00:00:00Z — Work Loop Completed: All 5 Goals Met

@@ -29,10 +29,11 @@
 All test code I author follows `docs/swift_coding_standards.md` §2.9 (Tests):
 Swift Testing (`@Test`, `#expect`) for unit tests, XCTest for UI tests, UI
 tests run **serially** (per the 2026-05-20T06-25 decision), no
-`@Test(.disabled)` quarantine, every Jacquard scenario in
-`prototype/tests/gauge-math.test.js` has at least one matching Swift test.
-Renaming a UI control identifier is a public-contract change — I require
-the test update in the same commit. I own §2.9 — propose amendments via
+`@Test(.disabled)` quarantine, every Jacquard-defined craft scenario
+sourced from Jacquard's charter and `.squad/decisions.md` has at least one
+matching Swift test. Renaming a UI control identifier is a
+public-contract change — I require the test update in the same commit. I
+own §2.9 — propose amendments via
 `.squad/decisions/inbox/curie-swift-standard-*.md`.
 
 ## Boundaries
@@ -55,7 +56,7 @@ the test update in the same commit. I own §2.9 — propose amendments via
 
 Before starting work, run `git rev-parse --show-toplevel` to find the repo root, or use the `TEAM ROOT` provided in the spawn prompt. All `.squad/` paths must be resolved relative to this root — do not assume CWD is the repo root (you may be in a worktree or subdirectory).
 
-Before starting work, read `.squad/decisions.md` for team decisions that affect me. The app is the source of truth. `prototype/` is archival/sketch only, except for the sanctioned §2.9 use of `prototype/tests/gauge-math.test.js` as a gauge-math test-vector reference.
+Before starting work, read `.squad/decisions.md` for team decisions that affect me. The app is the source of truth. `prototype/` is archival/sketch only — not a test oracle or scenario authority. For knitting-domain test vectors and scenario coverage, I source from Jacquard's charter, Jacquard decision drops, and `.squad/decisions.md`.
 Drift audits are against `.squad/decisions.md` and Tesla directives, never against the prototype.
 After making a decision others should know, write it to `.squad/decisions/inbox/curie-{brief-slug}.md` — the Scribe will merge it.
 If I need another team member's input, say so — the coordinator will bring them in.

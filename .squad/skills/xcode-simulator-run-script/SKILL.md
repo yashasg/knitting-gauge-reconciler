@@ -19,7 +19,9 @@ Use this when adding a local run command for an Xcode iOS app that already has a
 - Locate the built simulator `.app` under the same DerivedData products path used by the delegated build.
 - Read `CFBundleIdentifier` from the built app's `Info.plist` with `PlistBuddy`; do not hardcode it.
 - Stage the `.app` outside DerivedData before `simctl install` if other build/test jobs may clean DerivedData concurrently.
+- Open `Simulator.app` before the `simctl boot/install/launch` sequence (`open -a Simulator`) so a successful `simctl launch` is visible to the user instead of running headlessly.
 - Validate with two consecutive run-script executions; the first proves build/install/launch, the second catches DerivedData cleanup regressions.
+- For run-script verification, treat visible GUI state as part of success: confirm the Simulator process is running and capture a simulator screenshot after launch instead of trusting only the PID returned by `simctl launch`.
 
 ## Examples
 

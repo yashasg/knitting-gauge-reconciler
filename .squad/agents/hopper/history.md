@@ -70,3 +70,5 @@ In this session, Hopper flagged several findings as blockers for the Fastlane-ba
 Pattern-matching against generic best practices is less reliable than grounding in this project's specific codebase, configuration, and user intent.
 
 **Recommendation:** On next CI/infra review, include a verification step that cross-references flagged findings against actual artifacts before finalizing the verdict.
+
+- **2026-05-22T21:25:37-07:00:** Follow-up on `app/run.sh`: a returned `simctl launch` PID is necessary but not sufficient for user-visible success. If `Simulator.app` is not opened first, the app can launch into a headless booted simulator and look like the script "just builds." Preferred verification for run-script fixes: process/GUI evidence (Simulator running, device window/screenshot visible) over PID-only checks.

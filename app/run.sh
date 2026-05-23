@@ -101,6 +101,7 @@ ditto "$APP_BUNDLE" "$STAGED_APP"
 BUNDLE_ID="$(bundle_identifier "$STAGED_APP")"
 [[ -n "$BUNDLE_ID" ]] || fail "could not determine bundle identifier from $STAGED_APP"
 
+open -a Simulator >/dev/null 2>&1 || true
 if [[ "$(simulator_state)" != "Booted" ]]; then
   xcrun simctl boot "$SIMULATOR_UDID" >/dev/null 2>&1 || true
 fi

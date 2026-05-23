@@ -1211,3 +1211,115 @@ A design review gate should ask: *"Why does the user encounter this information 
 
 Per directive 2026-05-22T19:39:36-07:00, the Curie §2.9 carveout for `prototype/tests/gauge-math.test.js` as a sanctioned test-vector source is **withdrawn**. Curie's scenario-coverage rule is re-anchored to Jacquard-defined craft scenarios sourced from Jacquard's charter and `.squad/decisions.md`. `docs/swift_coding_standards.md` §2.9 is updated accordingly.
 
+
+---
+
+### 2026-05-22T21:30:00-07:00: User directive — Remove VerdictCard from main UI
+**By:** Tesla (via Copilot)
+**What:** Tesla rejected the VerdictCard (the verdict copy area: "Perfect match" / "Slight drift" / "Significant drift" / "Major mismatch"). Remove from ContentView. The verdict logic, math tiers, and the underlying `Verdict` enum may stay in the model for now (other surfaces or future use), but the on-screen card goes.
+
+**Why:** Visual quality / hierarchy. Same family of rejection as the hero tiles on 2026-05-22T19:23 — Tesla doesn't want this prominent verdict copy on the main screen. The card was added in MR !35 (commit dfb92c2) and partially survived the hero-tile revert because that revert explicitly kept VerdictCard. This directive completes the rollback of MR !35's main-screen additions.
+
+**Implication:**
+- ContentView no longer renders VerdictCard.
+- Verdict math/types (`majorMismatch` tier, `Verdict` enum, `verdictTitle` computed property) stay in the code for ShareableView export and future use.
+- This is now a **second instance** of the same pattern: prototype-parity sweep produced a UI addition Tesla didn't want. Reinforces the 2026-05-22T19:25 "UI changes need Tesla sign-off" rule.
+
+---
+
+### 2026-05-22T21:30:00-07:00: Edison — VerdictCard main-screen revert
+
+**Requested by:** Tesla (human)
+
+**What:** Removed the `VerdictCard(...)` call site from `app/KnittingGaugeReconciler/ContentView.swift`, completing the rollback of MR !35's always-visible main-screen additions after the earlier hero-tile revert.
+
+**Kept:** `Verdict` math/types/tiering remain intact (`GaugeMathMetrics.swift` including `majorMismatch`, plus ContentView verdict computed properties/signpost logic). `app/KnittingGaugeReconciler/Views/VerdictCard.swift` stays in the codebase.
+
+**Share/export note:** `ShareableView` still compiles after the revert and does not currently instantiate `VerdictCard`; the preserved view file is retained for export-related/future verdict presentation rather than main-screen placement.
+
+**Why:** Tesla rejected the always-visible verdict copy on hierarchy/visual-quality grounds. Do not add prominent cards to `ContentView` without explicit Tesla sign-off.
+
+---
+
+# 2026-05-22T21:30:00-07:00: Ive — VerdictCard Rejection Postmortem
+
+**Author:** Ive (UI/UX Designer)  
+**Status:** Postmortem (VerdictCard removed)  
+**Trigger:** Tesla directive rejecting VerdictCard from main screen; same design family as hero-tile rejection 2 hours earlier.
+
+---
+
+## Why Was VerdictCard Added? (Prototype-Parity Frame)
+
+Commit dfb92c2 (2026-05-22 18:41:47, MR !35) wired VerdictCard into ContentView as part of closing issue #46 — a reported "hierarchy inversion." The app's underlying Verdict enum and `verdictTitle()` logic were sound, but the verdict text ("Perfect match", "Significant drift", "Major mismatch") was rendered only inside the export/share screen (ShareableView), not on the main input surface. The prototype showed the hierarchy as: inputs → heroes → verdict → adjustments. VerdictCard restored that order.
+
+The rationale: a knitter needs a one-line judgment ("Your gauge is close enough" or "Major mismatch") *before* deciding whether to tap "View Adjustments" and spend time tuning row/stitch counts. The verdict text appeared to be a *summary* or *actionable prompt*, not raw diagnostic data.
+
+---
+
+## Why Did Ive Preserve VerdictCard During the Hero-Tile Revert?
+
+The hero-tile revert decision (2026-05-22T19:23:34-07:00) explicitly preserved VerdictCard: `Scope: Keep VerdictCard on the main screen.` This was a misread of the design principles. Ive categorized the problem as:
+- **Hero tiles problem:** Raw percentages (e.g., "75%", "120%") are clinical, diagnostic, and compete with real estate.
+- **VerdictCard distinction:** One-line verdict copy ("Perfect match") is interpretive, user-facing, and could justify the hero tiles by framing what the percentages mean.
+
+The error: **both are diagnostic summaries that judge the gauge relationship and add no actionable input to the main screen.** The hero tiles show raw numbers; VerdictCard shows a narrative interpretation of those numbers. They are the same category of information — judgment — not different categories (raw vs. interpreted).
+
+---
+
+## What the Second Rejection Reveals About Design Heuristics
+
+The heuristic Ive extracted from the hero-tile rejection was: *"Why does the user encounter this at this moment? If the answer is 'because the prototype put it there,' run a design review."* This gate caught the hero tiles but **missed VerdictCard because the verdict text appeared user-facing rather than diagnostic.**
+
+Tesla's second rejection (same pattern, same date) shows the actual rule is tighter:
+
+**Main-screen rule:** The primary iOS screen is for *inputs* (pattern gauge, your gauge) *and adjustments* (row/stitch count tweaks). Diagnostic judgments, summary verdicts, and percentages do not live there—they belong in export surfaces, help sheets, or implicit signals elsewhere.
+
+The verdict title ("Perfect match") is **not an input prompt.** It is a *judgment* rendered by the app. The knitter does not *change* the verdict by adjusting inputs; the verdict changes as a side effect. The verdict text is a *display of analysis*, not a *request for action*.
+
+---
+
+## The Error in Surfacing "Perfect Match" / "Significant Drift"
+
+The verdict text occupies main-screen real estate to say something the knitter can infer from the numbers already on the screen:
+- If the stitch-width input is close to 1.0 and row-count is close to 1.0 → "Perfect match" (implicit from the visual state).
+- If the stitch-width is 0.85 → "Slight drift" (implicit from the percentage already visible if the knitter had consulted it).
+
+**Surfacing the verdict as a card duplicates information and reframes the app's purpose.** Instead of "here are the inputs and how to adjust them," the app says "here is my analysis of your inputs, now adjust if you want." The verdict card invites critique and defensiveness ("But I think my gauge *is* right!") rather than task-directed action ("I need 68 stitches, not 72").
+
+The verdict logic itself is sound and belongs in:
+- **ShareableView/export:** Knitters share results with pattern designers; the verdict summary belongs in the exported image.
+- **VoiceOver accessibility labels:** Users navigating with VoiceOver can access a detailed verdict through expanded labels without visual clutter.
+- **Help sheets:** The verdict sheet (tapped via the `?` button on the verdict card) can explain the tiers and thresholds; the logic is *educational*, not *decisional*.
+
+---
+
+## Right Placement for Verdict Semantics
+
+Verdict logic and math stay in the codebase but migrate from the main screen:
+
+1. **Verdict enum + `verdictTitle()` + `verdictBody()`:** Remain in GaugeMathPresentation.swift. They are reusable logic.
+
+2. **ShareableView export:** The exported image (PNG, PDF, SVG) should include the verdict line as the headline or summary. Knitters who copy/forward results to pattern designers or log them in a spreadsheet need the verdict text there for context.
+
+3. **Accessibility payloads:** The verdict title and body integrate into `accessibilityLabel` and `accessibilityHint` on the input fields themselves:
+   - Stitch input: `accessibilityLabel: "Your stitch gauge, 32 stitches per 10 centimeters (103% of pattern, slight drift)"`
+   - This surfaces the verdict *semantics* (slight drift) without a separate card, and only for users explicitly requesting detail via VoiceOver.
+
+4. **Future: Optional detail sheet:** If future research shows knitters want to understand the verdict tiers, a sheet can present the breakdown without cluttering the main screen. This is different from the current verdict card—it's *help/education*, not *always-present analysis*.
+
+---
+
+## Updated Understanding of "What Tesla Will Accept"
+
+**Prior heuristic** (2026-05-22T19:25): "Ask 'why does the user encounter this at this moment?' If the answer is 'because the prototype put it there,' run a design review."
+
+**Refined heuristic** (2026-05-22T21:30):  
+The main screen is a *task-execution surface*, not an *analysis display surface*. Inputs and adjustments belong there. Diagnostic copy, summary judgments, and percentages do not—even if they are interpretive rather than raw numbers.
+
+**Gate for future UI work:** Before adding a visible component to ContentView, ask:
+1. **Is it an input?** (Pattern gauge, your gauge, needle size?) — Yes → belongs on main screen.
+2. **Is it an adjustment surface?** (Row/stitch count tweaks?) — Yes → belongs on main screen.
+3. **Is it analysis/diagnosis?** (Verdict, percentages, comparison metrics?) — No → belongs in export, help, AX labels, or *implicit* visual feedback (color changes, icon states).
+
+If a component's purpose is to *judge or summarize* the relationship between inputs, it is analysis. Move it off the main screen. The knitter's task is "figure out how many stitches to cast on," not "judge my gauge relationship." The app serves the task, not the curiosity about the judgment.

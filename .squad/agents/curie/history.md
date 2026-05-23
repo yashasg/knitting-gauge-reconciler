@@ -126,6 +126,16 @@ Pattern-matching against CI standards without grounding in user directives leads
 
 **Recommendation:** On next test-execution review, include a decision-alignment step that confirms the scope and design intent before finalizing the verdict.
 
+### 2026-05-22T21:50:00-07:00 — VerdictCard removed from main UI; UI test audit pending
+
+**Change:** Edison-1 removed `VerdictCard(...)` from `ContentView.swift` per Tesla directive 2026-05-22T21:30:00-07:00. VerdictCard.swift file preserved for export/future use, but no longer instantiated on the main screen.
+
+**Implication for Curie:** If any XCUITest in `KnittingGaugeReconcilerUITests/` queries for VerdictCard elements, verdicts, or verdict-related UI state on the main screen, those test expectations need updating in the next cycle (likely #45 or follow-up to this batch). Verdict logic is still validated in unit tests (GaugeMathTests); UI expectations should reflect the revised hierarchy (inputs + adjustments only, no visible verdict card).
+
+**Cross-ref:** Ive-1 postmortem in `.squad/decisions.md` explains the design principle: main screen is task-execution surface (inputs + adjustments), not analysis display. Verdict enum/math preserved for ShareableView export and accessibility labels.
+
+---
+
 ## 2026-05-22T20:37:00-07:00 — Prototype-parity governance purge + §2.9 carveout withdrawn
 
 **Session:** scribe-orchestration-2026-05-22  

@@ -37,6 +37,36 @@
 
 **Commit:** 515ab51 | Build: EXIT: 0 | Tests: 62/62 pass
 
+### 2026-05-23T02:38:00-07:00 — Nav Title Rename to "Stitchwise" (Edison-2)
+
+**What:** Renamed main screen navigation title from "Gauge Reconciler" to "Stitchwise".
+
+**Location:** `app/KnittingGaugeReconciler/ContentView.swift:116` (NavigationStack `.navigationTitle(...)`)
+
+**Why:** User-facing rebranding to new product name.
+
+**Scope:** Navigation title only. No bundle ID, project name, or other app identity changes.
+
+**Commit:** c85de7dd | MR: !37 | Branch: fix/nav-title-stitchwise
+
+### 2026-05-23T02:38:00-07:00 — VerdictCard Incomplete Removal Root Cause (Edison-3)
+
+**What:** Discovered and fixed incomplete VerdictCard removal from commit 515ab51.
+
+**Root Cause:** The call site removal was surgical but left two verdict-family remnants:
+1. `AdjustmentSheetView.statusCard` in `Views/RequiredAdjustmentsCard.swift` still rendered the same summary/rejection family (including major-drift warning copy).
+2. `Views/VerdictCard.swift` and `GaugeMathPresentation.swift` remained in Xcode target even though unreferenced.
+
+**Remediation:** Complete family removal:
+- Deleted `VerdictCard.swift`
+- Deleted `GaugeMathPresentation.swift`
+- Removed verdict branch from `RequiredAdjustmentsCard.swift` (removed `AdjustmentSheetView.statusCard` rendering)
+- Cleaned project.pbxproj entries
+
+**Decision:** Future UI rejections must search for naming variants (`Verdict`, `Major mismatch`, `mismatch`, `statusCard`) to verify complete family removal before calling rollback done.
+
+**Commit:** a2d63e02 | MR: !38 | Branch: fix/remove-major-mismatch | Worktree: ../knitting-gauge-reconciler-verdict-removal/
+
 ## Key Learnings & Patterns
 
 - **Prototype parity is necessary but not sufficient** — visual quality and hierarchy decisions are separate approval gates owned by Tesla (2026-05-22T19:23:34-07:00).

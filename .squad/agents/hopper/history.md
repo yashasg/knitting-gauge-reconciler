@@ -172,3 +172,64 @@ Three agents completed refinements to `bootstrap.sh` and template structure:
 - Dual-repo: GitLab code + GitHub CI/CD
 
 ---
+
+## 2026-05-29T03:50:48Z — Audit & Build Repair Round (hopper-13, hopper-14)
+
+**Date:** 2026-05-29T03:50:48Z  
+**Status:** Completed  
+**Coordinator Request:** Tesla  
+**Scope:** iOS template fastlane config + build/run scripts  
+**Commits:** hopper-14 → `1c3c6dd` (GitLab `origin/main`)  
+
+### hopper-13: Fastlane Config Audit (READ-ONLY)
+
+Conducted comprehensive audit of fastlane template without making changes. Produced prioritized landmine report:
+
+**🔴 Critical Blockers:**
+- No GitHub Actions workflows (`.github/workflows/*.yml` absent) → GitLab→GitHub webhook triggers nothing; CI non-functional
+- Code signing misconfiguration: `CODE_SIGN_STYLE=Automatic` + empty `DEVELOPMENT_TEAM` vs. `certs` lane requirement (Manual + team)
+- ASC API key missing; Matchfile username blank → Apple ID auth hang/fail
+- fastlane unpinned in Gemfile
+- Custom ASC API key field names (key/key_id/issuer_id) undocumented
+
+**🟡 Intermediate Concerns:**
+- Gemfile.lock single-platform; SwiftLint not on runners; match certs on GitLab vs. CI on GitHub; Xcode unpinned; keychain .keychain vs .keychain-db fragility
+
+**🟢 Approved Patterns:**
+- No produce/register lane (expected); blank apple_id/team_id (bootstrap handles); beta delay (system); manual ASC submission (accepted)
+
+### hopper-14: Build & Run Scripts Repair (COMMITTED)
+
+Made `app/build.sh`, `app/run.sh`, and `app/fastlane/Fastfile` defensive:
+
+**Changes:**
+1. **build.sh** — Uses `bundle exec fastlane`; simulator fallback lookup; scheme discovery via `xcodebuild -list -json` pre/post-bootstrap
+2. **run.sh** — Removed fragile sed parsing; UDID fallback matching build.sh
+3. **Fastfile (ci lane)** — Guards swiftlint call; warns-and-skips if binary missing
+
+**Verification:**
+- ✅ Bash syntax (`bash -n`)
+- ✅ Scheme discovery resolves `__APP_NAME__`
+- ✅ Simulator UDID fallback returns valid UDID
+- ⚠️ Full Xcode build/sim (skipped — requires provisioning + booted simulator)
+
+**Commit:** `1c3c6dd` pushed to GitLab
+
+### Key Decisions
+
+**hopper-13 audit findings archived as reference:**  
+These blockers are now categorized for triage. Biggest gap: GitHub Actions workflow missing.
+
+**hopper-14 build/run scripts now have defensive fallback logic:**  
+- Robustness against simulator name variations
+- Bundle exec ensures fastlane version isolation
+- Swiftlint missing handled gracefully in CI
+
+### Open Follow-Ups (Not Yet Actioned)
+
+- (a) No GitHub Actions workflow yml in template
+- (b) No `.swiftlint.yml` config in template (though invoked by ci lane and build.sh)
+
+Next: Coordinator to triage these gaps for hopper or new specialist.
+
+---

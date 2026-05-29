@@ -44,3 +44,90 @@
 ## Historical Sessions (Archived)
 
 See history-archive.md for prior session logs (2026-05-22 onwards).
+
+### 2026-05-29T02:00:20-07:00 — iOS/SwiftUI + Fastlane Template (Hopper-2)
+
+**Task:** Build a reusable iOS/SwiftUI + fastlane template repo and push to GitLab.
+
+**Destination:** `/Users/yashasgujjar/dev/ios-swiftui-fastlane-template`
+
+**GitLab repo:** https://gitlab.com/yashas.gujjar/ios-swiftui-fastlane-template (private)
+
+**Key paths in template:**
+- `app/app.xcodeproj` — Xcode project, all three targets (app, unit tests, UI tests)
+- `app/__APP_NAME__/` — SwiftUI source skeleton (ContentView.swift, __APP_NAME__App.swift, PrivacyInfo.xcprivacy, empty Components/ and Views/)
+- `app/__APP_NAME__Tests/__APP_NAME__Tests.swift` — minimal unit test stub
+- `app/__APP_NAME__UITests/` — AccessibilityAuditTests.swift (genericized) + minimal UITests stub
+- `app/app.xcodeproj/xcshareddata/xcschemes/__APP_NAME__.xcscheme` — shared scheme
+- `app/fastlane/` — Appfile, Fastfile, Matchfile all tokenized to __BUNDLE_ID__/__APP_NAME__
+- `app/build.sh`, `app/run.sh` — build wrappers (SWIFT_TREAT_WARNINGS_AS_ERRORS=YES preserved)
+- `bootstrap.sh` — one-shot rename/token-replace script; self-deletes after use
+- `.squad/` — fully reset team (empty roster, blank casting registry)
+
+**Approach:**
+1. rsync copy from source excluding .git, .build, .DS_Store, excalidraw artifacts, prototype/
+2. Remove all .yml/.yaml files (including .swiftlint.yml — noted in README, add per project)
+3. Rename KnittingGaugeReconciler dirs → __APP_NAME__ via `mv`
+4. Token replace in pbxproj, xcscheme, Fastfile, scripts via `sed -i ''`
+5. Delete knitting domain Swift files; write minimal stubs for ContentView, App, tests
+6. Genericize fastlane: blank Appfile (apple_id/team_id), blank Matchfile (git_url/username)
+7. Reset .squad/: clear registry, history, decisions, inbox, agent folders, routing table
+8. Write new README as template usage guide
+9. `git init -b main`, commit, `glab repo create` (private), push via HTTPS
+
+**Learnings:**
+- `glab repo create` (v1.97.0) does NOT support `--source`/`--push` flags; must `glab repo create`, then `git remote add origin`, then `git push -u origin main`.
+- SSH keys not set up on this machine for gitlab.com; HTTPS push worked fine since glab is authenticated.
+- `.swiftlint.yml` must be dropped per the no-yml rule; document in README that it should be re-added per project.
+- `sed -i ''` (BSD/macOS) requires the empty string arg; GNU sed would use `sed -i` without the arg.
+- The swiftlint `ci` lane call in Fastfile had `config_file` pointing to the now-dropped `.swiftlint.yml` — removed that param so the lane falls back to finding swiftlint config by convention.
+
+- 2026-05-29T02:06:00-07:00 — Added `glab` CLI skill to ios-swiftui-fastlane-template Squad (.squad/skills/glab/SKILL.md); committed and pushed to GitLab main (9d5fd27).
+\n- 2026-05-29: Wrote comprehensive setup-guide README for the iOS/SwiftUI + fastlane template repo at gitlab.com/yashas.gujjar/ios-swiftui-fastlane-template (commit 7fb1319). Covers prerequisites, bootstrap, build/test/release modes, code signing, release lanes with bump support, Squad+glab workflow, and troubleshooting.
+
+- 2026-05-29: Added `.github/copilot-instructions.md` and `docs/DesignSystem.md` to the iOS/SwiftUI + fastlane template repo (ios-swiftui-fastlane-template). Copilot instructions cover project overview, Swift coding standards, Hearth design system, fastlane lanes, build/run scripts, App Store Connect, and Squad workflow conventions.
+
+## 2026-05-29 — Satoshi font wired as app default in template
+
+**Repo:** ios-swiftui-fastlane-template (GitLab)
+
+**What was done:**
+- Copied `Satoshi-Variable.ttf` + `Satoshi-VariableItalic.ttf` into `app/__APP_NAME__/Fonts/`
+- Switched from `GENERATE_INFOPLIST_FILE = YES` to a physical `app/__APP_NAME__/Info.plist` (`GENERATE_INFOPLIST_FILE = NO`, `INFOPLIST_FILE = __APP_NAME__/Info.plist`). The plist carries all keys previously expressed via `INFOPLIST_KEY_*` build settings PLUS `UIAppFonts` listing both TTF filenames. This is the registration approach.
+- Added font file references + Fonts group to `project.pbxproj`; fonts added to Copy Bundle Resources phase of the app target.
+- Created `app/__APP_NAME__/Components/Font+Satoshi.swift` with a `Font` extension exposing `.satoshiBody`, `.satoshiTitle`, etc. for the full Apple text-style scale using `Font.custom("Satoshi Variable", size:relativeTo:)` (family name per nameID 1). Variable weight control via `.fontWeight()` modifier.
+- Set `.font(.satoshiBody)` on the root `WindowGroup` in `__APP_NAME__App.swift` as the environment-wide default.
+- Updated `ContentView.swift` to use `.satoshiTitle`.
+- Documented in `docs/DesignSystem.md` (new "Typography / Fonts — iOS Native" section) and `.github/copilot-instructions.md`.
+
+**Key detail for future work:** The font family name to use in `Font.custom` is `"Satoshi Variable"` (NOT `"Satoshi-Variable"` or `"SatoshiVariable-Bold"`). PostScript name of the default instance is `SatoshiVariable-Bold`.
+
+---
+
+## 2026-05-29 — iOS/SwiftUI + Fastlane Template Pushed to GitLab
+
+**Date:** 2026-05-29T02:00:20-07:00  
+**Status:** Completed
+
+Created reusable template repo (`ios-swiftui-fastlane-template`) at `/Users/yashasgujjar/dev/ios-swiftui-fastlane-template` and pushed to GitLab (private).
+
+### Template features
+- Token-based genericization (`__APP_NAME__`, `__BUNDLE_ID__`, `__GITLAB_BOARD_URL__`)
+- Bootstrap script for automated rename + setup
+- Fastlane lanes intact (ci, build, test, certs, beta, release)
+- Shared build standards (`SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`, xcpretty, `-quiet`)
+- Squad roster reset for fresh projects
+- Zero `.yml` files shipped (per user directive)
+
+### Documentation updates
+- Added CI/CD architecture section (GitLab code repo, GitHub runner via webhooks)
+- Added ignore directive for prototype/ folder
+- Added glab CLI skill documentation
+- Expanded design system docs (Hearth Design System, ~29.5KB)
+- Updated font helpers and accent mechanism naming
+
+### Orchestration logs
+- 4 background hopper agents spawned (hopper-5, hopper-6, hopper-7 coordinated edits)
+- All work pushed and merged
+
+---

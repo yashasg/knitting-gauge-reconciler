@@ -131,3 +131,21 @@ Created reusable template repo (`ios-swiftui-fastlane-template`) at `/Users/yash
 - All work pushed and merged
 
 ---
+
+## 2026-05-29 — Template README Fastlane Setup Documentation (Hopper-9)
+
+**Date:** 2026-05-29T03:25:00-07:00  
+**Status:** Completed  
+**Commit:** 1bf390d (ios-swiftui-fastlane-template)
+
+Documented comprehensive Fastlane setup section in template README per Tesla's request. Added 6-step guide covering prerequisites, manual App ID registration, Appfile fields, ASC API key configuration, Matchfile cert management, and beta/release lanes with version bump support. Included real Fastfile/Appfile/Matchfile inspection notes and CI/CD architecture (GitHub webhooks, not GitLab yml). Cross-linked existing docs/app-store-connect-privacy-setup.md.
+
+**Key sections added:**
+- Prerequisites: `cd app && bundle install`, Xcode CLI tools
+- Manual App ID + ASC registration (no produce lane)
+- Appfile: app_identifier, apple_id, team_id
+- ASC API key setup with linked privacy docs
+- Matchfile: git_url, MATCH_PASSWORD, MATCH_KEYCHAIN_PASSWORD, real `certs` lane
+- Release lanes: `beta` and `release` with configurable version bump (patch/minor/major)
+
+---

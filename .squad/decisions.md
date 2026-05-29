@@ -770,3 +770,64 @@ Created **fabric-stabilizer-picker** from template using standard end-user boots
 ✅ `bootstrap.sh` self-deleted  
 ✅ Both remotes wired (GitLab = code, GitHub = CI/CD)
 
+
+## 2026-05-29T04:41:04-07:00 — Hopper: iOS template Xcode projects must use file-system-synchronized groups
+
+**Scope:** `ios-swiftui-fastlane-template`, all bootstrapped clones
+
+**Decision:** All Xcode targets in `ios-swiftui-fastlane-template` (and therefore every bootstrapped project) now use `PBXFileSystemSynchronizedRootGroup` (Xcode 16, objectVersion 77). Target membership is driven by on-disk folder contents — no hardcoded file manifest.
+
+**Rationale:** The template's `app/app.xcodeproj/project.pbxproj` carried ~18 stale `PBXFileReference` / `PBXBuildFile` entries for source files from the original knitting-gauge-reconciler app. These files do not exist in the template. Every clone bootstrapped from the template immediately failed with "Build input files cannot be found" for all 18 paths. `PBXFileSystemSynchronizedRootGroup` permanently eliminates this class of bug: the build system discovers files from the filesystem, so removing or adding sources never requires touching the pbxproj.
+
+**Implementation notes:**
+
+1. **objectVersion 77** — already set; no bump needed.
+2. **PBXFileSystemSynchronizedBuildFileExceptionSet** — required to exclude `Info.plist` from the sync group's resource copy. Without it, Xcode double-processes Info.plist (once via `INFOPLIST_FILE` build setting, once as a `CpResource` from the sync group), causing "Multiple commands produce Info.plist" error.
+3. **Removed `.gitkeep` files** — `Components/.gitkeep` and `Views/.gitkeep` both flatten to `.gitkeep` in the bundle, causing "duplicate output file" error. `Components/Font+Satoshi.swift` already keeps that directory tracked; `Views/` is empty and developers create subdirectories on demand.
+4. **Build phases** — `PBXSourcesBuildPhase.files` and `PBXResourcesBuildPhase.files` are empty; the sync group contributes files automatically based on file type.
+5. **Tests** — removed stale gauge-app-specific test methods (`testAdjustmentSheetAccessibility`, `testAboutSheetAccessibility`) from `AccessibilityAuditTests.swift` in the template; these referenced UI elements (`calculate-button`, `about-help-button`) that don't exist in the blank template.
+
+**Affected Repos:**
+
+| Repo | Commit |
+|------|--------|
+| `ios-swiftui-fastlane-template` | `d3043ff` |
+| `fabric-stabilizer-picker` | `117a20f` |
+
+**Verification:** `bash app/build.sh test` in `fabric-stabilizer-picker` exits 0. All tests pass (1 unit test, 2 UITests). "Build input files cannot be found" errors: gone.
+
+## 2026-05-29T04:36:03-07:00 — Hopper: Ruby Preflight Guard in build.sh / run.sh
+
+**Context:** macOS ships `/usr/bin/ruby` at version 2.6.10. This binary is owned by root and read-only — `gem install` targeting it fails with `Gem::FilePermissionError`. Our `Gemfile.lock` pins `BUNDLED WITH 4.0.11`, which requires Ruby >= 3. Users on a fresh Mac (or those who haven't configured their shell PATH) silently resolve system Ruby before Homebrew Ruby, producing a cryptic gem error. Homebrew Ruby (4.0.5 at `/opt/homebrew/opt/ruby/bin`) works perfectly once on PATH. `bundle install` succeeds immediately once the PATH is corrected.
+
+**Decision:** Add a `ruby_preflight()` bash function to the top of `app/build.sh` and `app/run.sh` (after `set -euo pipefail`, before any `bundle`/`xcodebuild` calls). The guard:
+
+1. Detects system Ruby: path matches `/usr/bin/ruby*` or `/System/Library/Frameworks/Ruby.framework*`, OR Ruby major version < 3.
+2. **Self-heals** by prepending `$(brew --prefix ruby)/bin` (+ gems bin glob) to `$PATH` if Homebrew is available and Homebrew Ruby exists.
+3. Re-checks after self-heal; if still bad, **exits 1** with a clear, actionable error explaining: Apple system Ruby is unsupported, run `brew install ruby` and add the export to `~/.zshrc`.
+4. Also checks `bundle` availability and instructs `gem install bundler` if missing.
+
+Also added:
+- `app/.ruby-version` pinned to `3.3` (helps rbenv/chruby users; harmless for Homebrew users).
+- README updates: Prerequisites table and Fastlane setup → Ruby requirement section.
+
+**Rationale:** **Self-heal first** (not just error): most Homebrew users already have Homebrew Ruby installed — they just haven't added it to PATH. The guard fixes the session PATH transparently so the build proceeds without manual intervention. **Clear error fallback**: if Homebrew Ruby isn't installed, the error message is specific, actionable, and references the README — no developer guessing. **Template-first**: the guard lives in the template source of truth so all future bootstrapped projects inherit it automatically.
+
+**Affected Repos:**
+
+| Repo | Files changed | Commit |
+|------|--------------|--------|
+| `ios-swiftui-fastlane-template` | `app/build.sh`, `app/run.sh`, `README.md`, `app/.ruby-version` | `5b9c328` |
+| `fabric-stabilizer-picker` | `app/build.sh`, `app/run.sh`, `README.md`, `app/.ruby-version` | `aa98283` |
+
+**Verification:** `bash -n` passes on all 4 modified scripts. Simulated with `PATH="/usr/bin:/bin:/opt/homebrew/bin"` → self-healed to Homebrew Ruby 4.0.5. ✅ Simulated with `PATH="/usr/bin:/bin"` (no brew on PATH) → clear error printed to stderr, exit 1. ✅
+
+## 2026-05-29T04:41:04-07:00 — Tesla + Copilot: Template Xcode project carries stale gauge-app file manifest
+
+**What:** The template's `app/app.xcodeproj/project.pbxproj` hardcodes ~18 source files from the original knitting-gauge-reconciler app (GaugeMath.swift, MetricsSubscriber.swift, GaugeMathMetrics.swift, Views/*, Components/*, ContentViewHelpers.swift) that do NOT exist in the template. Build fails in every clone with "Build input files cannot be found". No PBXFileSystemSynchronizedRootGroup — it's an old-style hardcoded manifest.
+
+**Why:** Template was derived from the gauge app; the .swift files were genericized/removed but the pbxproj manifest was never cleaned.
+
+**Fix direction:** Convert the app + test targets to Xcode 16 file-system-synchronized groups (membership = folder contents) so template and clones build whatever .swift files are present — no manual manifest. Fallback: prune dead PBXFileReference/PBXBuildFile entries to match only existing files. Fix in template AND in already-cloned fabric-stabilizer-picker. Verify with a real build.
+
+**Status:** RESOLVED via decision "iOS template Xcode projects must use file-system-synchronized groups" (2026-05-29T04:41:04-07:00 — Hopper).

@@ -1,3 +1,34 @@
+## 2026-05-29T12:47:17-07:00 — INBOX MERGE: hopper-template-icon.md
+
+# Hopper Decision — Template Must Ship Neutral App Icon
+
+- **Date:** 2026-05-29T12:47:17-07:00
+- **Author:** Hopper
+- **Scope:** `ios-swiftui-fastlane-template` — AppIcon.appiconset
+
+## Decision
+
+The template now ships with a fully neutral (solid iOS-system-gray #8E8E93) app icon. All 11 PNG files in `app/__APP_NAME__/Assets.xcassets/AppIcon.appiconset/` have been replaced with blank color-fill placeholders. The `Contents.json` structure is unchanged.
+
+## Rationale
+
+The template was derived from the Stitchwise/knitting-gauge-reconciler app and retained its branded app icon artwork. Every project bootstrapped from the template would inherit Stitchwise branding unless the developer manually swapped the icon. A template must be unbranded at birth.
+
+## Implementation
+
+- Tool: Python/Pillow — `PIL.Image.new("RGBA", (px, px), (142, 142, 147, 255))` for each required size.
+- Sizes generated (matching pre-existing Contents.json entries):
+  - 40×40, 60×60, 58×58, 87×87, 80×80, 120×120 (×2), 180×180, 152×152, 167×167, 1024×1024
+- `Contents.json` left intact — same filenames and structure, so xcodebuild continues to resolve the asset catalog without changes to the project file.
+- Verified: `sips -g pixelWidth -g pixelHeight` on all 11 files ✅; `xcodebuild -project app.xcodeproj -list -json` resolves scheme `__APP_NAME__` ✅.
+- Commit: `3ea5669` — pushed to GitLab origin main.
+
+## Scope Boundary
+
+Tesla is handling the downstream clone (`fabric-stabilizer-picker`) independently. Hopper only modified the template repo.
+
+---
+
 ## 2026-05-29T03:31:03-07:00 — INBOX MERGE: hopper-app-name-derivation.md
 
 # Hopper Decision — Two-Name Convention for iOS Template Bootstrap

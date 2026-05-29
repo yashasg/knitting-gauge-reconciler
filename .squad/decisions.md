@@ -1,4 +1,49 @@
----
+# Hopper — ASC auth file fallback
+
+- **Date:** 2026-05-23T03:01:49-07:00
+- **Author:** Hopper
+- **Status:** Proposed
+
+## Context
+
+GitHub Actions CD writes `ASC_API_KEY_JSON` to `app/fastlane/asc_api_key.json` in one step, validates it, then runs `bundle exec fastlane` in a later step. Step-level `env:` does not carry forward automatically, so Fastlane cannot rely on `ENV["ASC_API_KEY_JSON"]` being present in the upload step.
+
+## Decision
+
+Keep `ASC_API_KEY_JSON` as the first-priority input for local/dev overrides, but fall back to reading `app/fastlane/asc_api_key.json` when the env var is absent.
+
+## Rationale
+
+- Matches the existing workflow contract: the JSON file is already written and validated before Fastlane runs.
+- Preserves local development flows that export `ASC_API_KEY_JSON` directly.
+- Avoids re-wiring secrets across multiple workflow steps when a stable on-disk artifact already exists.
+
+## Consequence
+
+Fastlane release lanes work in GitHub Actions even when `ASC_API_KEY_JSON` is scoped only to the write step, while local env-based invocation remains unchanged.
+# Hopper — Bundle ID pivot to ASC typo
+
+- **Date:** 2026-05-23T03:28:48-07:00
+- **Author:** Hopper
+- **Status:** Proposed
+
+## Context
+
+Tesla cannot create a new App Store Connect app. The existing ASC entry (numeric app ID `6772098335`) is already wired into Fastlane/Appfile, but ASC has the bundle identifier registered as `com.yashasg.knitting-guage-reconciler` — lowercase, hyphenated, and with the `guage` typo.
+
+## Decision
+
+Align the iOS codebase and Fastlane signing configuration to `com.yashasg.knitting-guage-reconciler` instead of the previous `com.yashasg.KnittingGaugeReconciler` identifier.
+
+## Rationale
+
+- Uses the existing ASC app immediately; no new ASC app creation is required.
+- Unblocks Match signing and CD/TestFlight/App Store upload flows, which must target the bundle ID ASC already owns.
+- Keeps the numeric ASC app ID (`6772098335`) and bundle ID configuration consistent across Xcode, Appfile, and Matchfile.
+
+## Consequence
+
+The typo'd bundle ID becomes the canonical release identifier for this app. Correcting it later would require provisioning and migrating to a brand-new ASC app entry.---
 ---
 
 ### 2026-05-23T02:27:08-07:00: Edison — VerdictCard incomplete removal root cause

@@ -101,3 +101,11 @@
 **Status:** ✅ Merged to main on GitLab
 
 MR !38 (VerdictCard and GaugeMathPresentation full removal) merged to main. Related commit: `efcb810`. Also MR !37 (nav title → Stitchwise) landed simultaneously (SHA `12ac758`). No conflicts. VerdictCard/Major Mismatch saga finally closed.
+
+---
+
+### 2026-05-29T02:53Z — Nav Title Behavior Clarification (Scribe follow-up)
+
+**Learning:** Stitchwise nav title centering on scroll is **native SwiftUI large-title behavior** — no custom code needed.
+
+**Implementation:** `NavigationStack` + `ScrollView` + `.navigationTitle("Stitchwise")` in `app/KnittingGaugeReconciler/ContentView.swift` automatically centers and scales the title as the user scrolls. This is built-in SwiftUI behavior, not a custom implementation.

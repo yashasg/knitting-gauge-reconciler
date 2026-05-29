@@ -703,3 +703,70 @@ Avoids re-scaffolding from scratch for each new iOS project. The token approach 
 ## Consequence
 
 Future iOS projects start from this template. After bootstrap, the project is ready to open in Xcode and run `bundle exec fastlane test`.
+
+---
+
+## 2026-05-29T03:50:48-07:00 — Hopper: Hardened SwiftLint Policy for iOS/SwiftUI Template (125a4aa)
+
+**Commit:** 125a4aa (ios-swiftui-fastlane-template)  
+**Status:** Implemented
+
+A hardened `.swiftlint.yml` is now committed at the repo root. It is picked up automatically by both `app/build.sh` and the `fastlane ci` lane.
+
+### Core policy decisions
+
+1. **No magic numbers** (:warning) — includes Apple's canonical Dynamic Type sizes (11–34 pt), XCTestCase auto-exempt.
+2. **Accessibility** (:error) — `accessibility_label_for_image`, `accessibility_trait_for_button` opt-in at error severity.
+3. **Dynamic Type** (:error) — flags `.font(.system(size:N))`, `.uppercased()` must use `.textCase(.uppercase)`.
+4. **Design-system colors** (:error) — flags `Color(red:green:blue:)`, all colors from Asset Catalog or semantic system.
+5. **Layout/spacing** (:warning) — `.frame()` hardcoded, `.padding(N)` raw numbers, touch targets < 44pt.
+6. **Template tokens** — `type_name: allowed_symbols: ["_"]` allows `__APP_NAME__` pre-bootstrap.
+
+Verification: SwiftLint 0.63.2 confirmed 0 errors, 4 expected warnings on unmodified template.
+
+---
+
+## 2026-05-29T04:09:58-07:00 — Hopper: Copilot Instructions Document Hardened SwiftLint (31ef774)
+
+**Commit:** 31ef774 (ios-swiftui-fastlane-template, GitLab `origin/main`)  
+**Requested by:** Tesla  
+**Status:** Implemented
+
+Updated `.github/copilot-instructions.md` in the template to document the hardened `.swiftlint.yml`. Added concise "## SwiftLint Policy" section (~120 words) between "## Architecture" and "## Fastlane".
+
+Content coverage: mandatory linting, key policies (no magic numbers, Dynamic Type, accessibility, design-system tokens, HIG alignment), execution points (`ci` lane, `app/build.sh`), prototype/ exclusion, cross-references.
+
+No further action needed — Copilot instructions fully aligned with hardened swiftlint policy.
+
+---
+
+## 2026-05-29T04:11:36-07:00 — Hopper: fabric-stabilizer-picker Repo Created from Template
+
+**Scope:** New iOS project bootstrap from `ios-swiftui-fastlane-template`  
+**Status:** Implemented
+
+Created **fabric-stabilizer-picker** from template using standard end-user bootstrap flow. All tokens replaced, both remotes wired, repo pushed to GitLab.
+
+| Item | Value |
+|------|-------|
+| GitLab (code / `origin`) | https://gitlab.com/yashas.gujjar/fabric-stabilizer-picker (private) |
+| GitHub (CI/CD / `github`) | https://github.com/yashasg/fabric-stabilizer-picker (public) |
+| Xcode target / scheme | `FabricStabilizerPicker` |
+| Bundle ID | `com.yashasg.fabric-stabilizer-picker` |
+
+### Flow
+
+1. Cloned template to `fabric-stabilizer-picker`
+2. Created GitLab repo via `glab repo create fabric-stabilizer-picker --private`
+3. Repointed `origin` to GitLab fabric-stabilizer-picker
+4. Ran `bash bootstrap.sh com.yashasg.fabric-stabilizer-picker` — auto-derived `FabricStabilizerPicker`, created GitHub CI/CD repo, self-deleted
+5. Pushed to GitLab `origin/main`
+
+### Verification
+
+✅ Zero remaining tokens (`__APP_NAME__`, `__BUNDLE_ID__`, `__GITHUB_CI_REPO_URL__`)  
+✅ `app/FabricStabilizerPicker/` directory with renamed Swift sources  
+✅ `.swiftlint.yml` present at repo root  
+✅ `bootstrap.sh` self-deleted  
+✅ Both remotes wired (GitLab = code, GitHub = CI/CD)
+

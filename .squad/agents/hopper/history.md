@@ -149,3 +149,26 @@ Documented comprehensive Fastlane setup section in template README per Tesla's r
 - Release lanes: `beta` and `release` with configurable version bump (patch/minor/major)
 
 ---
+
+## 2026-05-29 — Bootstrap App-Name Derivation & GitHub CI/CD Repo (Hopper-10/11/12)
+
+**Date:** 2026-05-29T03:31:03-07:00  
+**Status:** Completed  
+**Commits:** Multiple (iOS template repo)
+
+Three agents completed refinements to `bootstrap.sh` and template structure:
+
+**Hopper-10** — Auto-derive Xcode app/target name from repo name in PascalCase (e.g., `knitting-gauge-reconciler` → `KnittingGaugeReconciler`). Removed user prompt; optional `--app-name` flag for override. Eliminates manual error-prone conversion step.
+
+**Hopper-11** — SCOPE CORRECTION. Removed all App Store display-name handling from bootstrap (`__DISPLAY_NAME__` token, prompt, flag, CI defaults). Updated `Info.plist` to use `CFBundleDisplayName = $(PRODUCT_NAME)`. Display name now managed separately in App Store Connect / fastlane, not bootstrap.
+
+**Hopper-12** — `bootstrap.sh` now creates public GitHub repo (matching GitLab repo name) as CI/CD runner. Added as `github` remote (GitLab origin untouched). Replaced `__GITHUB_CI_REPO_URL__` token in README with real URL. Skippable via `--no-github` or `SKIP_GITHUB=1`.
+
+**Workflow:** GitLab = code repository (origin); GitHub = CI/CD runner (via webhooks).
+
+**Key decisions archived:**
+- Auto-derive app name; optional override only
+- Separate display-name scope from bootstrap
+- Dual-repo: GitLab code + GitHub CI/CD
+
+---

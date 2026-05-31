@@ -92,7 +92,7 @@ struct ContentView: View {
                         showAdjustmentSheet: $showAdjustmentSheet,
                         onRecalculate: recomputeResult,
                         onReset: { showResetConfirmation = true },
-                        onShare: { result in shareItems(for: result) }
+                        onShare: { result in await shareItems(for: result) }
                     )
                 }
                 .padding(.horizontal, 16)
@@ -281,9 +281,9 @@ struct ContentView: View {
     }
 
     @MainActor
-    private func shareItems(for result: GaugeMathResult) -> [Any] {
+    private func shareItems(for result: GaugeMathResult) async -> [Any] {
         let summary = ResultsExportSummary(inputs: inputs, result: result)
-        if let imageURL = renderShareImageURL(summary: summary) {
+        if let imageURL = await renderShareImageURL(summary: summary) {
             os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareInvoked)
             return [imageURL]
         }
@@ -292,36 +292,39 @@ struct ContentView: View {
         return [ResultsShareTextFormatter.string(inputs: inputs, result: result)]
     }
 
+    /// Rasterizes the share card on the MainActor (ImageRenderer requirement), then
+    /// encodes to PNG on the MainActor and offloads the file write to a detached task
+    /// so the main thread is never blocked by disk I/O.
     @MainActor
-    private func renderShareImageURL(summary: ResultsExportSummary) -> URL? {
+    private func renderShareImageURL(summary: ResultsExportSummary) async -> URL? {
         let renderer = ImageRenderer(content: ShareableView(summary: summary))
         renderer.proposedSize = .init(width: 390, height: nil)
         renderer.scale = 3
 
+        // ImageRenderer.uiImage must be accessed on the MainActor.
+        // pngData() is kept here too — do NOT capture UIImage across the detached boundary.
         guard let image = renderer.uiImage, let pngData = image.pngData() else {
             return nil
         }
 
-        do {
-            let directory = try shareExportDirectory()
-            let fileURL = directory.appendingPathComponent("knitting-gauge-results.png")
-            try pngData.write(to: fileURL, options: [.atomic])
-            return fileURL
-        } catch {
-            return nil
-        }
-    }
-
-    private func shareExportDirectory() throws -> URL {
-        let caches = try FileManager.default.url(
-            for: .cachesDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-        let directory = caches.appendingPathComponent("ShareExports", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return directory
+        // Offload only the disk write; Data and URL are Sendable.
+        return await Task.detached(priority: .userInitiated) {
+            do {
+                let caches = try FileManager.default.url(
+                    for: .cachesDirectory,
+                    in: .userDomainMask,
+                    appropriateFor: nil,
+                    create: true
+                )
+                let directory = caches.appendingPathComponent("ShareExports", isDirectory: true)
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                let fileURL = directory.appendingPathComponent("knitting-gauge-results.png")
+                try pngData.write(to: fileURL, options: [.atomic])
+                return fileURL
+            } catch {
+                return nil as URL?
+            }
+        }.value
     }
 }
 

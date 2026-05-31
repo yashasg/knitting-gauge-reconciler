@@ -12,7 +12,7 @@ struct RequiredAdjustmentsCard: View {
     @Binding var showFullMath: Bool
     var onRecalculate: () -> Void
     var onReset: () -> Void
-    var onShare: (GaugeMathResult) -> [Any]
+    var onShare: (GaugeMathResult) async -> [Any]
 
     init(
         cachedResult: GaugeMathResult?,
@@ -21,7 +21,7 @@ struct RequiredAdjustmentsCard: View {
         showAdjustmentSheet: Binding<Bool>,
         onRecalculate: @escaping () -> Void,
         onReset: @escaping () -> Void,
-        onShare: @escaping (GaugeMathResult) -> [Any]
+        onShare: @escaping (GaugeMathResult) async -> [Any]
     ) {
         self.cachedResult = cachedResult
         self.inputs = inputs
@@ -82,18 +82,28 @@ struct RequiredAdjustmentsCard: View {
 
 private struct AdjustmentSheetView: View {
     @State private var sharePayload: ShareSheetPayload?
+    @State private var isPreparingShare = false
 
     var result: GaugeMathResult
     var inputs: GaugeInputs
     @Binding var showFullMath: Bool
     var onReset: () -> Void
-    var onShare: (GaugeMathResult) -> [Any]
+    var onShare: (GaugeMathResult) async -> [Any]
     var onClose: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             AdjustmentSheetHeader(
-                onShare: { sharePayload = ShareSheetPayload(items: onShare(result)) },
+                isPreparingShare: isPreparingShare,
+                onShare: {
+                    guard !isPreparingShare else { return }
+                    isPreparingShare = true
+                    Task {
+                        let items = await onShare(result)
+                        sharePayload = ShareSheetPayload(items: items)
+                        isPreparingShare = false
+                    }
+                },
                 onClose: onClose
             )
             ScrollView {
@@ -259,6 +269,7 @@ private struct AdjustmentSheetView: View {
 /// without real multi-level navigation). Provides a 44×44pt leading Share
 /// button, a centered inline title, and a 44×44pt trailing Close button.
 private struct AdjustmentSheetHeader: View {
+    let isPreparingShare: Bool
     let onShare: () -> Void
     let onClose: () -> Void
 
@@ -271,13 +282,20 @@ private struct AdjustmentSheetHeader: View {
 
             HStack {
                 Button(action: onShare) {
-                    Image(systemName: "square.and.arrow.up")
-                        .imageScale(.medium)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(AppTheme.sage)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
+                    if isPreparingShare {
+                        ProgressView()
+                            .tint(AppTheme.sage)
+                            .frame(width: 44, height: 44)
+                    } else {
+                        Image(systemName: "square.and.arrow.up")
+                            .imageScale(.medium)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(AppTheme.sage)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
                 }
+                .disabled(isPreparingShare)
                 .accessibilityIdentifier("share-results")
                 .accessibilityLabel("Share results")
                 .accessibilityHint(

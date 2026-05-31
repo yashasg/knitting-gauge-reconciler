@@ -46,7 +46,7 @@ struct ShareableView: View {
                 Image(systemName: "wand.and.stars")
                     .font(.caption.weight(.semibold))
                     .accessibilityHidden(true)
-                Text("Gauge Reconciler")
+                Text("Stitchwise")
                     .font(.caption.weight(.semibold))
                 Spacer()
                 Text("knitting gauge snapshot")

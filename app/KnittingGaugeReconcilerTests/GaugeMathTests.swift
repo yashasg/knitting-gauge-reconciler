@@ -146,7 +146,7 @@ struct GaugeMathTests {
         let result = GaugeMath.compute(inputs)
 
         let summary = ResultsExportSummary(inputs: inputs, result: result)
-        #expect(summary.title == "Knitting Gauge Reconciler")
+        #expect(summary.title == "Stitchwise")
         #expect(summary.patternGauge.stitches == "32 st / 10 cm")
         #expect(summary.swatchGauge.rows == "32 rows / 10 cm")
         #expect(summary.stitchMetric == .init(title: "Stitch-wise", value: "89%", status: "Much tighter"))
@@ -182,7 +182,7 @@ struct GaugeMathTests {
         let first = ResultsShareTextFormatter.string(inputs: inputs, result: result)
         let second = ResultsShareTextFormatter.string(inputs: inputs, result: result)
         #expect(first == second)
-        #expect(first.contains("Knitting Gauge Reconciler"))
+        #expect(first.contains("Stitchwise"))
         #expect(first.contains("Section row/round guidance"))
         // body: (50/10)*32 = 160 rows at user gauge
         #expect(first.contains("• Body length: 50 cm → knit 160 rows"))

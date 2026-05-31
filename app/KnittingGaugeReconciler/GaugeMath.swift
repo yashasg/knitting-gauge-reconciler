@@ -136,7 +136,7 @@ struct ResultsExportSummary: Equatable {
         var textLine: String
     }
 
-    var title = "Knitting Gauge Reconciler"
+    var title = "Stitchwise"
     var patternGauge: GaugePair
     var swatchGauge: GaugePair
     var stitchMetric: Metric

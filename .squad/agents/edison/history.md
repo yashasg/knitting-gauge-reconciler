@@ -67,7 +67,11 @@
 
 **Commit:** a2d63e02 | MR: !38 | Branch: fix/remove-major-mismatch | Worktree: ../knitting-gauge-reconciler-verdict-removal/
 
-## Key Learnings & Patterns
+## Learnings
+
+- **Share-card brand locations (2026-05-31):** The share output has two brand strings: (1) `Text("Gauge Reconciler")` footer in `ShareableView.swift` line 49 — this is the visible label on the rendered share image; (2) `ResultsExportSummary.title` default `"Knitting Gauge Reconciler"` in `GaugeMath.swift` line 139 — this appears as the share card header title and is also the first line of the text-share fallback via `ResultsShareTextFormatter`. Both were renamed to "Stitchwise". Two test assertions in `GaugeMathTests.swift` (`resultsExportSummaryIncludesShareCardContent` and `shareTextFormatterIsDeterministicFormattedTextFallback`) updated accordingly.
+
+
 
 - **Prototype parity is necessary but not sufficient** — visual quality and hierarchy decisions are separate approval gates owned by Tesla (2026-05-22T19:23:34-07:00).
 - **UI changes require explicit approval** — future UI work is not auto-pickup-eligible from prototype-parity drift. Explicit Tesla sign-off required before implementation (charter updated).
@@ -109,3 +113,24 @@ MR !38 (VerdictCard and GaugeMathPresentation full removal) merged to main. Rela
 **Learning:** Stitchwise nav title centering on scroll is **native SwiftUI large-title behavior** — no custom code needed.
 
 **Implementation:** `NavigationStack` + `ScrollView` + `.navigationTitle("Stitchwise")` in `app/KnittingGaugeReconciler/ContentView.swift` automatically centers and scales the title as the user scrolls. This is built-in SwiftUI behavior, not a custom implementation.
+
+
+### 2026-05-31T23:20:59Z — Share Output Brand Rename: "Stitchwise"
+
+**What:** Renamed all shared-image product branding from "Knitting Gauge Reconciler"/"Gauge Reconciler" to "Stitchwise".
+
+**Locations:** Two brand strings updated:
+1. `ShareableView.swift` line 49 — footer label `Text("Gauge Reconciler")` → `Text("Stitchwise")`
+2. `GaugeMath.swift` line 139 — `ResultsExportSummary.title` default `"Knitting Gauge Reconciler"` → `"Stitchwise"`
+
+**Why:** Consistent rebranding to "Stitchwise" across all share surfaces (image card + text fallback). Navigation title was renamed in MR !37 (2026-05-23); this closes the remaining share-output branding gap.
+
+**Test Updates:** Two assertions in `GaugeMathTests.swift`:
+- `resultsExportSummaryIncludesShareCardContent` 
+- `shareTextFormatterIsDeterministicFormattedTextFallback`
+
+**Verification:** All 25 GaugeMath tests pass. No lint or compiler violations.
+
+**Scope:** User-facing share/brand strings only. Xcode target names, module names, bundle IDs, and internal identifiers unchanged.
+
+**Decision:** Captured in `.squad/decisions.md` (merged from inbox).

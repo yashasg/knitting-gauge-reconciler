@@ -862,3 +862,37 @@ Also added:
 **Fix direction:** Convert the app + test targets to Xcode 16 file-system-synchronized groups (membership = folder contents) so template and clones build whatever .swift files are present — no manual manifest. Fallback: prune dead PBXFileReference/PBXBuildFile entries to match only existing files. Fix in template AND in already-cloned fabric-stabilizer-picker. Verify with a real build.
 
 **Status:** RESOLVED via decision "iOS template Xcode projects must use file-system-synchronized groups" (2026-05-29T04:41:04-07:00 — Hopper).
+
+---
+
+## 2026-05-31T02:21:07-07:00 — Hopper Decision — Template Fastlane: produce command + match interactive-auth docs
+
+- **Date:** 2026-05-31T02:21:07-07:00
+- **Author:** Hopper
+- **Scope:** `ios-swiftui-fastlane-template` — README.md "Fastlane setup" section
+
+### Decision
+
+Documented `fastlane produce` as the primary path to create the App ID + App Store Connect app record (raw command, not a lane). Added `username(...)` Matchfile callout and first-run interactivity warnings for both `produce` and `match appstore`.
+
+### Rationale
+
+Tesla ran `produce` and `match appstore` for the first time on a real downstream app and hit auth failures caused by running in a non-interactive shell. The template README previously said to do both steps manually in the web portals and explicitly stated "The Fastfile does not include a `produce` lane". Both were outdated/incorrect guidance.
+
+### Key choices
+
+| Choice | Decision | Rationale |
+|--------|----------|-----------|
+| `produce` as lane vs. raw command | **Raw command** (`bundle exec fastlane produce -u ... -a ... --app_name ...`) | One-shot setup; adding a lane implies it belongs in CI, which it does not — it requires interactive Apple ID auth. |
+| Remove the "no produce lane" note | **Removed** | The note was only there to explain the omission. Documenting the raw command makes it redundant and confusing. |
+| Matchfile `username("")` placeholder | **Kept empty** | Template must not contain any real credentials. Explicit callout added to README Step 4 to ensure developers fill it in. |
+
+### Implementation
+
+- `README.md` Step 2: new title "Create the App ID and App Store Connect record"; `produce` command with flags; interactive-auth gotcha; manual portal steps as fallback.
+- `README.md` Step 4: `username(...)` callout blockquote; `certs` first-run interactive gotcha; full ordering summary (produce → API key → Matchfile → certs → readonly(true) → CI).
+- No changes to `app/fastlane/Fastfile` or `app/fastlane/Matchfile`.
+
+### Commit
+
+`46c73a3` — pushed to GitLab origin main (`ios-swiftui-fastlane-template`).

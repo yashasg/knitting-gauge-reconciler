@@ -13,3 +13,5 @@ excalidraw.log
 .squad-workstream
 # Xcode local derived data
 app/.build/
+# Fastlane build artifacts
+app/fastlane/report.xml

@@ -3,45 +3,53 @@
 ## Core Context
 
 - **Project:** A knitting gauge reconciler that converts patterns between stitch/row gauges.
-- **Role:** Tooling Dev
+- **Role:** Tooling Dev / Release Engineer
 - **Joined:** 2026-05-19T07:11:08.647Z
 
-## Current Learnings
+## Current Status (2026-05-31)
 
-<!-- Summarized: older entries (2026-05-23 and earlier) moved to history-archive.md -->
+**Latest:** Cleanup commits verified and pushed (08f8a70 Edison, 787ca28 Curie). 5 pre-existing UI test failures documented. All app/ work committed.
 
-### Latest Tasks (2026-05-29)
+## This Session (2026-05-31)
 
-#### **Hopper-15 & 16 & 17 — Template Hardening & New Project Bootstrap**
+### Cleanup Commit Verification & Push
 
-**Timeframe:** 2026-05-29T03:50:48 — 04:11:36-07:00
+**Decision:** Cleanup commits gate on **no-regression-vs-baseline**, not **all-tests-green**.
 
-**What:** 
-1. (Hopper-15) Added hardened `.swiftlint.yml` to template root (commit 125a4aa) — enforces no magic numbers, Dynamic Type, accessibility, design-system tokens, HIG alignment. Verified: 0 errors, 4 expected warnings.
-2. (Hopper-16) Documented `.swiftlint.yml` policy in `.github/copilot-instructions.md` (commit 31ef774) — concise section covering rules, execution points, cross-references.
-3. (Hopper-17) Bootstrapped new project `fabric-stabilizer-picker` from template (com.yashasg.fabric-stabilizer-picker, auto-derived FabricStabilizerPicker target). Verified zero tokens, both remotes wired (GitLab origin private, GitHub CI/CD public).
+**Verification:**
+- Baseline test run (HEAD with changes reverted): 5 UI failures
+- Current tree test run (with Edison + Curie changes): 5 same UI failures
+- **Conclusion:** Zero regression. Changes eligible to commit.
 
-**Key gotchas:**
-- SwiftLint custom rules via regex require careful rule ID naming (e.g. `accessibility_trait_for_button` is valid in v0.63.2).
-- `glab repo create` prompts interactively even inside an existing working copy — answer "No" and delete spurious subdirectories.
-- bootstrap.sh auto-derives Xcode target name from remote origin slug; repoint origin BEFORE running bootstrap.
+**Pre-existing failures (tracked separately):**
+- testAllJacquardScenariosAreVisibleInUI
+- testCompactWidthKeepsNumericFieldsSideBySideWhenTheyFit
+- testMainScreenAccessibility
+- testPrototypeParityControlsAreAvailable
+- testResetConfirmationAlertDoesNotDismissSheet
 
-**Verification:** All three tasks verified complete; both repos pushed to GitLab/GitHub.
+**Commits pushed to origin/main:**
+1. `08f8a70` — SwiftLint cleanup (Edison, 5 source files)
+2. `787ca28` — UI test scroll robustness (Curie, 1 test file)
 
-### Prior Learnings (Summarized)
+**Verification:**
+- ✅ Both commits pushed to origin/main
+- ✅ "Your branch is up to date with 'origin/main'"
+- ✅ No orphaned xcodebuild/Simulator processes
+- ✅ All 6 app files staged individually (no globs)
+- ✅ .squad/ files not staged
 
-**2026-05-23 window:** ASC bundle ID (typo'd `com.yashasg.knitting-guage-reconciler` to match existing app), GitHub Actions env scope (step-local unless promoted), Bundler 4.0.11 Ruby 3.x pin (workaround: call fastlane directly on dev; CI uses ruby/setup-ruby@v1).
+## Learnings
 
-**2026-05-22 window:** run.sh GUI surfacing (`open -a Simulator`), derived-data cleanup isolation (`COMPILER_INDEX_STORE_ENABLE=NO`, `.build/run-build` separate from `.build/derived-data`).
+- **Baseline differential:** Zero regression vs. baseline = eligible to commit (per coordination decision)
+- **Pre-existing failures:** 5 failures on baseline prove not caused by cleanup work
+- **Resource safety:** One xcodebuild/test at a time, never concurrent
 
-*Full historical context: See history-archive.md*
+## Status
 
-## Team Updates
+✅ Complete. Cleanup work committed and pushed. All app/ changes in main. Ready for Scribe merge + session archival.
 
-- **2026-05-20T19:26:30Z:** MetricKit V1 shipped. Canonical tooling state locked: `app/KnittingGaugeReconciler.xcodeproj`, serial iOS UI testing enforced, zero SPM deps, PrivacyInfo.xcprivacy in Resources phase.
-- **2026-05-21T14:15:00Z:** Curie confirmatory test cycle: 56/56 pass, 0 warnings, ~2m57s, committed 7cbdff4.
-- **2026-05-22T15:15:26-07:00:** Added committed shared Xcode scheme `app/app.xcodeproj/xcshareddata/xcschemes/KnittingGaugeReconciler.xcscheme` for Fastlane/GitHub Actions CI. Scheme binds app target `000000000000000000000401`, unit tests `000000000000000000000402`, UI tests `000000000000000000000403`, and uses Xcode 26-style `LastUpgradeVersion = 2640`, `version = 1.7`.
+## See Also
 
----
-
-See history-archive.md for detailed session logs from prior days.
+- **Archive:** `history-archive.md` — prior sessions (template sync groups, Ruby guard, iOS bootstrap, Fastlane docs)
+- **Decisions:** `.squad/decisions.md`

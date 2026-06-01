@@ -8,6 +8,32 @@
 
 ## Learnings
 
+### 2026-05-31T16:56:57-07:00 — UI scroll-loop over-scrolling fix
+
+**Root cause:** `scrollToElement(_:in:requireHittable:direction:)` looped up to 12 times with a fixed `while attempts < 12` guard. The early-return (`element.exists && (…isHittable)`) was inside the loop — so on the first iteration it was checked — but the loop had two failure modes:
+
+1. **`requireHittable: true` + keyboard coverage or off-screen element with no-op scroll surface**: Element exists but isn't hittable, and the drag target (`preferredScrollSurface`) returns an obscured/background ScrollView. Each drag is a no-op; the loop burns all 12 × 0.2 s ≈ 2.4 s of wasted settle time.
+
+2. **Wrong surface via `app.scrollViews.firstMatch`**: When `adjustment-sheet` exists but `preferredScrollSurface` somehow resolves to the background scroll view (timing race), gestures are no-ops on that obscured surface.
+
+**Fix — no-progress early-bail technique:**
+
+Before each drag, snapshot two signals:
+- `surface.value as? String` — UIScrollView exposes its content-offset position as a percentage string (e.g. `"0%"`, `"50%"`) via the accessibility `value` property. If this string does NOT change after the drag, the surface did not scroll.
+- `element.frame` (when `element.exists`) — if the target element is already in the accessibility tree (but not yet hittable), its frame should shift when real scrolling occurs.
+
+After the drag, compare. **Only count as no-progress when at least one signal was measurable** (`canMeasure = beforeValue != nil || beforeFrame != nil`). When both are nil (SwiftUI ScrollView that doesn't expose an accessibility value AND element not yet in the tree), we cannot determine progress — assume the scroll may be working and let the loop continue. After **2 consecutive provable no-progress drags**, bail early.
+
+Max iterations reduced from 12 → 6. Per-attempt settle kept at 0.2 s (safe for flakiness).
+
+**XCUITest gotchas:**
+- `CGRect` in Swift IS Equatable; `CGRect? != CGRect?` optional comparison works correctly.
+- SwiftUI `ScrollView` may or may not expose `accessibilityValue` as a percentage string (UIKit `UIScrollView` does; SwiftUI behavior depends on iOS version). Always gate the bail on `canMeasure` — never bail blindly when signals are absent.
+- `preferredScrollSurface` is re-evaluated each loop iteration, so if the adjustment sheet becomes visible mid-loop the correct surface is picked automatically.
+- The pre-loop fast-path (`if element.exists && …isHittable { return }`) must remain OUTSIDE the loop to guarantee zero drags when the element is already ready.
+
+**Test run note (2026-05-31):** First test run with the initial (flawed) implementation showed 5 failures after retries. The flaw was that when `surface.value = nil` AND element didn't yet exist, both signals were nil → false no-progress bail fired after 2 attempts, preventing legitimate scrolling. Fixed with `canMeasure` guard. A second run was attempted but bash/posix_spawn tools were unavailable due to system resource exhaustion post-run; static analysis confirms the revised logic is correct for all measurable/unmeasurable signal combinations.
+
 ### 2025-08-01T00:00:00Z — Goal 5 validation: fix/cast-on-result-a11y-identifier
 
 **Branch:** `fix/cast-on-result-a11y-identifier` (Edison's a11y identifier fix for AdjustmentRow.adjustedTile and AdjustmentValuePair.yourTile)

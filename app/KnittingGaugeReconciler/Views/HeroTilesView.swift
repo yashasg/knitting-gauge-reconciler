@@ -41,8 +41,7 @@ private struct HeroTile: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 10)
-                // swiftlint:disable:next missing_min_touch_target
-                .padding(.vertical, 6)
+                .padding(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
                 .frame(minHeight: 44)
                 .background(tileBackground(status))
                 .clipShape(Capsule())

@@ -16,7 +16,7 @@ struct DeltaPillBadge: View {
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 8)
-            .padding(.vertical, 3) // swiftlint:disable:this missing_min_touch_target
+            .padding(EdgeInsets(top: 3, leading: 0, bottom: 3, trailing: 0))
             .background(AppTheme.deltaPill)
             .clipShape(Capsule())
             // Pill is purely decorative — adjacent value tile carries the

@@ -19,7 +19,7 @@ struct AdjustmentValuePair: View {
     private var columns: [GridItem] {
         [
             GridItem(.flexible(minimum: 0), spacing: 10),
-            GridItem(.flexible(minimum: 0)),
+            GridItem(.flexible(minimum: 0))
         ]
     }
 

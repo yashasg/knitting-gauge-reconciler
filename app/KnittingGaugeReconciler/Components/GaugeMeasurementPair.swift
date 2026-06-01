@@ -12,7 +12,7 @@ struct GaugeMeasurementPair<Leading: View, Trailing: View>: View {
     private var columns: [GridItem] {
         [
             GridItem(.flexible(minimum: 0), spacing: spacing),
-            GridItem(.flexible(minimum: 0)),
+            GridItem(.flexible(minimum: 0))
         ]
     }
 

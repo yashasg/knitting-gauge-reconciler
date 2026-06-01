@@ -573,14 +573,23 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         requireHittable: Bool = false,
         direction: ScrollDirection = .down
     ) {
-        var attempts = 0
-        while attempts < 12 {
-            if element.exists && (!requireHittable || element.isHittable) {
-                return
-            }
+        // Fast path: element is already ready — skip all dragging.
+        if element.exists && (!requireHittable || element.isHittable) { return }
+
+        var noProgressStreak = 0
+        for _ in 0..<6 {
             let surface = preferredScrollSurface(in: app)
             let lower = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))
             let upper = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42))
+
+            // Snapshot the scroll surface position before dragging.
+            // UIScrollView exposes its position as a percentage string via
+            // the accessibility value (e.g. "0%", "50%"). Comparing before/after
+            // detects whether the drag actually moved the surface.
+            let beforeValue = surface.value as? String
+            // Secondary sentinel: target element frame if already in hierarchy.
+            let beforeFrame = element.exists ? element.frame : nil
+
             switch direction {
             case .down:
                 lower.press(forDuration: 0.01, thenDragTo: upper)
@@ -588,7 +597,26 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
                 upper.press(forDuration: 0.01, thenDragTo: lower)
             }
             waitForScrollingToSettle()
-            attempts += 1
+
+            if element.exists && (!requireHittable || element.isHittable) { return }
+
+            // No-progress bail: bail after 2 consecutive drags that provably
+            // moved nothing. "Provably" means we had at least one measurable
+            // signal (surface position or element frame) and it did not change.
+            // When both signals are absent we cannot tell — assume the scroll
+            // may still be working and let the loop continue.
+            let afterValue = surface.value as? String
+            let afterFrame = element.exists ? element.frame : nil
+            let canMeasure = beforeValue != nil || beforeFrame != nil
+            let surfaceMoved = beforeValue != afterValue
+            let elementMoved = beforeFrame != afterFrame
+            let madeProgress = !canMeasure || surfaceMoved || elementMoved
+            if madeProgress {
+                noProgressStreak = 0
+            } else {
+                noProgressStreak += 1
+                if noProgressStreak >= 2 { return }
+            }
         }
     }
 

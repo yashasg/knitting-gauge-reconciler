@@ -12,6 +12,10 @@ import XCTest
 @MainActor
 final class AccessibilityAuditTests: XCTestCase {
 
+    // Accessibility audits iterate every screen and take 40–180 s on CI simulators.
+    // Override the global -default-test-execution-time-allowance 30 xcarg.
+    override var executionTimeAllowance: TimeInterval { 300 }
+
     private var app: XCUIApplication!
 
     /// Navigation-bar toolbar items are constrained by iOS to ~36pt tall

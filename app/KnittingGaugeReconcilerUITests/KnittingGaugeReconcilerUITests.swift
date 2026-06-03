@@ -7,7 +7,10 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     // UI tests routinely take 30–120 s on CI simulators.
     // Override the global -default-test-execution-time-allowance 30 xcarg
     // so xcodebuild does not record a spurious time-exceeded failure.
-    override var executionTimeAllowance: TimeInterval { 300 }
+    override var executionTimeAllowance: TimeInterval {
+        get { 300 }
+        set { }
+    }
 
     private static let defaultLaunchEnvironment: [String: String] = [
         "KGR_PS": "32",

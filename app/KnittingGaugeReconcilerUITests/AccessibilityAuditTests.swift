@@ -14,7 +14,10 @@ final class AccessibilityAuditTests: XCTestCase {
 
     // Accessibility audits iterate every screen and take 40–180 s on CI simulators.
     // Override the global -default-test-execution-time-allowance 30 xcarg.
-    override var executionTimeAllowance: TimeInterval { 300 }
+    override var executionTimeAllowance: TimeInterval {
+        get { 300 }
+        set { }
+    }
 
     private var app: XCUIApplication!
 

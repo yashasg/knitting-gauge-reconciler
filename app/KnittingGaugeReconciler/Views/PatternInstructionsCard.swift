@@ -8,6 +8,25 @@ struct PatternInstructionsCard: View {
     @Binding var patternBody: String
     @Binding var patternSleeve: String
     @Binding var patternIncreases: String
+    var unit: MeasurementUnit
+
+    private static let lengthCmRange: ClosedRange<Int> = 5...100
+
+    // Creates a display binding that reads a cm-stored string value in the
+    // active display unit and writes it back to cm on commit.
+    private func displayBinding(for cmBinding: Binding<String>) -> Binding<String> {
+        Binding(
+            get: {
+                // swiftlint:disable:next identifier_name
+                let cm = Double(cmBinding.wrappedValue) ?? Double(Self.lengthCmRange.lowerBound)
+                return "\(unit.cmToDisplayInt(cm))"
+            },
+            set: { newVal in
+                let displayInt = Int(newVal) ?? unit.displayRange(from: Self.lengthCmRange).lowerBound
+                cmBinding.wrappedValue = unit.displayIntToCmString(displayInt)
+            }
+        )
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -19,7 +38,6 @@ struct PatternInstructionsCard: View {
                 Text("Pattern Instructions")
                     .font(.title2.weight(.bold))
                     .foregroundStyle(AppTheme.ink)
-                    .minimumScaleFactor(0.7)
                     .lineLimit(1)
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
@@ -33,28 +51,28 @@ struct PatternInstructionsCard: View {
             )
             GaugeMeasurementPair {
                 GaugeStepperField(
-                    title: "Yoke depth (cm)",
-                    text: $patternYoke,
-                    unit: "cm",
+                    title: "Yoke depth (\(unit.label))",
+                    text: displayBinding(for: $patternYoke),
+                    unit: unit.label,
                     identifier: "pattern-yoke",
-                    range: 5...100
+                    range: unit.displayRange(from: Self.lengthCmRange)
                 )
             } trailing: {
                 GaugeStepperField(
-                    title: "Body length (cm)",
-                    text: $patternBody,
-                    unit: "cm",
+                    title: "Body length (\(unit.label))",
+                    text: displayBinding(for: $patternBody),
+                    unit: unit.label,
                     identifier: "pattern-body",
-                    range: 5...100
+                    range: unit.displayRange(from: Self.lengthCmRange)
                 )
             }
             GaugeMeasurementPair {
                 GaugeStepperField(
-                    title: "Sleeve length (cm)",
-                    text: $patternSleeve,
-                    unit: "cm",
+                    title: "Sleeve length (\(unit.label))",
+                    text: displayBinding(for: $patternSleeve),
+                    unit: unit.label,
                     identifier: "pattern-sleeve",
-                    range: 5...100
+                    range: unit.displayRange(from: Self.lengthCmRange)
                 )
             } trailing: {
                 GaugeStepperField(

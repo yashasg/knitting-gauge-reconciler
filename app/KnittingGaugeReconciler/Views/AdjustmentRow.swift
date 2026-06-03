@@ -80,11 +80,9 @@ struct AdjustmentRow: View {
                     .clipShape(Capsule())
                     .offset(x: -4, y: -8)
                     // Decorative drift indicator — adjacent adjusted tile
-                    // carries the semantic information. Hide from VoiceOver
-                    // and clamp Dynamic Type so it doesn't outgrow the tile.
+                    // carries the semantic information.
                     .accessibilityHidden(true)
                     .accessibilityIdentifier("drift-pill")
-                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             }
         }
         .accessibilityElement(children: .ignore)

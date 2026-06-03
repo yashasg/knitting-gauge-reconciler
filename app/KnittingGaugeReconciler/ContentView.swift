@@ -5,7 +5,6 @@ import MetricKit
 import os.signpost
 // Components and Views are in separate files under Components/ and Views/
 
-// swiftlint:disable:next type_body_length
 struct ContentView: View {
     private static let defaults = GaugeTextDefaults()
 
@@ -28,11 +27,16 @@ struct ContentView: View {
     @State private var showVerdictHelp = initialBool("KGR_SHOW_VERDICT_HELP")
     @State private var showAboutHelp = initialBool("KGR_SHOW_ABOUT_HELP")
     @State private var showAdjustmentSheet = false
-    @State private var showResetConfirmation = false
     @State private var previousVerdictBucket: VerdictBucket?
     @State private var driftBandSignpostFired = false
     /// Latest result presented from a "View Adjustments" tap.
     @State private var cachedResult: GaugeMathResult?
+
+    // MARK: - Persisted unit preference
+
+    /// User's chosen measurement unit. Stored in UserDefaults; defaults to cm.
+    /// INTERNAL MODEL IS ALWAYS CM — this controls display/entry conversion only.
+    @AppStorage("measurementUnit") private var measurementUnit: MeasurementUnit = .centimeters
 
     // MARK: - Derived
 
@@ -69,29 +73,35 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: cardSpacing) {
+                    UnitToggleView(unit: $measurementUnit)
                     PatternGaugeCard(patternStitches: $patternStitches, patternRows: $patternRows)
                     YourGaugeCard(
                         yourStitches: $yourStitches,
                         yourRows: $yourRows,
                         stitchMismatch: inputs.stitchMismatch,
                         rowMismatch: inputs.rowMismatch,
-                        stitchDelta: Int(inputs.patternStitches - inputs.yourStitches),
-                        rowDelta: Int(inputs.patternRows - inputs.yourRows)
+                        stitchDelta: Int(inputs.yourStitches - inputs.patternStitches),
+                        rowDelta: Int(inputs.yourRows - inputs.patternRows)
                     )
                     PatternInstructionsCard(
                         patternCastOn: $patternCastOn,
                         patternYoke: $patternYoke,
                         patternBody: $patternBody,
                         patternSleeve: $patternSleeve,
-                        patternIncreases: $patternIncreases
+                        patternIncreases: $patternIncreases,
+                        unit: measurementUnit
                     )
                     RequiredAdjustmentsCard(
                         cachedResult: cachedResult,
                         inputs: inputs,
+                        unit: measurementUnit,
                         showFullMath: $showFullMath,
                         showAdjustmentSheet: $showAdjustmentSheet,
                         onRecalculate: recomputeResult,
-                        onReset: { showResetConfirmation = true },
+                        onReset: {
+                            resetToDefaults()
+                            showAdjustmentSheet = false
+                        },
                         onShare: { result in await shareItems(for: result) }
                     )
                 }
@@ -147,21 +157,6 @@ struct ContentView: View {
                 AboutHelpSheet()
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
-            }
-            // Reset confirmation lives at ContentView root (not inside the
-            // Adjustment sheet's NavigationStack) so it presents above the sheet
-            // without dismissing it. See issue #40.
-            .alert(
-                "Reset to defaults?",
-                isPresented: $showResetConfirmation
-            ) {
-                Button("Reset", role: .destructive) {
-                    resetToDefaults()
-                    showAdjustmentSheet = false
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Clears every stitch and row value you've entered.")
             }
             .onChange(of: showVerdictHelp) { _, newValue in
                 if newValue {
@@ -282,14 +277,14 @@ struct ContentView: View {
 
     @MainActor
     private func shareItems(for result: GaugeMathResult) async -> [Any] {
-        let summary = ResultsExportSummary(inputs: inputs, result: result)
+        let summary = ResultsExportSummary(inputs: inputs, result: result, unit: measurementUnit)
         if let imageURL = await renderShareImageURL(summary: summary) {
             os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareInvoked)
             return [imageURL]
         }
 
         os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareFallback)
-        return [ResultsShareTextFormatter.string(inputs: inputs, result: result)]
+        return [ResultsShareTextFormatter.string(inputs: inputs, result: result, unit: measurementUnit)]
     }
 
     /// Rasterizes the share card on the MainActor (ImageRenderer requirement), then
@@ -465,5 +460,26 @@ private struct HelpSheetHeader: View {
         }
         .padding(.horizontal, 8)
         .padding(.top, 4)
+    }
+}
+
+// MARK: - UnitToggleView
+
+/// Global cm / in segmented control displayed at the top of the main screen.
+/// Toggling re-renders all measurement fields; the model stays in centimetres.
+private struct UnitToggleView: View {
+    @Binding var unit: MeasurementUnit
+
+    var body: some View {
+        Picker("Measurement unit", selection: $unit) {
+            ForEach(MeasurementUnit.allCases, id: \.self) { option in
+                Text(option.label).tag(option)
+            }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityIdentifier("unit-toggle")
+        .accessibilityLabel("Measurement unit")
+        .accessibilityHint("Switches all length fields between centimetres and inches")
+        .padding(.bottom, 4)
     }
 }

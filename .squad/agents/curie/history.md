@@ -8,6 +8,34 @@
 
 ## Learnings
 
+### 2026-06-01 — iOS 26.4 UI test regression cluster (tests 1, 2, 4, 5)
+
+**Branch:** fix/ios-26-ui-test-failures
+
+**Five tests regressed on iOS 26.4 simulator. All are now fixed.**
+
+#### Tests 1 & 2 — LazyVGrid stops rendering off-screen cells
+`LazyVGrid` inside a `UISheetPresentationController`-hosted `UIHostingController` no longer renders off-screen cells on iOS 26.4. XCTest sees empty accessibility tree.  
+**Fix:** Replace `LazyVGrid` with `HStack` in `GaugeMeasurementPair.swift`.
+
+#### Tests 4 & 5 — SwiftUI Button action never fires under `.accessibilityElement(children: .contain)`
+Two separate issues stack:
+
+1. **`.contain` is required**: Without `.accessibilityElement(children: .contain)` on the sheet's root view, XCTest's accessibility tree is completely empty inside `UISheetPresentationController` on iOS 26.4. All `app.buttons[...]` lookups fail.
+
+2. **`.contain` blocks SwiftUI Button actions**: With `.contain` present, SwiftUI `Button` taps (both accessibility-routed and coordinate-based) are silently swallowed. The button is visible and hittable in XCTest, but the action closure never runs.
+
+3. **UIKit UIButton is NOT blocked**: `UIViewRepresentable` wrapping a `UIButton` with `touchUpInside` fires correctly under the same `.contain` constraint. The block is specific to SwiftUI's gesture recognizer pipeline.
+
+**Fix:** `UIKitTapButton` — a `UIViewRepresentable` housing a `UIButton` with `touchUpInside`. Added `adjustsFontForContentSizeCategory = true` for Dynamic Type audit compliance. Button placed outside `ScrollView` to avoid `delaysContentTouches` interaction. Reset confirmation uses imperative `UIAlertController` (walks VC chain to sheet's `UIHostingController`).
+
+**Do not replace `UIKitTapButton` with a SwiftUI `Button`** until Apple resolves the `.contain` touch-blocking regression on iOS 26.4.
+
+#### Pre-existing failures (not regression)
+- `testMainScreenAccessibility` — contrast failure, deferred to Edison
+- `testAdjustmentSheetAccessibility` — contrast failure, deferred to Edison
+
+
 ### 2026-05-31T16:56:57-07:00 — UI scroll-loop over-scrolling fix
 
 **Root cause:** `scrollToElement(_:in:requireHittable:direction:)` looped up to 12 times with a fixed `while attempts < 12` guard. The early-return (`element.exists && (…isHittable)`) was inside the loop — so on the first iteration it was checked — but the loop had two failure modes:
@@ -174,6 +202,22 @@ Pattern-matching against CI standards without grounding in user directives leads
 
 **New regime:** The app is the source of truth. `prototype/` is archival only, not a reference, spec, or test oracle. Drift audits are against `.squad/decisions.md` and Tesla directives, never against the prototype.
 
+
+### 2026-06-02T18:32:46-07:00 — Dynamic Type Implementation UI test results
+
+**Session:** Edison-dynamic-type-implementation  
+**Change:** MR !43 (ViewThatFits elastic-layout reflow)
+
+**4 UI test failures flagged as pre-existing, pending confirmation:**
+
+1. **`testMainScreenAccessibility`** — Contrast audit failure. Related: dark-mode sage color change (2026-06-01T07:18:00-07:00, Edison fix from Curie + Hopper directive). May be pre-existing from before the sage fix, or unrelated to layout changes.
+2. **`testAllJacquardScenariosAreVisibleInUI`** — `cast-on-result` element not found. iOS 26 infra flake. First reported 2026-06-01 in Hopper gate; removed from default test gate per Hopper directive 2026-06-01T14:44:32-07:00. Flag this for Yashas: Is this a known simulator/iOS 26 issue, or a regression?
+3. **`testCompactWidthKeepsNumericFieldsSideBySideWhenTheyFit`** — Same iOS 26 infra flake as above. Also in removal directive.
+4. **`testUnitToggleSwitchesFieldLabel`** — Pre-existing unit-toggle regression. From prior MR; empty label issue. Not related to elastic-layout changes.
+
+**Pattern:** All 4 failures pre-date MR !43. Confirm with Yashas which (if any) are regressions vs. known iOS 26 simulator flakes.
+
+---
 
 ### 2026-05-23T08:25:00Z — Fastlane CI test shape override (from hopper-3)
 

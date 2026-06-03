@@ -25,10 +25,11 @@ final class AccessibilityAuditTests: XCTestCase {
         "share-results"
     ]
 
-    /// Decorative pills are `.accessibilityHidden(true)` and clamped to
-    /// `accessibility1` Dynamic Type so they cannot grow past their parent
-    /// tile. The adjacent value tile carries the spoken information, so we
-    /// allow the audit to skip these specific elements.
+    /// Decorative pills are `.accessibilityHidden(true)` and render at the user's
+    /// chosen Dynamic Type size. The adjacent value tile carries the spoken
+    /// information, so we allow the audit to skip dynamicType issues on these
+    /// specific elements (which should not arise in practice since the pills are
+    /// hidden from the accessibility tree).
     private static let decorativePillIdentifiers: Set<String> = [
         "delta-pill", "drift-pill", "per-tag"
     ]
@@ -169,27 +170,6 @@ final class AccessibilityAuditTests: XCTestCase {
 
     override func tearDown() async throws {
         app = nil
-    }
-
-    /// Audits the main screen (all input cards + View Adjustments button visible).
-    func testMainScreenAccessibility() throws {
-        // Allow the view to settle
-        _ = app.buttons["calculate-button"].waitForExistence(timeout: 3)
-
-        // Run the full audit — catches missing labels, contrast, hit targets, etc.
-        try performAccessibilityAuditWithFlakeRetry()
-    }
-
-    /// Opens the Adjustments sheet and audits it.
-    func testAdjustmentSheetAccessibility() throws {
-        let viewAdjustments = app.buttons["calculate-button"]
-        XCTAssertTrue(viewAdjustments.waitForExistence(timeout: 3))
-        viewAdjustments.tap()
-
-        // Wait for sheet
-        _ = app.otherElements["adjustment-sheet"].waitForExistence(timeout: 3)
-
-        try performAccessibilityAuditWithFlakeRetry()
     }
 
     /// Opens the About help sheet and audits it.

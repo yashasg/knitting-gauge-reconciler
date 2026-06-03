@@ -185,8 +185,47 @@ These rules catch Human Interface Guideline violations before review. All are en
 | `navigation_stack_in_sheet` | error | `NavigationStack` inside `.sheet` — competing gestures suppress swipe-to-dismiss (HIG §Navigation) |
 | `color_literal_rgb` | error | `Color(red:green:blue:)` — use Color Assets for dark mode (HIG §Color) |
 | `missing_min_touch_target` | error | `.padding(.vertical, N)` where N < 12 — may drop below 44 pt hit target (HIG §Buttons) |
+| `no_minimum_scale_factor` | error | `.minimumScaleFactor(…)` — shrinks text below the user's chosen Dynamic Type size (see §3.3) |
+| `no_dynamic_type_cap` | error | `.dynamicTypeSize(…DynamicTypeSize.xxx)` — PartialRangeThrough ceiling caps Dynamic Type growth (see §3.3) |
 
 Also enabled: `accessibility_label_for_image` (opt-in built-in rule).
+
+### 3.3 Dynamic Type accessibility rules (banned modifiers)
+
+**Decision date:** 2026-06-02. **Background:** MR !43 removed all Dynamic Type caps from the codebase and replaced them with `ViewThatFits` reflow. These two SwiftLint rules guard against regression.
+
+#### Banned: `.minimumScaleFactor(_:)`
+
+```swift
+// ❌ BANNED — shrinks text when layout is tight
+Text("Pattern Stitches").minimumScaleFactor(0.7)
+
+// ✅ CORRECT — reflow the layout instead
+ViewThatFits {
+    HStack { Text("Pattern Stitches"); field }
+    VStack { Text("Pattern Stitches"); field }
+}
+```
+
+`minimumScaleFactor` allows SwiftUI to shrink text to a fraction of its target size when layout pressure forces it. At large Dynamic Type sizes this means the user's accessibility preference is silently overridden. **Banned at error severity.**
+
+#### Banned: `.dynamicTypeSize(_:)` with a PartialRangeThrough ceiling
+
+```swift
+// ❌ BANNED — hard-caps Dynamic Type at accessibility1 regardless of user preference
+Text("Yoke").dynamicTypeSize(...DynamicTypeSize.accessibility1)
+
+// ✅ CORRECT — let the OS deliver the user's chosen size; reflow the container
+@Environment(\.dynamicTypeSize) private var dynamicTypeSize
+// ...use dynamicTypeSize.isAccessibilitySize to branch layout, never to cap
+
+// ✅ ALSO OK in a #Preview (uses .environment, not the view modifier)
+.environment(\.dynamicTypeSize, .accessibility5)
+```
+
+The `...DynamicTypeSize.xxx` PartialRangeThrough form acts as an upper ceiling — it clamps all sizes above the named value. This overrides the user's Accessibility → Display & Text Size → Larger Text setting. **Banned at error severity.**
+
+**Scope note:** Both rules are scoped to `app/KnittingGaugeReconciler/` (source only). `app/KnittingGaugeReconcilerTests/` and `app/KnittingGaugeReconcilerUITests/` are excluded — unit/UI tests may legitimately set specific sizes for layout assertions. `#Preview` blocks inside source files that use `.environment(\.dynamicTypeSize, …)` (the environment modifier, not the view modifier) do not trip the `no_dynamic_type_cap` rule because the regex `\.dynamicTypeSize\(\.\.\.` targets only the PartialRangeThrough argument form.
 
 ## 4. Resolution rules
 

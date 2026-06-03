@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 
 // MARK: - RequiredAdjustmentsCard
@@ -9,6 +10,7 @@ struct RequiredAdjustmentsCard: View {
 
     var cachedResult: GaugeMathResult?
     var inputs: GaugeInputs
+    var unit: MeasurementUnit
     @Binding var showFullMath: Bool
     var onRecalculate: () -> Void
     var onReset: () -> Void
@@ -17,6 +19,7 @@ struct RequiredAdjustmentsCard: View {
     init(
         cachedResult: GaugeMathResult?,
         inputs: GaugeInputs,
+        unit: MeasurementUnit,
         showFullMath: Binding<Bool>,
         showAdjustmentSheet: Binding<Bool>,
         onRecalculate: @escaping () -> Void,
@@ -25,6 +28,7 @@ struct RequiredAdjustmentsCard: View {
     ) {
         self.cachedResult = cachedResult
         self.inputs = inputs
+        self.unit = unit
         self._showFullMath = showFullMath
         self._showAdjustmentSheet = showAdjustmentSheet
         self.onRecalculate = onRecalculate
@@ -69,6 +73,7 @@ struct RequiredAdjustmentsCard: View {
             AdjustmentSheetView(
                 result: presentedResult,
                 inputs: inputs,
+                unit: unit,
                 showFullMath: $showFullMath,
                 onReset: onReset,
                 onShare: onShare,
@@ -83,9 +88,11 @@ struct RequiredAdjustmentsCard: View {
 private struct AdjustmentSheetView: View {
     @State private var sharePayload: ShareSheetPayload?
     @State private var isPreparingShare = false
+    @State private var showResetConfirmation = false
 
     var result: GaugeMathResult
     var inputs: GaugeInputs
+    var unit: MeasurementUnit
     @Binding var showFullMath: Bool
     var onReset: () -> Void
     var onShare: (GaugeMathResult) async -> [Any]
@@ -138,14 +145,13 @@ private struct AdjustmentSheetView: View {
                             AdjustmentRow(
                                 name: "Increase-row spacing",
                                 pattern: "Every \(plain(inputs.patternIncreaseSpacing)) rows",
-                                // swiftlint:disable:next line_length
-                                adjusted: "Space every \(GaugeMath.fmtRows(result.adjustedIncreaseSpacing)) rows/rounds",
+                                adjusted: "Every \(GaugeMath.fmtRows(result.adjustedIncreaseSpacing)) rows",
                                 adjustedIdentifier: "increases-result"
                             )
                             AdjustmentRow(
                                 name: "Cast-on stitches",
                                 pattern: "\(plain(inputs.patternCastOn)) stitches",
-                                adjusted: "Cast on \(result.adjustedCastOn) stitches",
+                                adjusted: "\(result.adjustedCastOn) stitches",
                                 adjustedIdentifier: "cast-on-result",
                                 driftPill: abs(result.castOnRoundingDriftPercent) >= 3
                                     ? String(format: "%+.0f%% width", result.castOnRoundingDriftPercent)
@@ -170,6 +176,15 @@ private struct AdjustmentSheetView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("adjustment-sheet")
+        // Reset confirmation is presented from within the sheet's own hierarchy
+        // so it surfaces above the sheet without dismissing it. A root-level
+        // alert (ContentView) does not present while this sheet is up. See #40.
+        .alert("Reset to defaults?", isPresented: $showResetConfirmation) {
+            Button("Reset", role: .destructive) { onReset() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Clears every stitch and row value you've entered.")
+        }
     }
 
     @ViewBuilder
@@ -229,7 +244,7 @@ private struct AdjustmentSheetView: View {
                     .accessibilityIdentifier("show-full-math")
             }
 
-            Button("Reset to defaults", action: onReset)
+            Button("Reset to defaults") { showResetConfirmation = true }
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .frame(minHeight: 44)
@@ -253,8 +268,8 @@ private struct AdjustmentSheetView: View {
         row density ratio  = your_row / pattern_row = \(plain(inputs.yourRows)) / \(plain(inputs.patternRows)) = \(String(format: "%.3f", result.rowCountScale))
         dim correction     = pattern_row / your_row = \(plain(inputs.patternRows)) / \(plain(inputs.yourRows)) = \(String(format: "%.3f", result.dimensionScale))
         -> section rows at your gauge = (cm / 10) x your_rows:
-        -> yoke: \(plain(inputs.patternYokeDepth)) cm → knit \(result.yokeRowsAtYourGauge) rows
-        -> body: \(plain(inputs.patternBodyLength)) cm → knit \(result.bodyRowsAtYourGauge) rows
+        -> yoke: \(unit.formatMeasurement(inputs.patternYokeDepth)) → knit \(result.yokeRowsAtYourGauge) rows
+        -> body: \(unit.formatMeasurement(inputs.patternBodyLength)) → knit \(result.bodyRowsAtYourGauge) rows
         -> for any horizontal dim, your stitch count produces \(String(format: "%.1f", result.stitchWidthScale * 100))% of the pattern's intended width
         cast-on adjust = your_st / pattern_st x patCastOn = \(plain(inputs.yourStitches))/\(plain(inputs.patternStitches)) x \(plain(inputs.patternCastOn)) = \(result.adjustedCastOn) stitches
         """

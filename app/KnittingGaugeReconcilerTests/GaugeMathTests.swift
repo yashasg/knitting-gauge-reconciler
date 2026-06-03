@@ -153,7 +153,7 @@ struct GaugeMathTests {
         #expect(summary.rowMetric == .init(title: "Row-wise", value: "133%", status: "Much denser"))
         #expect(summary.castOn == "Cast on 144 stitches instead of 128")
         #expect(summary.sections.map(\.name) == ["Yoke depth", "Body length", "Sleeve length", "Increase-row spacing"])
-        // body: (50/10)*32 = 160 rows at user gauge
+        // body: (50/10)*32 = 160 rows at user gauge; default unit is cm so pattern shows "50 cm"
         #expect(summary.sections[1].pattern == "50 cm")
         #expect(summary.sections[1].adjusted == "Knit 160 rows")
     }
@@ -295,6 +295,121 @@ struct GaugeMathTests {
         #expect(result.adjustedSleeveLength.isApproximately(sleeve))
         #expect(result.adjustedIncreaseSpacing.isApproximately(increases))
         #expect(result.adjustedCastOn == castOn)
+    }
+}
+
+// MARK: - MeasurementUnit conversion tests
+
+struct MeasurementUnitTests {
+
+    // MARK: Display conversion (cm → in, rounded to nearest whole inch)
+
+    @Test func cmToDisplayIntCentimetres() {
+        // cm mode returns same value rounded
+        #expect(MeasurementUnit.centimeters.cmToDisplayInt(20) == 20)
+        #expect(MeasurementUnit.centimeters.cmToDisplayInt(50.4) == 50)
+        #expect(MeasurementUnit.centimeters.cmToDisplayInt(50.6) == 51)
+    }
+
+    @Test func cmToDisplayIntInches() {
+        // 20 cm = 7.87 in → rounds to 8
+        #expect(MeasurementUnit.inches.cmToDisplayInt(20) == 8)
+        // 50 cm = 19.69 in → rounds to 20
+        #expect(MeasurementUnit.inches.cmToDisplayInt(50) == 20)
+        // 45 cm = 17.72 in → rounds to 18
+        #expect(MeasurementUnit.inches.cmToDisplayInt(45) == 18)
+        // 5 cm = 1.97 in → rounds to 2
+        #expect(MeasurementUnit.inches.cmToDisplayInt(5) == 2)
+        // 100 cm = 39.37 in → rounds to 39
+        #expect(MeasurementUnit.inches.cmToDisplayInt(100) == 39)
+    }
+
+    // MARK: Write-back conversion (display int → cm string)
+
+    @Test func displayIntToCmStringCentimetres() {
+        #expect(MeasurementUnit.centimeters.displayIntToCmString(20) == "20")
+        #expect(MeasurementUnit.centimeters.displayIntToCmString(50) == "50")
+    }
+
+    @Test func displayIntToCmStringInches() {
+        // 8 in × 2.54 = 20.32 → rounds to 20
+        #expect(MeasurementUnit.inches.displayIntToCmString(8) == "20")
+        // 20 in × 2.54 = 50.8 → rounds to 51
+        #expect(MeasurementUnit.inches.displayIntToCmString(20) == "51")
+        // 18 in × 2.54 = 45.72 → rounds to 46
+        #expect(MeasurementUnit.inches.displayIntToCmString(18) == "46")
+        // 1 in → 3 cm (2.54 → rounds to 3)
+        #expect(MeasurementUnit.inches.displayIntToCmString(1) == "3")
+    }
+
+    // MARK: Round-trip: toggle cm → in → cm must not corrupt the cm model
+
+    /// Toggling the unit does NOT alter the stored cm value — only the display
+    /// binding converts. The stored strings are never written unless the user edits.
+    @Test func roundTripToggleDoesNotCorruptCmStore() {
+        // Simulate: start with "20" cm stored, toggle to in and back.
+        // The stored value ("20") should be unchanged because the conversion binding
+        // only reads for display; it only writes on user edit (Done tap).
+        // This test validates that cmToDisplayInt then displayIntToCmString is
+        // "close" (within 1 cm rounding) for expected knitting values.
+        let cmValues: [Double] = [20, 50, 45, 25, 30, 60]
+        for cm in cmValues {
+            let displayInt = MeasurementUnit.inches.cmToDisplayInt(cm)
+            let recoveredCmStr = MeasurementUnit.inches.displayIntToCmString(displayInt)
+            let recoveredCm = Double(recoveredCmStr) ?? 0
+            // Allow up to 2 cm rounding error (one in cm→in, one in in→cm)
+            #expect(abs(recoveredCm - cm) <= 2, "cm=\(cm) → \(displayInt) in → \(recoveredCmStr) cm")
+        }
+    }
+
+    // MARK: Display range conversion
+
+    @Test func displayRangeReturnsCmRangeUnchanged() {
+        let range = MeasurementUnit.centimeters.displayRange(from: 5...100)
+        #expect(range == 5...100)
+    }
+
+    @Test func displayRangeConvertsCmToInches() {
+        let range = MeasurementUnit.inches.displayRange(from: 5...100)
+        // 5 cm → 2 in, 100 cm → 39 in
+        #expect(range.lowerBound == 2)
+        #expect(range.upperBound == 39)
+    }
+
+    // MARK: formatMeasurement
+
+    @Test func formatMeasurementCentimetres() {
+        #expect(MeasurementUnit.centimeters.formatMeasurement(20) == "20 cm")
+        #expect(MeasurementUnit.centimeters.formatMeasurement(50) == "50 cm")
+    }
+
+    @Test func formatMeasurementInches() {
+        #expect(MeasurementUnit.inches.formatMeasurement(20) == "8 in")
+        #expect(MeasurementUnit.inches.formatMeasurement(50) == "20 in")
+    }
+
+    // MARK: ResultsExportSummary respects unit
+
+    @Test func exportSummaryUsesInchesWhenRequested() {
+        let inputs = GaugeInputs(patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 24)
+        let result = GaugeMath.compute(inputs)
+        let summary = ResultsExportSummary(inputs: inputs, result: result, unit: .inches)
+        // Yoke depth: 20 cm → 8 in
+        #expect(summary.sections[0].pattern == "8 in")
+        // Body length: 50 cm → 20 in
+        #expect(summary.sections[1].pattern == "20 in")
+        // Sleeve length: 45 cm → 18 in
+        #expect(summary.sections[2].pattern == "18 in")
+        // Yoke textLine uses in
+        #expect(summary.sections[0].textLine.contains("8 in"))
+    }
+
+    @Test func shareTextFormatterUsesInchesWhenRequested() {
+        let inputs = GaugeInputs(patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 24)
+        let result = GaugeMath.compute(inputs)
+        let text = ResultsShareTextFormatter.string(inputs: inputs, result: result, unit: .inches)
+        #expect(text.contains("• Yoke depth: 8 in → knit"))
+        #expect(text.contains("• Body length: 20 in → knit"))
     }
 }
 

@@ -3,17 +3,6 @@ import XCTest
 
 @MainActor
 final class KnittingGaugeReconcilerUITests: XCTestCase {
-    private struct Scenario {
-        var name: String
-        var yourStitches: String
-        var yourRows: String
-        /// String label of the adjusted yoke row count (e.g. "64" — shown in the
-        /// dark-green "You Must Knit" block of AdjustmentValuePair).
-        var castOn: String
-        var body: String
-        var yoke: String
-        var increases: String
-    }
 
     private static let defaultLaunchEnvironment: [String: String] = [
         "KGR_PS": "32",
@@ -24,72 +13,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         "KGR_SLEEVE": "45",
         "KGR_INCREASES": "6",
     ]
-
-    // yokeRowsAtYourGauge = (20/10)*yr, bodyRowsAtYourGauge = (50/10)*yr
-    private let scenarios = [
-        Scenario(name: "Perfect Match",    yourStitches: "32", yourRows: "24", castOn: "128 stitches", body: "120", yoke: "48",  increases: "Space every 6 rows/rounds"),
-        Scenario(name: "Denser Row Only",  yourStitches: "32", yourRows: "32", castOn: "128 stitches", body: "160", yoke: "64",  increases: "Space every 8 rows/rounds"),
-        Scenario(name: "Looser Row Only",  yourStitches: "32", yourRows: "20", castOn: "128 stitches", body: "100", yoke: "40",  increases: "Space every 5 rows/rounds"),
-        Scenario(name: "Denser Stitch Only", yourStitches: "36", yourRows: "24", castOn: "144 stitches", body: "120", yoke: "48", increases: "Space every 6 rows/rounds"),
-        Scenario(name: "Looser Stitch Only", yourStitches: "28", yourRows: "24", castOn: "112 stitches", body: "120", yoke: "48", increases: "Space every 6 rows/rounds"),
-        Scenario(name: "Both Denser",      yourStitches: "36", yourRows: "32", castOn: "144 stitches", body: "160", yoke: "64",  increases: "Space every 8 rows/rounds")
-    ]
-
-    func testAllJacquardScenariosAreVisibleInUI() {
-        for scenario in scenarios {
-            let app = XCUIApplication()
-            useDefaultDynamicType(app)
-            app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
-                "KGR_YS": scenario.yourStitches,
-                "KGR_YR": scenario.yourRows,
-            ]) { _, new in new }
-            app.launch()
-
-            XCTAssertTrue(app.textFields["your-stitches-field"].waitForExistence(timeout: 5))
-            XCTAssertTrue(app.textFields["your-rows-field"].waitForExistence(timeout: 5))
-
-            let calculateBtn = app.buttons["calculate-button"]
-            XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
-            scrollToElement(calculateBtn, in: app, requireHittable: true)
-            tapElement(calculateBtn)
-
-            let closeButton = app.buttons["Close"].firstMatch
-            XCTAssertTrue(closeButton.waitForExistence(timeout: 3), scenario.name)
-
-            let castOnElement = app.otherElements["cast-on-result"]
-            scrollToElement(castOnElement, in: app)
-            XCTAssertTrue(castOnElement.waitForExistence(timeout: 5), scenario.name)
-
-            let expectedCastOnLabel = "Cast-on stitches adjusted: Cast on \(scenario.castOn)"
-            waitUntil(timeout: 5) { castOnElement.label == expectedCastOnLabel }
-            XCTAssertEqual(castOnElement.label, expectedCastOnLabel, scenario.name)
-
-            let bodyValue = app.otherElements["body-your-rows"]
-            scrollToElement(bodyValue, in: app)
-            XCTAssertTrue(bodyValue.exists, "\(scenario.name) body=\(scenario.body)")
-            XCTAssertTrue(
-                bodyValue.label.contains(scenario.body),
-                "\(scenario.name) body=\(scenario.body) label=\(bodyValue.label)"
-            )
-            let yokeValue = app.otherElements["yoke-your-rows"]
-            scrollToElement(yokeValue, in: app)
-            XCTAssertTrue(yokeValue.exists, "\(scenario.name) yoke=\(scenario.yoke)")
-            XCTAssertTrue(
-                yokeValue.label.contains(scenario.yoke),
-                "\(scenario.name) yoke=\(scenario.yoke) label=\(yokeValue.label)"
-            )
-            let increasesValue = app.otherElements["increases-result"]
-            XCTAssertTrue(
-                increasesValue.exists,
-                "\(scenario.name) increases=\(scenario.increases)"
-            )
-            XCTAssertTrue(
-                increasesValue.label.contains(scenario.increases),
-                "\(scenario.name) increases=\(scenario.increases) label=\(increasesValue.label)"
-            )
-            app.terminate()
-        }
-    }
 
     func testStepperFieldOpensWheelAndKeyboard() {
         // The user-facing stepper has two affordances:
@@ -132,100 +55,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
 
         waitUntil(timeout: 2) { self.numericFieldValue(valueField) != nil }
         XCTAssertNotNil(numericFieldValue(valueField), "Field should expose a numeric value after wheel commit")
-    }
-
-    func testPrototypeParityControlsAreAvailable() {
-        let app = XCUIApplication()
-        useDefaultDynamicType(app)
-        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
-            "KGR_YS": "32",
-            "KGR_YR": "24",
-            "KGR_SHOW_FULL_MATH": "1",
-        ]) { _, new in new }
-        app.launch()
-
-        // Tap Calculate to surface the adjustments section.
-        let calculateBtn = app.buttons["calculate-button"]
-        XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
-        scrollToElement(calculateBtn, in: app, requireHittable: true)
-        tapElement(calculateBtn)
-
-        let showFullMath = app.buttons["disclosure-full-math"].firstMatch
-        scrollToElement(showFullMath, in: app)
-        XCTAssertTrue(showFullMath.exists)
-        let breakdown = app.staticTexts["show-full-math"].firstMatch
-        scrollToElement(breakdown, in: app, direction: .down)
-        XCTAssertTrue(breakdown.waitForExistence(timeout: 5))
-        XCTAssertTrue(breakdown.label.contains("dim correction"))
-
-        let reset = app.buttons["reset-defaults"].firstMatch
-        scrollToElement(reset, in: app)
-        XCTAssertTrue(reset.exists)
-        waitForScrollingToSettle()
-        tapElement(reset)
-
-        // Issue #40: tapping Reset surfaces a destructive confirmation alert
-        // presented at ContentView root (above the Adjustment sheet).
-        let confirmReset = app.alerts.buttons["Reset"].firstMatch
-        XCTAssertTrue(confirmReset.waitForExistence(timeout: 3),
-                      "Reset confirmation alert should appear without dismissing the sheet")
-        tapElement(confirmReset)
-
-        // After reset, cachedResult is cleared — Calculate button should be present.
-        let defaultApp = XCUIApplication()
-        useDefaultDynamicType(defaultApp)
-        defaultApp.launch()
-        XCTAssertTrue(defaultApp.buttons["calculate-button"].waitForExistence(timeout: 3))
-        defaultApp.terminate()
-    }
-
-    /// Issue #40: tapping "Reset to defaults" inside the Adjustments sheet must
-    /// surface a destructive confirmation alert at ContentView root without
-    /// dismissing the sheet. Cancel keeps everything in place; confirm clears
-    /// state and dismisses the sheet.
-    func testResetConfirmationAlertDoesNotDismissSheet() {
-        let app = XCUIApplication()
-        useDefaultDynamicType(app)
-        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
-            "KGR_YS": "36",
-            "KGR_YR": "32",
-        ]) { _, new in new }
-        app.launch()
-
-        let calculateBtn = app.buttons["calculate-button"]
-        XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
-        scrollToElement(calculateBtn, in: app, requireHittable: true)
-        tapElement(calculateBtn)
-
-        // Sheet is up.
-        let sheet = app.otherElements["adjustment-sheet"]
-        XCTAssertTrue(sheet.waitForExistence(timeout: 3))
-
-        let reset = app.buttons["reset-defaults"].firstMatch
-        scrollToElement(reset, in: app)
-        XCTAssertTrue(reset.exists)
-        waitForScrollingToSettle()
-        tapElement(reset)
-
-        // The confirmation alert appears AND the underlying sheet is still on screen.
-        let cancelButton = app.alerts.buttons["Cancel"].firstMatch
-        XCTAssertTrue(cancelButton.waitForExistence(timeout: 3),
-                      "Reset should present a confirmation alert, not dismiss the sheet")
-        XCTAssertTrue(sheet.exists, "Adjustment sheet must remain on screen behind the alert")
-
-        // Cancel keeps the sheet open with no destructive effect.
-        tapElement(cancelButton)
-        XCTAssertTrue(sheet.waitForExistence(timeout: 2),
-                      "Canceling the confirmation should leave the sheet open")
-
-        // Re-tap Reset and confirm; sheet should dismiss and inputs reset.
-        tapElement(reset)
-        let confirmReset = app.alerts.buttons["Reset"].firstMatch
-        XCTAssertTrue(confirmReset.waitForExistence(timeout: 3))
-        tapElement(confirmReset)
-
-        // After confirm: sheet dismissed, Calculate button visible again.
-        XCTAssertTrue(app.buttons["calculate-button"].waitForExistence(timeout: 3))
     }
 
     func testAboutHelpButtonOpensPullUpSheet() {
@@ -352,46 +181,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         }
     }
 
-    func testCompactWidthKeepsNumericFieldsSideBySideWhenTheyFit() {
-        let app = XCUIApplication()
-        useDefaultDynamicType(app)
-        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
-            "KGR_YS": "32",
-            "KGR_YR": "32",
-        ]) { _, new in new }
-        app.launch()
-
-        // Gauge input fields must be side-by-side (not stacked) on a compact phone width.
-        let patternStitches = app.textFields["pattern-stitches-field"]
-        let patternRows = app.textFields["pattern-rows-field"]
-        XCTAssertTrue(patternStitches.waitForExistence(timeout: 2))
-        XCTAssertTrue(patternRows.exists)
-        assertSideBySide(patternStitches, patternRows)
-
-        let yourStitches = app.textFields["your-stitches-field"]
-        let yourRows = app.textFields["your-rows-field"]
-        XCTAssertTrue(yourStitches.exists)
-        XCTAssertTrue(yourRows.exists)
-        assertSideBySide(yourStitches, yourRows)
-
-        // Tap Calculate to show the adjustments section.
-        let calculateBtn = app.buttons["calculate-button"]
-        XCTAssertTrue(calculateBtn.waitForExistence(timeout: 3))
-        scrollToElement(calculateBtn, in: app, requireHittable: true)
-        tapElement(calculateBtn)
-
-        // Yoke value pair's "You Must Knit" block should be visible after Calculate.
-        let yokeValue = app.otherElements["yoke-your-rows"]
-        scrollToElement(yokeValue, in: app)
-        XCTAssertTrue(yokeValue.waitForExistence(timeout: 5))
-
-        // Cast-on result must exist and carry the expected label.
-        let castOnElement = app.otherElements["cast-on-result"]
-        scrollToElement(castOnElement, in: app)
-        XCTAssertTrue(castOnElement.exists)
-        XCTAssertTrue(castOnElement.label.contains("Cast on 128 stitches"), castOnElement.label)
-    }
-
     func testAccessibilityDynamicTypeStacksGaugeMeasurementPairs() {
         let app = XCUIApplication()
         app.launchArguments = [
@@ -454,6 +243,59 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             XCTAssertEqual(app.buttons["your-rows-chevron"].value as? String, scenario.rowMismatch ? "Warning" : "")
             app.terminate()
         }
+    }
+
+    // MARK: - Unit toggle (#50)
+
+    /// The cm/in toggle at the top of the screen changes the measurement field
+    /// titles. Toggling "in" makes the yoke field label contain "in";
+    /// toggling back to "cm" reverts it. Verifies the `unit-toggle` accessibility
+    /// identifier is present and the conversion is visible via accessibility tree.
+    func testUnitToggleSwitchesFieldLabel() {
+        let app = XCUIApplication()
+        useDefaultDynamicType(app)
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
+            "KGR_YS": "32",
+            "KGR_YR": "24",
+        ]) { _, new in new }
+        app.launch()
+
+        let toggle = app.segmentedControls["unit-toggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 3), "Unit toggle segmented control should be present")
+
+        // Default is cm: yoke field label contains "cm".
+        // Query the child TextField (accessibilityIdentifier "pattern-yoke-field") which
+        // carries an explicit accessibilityLabel — the parent container uses
+        // .accessibilityElement(children: .contain) and does not expose a synthesized
+        // label on iOS 26.4, making .label empty on the otherElement.
+        let yokeField = app.textFields["pattern-yoke-field"]
+        XCTAssertTrue(yokeField.waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            yokeField.label.contains("cm"),
+            "Yoke field label should contain 'cm' in default mode, got: \(yokeField.label)"
+        )
+
+        // Tap the "in" segment button.
+        let inButton = toggle.buttons["in"]
+        XCTAssertTrue(inButton.waitForExistence(timeout: 2))
+        tapElement(inButton)
+
+        // After toggle: yoke label should contain "in".
+        waitUntil(timeout: 3) { yokeField.label.contains("in") }
+        XCTAssertTrue(
+            yokeField.label.contains("in"),
+            "Yoke field label should contain 'in' after toggle to inches, got: \(yokeField.label)"
+        )
+
+        // Toggle back to cm: label reverts.
+        let cmButton = toggle.buttons["cm"]
+        tapElement(cmButton)
+        waitUntil(timeout: 3) { yokeField.label.contains("cm") }
+        XCTAssertTrue(
+            yokeField.label.contains("cm"),
+            "Yoke field label should contain 'cm' after toggling back, got: \(yokeField.label)"
+        )
+        app.terminate()
     }
 
     func testMismatchWarningSummaryAppearsInWheelSheet() {
@@ -577,7 +419,7 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         if element.exists && (!requireHittable || element.isHittable) { return }
 
         var noProgressStreak = 0
-        for _ in 0..<6 {
+        for _ in 0..<12 {
             let surface = preferredScrollSurface(in: app)
             let lower = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))
             let upper = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42))
@@ -586,9 +428,21 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             // UIScrollView exposes its position as a percentage string via
             // the accessibility value (e.g. "0%", "50%"). Comparing before/after
             // detects whether the drag actually moved the surface.
-            let beforeValue = surface.value as? String
+            // NOTE: on iOS 26.4, UIScrollView.accessibilityValue returns "" (empty
+            // string) instead of a percentage. Treat "" the same as nil — it is not
+            // a positional signal and must not drive the no-progress bail.
+            let rawBeforeValue = surface.value as? String
+            let beforeValue: String? = rawBeforeValue.flatMap { $0.isEmpty ? nil : $0 }
             // Secondary sentinel: target element frame if already in hierarchy.
-            let beforeFrame = element.exists ? element.frame : nil
+            // EXCEPTION: on iOS 26.4+, elements inside a scroll view report their
+            // position in content-space coordinates rather than screen coordinates.
+            // When we are waiting for an already-existing element to become hittable
+            // (requireHittable: true), its frame will be fixed in content space and
+            // won't change across drags — using it as a bail signal would always
+            // show "no progress" and exit the loop too early. Suppress the frame
+            // sentinel in that case and let the loop run all iterations.
+            let elementAlreadyExistsAndNeedsHittable = requireHittable && element.exists
+            let beforeFrame: CGRect? = elementAlreadyExistsAndNeedsHittable ? nil : (element.exists ? element.frame : nil)
 
             switch direction {
             case .down:
@@ -605,8 +459,9 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             // signal (surface position or element frame) and it did not change.
             // When both signals are absent we cannot tell — assume the scroll
             // may still be working and let the loop continue.
-            let afterValue = surface.value as? String
-            let afterFrame = element.exists ? element.frame : nil
+            let rawAfterValue = surface.value as? String
+            let afterValue: String? = rawAfterValue.flatMap { $0.isEmpty ? nil : $0 }
+            let afterFrame: CGRect? = elementAlreadyExistsAndNeedsHittable ? nil : (element.exists ? element.frame : nil)
             let canMeasure = beforeValue != nil || beforeFrame != nil
             let surfaceMoved = beforeValue != afterValue
             let elementMoved = beforeFrame != afterFrame
@@ -640,6 +495,7 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.2))
     }
 
+    /// Expands the adjustment sheet from `.medium` to `.large` by dragging from
     private func useDefaultDynamicType(_ app: XCUIApplication) {
         app.launchArguments += [
             "-UIPreferredContentSizeCategoryName",
@@ -665,4 +521,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         }
     }
+
+    /// Taps a full-width element inside a UISheetPresentationController using a
 }

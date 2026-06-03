@@ -144,7 +144,7 @@ struct ResultsExportSummary: Equatable {
     var castOn: String
     var sections: [SectionGuidance]
 
-    init(inputs: GaugeInputs, result: GaugeMathResult) {
+    init(inputs: GaugeInputs, result: GaugeMathResult, unit: MeasurementUnit = .centimeters) {
         patternGauge = GaugePair(
             stitches: "\(plain(inputs.patternStitches)) st / 10 cm",
             rows: "\(plain(inputs.patternRows)) rows / 10 cm"
@@ -165,14 +165,14 @@ struct ResultsExportSummary: Equatable {
         )
         castOn = "Cast on \(result.adjustedCastOn) stitches instead of \(plain(inputs.patternCastOn))"
 
-        let rowsModel = ResultsExportRowsModel(inputs: inputs, result: result)
+        let rowsModel = ResultsExportRowsModel(inputs: inputs, result: result, unit: unit)
         sections = rowsModel.sections
     }
 }
 
 enum ResultsShareTextFormatter {
-    static func string(inputs: GaugeInputs, result: GaugeMathResult) -> String {
-        let summary = ResultsExportSummary(inputs: inputs, result: result)
+    static func string(inputs: GaugeInputs, result: GaugeMathResult, unit: MeasurementUnit = .centimeters) -> String {
+        let summary = ResultsExportSummary(inputs: inputs, result: result, unit: unit)
         return """
         \(summary.title)
 
@@ -226,22 +226,24 @@ private struct ResultsExportRowsModel {
 
     private let inputs: GaugeInputs
     private let result: GaugeMathResult
+    private let unit: MeasurementUnit
 
-    init(inputs: GaugeInputs, result: GaugeMathResult) {
+    init(inputs: GaugeInputs, result: GaugeMathResult, unit: MeasurementUnit = .centimeters) {
         self.inputs = inputs
         self.result = result
+        self.unit = unit
     }
 
     private func section(
         name: String, patternCm: Double, rowsAtYourGauge: Int
     ) -> ResultsExportSummary.SectionGuidance {
-        let pattern = "\(plain(patternCm)) cm"
+        let pattern = unit.formatMeasurement(patternCm)
         let adjusted = "Knit \(rowsAtYourGauge) rows"
         return ResultsExportSummary.SectionGuidance(
             name: name,
             pattern: pattern,
             adjusted: adjusted,
-            textLine: "• \(name): \(plain(patternCm)) cm → knit \(rowsAtYourGauge) rows"
+            textLine: "• \(name): \(unit.formatMeasurement(patternCm)) → knit \(rowsAtYourGauge) rows"
         )
     }
 }

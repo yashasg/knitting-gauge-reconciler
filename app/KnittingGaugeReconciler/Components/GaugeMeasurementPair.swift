@@ -9,13 +9,6 @@ struct GaugeMeasurementPair<Leading: View, Trailing: View>: View {
     @ViewBuilder var leading: () -> Leading
     @ViewBuilder var trailing: () -> Trailing
 
-    private var columns: [GridItem] {
-        [
-            GridItem(.flexible(minimum: 0), spacing: spacing),
-            GridItem(.flexible(minimum: 0))
-        ]
-    }
-
     var body: some View {
         if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: spacing) {
@@ -25,7 +18,11 @@ struct GaugeMeasurementPair<Leading: View, Trailing: View>: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         } else {
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 0) {
+            // HStack instead of LazyVGrid: LazyVGrid defers rendering cells that are
+            // off-screen at initial layout. On iOS 26.4 those cells never appear in the
+            // accessibility tree even after scrolling into view. Two fixed columns is
+            // not a lazy-rendering use case — HStack renders both eagerly.
+            HStack(alignment: .top, spacing: spacing) {
                 leading()
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 trailing()

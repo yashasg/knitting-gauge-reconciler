@@ -20,12 +20,9 @@ struct DeltaPillBadge: View {
             .background(AppTheme.deltaPill)
             .clipShape(Capsule())
             // Pill is purely decorative — adjacent value tile carries the
-            // semantic value (e.g. "Knit 64 rows, +16 from pattern"). Hide
-            // from VoiceOver and clamp Dynamic Type so it doesn't overflow
-            // its parent tile at accessibility sizes.
+            // semantic value (e.g. "Knit 64 rows, +16 from pattern").
             .accessibilityHidden(true)
             .accessibilityIdentifier("delta-pill")
-            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 }
 
@@ -106,13 +103,24 @@ struct GaugeStepperField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 8) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.muted)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 8) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.muted)
 
-                if let mismatchDeltaText {
-                    mismatchBadge(mismatchDeltaText)
+                    if let mismatchDeltaText {
+                        mismatchBadge(mismatchDeltaText)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.muted)
+
+                    if let mismatchDeltaText {
+                        mismatchBadge(mismatchDeltaText)
+                    }
                 }
             }
             // Pin the title row height so the delta pill (caption2 + capsule

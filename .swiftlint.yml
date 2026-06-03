@@ -47,3 +47,18 @@ custom_rules:
     message: "Buttons with .padding(.vertical, N) where N < 12 may fall below the 44pt minimum touch target. Use .frame(minHeight: 44) as a backstop. (HIG §Buttons)"
     regex: '\.padding\(\.vertical,\s*([0-9]|1[01])\b'
     severity: error
+
+  # Accessibility Decision (2026-06-02): Dynamic Type must NEVER be capped.
+  # Text must always render at the user's chosen Dynamic Type size.
+  # Layout adapts via ViewThatFits — never via text shrinkage or size ceiling.
+  no_minimum_scale_factor:
+    name: "minimumScaleFactor shrinks text"
+    message: "minimumScaleFactor shrinks text below the user's chosen Dynamic Type size — banned per accessibility decision; reflow with ViewThatFits instead."
+    regex: '\.minimumScaleFactor\('
+    severity: error
+
+  no_dynamic_type_cap:
+    name: "dynamicTypeSize partial-range ceiling"
+    message: 'dynamicTypeSize cap clamps Dynamic Type growth — banned per accessibility decision; reflow with ViewThatFits instead. In a #Preview use .environment(\.dynamicTypeSize, .accessibilityN) not a view modifier.'
+    regex: '\.dynamicTypeSize\(\.\.\.' # PartialRangeThrough ceiling pattern
+    severity: error

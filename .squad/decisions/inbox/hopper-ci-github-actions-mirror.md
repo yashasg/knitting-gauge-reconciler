@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-02  
 **Author:** Hopper  
-**Status:** Resolved — fix applied
+**Status:** Resolved — CI green ✅ (run 26863206271, 70/70 tests passed)
 
 ## Decision
 

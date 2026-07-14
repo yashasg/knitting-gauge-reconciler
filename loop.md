@@ -1,6 +1,6 @@
 ---
 configured: true
-interval: 1
+interval: 10
 timeout: 30
 description: "Knitting Gauge Reconciler — iOS app build loop"
 ---

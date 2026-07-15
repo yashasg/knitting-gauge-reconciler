@@ -575,8 +575,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         app.launchArguments = [
             "-UIPreferredContentSizeCategoryName",
             UIContentSizeCategory.large.rawValue,
-            "-KGRIgnoreStoredDraft",
-            "YES",
             "-KGRUITestSingleSceneHandoff",
             "YES",
         ]
@@ -586,6 +584,7 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             "KGR_YOKE": "20.5",
             "KGR_BODY": ".",
             "KGR_SHOW_PATTERN_DETAILS": "1",
+            "KGR_RESET_DRAFT_ONCE": UUID().uuidString,
         ]) { _, new in new }
         app.launch()
 
@@ -670,13 +669,6 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     }
 
     private func relaunchFromSceneState(_ app: XCUIApplication) {
-        app.launchArguments = [
-            "-UIPreferredContentSizeCategoryName",
-            UIContentSizeCategory.large.rawValue,
-            "-KGRUITestSingleSceneHandoff",
-            "YES",
-        ]
-        app.launchEnvironment = Self.defaultLaunchEnvironment
         app.terminate()
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))

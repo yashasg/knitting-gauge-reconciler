@@ -460,12 +460,13 @@ and 0 warnings or crashes.
   `./app/build.sh test` gate then passed 76/76 with 0 failures, 0 skips, 0 retries, 0 SwiftLint violations, and no
   compiler, analyzer, or application-runtime warning matches.
 - Follow-up CI showed that `XCUIApplication` can allocate a new synthetic scene session while retaining prior UI-test
-  sessions in `UIApplication.openSessions`. Production correctly refuses its single-scene handoff in that state, but
-  the harness then cannot represent a one-window process relaunch. The process test now uses `terminate()` followed by
-  `launch()` with cleared fixtures and an explicit test-only single-window handoff flag. Production launches remain
-  guarded by the real open-session count; separate store tests preserve the multiple-scene isolation contract. Reset,
-  Undo, and scene deactivation also synchronize completed scene-keyed writes before returning. The corrected
-  process-interruption test passed three consecutive fresh-simulator executions.
+  sessions in `UIApplication.openSessions`, and can reuse the first process's launch configuration. Production
+  correctly refuses its single-scene handoff in that state, but the harness then cannot represent a one-window process
+  relaunch by changing arguments between processes. The test now uses a UUID-scoped one-shot fixture reset plus an
+  explicit test-only single-window handoff flag; the unchanged relaunch configuration consumes the reset token only
+  once and must restore thereafter. Production launches remain guarded by the real open-session count; separate store
+  tests preserve the multiple-scene isolation contract. Reset, Undo, and scene deactivation also synchronize completed
+  scene-keyed writes before returning. The one-shot process test passed three consecutive fresh-simulator executions.
 - The GitHub-only bridge uses the canonical `.git` clone URL and an exact `arm64` simulator destination, removing the
   clone redirect and dual-architecture destination warnings from raw CI output.
 - Curie's final local rerun captured an iOS 26 contrast-audit false positive for the exact `Pattern 100%` label. The

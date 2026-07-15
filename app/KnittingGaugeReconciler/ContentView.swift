@@ -498,7 +498,20 @@ struct ContentView: View {
 
     private static var ignoresPersistentState: Bool {
         launchArgumentEnabled("-ApplePersistenceIgnoreState")
-            || launchArgumentEnabled("-KGRIgnoreStoredDraft")
+            || shouldResetUITestDraftOnce
+    }
+
+    private static var shouldResetUITestDraftOnce: Bool {
+        guard let token = ProcessInfo.processInfo.environment["KGR_RESET_DRAFT_ONCE"] else {
+            return false
+        }
+        let key = "gauge.ui-test-reset-token"
+        guard UserDefaults.standard.string(forKey: key) != token else {
+            return false
+        }
+        UserDefaults.standard.set(token, forKey: key)
+        UserDefaults.standard.synchronize()
+        return true
     }
 
     private static func launchArgumentEnabled(_ key: String) -> Bool {

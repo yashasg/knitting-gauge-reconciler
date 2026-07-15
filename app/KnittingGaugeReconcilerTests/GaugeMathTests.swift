@@ -1,8 +1,13 @@
+import SwiftUI
 import Testing
 @testable import KnittingGaugeReconciler
 
 struct GaugeMathTests {
-    private let pattern = GaugeInputs(patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 24)
+    private let pattern = GaugeInputs(
+        patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 24,
+        patternYokeDepth: 20, patternBodyLength: 50, patternSleeveLength: 45,
+        patternIncreaseSpacing: 6, patternCastOn: 128
+    )
 
     @Test func scenario1PerfectMatch() {
         let result = GaugeMath.compute(pattern)
@@ -12,17 +17,17 @@ struct GaugeMathTests {
     @Test func scenario2DenserRowsOnly() {
         let result = GaugeMath.compute(withGauge(yourStitches: 32, yourRows: 32))
         expect(result, stitchWidthScale: 1, rowCountScale: 32.0 / 24.0, dimensionScale: 24.0 / 32.0, yoke: 15, body: 37.5, sleeve: 33.75, increases: 8, castOn: 128)
-        #expect(result.patternYokeRows.isApproximately(48))
-        #expect(result.adjustedYokeRows.isApproximately(48))
-        #expect(GaugeMath.fmtCm(result.adjustedSleeveLength) == "33.8")
-        #expect(GaugeMath.fmtRows(result.adjustedIncreaseSpacing) == 8)
+        #expect(result.patternYokeRows?.isApproximately(48) == true)
+        #expect(result.adjustedYokeRows?.isApproximately(48) == true)
+        #expect(result.adjustedSleeveLength.map(GaugeMath.fmtCm) == "33.8")
+        #expect(result.adjustedIncreaseSpacing.map(GaugeMath.fmtRows) == 8)
     }
 
     @Test func scenario3LooserRowsOnly() {
         let result = GaugeMath.compute(withGauge(yourStitches: 32, yourRows: 20))
         expect(result, stitchWidthScale: 1, rowCountScale: 20.0 / 24.0, dimensionScale: 24.0 / 20.0, yoke: 24, body: 60, sleeve: 54, increases: 5, castOn: 128)
-        #expect(GaugeMath.fmtCm(result.adjustedSleeveLength) == "54.0")
-        #expect(GaugeMath.fmtRows(result.adjustedIncreaseSpacing) == 5)
+        #expect(result.adjustedSleeveLength.map(GaugeMath.fmtCm) == "54.0")
+        #expect(result.adjustedIncreaseSpacing.map(GaugeMath.fmtRows) == 5)
     }
 
     @Test func scenario4DenserStitchesOnly() {
@@ -40,20 +45,54 @@ struct GaugeMathTests {
     @Test func scenario6BothDenser() {
         let result = GaugeMath.compute(withGauge(yourStitches: 36, yourRows: 32))
         expect(result, stitchWidthScale: 32.0 / 36.0, rowCountScale: 32.0 / 24.0, dimensionScale: 24.0 / 32.0, yoke: 15, body: 37.5, sleeve: 33.75, increases: 8, castOn: 144)
-        #expect(GaugeMath.fmtRows(result.adjustedIncreaseSpacing) == 8)
+        #expect(result.adjustedIncreaseSpacing.map(GaugeMath.fmtRows) == 8)
     }
 
-    @Test func invalidInputsFallBackToDefaults() {
-        #expect(GaugeMath.sanitized(nil, default: 32) == 32)
-        #expect(GaugeMath.sanitized(0, default: 32) == 32)
-        #expect(GaugeMath.sanitized(-5, default: 32) == 32)
-        #expect(GaugeMath.sanitized(.nan, default: 32) == 32)
-        #expect(GaugeMath.sanitized(.infinity, default: 32) == 32)
-        #expect(GaugeMath.sanitized(-.infinity, default: 32) == 32)
-        #expect(GaugeMath.sanitized(0.1, default: 32) == 0.1)
+    @Test func validatorMatrixCoversEveryFieldAndInputClass() {
+        let rows = [
+            ValidationRow(field: .patternStitches, lower: 1, upper: 99, decimal: 22.5, isRequired: true),
+            ValidationRow(field: .patternRows, lower: 1, upper: 99, decimal: 24.5, isRequired: true),
+            ValidationRow(field: .yourStitches, lower: 1, upper: 99, decimal: 21.5, isRequired: true),
+            ValidationRow(field: .yourRows, lower: 1, upper: 99, decimal: 30.5, isRequired: true),
+            ValidationRow(field: .patternCastOn, lower: 40, upper: 400, decimal: 128.5, isRequired: false),
+            ValidationRow(field: .patternYokeDepth, lower: 5, upper: 100, decimal: 20.5, isRequired: false),
+            ValidationRow(field: .patternBodyLength, lower: 5, upper: 100, decimal: 50.5, isRequired: false),
+            ValidationRow(field: .patternSleeveLength, lower: 5, upper: 100, decimal: 45.5, isRequired: false),
+            ValidationRow(field: .patternIncreaseSpacing, lower: 1, upper: 30, decimal: 6.5, isRequired: false),
+        ]
+
+        #expect(rows.count == GaugeMath.Field.allCases.count)
+        for row in rows {
+            let range = row.lower...row.upper
+            let blank: ValidationExpectation = row.isRequired ? .error(.required) : .absent
+            let cases = [
+                ValidationCase(name: "empty", text: "", expectation: blank),
+                ValidationCase(name: "whitespace", text: " \n\t ", expectation: blank),
+                ValidationCase(name: "zero", text: "0", expectation: .error(.outOfRange(range))),
+                ValidationCase(name: "negative", text: "-1", expectation: .error(.outOfRange(range))),
+                ValidationCase(name: "decimal", text: plain(row.decimal), expectation: .value(row.decimal)),
+                ValidationCase(name: "lower bound", text: plain(row.lower), expectation: .value(row.lower)),
+                ValidationCase(name: "upper bound", text: plain(row.upper), expectation: .value(row.upper)),
+                ValidationCase(
+                    name: "oversized",
+                    text: plain(row.upper + 1),
+                    expectation: .error(.outOfRange(range))
+                ),
+                ValidationCase(
+                    name: "scientific notation",
+                    text: "\(plain(row.lower))e0",
+                    expectation: .value(row.lower)
+                ),
+                ValidationCase(name: "nan", text: "nan", expectation: .error(.invalidNumber)),
+                ValidationCase(name: "infinity", text: "infinity", expectation: .error(.invalidNumber)),
+            ]
+            for testCase in cases {
+                expectValidation(testCase, for: row.field)
+            }
+        }
     }
 
-    @Test func rowFormattingMatchesPrototype() {
+    @Test func rowFormattingUsesEstablishedRounding() {
         #expect(GaugeMath.fmtRows(6.5) == 7)
         #expect(GaugeMath.fmtRows(6.4) == 6)
         #expect(GaugeMath.fmtRows(6.6) == 7)
@@ -62,23 +101,23 @@ struct GaugeMathTests {
         #expect(GaugeMath.fmtRows(0.0) == 1)
     }
 
-    @Test func cmAndPercentFormattingMatchPrototype() {
+    @Test func cmAndPercentFormattingAreDeterministic() {
         #expect(GaugeMath.fmtCm(33.75) == "33.8")
         #expect(GaugeMath.fmtCm(37.5) == "37.5")
         #expect(GaugeMath.fmtPct(32.0 / 36.0) == 89)
     }
 
-    // MARK: - Edge cases from prototype/tests/gauge-math.test.js
+    // MARK: - Formula guardrails from .squad/decisions.md
 
     /// yr = 2 × pr: cm dimensions halve; increase-row guidance doubles.
     @Test func edgeVeryLargeDriftDenserRows() {
         let result = GaugeMath.compute(withGauge(yourStitches: 32, yourRows: 48))
         #expect(result.dimensionScale.isApproximately(0.5))
         #expect(result.rowCountScale.isApproximately(2.0))
-        #expect(GaugeMath.fmtCm(result.adjustedYokeDepth) == "10.0")
-        #expect(GaugeMath.fmtCm(result.adjustedBodyLength) == "25.0")
-        #expect(GaugeMath.fmtRows(result.adjustedYokeRows) == 48)
-        #expect(GaugeMath.fmtRows(result.adjustedIncreaseSpacing) == 12)
+        #expect(result.adjustedYokeDepth.map(GaugeMath.fmtCm) == "10.0")
+        #expect(result.adjustedBodyLength.map(GaugeMath.fmtCm) == "25.0")
+        #expect(result.adjustedYokeRows.map(GaugeMath.fmtRows) == 48)
+        #expect(result.adjustedIncreaseSpacing.map(GaugeMath.fmtRows) == 12)
     }
 
     /// yr = pr / 2: cm dimensions double; increase-row guidance halves.
@@ -86,10 +125,10 @@ struct GaugeMathTests {
         let result = GaugeMath.compute(withGauge(yourStitches: 32, yourRows: 12))
         #expect(result.dimensionScale.isApproximately(2.0))
         #expect(result.rowCountScale.isApproximately(0.5))
-        #expect(GaugeMath.fmtCm(result.adjustedYokeDepth) == "40.0")
-        #expect(GaugeMath.fmtCm(result.adjustedBodyLength) == "100.0")
-        #expect(GaugeMath.fmtRows(result.adjustedYokeRows) == 48)
-        #expect(GaugeMath.fmtRows(result.adjustedIncreaseSpacing) == 3)
+        #expect(result.adjustedYokeDepth.map(GaugeMath.fmtCm) == "40.0")
+        #expect(result.adjustedBodyLength.map(GaugeMath.fmtCm) == "100.0")
+        #expect(result.adjustedYokeRows.map(GaugeMath.fmtRows) == 48)
+        #expect(result.adjustedIncreaseSpacing.map(GaugeMath.fmtRows) == 3)
     }
 
     /// Perfect-match gauge: no floating-point drift — results must be exactly the pattern values.
@@ -126,10 +165,10 @@ struct GaugeMathTests {
     @Test func castOnRoundingDriftZeroForExactRatio() {
         // Scenario 4: 128 × (36/32) = 144.0 — no rounding required
         let result4 = GaugeMath.compute(withGauge(yourStitches: 36, yourRows: 24))
-        #expect(result4.castOnRoundingDriftPercent.isApproximately(0.0))
+        #expect(result4.castOnRoundingDriftPercent?.isApproximately(0.0) == true)
         // Scenario 5: 128 × (28/32) = 112.0 — no rounding required
         let result5 = GaugeMath.compute(withGauge(yourStitches: 28, yourRows: 24))
-        #expect(result5.castOnRoundingDriftPercent.isApproximately(0.0))
+        #expect(result5.castOnRoundingDriftPercent?.isApproximately(0.0) == true)
     }
 
     /// stitchWidthScale (ps/ys) × stitchCountMultiplier (ys/ps) must equal 1.0.
@@ -142,7 +181,10 @@ struct GaugeMathTests {
 
 
     @Test func resultsExportSummaryIncludesShareCardContent() {
-        let inputs = GaugeInputs(patternStitches: 32, patternRows: 24, yourStitches: 36, yourRows: 32)
+        let inputs = optionalInputs(
+            yourStitches: 36, yourRows: 32, castOn: 128,
+            yoke: 20, body: 50, sleeve: 45, shaping: 6
+        )
         let result = GaugeMath.compute(inputs)
 
         let summary = ResultsExportSummary(inputs: inputs, result: result)
@@ -159,7 +201,10 @@ struct GaugeMathTests {
     }
 
     @Test func shareTextFormatterIncludesCurrentGaugeAndGuidanceAsFallback() {
-        let inputs = GaugeInputs(patternStitches: 32, patternRows: 24, yourStitches: 36, yourRows: 32)
+        let inputs = optionalInputs(
+            yourStitches: 36, yourRows: 32, castOn: 128,
+            yoke: 20, body: 50, sleeve: 45, shaping: 6
+        )
         let result = GaugeMath.compute(inputs)
 
         let summary = ResultsShareTextFormatter.string(inputs: inputs, result: result)
@@ -176,7 +221,9 @@ struct GaugeMathTests {
     }
 
     @Test func shareTextFormatterIsDeterministicFormattedTextFallback() {
-        let inputs = GaugeInputs(patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 32)
+        let inputs = optionalInputs(
+            yourRows: 32, castOn: 128, yoke: 20, body: 50, sleeve: 45, shaping: 6
+        )
         let result = GaugeMath.compute(inputs)
 
         let first = ResultsShareTextFormatter.string(inputs: inputs, result: result)
@@ -204,42 +251,115 @@ struct GaugeMathTests {
         #expect(result.sleeveRowsAtYourGauge == 99)  // (45/10) × 22 = 99
     }
 
-    // MARK: - Wheel field clamp + parse bounds
+    @Test func optionalOutputMatrixOmitsIrrelevantExportAndShareSections() {
+        let scenarios = [
+            OptionalOutputScenario(name: "none", inputs: optionalInputs(), sectionNames: []),
+            OptionalOutputScenario(
+                name: "cast-on only",
+                inputs: optionalInputs(castOn: 128),
+                includesCastOn: true,
+                sectionNames: []
+            ),
+            OptionalOutputScenario(
+                name: "one length only",
+                inputs: optionalInputs(yoke: 20),
+                sectionNames: ["Yoke depth"]
+            ),
+            OptionalOutputScenario(
+                name: "shaping only",
+                inputs: optionalInputs(shaping: 6),
+                sectionNames: ["Increase-row spacing"]
+            ),
+            OptionalOutputScenario(
+                name: "all fields",
+                inputs: optionalInputs(castOn: 128, yoke: 20, body: 50, sleeve: 45, shaping: 6),
+                includesCastOn: true,
+                sectionNames: ["Yoke depth", "Body length", "Sleeve length", "Increase-row spacing"]
+            ),
+        ]
 
-    /// GaugeMath.clampedGaugeValue enforces the [1, 99] wheel range.
-    @Test func wheelFieldClampEnforcesBounds() {
-        #expect(GaugeMath.clampedGaugeValue(0) == 1)
-        #expect(GaugeMath.clampedGaugeValue(-5) == 1)
-        #expect(GaugeMath.clampedGaugeValue(1) == 1)
-        #expect(GaugeMath.clampedGaugeValue(50) == 50)
-        #expect(GaugeMath.clampedGaugeValue(99) == 99)
-        #expect(GaugeMath.clampedGaugeValue(100) == 99)
-        #expect(GaugeMath.clampedGaugeValue(999) == 99)
+        for scenario in scenarios {
+            let result = GaugeMath.compute(scenario.inputs)
+            let export = ResultsExportSummary(inputs: scenario.inputs, result: result)
+            let share = ResultsShareTextFormatter.string(inputs: scenario.inputs, result: result)
+
+            #expect((export.castOn != nil) == scenario.includesCastOn, "\(scenario.name): cast-on export")
+            #expect(export.sections.map(\.name) == scenario.sectionNames, "\(scenario.name): export sections")
+            #expect(
+                share.contains("• Cast-on:") == scenario.includesCastOn,
+                "\(scenario.name): cast-on share text"
+            )
+            #expect(
+                share.contains("Section row/round guidance") == !scenario.sectionNames.isEmpty,
+                "\(scenario.name): share heading"
+            )
+
+            let sections = [
+                ("Yoke depth", scenario.inputs.patternYokeDepth != nil),
+                ("Body length", scenario.inputs.patternBodyLength != nil),
+                ("Sleeve length", scenario.inputs.patternSleeveLength != nil),
+                ("Increase-row spacing", scenario.inputs.patternIncreaseSpacing != nil),
+            ]
+            for (name, isRelevant) in sections {
+                #expect(share.contains("• \(name):") == isRelevant, "\(scenario.name): \(name)")
+            }
+            #expect((result.adjustedCastOn != nil) == (scenario.inputs.patternCastOn != nil))
+            #expect((result.yokeRowsAtYourGauge != nil) == (scenario.inputs.patternYokeDepth != nil))
+            #expect((result.bodyRowsAtYourGauge != nil) == (scenario.inputs.patternBodyLength != nil))
+            #expect((result.sleeveRowsAtYourGauge != nil) == (scenario.inputs.patternSleeveLength != nil))
+            #expect(
+                (result.adjustedIncreaseSpacing != nil) == (scenario.inputs.patternIncreaseSpacing != nil)
+            )
+        }
     }
 
-    /// A whole-number wheel selection commits as a plain integer string.
-    @Test func gaugeWheelFieldCommitsSelection() {
-        #expect(GaugeMath.parseGaugeTypeText("20", fallback: 20) == "20")
-        #expect(GaugeMath.parseGaugeTypeText("1", fallback: 20) == "1")
-        #expect(GaugeMath.parseGaugeTypeText("99", fallback: 20) == "99")
-        // Out-of-range integers are clamped.
-        #expect(GaugeMath.parseGaugeTypeText("0", fallback: 20) == "1")
-        #expect(GaugeMath.parseGaugeTypeText("100", fallback: 20) == "99")
-    }
+    @MainActor
+    @Test func independentSceneDraftsUseSceneLocalStorageForEveryRawValueAndDisclosure() {
+        let properties = Array(Mirror(reflecting: ContentView()).children)
+        let stringStorage = Set(properties.compactMap { child in
+            child.value is SceneStorage<String> ? child.label?.dropFirst().description : nil
+        })
+        let boolStorage = Set(properties.compactMap { child in
+            child.value is SceneStorage<Bool> ? child.label?.dropFirst().description : nil
+        })
 
-    /// Decimal values typed in the keyboard fallback are clamped and preserved where meaningful.
-    @Test func gaugeWheelFieldTypeFallbackParsesDecimal() {
-        // Decimal within range: kept as one decimal place.
-        #expect(GaugeMath.parseGaugeTypeText("22.5", fallback: 20) == "22.5")
-        // Decimal that rounds to a whole number: stripped to integer string.
-        #expect(GaugeMath.parseGaugeTypeText("30.0", fallback: 20) == "30")
-        // Decimal out-of-range: clamped.
-        #expect(GaugeMath.parseGaugeTypeText("0.5", fallback: 20) == "1")
-        #expect(GaugeMath.parseGaugeTypeText("99.9", fallback: 20) == "99")
-        // Empty string: falls back to the fallback integer.
-        #expect(GaugeMath.parseGaugeTypeText("", fallback: 25) == "25")
-        // Un-parseable string: falls back to clamped fallback.
-        #expect(GaugeMath.parseGaugeTypeText("abc", fallback: 30) == "30")
+        #expect(stringStorage == [
+            "patternStitches", "patternRows", "yourStitches", "yourRows",
+            "patternCastOn", "patternYoke", "patternBody", "patternSleeve", "patternIncreases",
+        ])
+        #expect(boolStorage == ["patternDetailsExpanded"])
+
+        let suiteName = "SceneDraftStoreTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let firstValues = ["31.5", "0", "32", "24", "", "20.5", ".", "", ""]
+        let secondValues = ["28", "22", "30", "26", "144", "", "", "46", "7"]
+        SceneDraftStore.save(
+            ["gauge.raw-values": firstValues, "gauge.pattern-details-expanded": true],
+            sceneID: "scene-a",
+            defaults: defaults
+        )
+        SceneDraftStore.save(
+            ["gauge.raw-values": secondValues, "gauge.pattern-details-expanded": false],
+            sceneID: "scene-b",
+            defaults: defaults
+        )
+
+        #expect(SceneDraftStore.load(sceneID: "scene-a", defaults: defaults)?["gauge.raw-values"] as? [String] == firstValues)
+        #expect(SceneDraftStore.load(sceneID: "scene-b", defaults: defaults)?["gauge.raw-values"] as? [String] == secondValues)
+        #expect(SceneDraftStore.load(sceneID: "scene-a", defaults: defaults)?["gauge.pattern-details-expanded"] as? Bool == true)
+        #expect(SceneDraftStore.load(sceneID: "scene-b", defaults: defaults)?["gauge.pattern-details-expanded"] as? Bool == false)
+
+        SceneDraftStore.setSingleSceneID("scene-a", defaults: defaults)
+        SceneDraftStore.setSingleSceneHandoff(
+            ["gauge.raw-values": firstValues],
+            defaults: defaults
+        )
+        SceneDraftStore.discard(sceneIDs: ["scene-a"], defaults: defaults)
+        #expect(SceneDraftStore.load(sceneID: "scene-a", defaults: defaults) == nil)
+        #expect(SceneDraftStore.load(sceneID: "scene-b", defaults: defaults)?["gauge.raw-values"] as? [String] == secondValues)
+        #expect(SceneDraftStore.singleSceneID(defaults: defaults) == nil)
+        #expect(SceneDraftStore.singleSceneHandoff(defaults: defaults) == nil)
     }
 
     // MARK: - Inline mismatch detection
@@ -273,7 +393,45 @@ struct GaugeMathTests {
     }
 
     private func withGauge(yourStitches: Double, yourRows: Double) -> GaugeInputs {
-        GaugeInputs(patternStitches: 32, patternRows: 24, yourStitches: yourStitches, yourRows: yourRows)
+        GaugeInputs(
+            patternStitches: 32, patternRows: 24,
+            yourStitches: yourStitches, yourRows: yourRows,
+            patternYokeDepth: 20, patternBodyLength: 50,
+            patternSleeveLength: 45, patternIncreaseSpacing: 6,
+            patternCastOn: 128
+        )
+    }
+
+    private func optionalInputs(
+        yourStitches: Double = 32,
+        yourRows: Double = 24,
+        castOn: Double? = nil,
+        yoke: Double? = nil,
+        body: Double? = nil,
+        sleeve: Double? = nil,
+        shaping: Double? = nil
+    ) -> GaugeInputs {
+        GaugeInputs(
+            patternStitches: 32, patternRows: 24,
+            yourStitches: yourStitches, yourRows: yourRows,
+            patternYokeDepth: yoke, patternBodyLength: body,
+            patternSleeveLength: sleeve, patternIncreaseSpacing: shaping,
+            patternCastOn: castOn
+        )
+    }
+
+    private func expectValidation(_ testCase: ValidationCase, for field: GaugeMath.Field) {
+        let result = GaugeMath.validate(testCase.text, for: field)
+        switch (result, testCase.expectation) {
+        case (.success(nil), .absent):
+            break
+        case let (.success(actual?), .value(expected)):
+            #expect(actual == expected, "\(field) \(testCase.name)")
+        case let (.failure(actual), .error(expected)):
+            #expect(actual == expected, "\(field) \(testCase.name)")
+        default:
+            Issue.record("\(field) \(testCase.name): got \(result)")
+        }
     }
 
     private func expect(
@@ -290,11 +448,38 @@ struct GaugeMathTests {
         #expect(result.stitchWidthScale.isApproximately(stitchWidthScale))
         #expect(result.rowCountScale.isApproximately(rowCountScale))
         #expect(result.dimensionScale.isApproximately(dimensionScale))
-        #expect(result.adjustedYokeDepth.isApproximately(yoke))
-        #expect(result.adjustedBodyLength.isApproximately(body))
-        #expect(result.adjustedSleeveLength.isApproximately(sleeve))
-        #expect(result.adjustedIncreaseSpacing.isApproximately(increases))
+        #expect(result.adjustedYokeDepth?.isApproximately(yoke) == true)
+        #expect(result.adjustedBodyLength?.isApproximately(body) == true)
+        #expect(result.adjustedSleeveLength?.isApproximately(sleeve) == true)
+        #expect(result.adjustedIncreaseSpacing?.isApproximately(increases) == true)
         #expect(result.adjustedCastOn == castOn)
+    }
+
+    private struct ValidationRow {
+        let field: GaugeMath.Field
+        let lower: Double
+        let upper: Double
+        let decimal: Double
+        let isRequired: Bool
+    }
+
+    private struct ValidationCase {
+        let name: String
+        let text: String
+        let expectation: ValidationExpectation
+    }
+
+    private enum ValidationExpectation {
+        case absent
+        case value(Double)
+        case error(GaugeMath.ValidationError)
+    }
+
+    private struct OptionalOutputScenario {
+        let name: String
+        let inputs: GaugeInputs
+        var includesCastOn = false
+        let sectionNames: [String]
     }
 }
 
@@ -340,6 +525,20 @@ struct MeasurementUnitTests {
         #expect(MeasurementUnit.inches.displayIntToCmString(18) == "46")
         // 1 in → 3 cm (2.54 → rounds to 3)
         #expect(MeasurementUnit.inches.displayIntToCmString(1) == "3")
+        #expect(MeasurementUnit.inches.displayIntToCmString(Int.max) == nil)
+    }
+
+    @Test func invalidInchInputIsPreservedWithoutConversion() {
+        let decimal = MeasurementUnit.inches.centimeterStorageText(from: "8.5", cmRange: 5...100)
+        let oversized = MeasurementUnit.inches.centimeterStorageText(
+            from: "\(Int.max)",
+            cmRange: 5...100
+        )
+
+        #expect(MeasurementUnit.invalidInchesText(from: decimal) == "8.5")
+        #expect(MeasurementUnit.invalidInchesText(from: oversized) == "\(Int.max)")
+        #expect(GaugeMath.validate(decimal, for: .patternYokeDepth) == .failure(.invalidNumber))
+        #expect(GaugeMath.validate(oversized, for: .patternYokeDepth) == .failure(.invalidNumber))
     }
 
     // MARK: Round-trip: toggle cm → in → cm must not corrupt the cm model
@@ -356,7 +555,7 @@ struct MeasurementUnitTests {
         for cm in cmValues {
             let displayInt = MeasurementUnit.inches.cmToDisplayInt(cm)
             let recoveredCmStr = MeasurementUnit.inches.displayIntToCmString(displayInt)
-            let recoveredCm = Double(recoveredCmStr) ?? 0
+            let recoveredCm = recoveredCmStr.flatMap(Double.init) ?? 0
             // Allow up to 2 cm rounding error (one in cm→in, one in in→cm)
             #expect(abs(recoveredCm - cm) <= 2, "cm=\(cm) → \(displayInt) in → \(recoveredCmStr) cm")
         }
@@ -391,7 +590,10 @@ struct MeasurementUnitTests {
     // MARK: ResultsExportSummary respects unit
 
     @Test func exportSummaryUsesInchesWhenRequested() {
-        let inputs = GaugeInputs(patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 24)
+        let inputs = GaugeInputs(
+            patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 24,
+            patternYokeDepth: 20, patternBodyLength: 50, patternSleeveLength: 45
+        )
         let result = GaugeMath.compute(inputs)
         let summary = ResultsExportSummary(inputs: inputs, result: result, unit: .inches)
         // Yoke depth: 20 cm → 8 in
@@ -405,7 +607,10 @@ struct MeasurementUnitTests {
     }
 
     @Test func shareTextFormatterUsesInchesWhenRequested() {
-        let inputs = GaugeInputs(patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 24)
+        let inputs = GaugeInputs(
+            patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 24,
+            patternYokeDepth: 20, patternBodyLength: 50
+        )
         let result = GaugeMath.compute(inputs)
         let text = ResultsShareTextFormatter.string(inputs: inputs, result: result, unit: .inches)
         #expect(text.contains("• Yoke depth: 8 in → knit"))

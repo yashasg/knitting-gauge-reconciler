@@ -19,3 +19,17 @@ _Summarized at 2026-07-14T23:38:12.955-07:00 after crossing the 15,360-byte hist
 - **Dynamic Type:** keep source-level lint guards and runtime reflow/audit tests complementary. Historical iOS 26 failures involving `cast-on-result`, alert timing, and audit target attachment were infrastructure-sensitive and require explicit evidence before regression attribution.
 
 Earlier detailed entries are retained in `history-archive.md`.
+
+## Issue #65 coverage gate — 2026-07-15T04:42:30.201-07:00
+
+- Added the validator, optional output/screen, validation focus, Reset/Undo, scene/process restoration, independent-scene storage, and revised-form accessibility contracts in the three authorized test files.
+- Formula/validator/export coverage passed 23/23; optional screen matrix passed 1/1; Reset/Undo and background restoration passed 2/2; SwiftLint reported 0 violations.
+- Canonical `./app/build.sh test` failed: 70/75 passed, 5 failed, 0 skipped; result/build evidence recorded two app accessibility failures, validation/scene/UI-runner crashes, one warning, and retries after unexpected exits.
+- Edison UI artifact rejected: Done on multiple invalid fields blocks the main run loop; process interruption loses the scene draft; `gauge-lead` fails contrast and `gauge-summary` fails text-clipping audit. Ada math stayed green. Recommend Hopper for the independent revision.
+
+## Issue #65 final gate — 2026-07-15T09:08:17-07:00
+
+- Approved Hopper's independent revision after focused validation, restoration, keyboard, Dynamic Type, and
+  accessibility regressions passed.
+- The isolated canonical `./app/build.sh test` gate passed 76/76 with 0 retries, 0 SwiftLint violations, and no
+  compiler, analyzer, or application-runtime warning matches.

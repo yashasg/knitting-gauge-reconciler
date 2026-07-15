@@ -1,28 +1,34 @@
+// Issue #65 keeps conditional result, reset, and share UI in this existing authorized file.
+// swiftlint:disable file_length
 import SwiftUI
-
-// MARK: - RequiredAdjustmentsCard
 
 struct RequiredAdjustmentsCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Binding var showAdjustmentSheet: Bool
-    @State private var selectedDetent: PresentationDetent = .medium
 
-    var cachedResult: GaugeMathResult?
-    var inputs: GaugeInputs
-    var unit: MeasurementUnit
-    @Binding var showFullMath: Bool
-    var onRecalculate: () -> Void
-    var onReset: () -> Void
-    var onShare: (GaugeMathResult) async -> [Any]
+    @Binding private var showFullMath: Bool
+    @Binding private var showAdjustmentSheet: Bool
+    @State private var selectedDetent: PresentationDetent = .medium
+    @State private var showResetConfirmation = false
+
+    private let cachedResult: GaugeMathResult?
+    private let inputs: GaugeInputs?
+    private let unit: MeasurementUnit
+    private let canUndoReset: Bool
+    private let onRecalculate: () -> GaugeMathResult?
+    private let onReset: () -> Void
+    private let onUndoReset: () -> Void
+    private let onShare: (GaugeMathResult) async -> [Any]
 
     init(
         cachedResult: GaugeMathResult?,
-        inputs: GaugeInputs,
+        inputs: GaugeInputs?,
         unit: MeasurementUnit,
         showFullMath: Binding<Bool>,
         showAdjustmentSheet: Binding<Bool>,
-        onRecalculate: @escaping () -> Void,
+        canUndoReset: Bool,
+        onRecalculate: @escaping () -> GaugeMathResult?,
         onReset: @escaping () -> Void,
+        onUndoReset: @escaping () -> Void,
         onShare: @escaping (GaugeMathResult) async -> [Any]
     ) {
         self.cachedResult = cachedResult
@@ -30,56 +36,102 @@ struct RequiredAdjustmentsCard: View {
         self.unit = unit
         self._showFullMath = showFullMath
         self._showAdjustmentSheet = showAdjustmentSheet
+        self.canUndoReset = canUndoReset
         self.onRecalculate = onRecalculate
         self.onReset = onReset
+        self.onUndoReset = onUndoReset
         self.onShare = onShare
     }
 
-    private var presentedResult: GaugeMathResult {
-        cachedResult ?? GaugeMath.compute(inputs)
-    }
-
-    private let availableDetents: Set<PresentationDetent> = [.medium, .large]
-
     var body: some View {
-        Button {
-            selectedDetent = dynamicTypeSize.isAccessibilitySize ? .large : .medium
-            onRecalculate()
-            showAdjustmentSheet = true
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "wand.and.stars")
-                    .font(.footnote.weight(.semibold))
-                    .accessibilityHidden(true)
-                Text("View Adjustments")
-                    .font(.subheadline.weight(.semibold))
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                selectedDetent = dynamicTypeSize.isAccessibilitySize ? .large : .medium
+                if onRecalculate() != nil {
+                    showAdjustmentSheet = true
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "wand.and.stars")
+                        .font(.footnote.weight(.semibold))
+                        .accessibilityHidden(true)
+                    Text("View results")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .foregroundStyle(AppTheme.cream)
+                .frame(minWidth: 176)
+                .padding(.horizontal, 18)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                .frame(minHeight: 44)
+                .background(inputs == nil ? AppTheme.muted : AppTheme.sage)
+                .clipShape(Capsule())
             }
-            .foregroundStyle(AppTheme.cream)
-            .frame(minWidth: 176)
-            .padding(.horizontal, 18)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
-            .frame(minHeight: 44)
-            .background(AppTheme.sage)
-            .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity, alignment: .center)
-        .accessibilityIdentifier("calculate-button")
-        .accessibilityLabel("View Adjustments")
-        .accessibilityHint("Computes gauge reconciliation adjustments and opens the results sheet")
-        .sheet(isPresented: $showAdjustmentSheet) {
-            AdjustmentSheetView(
-                result: presentedResult,
-                inputs: inputs,
-                unit: unit,
-                showFullMath: $showFullMath,
-                onReset: onReset,
-                onShare: onShare,
-                onClose: { showAdjustmentSheet = false }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .disabled(inputs == nil)
+            .accessibilityIdentifier("calculate-button")
+            .accessibilityLabel("View results")
+            .accessibilityHint(
+                inputs == nil
+                    ? "Correct the highlighted fields before viewing results"
+                    : "Computes gauge reconciliation and opens the results sheet"
             )
-            .presentationDetents(availableDetents, selection: $selectedDetent)
-            .presentationDragIndicator(.visible)
+
+            if inputs == nil {
+                Text("Correct the highlighted fields to view results.")
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .accessibilityIdentifier("form-validation-summary")
+            }
+
+            HStack(alignment: .center, spacing: 16) {
+                Button("Reset values") {
+                    showResetConfirmation = true
+                }
+                .buttonStyle(.plain)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.ink)
+                .accessibilityIdentifier("reset-defaults")
+                .accessibilityHint("Opens a confirmation before replacing every entry")
+                .accessibilityHidden(showAdjustmentSheet)
+
+                if canUndoReset {
+                    Spacer()
+                    Button("Undo reset", action: onUndoReset)
+                        .buttonStyle(.plain)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .accessibilityIdentifier("undo-reset")
+                        .accessibilityHint("Restores every value from before the last reset")
+                }
+            }
+        }
+        .sheet(isPresented: $showAdjustmentSheet) {
+            if let cachedResult, let inputs {
+                AdjustmentSheetView(
+                    result: cachedResult,
+                    inputs: inputs,
+                    unit: unit,
+                    showFullMath: $showFullMath,
+                    onShare: onShare,
+                    onClose: { showAdjustmentSheet = false }
+                )
+                .presentationDetents([.medium, .large], selection: $selectedDetent)
+                .presentationDragIndicator(.visible)
+            }
+        }
+        .alert("Reset all values?", isPresented: $showResetConfirmation) {
+            Button("Reset values", role: .destructive, action: onReset)
+            Button("Keep editing", role: .cancel) {}
+        } message: {
+            Text("This replaces every entry with the sample gauge values.")
         }
     }
 }
@@ -87,15 +139,29 @@ struct RequiredAdjustmentsCard: View {
 private struct AdjustmentSheetView: View {
     @State private var sharePayload: ShareSheetPayload?
     @State private var isPreparingShare = false
-    @State private var showResetConfirmation = false
 
-    var result: GaugeMathResult
-    var inputs: GaugeInputs
-    var unit: MeasurementUnit
-    @Binding var showFullMath: Bool
-    var onReset: () -> Void
-    var onShare: (GaugeMathResult) async -> [Any]
-    var onClose: () -> Void
+    private let result: GaugeMathResult
+    private let inputs: GaugeInputs
+    private let unit: MeasurementUnit
+    @Binding private var showFullMath: Bool
+    private let onShare: (GaugeMathResult) async -> [Any]
+    private let onClose: () -> Void
+
+    init(
+        result: GaugeMathResult,
+        inputs: GaugeInputs,
+        unit: MeasurementUnit,
+        showFullMath: Binding<Bool>,
+        onShare: @escaping (GaugeMathResult) async -> [Any],
+        onClose: @escaping () -> Void
+    ) {
+        self.result = result
+        self.inputs = inputs
+        self.unit = unit
+        self._showFullMath = showFullMath
+        self.onShare = onShare
+        self.onClose = onClose
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -104,62 +170,75 @@ private struct AdjustmentSheetView: View {
                 onShare: {
                     guard !isPreparingShare else { return }
                     isPreparingShare = true
-                    Task {
-                        let items = await onShare(result)
-                        sharePayload = ShareSheetPayload(items: items)
-                        isPreparingShare = false
-                    }
                 },
                 onClose: onClose
             )
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    numberedSectionCard(number: 1, title: "Yoke Depth", subtitle: "To hit target measurement") {
-                        AdjustmentValuePair(
-                            patternValue: GaugeMath.fmtRows(result.patternYokeRows),
-                            yourValue: result.yokeRowsAtYourGauge,
-                            valueIdentifier: "yoke-your-rows"
-                        )
-                    }
+                    gaugeSummaryCard
 
-                    numberedSectionCard(number: 2, title: "Body & Sleeves", subtitle: "Length Correction") {
-                        VStack(spacing: 12) {
+                    if let patternRows = result.patternYokeRows,
+                       let adjustedRows = result.yokeRowsAtYourGauge {
+                        sectionCard(title: "Yoke Depth", subtitle: "To hit target measurement") {
                             AdjustmentValuePair(
-                                patternValue: GaugeMath.fmtRows(result.patternBodyRows),
-                                yourValue: result.bodyRowsAtYourGauge,
-                                patternLabel: "Body Rows",
-                                valueIdentifier: "body-your-rows"
-                            )
-                            AdjustmentValuePair(
-                                patternValue: GaugeMath.fmtRows(result.patternSleeveRows),
-                                yourValue: result.sleeveRowsAtYourGauge,
-                                patternLabel: "Sleeve Rows",
-                                valueIdentifier: "sleeve-your-rows"
+                                patternValue: GaugeMath.fmtRows(patternRows),
+                                yourValue: adjustedRows,
+                                valueIdentifier: "yoke-your-rows"
                             )
                         }
                     }
 
-                    numberedSectionCard(number: 3, title: "Shaping Rates", subtitle: "Increases / Decreases") {
-                        VStack(spacing: 12) {
+                    if hasBodyOrSleeveGuidance {
+                        sectionCard(title: "Body & Sleeves", subtitle: "Length correction") {
+                            VStack(spacing: 12) {
+                                if let patternRows = result.patternBodyRows,
+                                   let adjustedRows = result.bodyRowsAtYourGauge {
+                                    AdjustmentValuePair(
+                                        patternValue: GaugeMath.fmtRows(patternRows),
+                                        yourValue: adjustedRows,
+                                        patternLabel: "Body Rows",
+                                        valueIdentifier: "body-your-rows"
+                                    )
+                                }
+                                if let patternRows = result.patternSleeveRows,
+                                   let adjustedRows = result.sleeveRowsAtYourGauge {
+                                    AdjustmentValuePair(
+                                        patternValue: GaugeMath.fmtRows(patternRows),
+                                        yourValue: adjustedRows,
+                                        patternLabel: "Sleeve Rows",
+                                        valueIdentifier: "sleeve-your-rows"
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if let patternSpacing = inputs.patternIncreaseSpacing,
+                       let adjustedSpacing = result.adjustedIncreaseSpacing {
+                        sectionCard(title: "Shaping Rates", subtitle: "Increases / decreases") {
                             AdjustmentRow(
                                 name: "Increase-row spacing",
-                                pattern: "Every \(plain(inputs.patternIncreaseSpacing)) rows",
-                                adjusted: "Every \(GaugeMath.fmtRows(result.adjustedIncreaseSpacing)) rows",
+                                pattern: "Every \(plain(patternSpacing)) rows",
+                                adjusted: "Every \(GaugeMath.fmtRows(adjustedSpacing)) rows",
                                 adjustedIdentifier: "increases-result"
-                            )
-                            AdjustmentRow(
-                                name: "Cast-on stitches",
-                                pattern: "\(plain(inputs.patternCastOn)) stitches",
-                                adjusted: "\(result.adjustedCastOn) stitches",
-                                adjustedIdentifier: "cast-on-result",
-                                driftPill: abs(result.castOnRoundingDriftPercent) >= 3
-                                    ? String(format: "%+.0f%% width", result.castOnRoundingDriftPercent)
-                                    : nil
                             )
                         }
                     }
 
-                    actionsCard(result: result)
+                    if let patternCastOn = inputs.patternCastOn,
+                       let adjustedCastOn = result.adjustedCastOn {
+                        sectionCard(title: "Cast-on", subtitle: "To preserve pattern width") {
+                            AdjustmentRow(
+                                name: "Cast-on stitches",
+                                pattern: "\(plain(patternCastOn)) stitches",
+                                adjusted: "\(adjustedCastOn) stitches",
+                                adjustedIdentifier: "cast-on-result",
+                                driftPill: castOnDriftPill
+                            )
+                        }
+                    }
+
+                    actionsCard
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
@@ -173,51 +252,83 @@ private struct AdjustmentSheetView: View {
             ActivityView(activityItems: payload.items)
                 .presentationDetents([.medium, .large])
         }
+        .task(id: isPreparingShare) {
+            guard isPreparingShare else { return }
+            let items = await onShare(result)
+            guard !Task.isCancelled else {
+                isPreparingShare = false
+                return
+            }
+            sharePayload = ShareSheetPayload(items: items)
+            isPreparingShare = false
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("adjustment-sheet")
-        // Reset confirmation is presented from within the sheet's own hierarchy
-        // so it surfaces above the sheet without dismissing it. A root-level
-        // alert (ContentView) does not present while this sheet is up. See #40.
-        .alert("Reset to defaults?", isPresented: $showResetConfirmation) {
-            Button("Reset", role: .destructive) { onReset() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Clears every stitch and row value you've entered.")
-        }
+        .accessibilityHidden(false)
     }
 
-    @ViewBuilder
-    private func numberedSectionCard<Content: View>(
-        number: Int,
+    private var hasBodyOrSleeveGuidance: Bool {
+        result.bodyRowsAtYourGauge != nil || result.sleeveRowsAtYourGauge != nil
+    }
+
+    private var castOnDriftPill: String? {
+        guard let drift = result.castOnRoundingDriftPercent, abs(drift) >= 3 else {
+            return nil
+        }
+        return String(format: "%+.0f%% width", drift)
+    }
+
+    private var gaugeSummaryCard: some View {
+        sectionCard(title: "Gauge Summary", subtitle: "Pattern compared with your swatch") {
+            VStack(spacing: 12) {
+                GaugeSummaryRow(
+                    name: "Stitch-wise width",
+                    adjusted: "\(GaugeMath.fmtPct(result.stitchWidthScale))%",
+                    adjustedIdentifier: "stitch-summary"
+                )
+                GaugeSummaryRow(
+                    name: "Row-wise density",
+                    adjusted: "\(GaugeMath.fmtPct(result.rowCountScale))%",
+                    adjustedIdentifier: "row-summary"
+                )
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("gauge-summary")
+    }
+
+    private func sectionCard<Content: View>(
         title: String,
         subtitle: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center, spacing: 10) {
-                StepCircle(number: number)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(AppTheme.ink)
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.muted)
-                }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(AppTheme.ink)
+                    .lineLimit(nil)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.muted)
+                    .lineLimit(nil)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             content()
         }
         .cardStyle()
     }
 
-    @ViewBuilder
-    private func actionsCard(result: GaugeMathResult) -> some View {
+    private var actionsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button(
                 action: { showFullMath.toggle() },
                 label: {
                     HStack {
-                        Text("Show full math")
+                        Text(showFullMath ? "Hide full math" : "Show full math")
                         Spacer()
                         Image(systemName: showFullMath ? "chevron.up" : "chevron.down")
                             .font(.caption.weight(.bold))
@@ -230,10 +341,10 @@ private struct AdjustmentSheetView: View {
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(AppTheme.sage)
             .accessibilityIdentifier("disclosure-full-math")
-            .accessibilityLabel("Show full math")
+            .accessibilityLabel(showFullMath ? "Hide full math" : "Show full math")
 
             if showFullMath {
-                Text(fullMathBreakdown(result: result))
+                Text(fullMathBreakdown)
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(AppTheme.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -242,46 +353,82 @@ private struct AdjustmentSheetView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                     .accessibilityIdentifier("show-full-math")
             }
-
-            Button("Reset to defaults") { showResetConfirmation = true }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.red)
-                .accessibilityIdentifier("reset-defaults")
-                .accessibilityHint(
-                    "Destructive: clears every stitch and row value you've entered."
-                )
         }
         .cardStyle()
     }
 
     // swiftlint:disable line_length
-    private func fullMathBreakdown(result: GaugeMathResult) -> String {
-        """
-        pattern: \(plain(inputs.patternStitches)) st x \(plain(inputs.patternRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.patternStitches / inputs.patternRows)))
-        you:     \(plain(inputs.yourStitches)) st x \(plain(inputs.yourRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.yourStitches / inputs.yourRows)))
-        stitch width scale = pattern_st / your_st = \(plain(inputs.patternStitches)) / \(plain(inputs.yourStitches)) = \(String(format: "%.3f", result.stitchWidthScale))
-        row density ratio  = your_row / pattern_row = \(plain(inputs.yourRows)) / \(plain(inputs.patternRows)) = \(String(format: "%.3f", result.rowCountScale))
-        dim correction     = pattern_row / your_row = \(plain(inputs.patternRows)) / \(plain(inputs.yourRows)) = \(String(format: "%.3f", result.dimensionScale))
-        -> section rows at your gauge = (cm / 10) x your_rows:
-        -> yoke: \(unit.formatMeasurement(inputs.patternYokeDepth)) → knit \(result.yokeRowsAtYourGauge) rows
-        -> body: \(unit.formatMeasurement(inputs.patternBodyLength)) → knit \(result.bodyRowsAtYourGauge) rows
-        -> for any horizontal dim, your stitch count produces \(String(format: "%.1f", result.stitchWidthScale * 100))% of the pattern's intended width
-        cast-on adjust = your_st / pattern_st x patCastOn = \(plain(inputs.yourStitches))/\(plain(inputs.patternStitches)) x \(plain(inputs.patternCastOn)) = \(result.adjustedCastOn) stitches
-        """
+    private var fullMathBreakdown: String {
+        var lines = [
+            "pattern: \(plain(inputs.patternStitches)) st x \(plain(inputs.patternRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.patternStitches / inputs.patternRows)))",
+            "you:     \(plain(inputs.yourStitches)) st x \(plain(inputs.yourRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.yourStitches / inputs.yourRows)))",
+            "stitch width scale = pattern_st / your_st = \(plain(inputs.patternStitches)) / \(plain(inputs.yourStitches)) = \(String(format: "%.3f", result.stitchWidthScale))",
+            "row density ratio  = your_row / pattern_row = \(plain(inputs.yourRows)) / \(plain(inputs.patternRows)) = \(String(format: "%.3f", result.rowCountScale))",
+            "dim correction     = pattern_row / your_row = \(plain(inputs.patternRows)) / \(plain(inputs.yourRows)) = \(String(format: "%.3f", result.dimensionScale))",
+            "for any horizontal dim, your stitch count produces \(String(format: "%.1f", result.stitchWidthScale * 100))% of the pattern's intended width"
+        ]
+        if let value = inputs.patternYokeDepth, let rows = result.yokeRowsAtYourGauge {
+            lines.append("yoke: \(unit.formatMeasurement(value)) → knit \(rows) rows")
+        }
+        if let value = inputs.patternBodyLength, let rows = result.bodyRowsAtYourGauge {
+            lines.append("body: \(unit.formatMeasurement(value)) → knit \(rows) rows")
+        }
+        if let value = inputs.patternSleeveLength, let rows = result.sleeveRowsAtYourGauge {
+            lines.append("sleeve: \(unit.formatMeasurement(value)) → knit \(rows) rows")
+        }
+        if let spacing = inputs.patternIncreaseSpacing, let adjusted = result.adjustedIncreaseSpacing {
+            lines.append("increase spacing = \(plain(spacing)) x row density = \(GaugeMath.fmtRows(adjusted)) rows")
+        }
+        if let castOn = inputs.patternCastOn, let adjusted = result.adjustedCastOn {
+            lines.append("cast-on adjust = your_st / pattern_st x \(plain(castOn)) = \(adjusted) stitches")
+        }
+        return lines.joined(separator: "\n")
     }
     // swiftlint:enable line_length
 }
 
-// MARK: - AdjustmentSheetHeader
+private struct GaugeSummaryRow: View {
+    let name: String
+    let adjusted: String
+    let adjustedIdentifier: String
 
-/// Custom header for `AdjustmentSheetView`. Replaces a `NavigationStack`
-/// toolbar (#24 — Apple HIG: do not nest `NavigationStack` inside sheets
-/// without real multi-level navigation). Provides a 44×44pt leading Share
-/// button, a centered inline title, and a 44×44pt trailing Close button.
+    var body: some View {
+        GaugeMeasurementPair(spacing: 10) {
+            VStack(spacing: 4) {
+                Text(name)
+                    .font(.caption.weight(.semibold))
+                Text("Pattern 100%")
+                    .font(.system(.body, design: .monospaced).weight(.bold))
+            }
+            .foregroundStyle(AppTheme.ink)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(14)
+            .background(AppTheme.oatmeal)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(name) in pattern: Pattern 100%")
+        } trailing: {
+            VStack(spacing: 4) {
+                Text("Adjusted")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.85))
+                Text(adjusted)
+                    .font(.system(.body, design: .monospaced).weight(.bold))
+                    .foregroundStyle(.white)
+            }
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(14)
+            .background(AppTheme.sage)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(name) adjusted: \(adjusted)")
+            .accessibilityIdentifier(adjustedIdentifier)
+        }
+    }
+}
+
 private struct AdjustmentSheetHeader: View {
     let isPreparingShare: Bool
     let onShare: () -> Void

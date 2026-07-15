@@ -14,6 +14,8 @@ enum MeasurementUnit: String, CaseIterable {
     case centimeters
     case inches
 
+    private static let invalidInchesPrefix = "gauge.invalid-inches:"
+
     /// Short label used in field titles and unit toggle.
     var label: String {
         switch self {
@@ -37,11 +39,33 @@ enum MeasurementUnit: String, CaseIterable {
     // Converts a user-entered whole display-unit integer back to a centimetre
     // integer string. The cm value is rounded to the nearest whole centimetre,
     // which is the canonical storage format for length inputs.
-    func displayIntToCmString(_ displayInt: Int) -> String {
+    func displayIntToCmString(_ displayInt: Int) -> String? {
         switch self {
         case .centimeters: return "\(displayInt)"
-        case .inches: return "\(Int((Double(displayInt) * 2.54).rounded()))"
+        case .inches:
+            return Int(exactly: (Double(displayInt) * 2.54).rounded()).map(String.init)
         }
+    }
+
+    func centimeterStorageText(
+        from displayText: String,
+        cmRange: ClosedRange<Int>
+    ) -> String {
+        guard self == .inches else { return displayText }
+        let trimmed = displayText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return displayText }
+        let displayRange = displayRange(from: cmRange)
+        guard let displayValue = Int(trimmed),
+              displayRange.contains(displayValue),
+              let centimeters = displayIntToCmString(displayValue) else {
+            return Self.invalidInchesPrefix + displayText
+        }
+        return centimeters
+    }
+
+    static func invalidInchesText(from storedText: String) -> String? {
+        guard storedText.hasPrefix(invalidInchesPrefix) else { return nil }
+        return String(storedText.dropFirst(invalidInchesPrefix.count))
     }
 
     // Returns the equivalent display-unit range for a cm-calibrated closed range.

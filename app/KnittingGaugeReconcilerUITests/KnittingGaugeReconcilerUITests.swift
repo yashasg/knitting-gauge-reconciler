@@ -3,6 +3,21 @@ import XCTest
 
 @MainActor
 final class KnittingGaugeReconcilerUITests: XCTestCase {
+    private struct GaugeUIScenario {
+        let name: String
+        let yourStitches: String
+        let yourRows: String
+        let stitchMismatch: Bool
+        let rowMismatch: Bool
+        let stitchSummary: String
+        let rowSummary: String
+    }
+
+    private struct OptionalUIScenario {
+        let name: String
+        let environment: [String: String]
+        let visibleSections: Set<String>
+    }
 
     // UI tests routinely take 30–120 s on CI simulators.
     // Override the global -default-test-execution-time-allowance 30 xcarg
@@ -15,11 +30,14 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     private static let defaultLaunchEnvironment: [String: String] = [
         "KGR_PS": "32",
         "KGR_PR": "24",
-        "KGR_CAST_ON": "128",
-        "KGR_YOKE": "20",
-        "KGR_BODY": "50",
-        "KGR_SLEEVE": "45",
-        "KGR_INCREASES": "6",
+        "KGR_YS": "32",
+        "KGR_YR": "24",
+        "KGR_CAST_ON": "",
+        "KGR_YOKE": "",
+        "KGR_BODY": "",
+        "KGR_SLEEVE": "",
+        "KGR_INCREASES": "",
+        "KGR_SHOW_PATTERN_DETAILS": "0",
     ]
 
     func testStepperFieldOpensWheelAndKeyboard() {
@@ -214,12 +232,32 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         assertStackedBelow(yourRows, yourStitches)
     }
 
-    func testMismatchStatesKeepYourGaugeFieldsEqualWidth() {
-        let scenarios: [(yourStitches: String, yourRows: String, stitchMismatch: Bool, rowMismatch: Bool)] = [
-            ("32", "24", false, false),
-            ("36", "24", true, false),
-            ("32", "32", false, true),
-            ("36", "32", true, true),
+    func testAllJacquardScenariosAreVisibleInUI() {
+        let scenarios = [
+            GaugeUIScenario(
+                name: "perfect match", yourStitches: "32", yourRows: "24",
+                stitchMismatch: false, rowMismatch: false, stitchSummary: "100%", rowSummary: "100%"
+            ),
+            GaugeUIScenario(
+                name: "denser rows", yourStitches: "32", yourRows: "32",
+                stitchMismatch: false, rowMismatch: true, stitchSummary: "100%", rowSummary: "133%"
+            ),
+            GaugeUIScenario(
+                name: "looser rows", yourStitches: "32", yourRows: "20",
+                stitchMismatch: false, rowMismatch: true, stitchSummary: "100%", rowSummary: "83%"
+            ),
+            GaugeUIScenario(
+                name: "denser stitches", yourStitches: "36", yourRows: "24",
+                stitchMismatch: true, rowMismatch: false, stitchSummary: "89%", rowSummary: "100%"
+            ),
+            GaugeUIScenario(
+                name: "looser stitches", yourStitches: "28", yourRows: "24",
+                stitchMismatch: true, rowMismatch: false, stitchSummary: "114%", rowSummary: "100%"
+            ),
+            GaugeUIScenario(
+                name: "both denser", yourStitches: "36", yourRows: "32",
+                stitchMismatch: true, rowMismatch: true, stitchSummary: "89%", rowSummary: "133%"
+            ),
         ]
         var baselineCalculateButtonY: CGFloat?
 
@@ -249,6 +287,27 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             XCTAssertEqual((yourRows.value as? String)?.contains("row gauge mismatch detected"), scenario.rowMismatch)
             XCTAssertEqual(app.buttons["your-stitches-chevron"].value as? String, scenario.stitchMismatch ? "Warning" : "")
             XCTAssertEqual(app.buttons["your-rows-chevron"].value as? String, scenario.rowMismatch ? "Warning" : "")
+
+            scrollToElement(calculateButton, in: app, requireHittable: true)
+            tapElement(calculateButton)
+            XCTAssertTrue(
+                app.otherElements["adjustment-sheet"].waitForExistence(timeout: 3),
+                scenario.name
+            )
+            let stitchSummary = app.descendants(matching: .any)["stitch-summary"].firstMatch
+            let rowSummary = app.descendants(matching: .any)["row-summary"].firstMatch
+            XCTAssertTrue(stitchSummary.waitForExistence(timeout: 2), scenario.name)
+            XCTAssertTrue(rowSummary.exists, scenario.name)
+            XCTAssertEqual(
+                stitchSummary.label,
+                "Stitch-wise width adjusted: \(scenario.stitchSummary)",
+                scenario.name
+            )
+            XCTAssertEqual(
+                rowSummary.label,
+                "Row-wise density adjusted: \(scenario.rowSummary)",
+                scenario.name
+            )
             app.terminate()
         }
     }
@@ -269,6 +328,9 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         app.launch()
 
         let toggle = app.segmentedControls["unit-toggle"]
+        let disclosure = app.buttons["pattern-details-disclosure"]
+        XCTAssertTrue(disclosure.waitForExistence(timeout: 3))
+        tapElement(disclosure)
         XCTAssertTrue(toggle.waitForExistence(timeout: 3), "Unit toggle segmented control should be present")
 
         // Default is cm: yoke field label contains "cm".
@@ -319,6 +381,305 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
 
         tapElement(app.buttons["your-rows-wheel-done"])
         app.terminate()
+    }
+
+    func testOptionalOutputMatrixNeverShowsIrrelevantScreenSections() {
+        let scenarios = [
+            OptionalUIScenario(name: "no optional fields", environment: [:], visibleSections: []),
+            OptionalUIScenario(
+                name: "cast-on only",
+                environment: ["KGR_CAST_ON": "128"],
+                visibleSections: ["Cast-on"]
+            ),
+            OptionalUIScenario(
+                name: "one length only",
+                environment: ["KGR_YOKE": "20"],
+                visibleSections: ["Yoke Depth"]
+            ),
+            OptionalUIScenario(
+                name: "shaping only",
+                environment: ["KGR_INCREASES": "6"],
+                visibleSections: ["Shaping Rates"]
+            ),
+            OptionalUIScenario(
+                name: "all optional fields",
+                environment: [
+                    "KGR_CAST_ON": "128",
+                    "KGR_YOKE": "20",
+                    "KGR_BODY": "50",
+                    "KGR_SLEEVE": "45",
+                    "KGR_INCREASES": "6",
+                ],
+                visibleSections: ["Yoke Depth", "Body & Sleeves", "Shaping Rates", "Cast-on"]
+            ),
+        ]
+        let optionalSections = ["Yoke Depth", "Body & Sleeves", "Shaping Rates", "Cast-on"]
+
+        for scenario in scenarios {
+            let app = launchApp(environment: scenario.environment)
+            XCTAssertTrue(
+                app.buttons["pattern-details-disclosure"].waitForExistence(timeout: 3),
+                scenario.name
+            )
+            XCTAssertFalse(
+                app.textFields["pattern-cast-on-field"].exists,
+                "\(scenario.name): optional details start collapsed"
+            )
+
+            let viewResults = app.buttons["calculate-button"]
+            XCTAssertTrue(viewResults.isEnabled, "\(scenario.name): four required values are sufficient")
+            scrollToElement(viewResults, in: app, requireHittable: true)
+            tapElement(viewResults)
+
+            XCTAssertTrue(app.otherElements["adjustment-sheet"].waitForExistence(timeout: 3), scenario.name)
+            XCTAssertTrue(app.staticTexts["Gauge Summary"].waitForExistence(timeout: 2), scenario.name)
+            for section in optionalSections {
+                XCTAssertEqual(
+                    app.staticTexts[section].exists,
+                    scenario.visibleSections.contains(section),
+                    "\(scenario.name): \(section)"
+                )
+            }
+            app.terminate()
+        }
+    }
+
+    func testValidationRoundTripPreservesRawTextFocusesFirstErrorAndReenablesResults() {
+        let app = launchApp(environment: [
+            "KGR_PS": "0",
+            "KGR_PR": "100",
+        ])
+        let patternStitches = app.textFields["pattern-stitches-field"]
+        let patternRows = app.textFields["pattern-rows-field"]
+        let viewResults = app.buttons["calculate-button"]
+        let stitchError = app.descendants(matching: .any)["pattern-stitches-error"].firstMatch
+
+        XCTAssertTrue(patternStitches.waitForExistence(timeout: 3))
+        assertFieldRaw("pattern-stitches", equals: "0", in: app)
+        assertFieldRaw("pattern-rows", equals: "100", in: app)
+        XCTAssertTrue(stitchError.waitForExistence(timeout: 2))
+        XCTAssertEqual(
+            stitchError.label,
+            "Pattern stitch gauge must be between 1 and 99 stitches."
+        )
+        XCTAssertTrue(
+            (patternStitches.value as? String)?.contains(stitchError.label) == true,
+            "The specific correction must be part of the field's accessible value"
+        )
+        XCTAssertFalse(viewResults.isEnabled)
+        XCTAssertFalse(app.otherElements["adjustment-sheet"].exists)
+
+        tapElement(patternRows)
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 2))
+        tapElement(app.toolbars.buttons["keyboard-done"])
+        patternStitches.typeText("1")
+        assertFieldRaw(
+            "pattern-stitches",
+            equals: "01",
+            in: app,
+            message: "Keyboard input after submission must reach the first invalid field"
+        )
+        assertFieldRaw("pattern-rows", equals: "100", in: app)
+        XCTAssertFalse(viewResults.isEnabled)
+
+        tapElement(app.buttons["pattern-stitches-chevron"])
+        tapElement(app.buttons["pattern-stitches-wheel-done"])
+        tapElement(app.buttons["pattern-rows-chevron"])
+        tapElement(app.buttons["pattern-rows-wheel-done"])
+
+        XCTAssertTrue(waitUntil { viewResults.isEnabled })
+        XCTAssertFalse(stitchError.exists)
+        scrollToElement(viewResults, in: app, requireHittable: true)
+        tapElement(viewResults)
+        XCTAssertTrue(app.otherElements["adjustment-sheet"].waitForExistence(timeout: 3))
+    }
+
+    func testResetAndUndoRoundTripAllRawValuesAndDisclosureState() {
+        let expectedValues = [
+            "pattern-stitches": "31",
+            "pattern-rows": "23",
+            "your-stitches": "29",
+            "your-rows": "21",
+            "pattern-cast-on": "141",
+            "pattern-yoke": "19",
+            "pattern-body": "49",
+            "pattern-sleeve": "44",
+            "pattern-increases": "7",
+        ]
+        let app = launchApp(environment: [
+            "KGR_PS": "31",
+            "KGR_PR": "23",
+            "KGR_YS": "29",
+            "KGR_YR": "21",
+            "KGR_CAST_ON": "141",
+            "KGR_YOKE": "19",
+            "KGR_BODY": "49",
+            "KGR_SLEEVE": "44",
+            "KGR_INCREASES": "7",
+            "KGR_SHOW_PATTERN_DETAILS": "1",
+        ])
+
+        XCTAssertTrue(app.textFields["pattern-cast-on-field"].waitForExistence(timeout: 3))
+        for (identifier, value) in expectedValues {
+            assertFieldRaw(identifier, equals: value, in: app)
+        }
+
+        let reset = app.buttons["reset-defaults"]
+        scrollToElement(reset, in: app, requireHittable: true)
+        tapElement(reset)
+        assertResetCopy(in: app)
+        tapElement(app.alerts.buttons["Keep editing"])
+        assertFieldRaw("pattern-cast-on", equals: "141", in: app)
+        XCTAssertTrue(app.textFields["pattern-cast-on-field"].exists)
+
+        tapElement(reset)
+        assertResetCopy(in: app)
+        tapElement(app.alerts.buttons["Reset values"])
+
+        assertFieldRaw("pattern-stitches", equals: "32", in: app)
+        assertFieldRaw("pattern-rows", equals: "24", in: app)
+        assertFieldRaw("your-stitches", equals: "32", in: app)
+        assertFieldRaw("your-rows", equals: "32", in: app)
+        XCTAssertFalse(app.textFields["pattern-cast-on-field"].exists)
+
+        let undo = app.buttons["undo-reset"]
+        scrollToElement(undo, in: app, requireHittable: true)
+        tapElement(undo)
+        XCTAssertTrue(app.textFields["pattern-cast-on-field"].waitForExistence(timeout: 2))
+        for (identifier, value) in expectedValues {
+            assertFieldRaw(identifier, equals: value, in: app)
+        }
+
+        scrollToElement(reset, in: app, requireHittable: true)
+        tapElement(reset)
+        assertResetCopy(in: app)
+        tapElement(app.alerts.buttons["Reset values"])
+        XCTAssertFalse(app.textFields["pattern-cast-on-field"].exists)
+
+        let disclosure = app.buttons["pattern-details-disclosure"]
+        scrollToElement(disclosure, in: app, requireHittable: true, direction: .up)
+        tapElement(disclosure)
+        for identifier in [
+            "pattern-cast-on",
+            "pattern-yoke",
+            "pattern-body",
+            "pattern-sleeve",
+            "pattern-increases",
+        ] {
+            assertFieldRaw(identifier, equals: "", in: app)
+        }
+    }
+
+    func testSceneRestorationPreservesValidInvalidPartialAndResetDraftsAcrossProcessInterruption() {
+        let app = XCUIApplication()
+        useDefaultDynamicType(app)
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
+            "KGR_PS": "31.5",
+            "KGR_PR": "0",
+            "KGR_YOKE": "20.5",
+            "KGR_BODY": ".",
+            "KGR_SHOW_PATTERN_DETAILS": "1",
+        ]) { _, new in new }
+        app.launch()
+
+        assertRestoredMixedDraft(in: app)
+        backgroundAndReactivate(app)
+        assertRestoredMixedDraft(in: app)
+        relaunchFromSceneState(app)
+        assertRestoredMixedDraft(in: app)
+
+        resetToSamples(in: app)
+        backgroundAndReactivate(app)
+        relaunchFromSceneState(app)
+        assertFieldRaw("pattern-stitches", equals: "32", in: app)
+        assertFieldRaw("pattern-rows", equals: "24", in: app)
+        assertFieldRaw("your-stitches", equals: "32", in: app)
+        assertFieldRaw("your-rows", equals: "32", in: app)
+        XCTAssertFalse(app.textFields["pattern-cast-on-field"].exists)
+    }
+
+    private func launchApp(environment: [String: String]) -> XCUIApplication {
+        let app = XCUIApplication()
+        useDefaultDynamicType(app)
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging(environment) { _, new in new }
+        app.launch()
+        return app
+    }
+
+    private func assertFieldRaw(
+        _ identifier: String,
+        equals expected: String,
+        in app: XCUIApplication,
+        message: String? = nil,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let field = app.textFields["\(identifier)-field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 2), identifier, file: file, line: line)
+        let value = field.value as? String
+        if expected.isEmpty {
+            XCTAssertTrue(value?.hasPrefix("Empty") == true, "\(identifier): \(value ?? "nil")", file: file, line: line)
+        } else {
+            XCTAssertTrue(
+                value?.hasPrefix("\(expected) ") == true,
+                message ?? "\(identifier): expected raw '\(expected)', got '\(value ?? "nil")'",
+                file: file,
+                line: line
+            )
+        }
+    }
+
+    private func assertResetCopy(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let alert = app.alerts["Reset all values?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 3), file: file, line: line)
+        XCTAssertTrue(
+            alert.staticTexts["This replaces every entry with the sample gauge values."].exists,
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(alert.buttons["Reset values"].exists, file: file, line: line)
+        XCTAssertTrue(alert.buttons["Keep editing"].exists, file: file, line: line)
+    }
+
+    private func resetToSamples(in app: XCUIApplication) {
+        dismissKeyboard(in: app)
+        let reset = app.buttons["reset-defaults"]
+        scrollToElement(reset, in: app, requireHittable: true)
+        tapElement(reset)
+        assertResetCopy(in: app)
+        tapElement(app.alerts.buttons["Reset values"])
+        XCTAssertFalse(app.textFields["pattern-cast-on-field"].exists)
+    }
+
+    private func backgroundAndReactivate(_ app: XCUIApplication) {
+        XCUIDevice.shared.press(.home)
+        XCTAssertTrue(waitUntil(timeout: 5) { app.state != .runningForeground })
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+    }
+
+    private func relaunchFromSceneState(_ app: XCUIApplication) {
+        app.launchArguments = [
+            "-UIPreferredContentSizeCategoryName",
+            UIContentSizeCategory.large.rawValue,
+        ]
+        app.launchEnvironment = Self.defaultLaunchEnvironment
+        app.terminate()
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+    }
+
+    private func assertRestoredMixedDraft(in app: XCUIApplication) {
+        assertFieldRaw("pattern-stitches", equals: "31.5", in: app)
+        assertFieldRaw("pattern-rows", equals: "0", in: app)
+        XCTAssertTrue(app.textFields["pattern-yoke-field"].waitForExistence(timeout: 2))
+        assertFieldRaw("pattern-yoke", equals: "20.5", in: app)
+        assertFieldRaw("pattern-body", equals: ".", in: app)
+        XCTAssertFalse(app.buttons["calculate-button"].isEnabled)
     }
 
     private func setNumericField(
@@ -427,10 +788,10 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         if element.exists && (!requireHittable || element.isHittable) { return }
 
         var noProgressStreak = 0
-        for _ in 0..<12 {
+        for _ in 0..<6 {
             let surface = preferredScrollSurface(in: app)
-            let lower = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))
-            let upper = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.42))
+            let lower = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.82))
+            let upper = surface.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.22))
 
             // Snapshot the scroll surface position before dragging.
             // UIScrollView exposes its position as a percentage string via
@@ -507,19 +868,17 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
     private func useDefaultDynamicType(_ app: XCUIApplication) {
         app.launchArguments += [
             "-UIPreferredContentSizeCategoryName",
-            UIContentSizeCategory.large.rawValue
+            UIContentSizeCategory.large.rawValue,
+            "-ApplePersistenceIgnoreState",
+            "YES",
         ]
     }
 
     private func launchApp(yourStitches: String, yourRows: String) -> XCUIApplication {
-        let app = XCUIApplication()
-        useDefaultDynamicType(app)
-        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
+        launchApp(environment: [
             "KGR_YS": yourStitches,
             "KGR_YR": yourRows,
-        ]) { _, new in new }
-        app.launch()
-        return app
+        ])
     }
 
     private func tapElement(_ element: XCUIElement) {

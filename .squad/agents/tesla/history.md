@@ -257,3 +257,25 @@ No conflicts. Sibling worktree cleaned up. Main is up-to-date locally. VerdictCa
 - Local `squad/65-harden-form-state` is clean at intake and 2 commits ahead / 0 behind `origin/main`; its diff is coordination state only, with no product implementation.
 - No Edison agent remains active, so the prior “running” claim is stale rather than evidence of completion.
 - The existing approved contract remains authoritative: Edison owns the five production files first, Curie owns the three test files only after API freeze, then read-only review gates proceed in order.
+
+### 2026-07-15T06:42:38.937-07:00 — Issue #65 stash recovery boundary
+
+- `refs/stash` (`6ae295a`) is based exactly on clean branch HEAD `9dc3492`; its index parent has the same tree as HEAD and its untracked parent is the empty tree. All 13 captured modifications are unstaged.
+- The stash is a composite issue snapshot, not coherent Edison-only work: two Squad records, eight production files, and all three Curie test files are mixed together. Applying it wholesale would restore stale coordination claims and bypass the production-before-tests handoff.
+- Selective recovery of the eight production paths is mechanically safe only while HEAD remains `9dc3492` and those paths remain clean. Preserve the stash; do not pop or apply it wholesale.
+- The source API is not frozen in repository state. Edison must first recover and gate production, remove the wheel initializer's raw `Double`/`Int` reparse in favor of the central validator, and record a source freeze. Curie then owns only the three test files and must add genuine process-interruption and independent-multiple-scene coverage before the full gate.
+- GitLab issue #65's canonical description still matches the required contract; no rewrite or status comment is warranted.
+
+### 2026-07-15T07:22:37.572-07:00 — Issue #65 lockout reconciliation
+
+- Curie's rejection predates and mechanically overrides the recovery gate's invalid “Edison resumes” assignment; only reviewer approval of an independent revision can clear Edison's seven-file UI lockout.
+- The intake 13-path composite is not stash `6ae295a`: stale Edison/decisions changes are absent, Curie/Tesla histories are present, and eight production/test paths contain later content.
+- Hopper is the next eligible owner with the seven UI paths from the rejection gate. Ada's accepted math and Curie's three retained test artifacts are read-only; no stash or working-tree change may be discarded.
+- Issue #65 remains the top runnable domain issue with no dependency, remote issue branch, or open MR. The executable local gate and snapshot blob baseline are recorded in `tesla-issue-65-lockout-resolution.md`.
+
+### 2026-07-15T09:08:17-07:00 — Issue #65 approved for publication
+
+- All ten acceptance criteria and all regression guardrails are satisfied locally.
+- Ive, Jacquard, and Mendel approved their read-only gates; Curie's isolated canonical run passed 76/76 with no
+  retries or warning matches.
+- The branch is eligible for its single linked merge request and exact-commit CI gate.

@@ -24,20 +24,24 @@ struct ShareableView: View {
                 }
             }
 
-            shareableSection(title: "Required Adjustments") {
-                VStack(spacing: 10) {
-                    ShareableAdjustmentRow(
-                        title: "Cast-on stitches",
-                        pattern: "Pattern",
-                        adjusted: summary.castOn
-                    )
+            if summary.castOn != nil || !summary.sections.isEmpty {
+                shareableSection(title: "Required Adjustments") {
+                    VStack(spacing: 10) {
+                        if let castOn = summary.castOn {
+                            ShareableAdjustmentRow(
+                                title: "Cast-on stitches",
+                                pattern: "Pattern",
+                                adjusted: castOn
+                            )
+                        }
 
-                    ForEach(summary.sections, id: \.name) { section in
-                        ShareableAdjustmentRow(
-                            title: section.name,
-                            pattern: section.pattern,
-                            adjusted: section.adjusted
-                        )
+                        ForEach(summary.sections, id: \.name) { section in
+                            ShareableAdjustmentRow(
+                                title: section.name,
+                                pattern: section.pattern,
+                                adjusted: section.adjusted
+                            )
+                        }
                     }
                 }
             }
@@ -64,7 +68,7 @@ struct ShareableView: View {
             Text(summary.title)
                 .font(.system(.title2, design: .serif).weight(.bold))
                 .foregroundStyle(AppTheme.ink)
-            Text("Your gauge, pattern gauge, and adjustment plan in one shareable card.")
+            Text("Your pattern and swatch gauge comparison in one shareable card.")
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.muted)
         }

@@ -103,3 +103,45 @@ Recommended first batch: Hopper on #76, Ada on the #79 ledger restoration, Mende
 ## Trade-off and blocker
 
 This queue favors sequential shared-model/UI changes over maximum parallelism, reducing merge and contract drift at the cost of elapsed time. Work may proceed on steps 1–3 and independent foundation items now. The StoreKit/Settings chain cannot proceed until a non-Edison implementation specialist is assigned; bypassing that lockout is prohibited.
+
+---
+
+## 2026-07-14T20:52:19.871-07:00 — INBOX MERGE: copilot-directive-2026-07-14T20-52-19-871-0700.md
+
+### 2026-07-14T20:52:19.871-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Complete the entire five-goal Knitting Gauge Reconciler Squad Work Loop autonomously. Use gpt-5.6-sol for every member/sub-agent, including Ralph and Scribe. Keep Ponytail full active. Preserve validation, errors, security, accessibility, explicit requirements, and tests. Work on feature branches, require `./app/build.sh test` with zero warnings, push and wait for a green GitLab pipeline before merging to main, convert unmet goals or review drift into GitLab issues, and continue until all reviews pass or a concrete external blocker is proven.
+**Why:** User request — captured for team memory
+
+---
+
+## 2026-07-14T20:52:19.871-07:00 — INBOX MERGE: tesla-20260714-queue-reconcile.md
+
+# Work-loop queue reconciliation
+
+**Date:** 2026-07-14T20:53:36-07:00
+**Author:** Tesla
+**Verdict:** APPROVED TO CONTINUE, NOT MERGE-READY
+
+## Completed ordered gates
+
+1. **Hopper — build tooling: COMPLETE.** The 20:32 orchestration record reports `./app/build.sh test` exit 0 on iPhone 17 Pro / iOS 26.5: 70 passed, no failures, skips, expected failures, crashes, build/compiler/analyzer warnings, or SwiftLint violations. The JavaScript harness passed 77/77.
+2. **Tesla — Xcode project scaffold: COMPLETE.** The 20:32 architecture record explicitly approves `app/app.xcodeproj`, its shared scheme, app/unit/UI-test targets, simulator destination, and `build.sh` wiring. No project change was needed.
+
+Historical Ive, Mendel, and Jacquard approvals do not carry forward: current issues #77–#79 require omission, validation, accessibility, and current-design review after their listed dependencies.
+
+## First unmet gate
+
+**Hopper — publish and gate `squad/20260714-work-loop`.** At intake the worktree was clean and linear, but HEAD `8ba4d3e` was four commits ahead of `origin/main` `41050a1`, with no upstream, remote branch, merge request, or feature-SHA pipeline. Push this branch, open an MR, obtain a successful exact-SHA GitHub/GitLab status, then route it to Tesla for merge review.
+
+The branch is safe to treat as the active work-loop branch because its four local commits are bounded to the native build gate and Squad records, with no divergence from `origin/main`. It is not safe as a shared or merge-ready branch until the publication gate completes.
+
+## Dependency-aware queue after publication
+
+1. **Foundation:** Hopper #57 → #58 and #63; Ada #62 plus canonical math-ledger restoration; Curie #51 and #60; Edison #61 and #74. Close #59 as superseded by the approved native gate.
+2. **P0 #65:** Ada owns pure validation/conversion, Edison owns field and accessible-error integration, Curie owns regression tests, Ive reviews.
+3. **StoreKit/Settings:** assign a non-Edison specialist for #53 and #54, then #55 and #56; retain the recorded revision lock.
+4. **Workflow:** Edison #68 → #66 → #73, then #67/#69 → #70 → #71; #75 waits for #62 and #68. Curie tests; Ive and Ada review their respective seams.
+5. **Goal reviews:** Mendel #78 and Jacquard #79 after their dependencies; Ive #77 after all listed design dependencies; Curie #80 on exact final `main`; Tesla final review last.
+
+Issues #1 and #9 are shipped legacy records; #52, #64, and #72 are trackers, not additional implementation steps. GitLab currently has no open MR. Pipeline #314 is green for exact `origin/main` SHA `41050a1`; no pipeline exists for the local feature SHA because the branch has not been pushed. There is no external blocker.

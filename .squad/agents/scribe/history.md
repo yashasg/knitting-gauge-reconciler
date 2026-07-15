@@ -45,3 +45,9 @@ Merged four inbox decisions into `decisions.md`, wrote orchestration/session log
 - Consolidated the repeated Work Loop directive and cleared its inbox file.
 - Logged Tesla's selection of GitLab issue #65 and the Edison → Curie → Ive → Jacquard → Mendel → final Curie gate order.
 - No decision archival, cross-agent propagation, or history summarization was required.
+
+### 2026-07-15T14:58:16.016-07:00 — Issue #82 exact-SHA gate recorded
+
+- Merged three current inbox records and logged Curie, Tesla, and Coordinator outcomes.
+- Recorded Curie's 77/77 exact-SHA local pass and MR !47 as awaiting exact-SHA CI and reviewer gates.
+- The decisions archive hard gate found no entries older than seven days; Tesla history crossed 15 KB and was summarized.

@@ -1,11 +1,14 @@
 ---
-updated_at: 2026-07-15T00:51:39.795-07:00
-focus_area: Issue #65 — harden and simplify form state
-active_issues: [65]
+updated_at: 2026-07-15T14:58:16.016-07:00
+focus_area: Issue #82 / MR !47 — exact-SHA CI and reviewer gates
+active_issues: [82]
 ---
 
 # What We're Focused On
 
-Issue #65 is the top runnable domain issue. Its before-work design gate is approved, but no implementation result exists: the branch contains no product diff, no related merge request, and no active Edison agent.
+Issue #82's clean candidate at exact SHA `b22c775e26507b94d4c11ca382e71f2c24c057de`
+has passed Curie's local runtime gate: 77/77 tests, with zero failures, skips,
+warnings, crashes, or SwiftLint violations.
 
-Next handoff: Edison implements only the five production files authorized by the approved gate. Curie starts the three authorized test files only after Edison freezes the source API; Ive, Jacquard, Mendel, and the final Curie gate follow in the recorded order.
+MR !47 remains open and must not be described as merged or complete. The next
+focus is exact-SHA CI evidence and the remaining reviewer/acceptance gates.

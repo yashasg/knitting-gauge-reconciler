@@ -1,0 +1,18 @@
+SCRIBE HEALTH REPORT — 2026-07-15T14:58:16.016-07:00
+
+DECISIONS
+- Before: 55,252 bytes
+- After: 58,403 bytes
+- Archive: 114,028 bytes, unchanged
+- Hard gate: >=51,200 bytes; no active entry older than 7 days was eligible
+- Inbox: 3 files processed; 0 remaining
+- Deduplication: no duplicate inbox record retained
+
+HISTORY
+- Tesla: 18,272 → 4,963 bytes after summarization
+- All active agent histories are below 15,360 bytes
+
+LOGS AND SCOPE
+- Wrote 3 orchestration entries and 1 session log
+- Updated issue #82 / MR !47 focus state
+- Product, test, and prototype files touched: 0

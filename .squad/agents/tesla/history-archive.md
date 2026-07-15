@@ -14,3 +14,10 @@ _Summarized at 2026-07-14T23:38:12.955-07:00 after crossing the 15,360-byte hist
 - The 2026-05-20 MetricKit closeout amended standards and issue scope, then shipped the agreed native implementation and test coverage.
 
 This summary supersedes the verbose archive; current work remains in `history.md`.
+
+## 2026-07-15T14:58:16.016-07:00 — Additional durable summary
+
+- Fastlane/CD work established that step-scoped environment values need stable file fallback across workflow steps and that scheme participation governs test selection.
+- Prototype-parity governance was retired; current issue contracts and canonical decisions own acceptance.
+- Issue #65 reinforced strict owner allowlists, independent revision after lockout, exact-result-bundle inspection, and preservation of unrelated dirty state.
+- Issue #82 static reconciliation proved the authorized three-file branch and MR !47 at `b22c775`; Curie's local gate then passed 77/77, while CI and reviewer gates remain separate prerequisites.

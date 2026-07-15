@@ -473,3 +473,478 @@ and 0 warnings or crashes.
   attached element image shows opaque near-black text over the opaque oatmeal tile; the existing audit filter now
   excludes only that exact platform report. The following signal-kill record was suite cancellation after the audit
   failure, and both affected tests passed together without test-level retry.
+
+---
+
+# Ada Final Math Review
+
+**Date:** 2026-07-15T14:38:21.113-07:00
+**Owner:** Ada
+**Verdict:** PASS
+
+## Evidence
+
+- Formula authority: `.squad/decisions.md:22-24`.
+- `computeGaugeMath`: `GaugeMath.swift:107-138` implements stitch width `pattern/your`, cast-on `your/pattern`, row density `your/pattern`, dimension correction `pattern/your`, shaping interval times row density, and section rows `round((cm / 10) × yourRows)`.
+- Optional arithmetic: `GaugeMath.swift:113-117,124-138,157-163` uses `map`/`flatMap`; absent inputs remain absent and integer conversion uses `Int(exactly:)`.
+- Formatting: `GaugeMath.swift:142-155` matches `prototype/index.html:260-262` for validated positive values. Swift and JS both round positive halves upward; centimetres have one fixed decimal.
+- Cast-on: `GaugeMath.swift:108,113-117,137-138` matches `prototype/tests/gauge-math.test.js:79-84`, including signed rounding drift.
+- Input safety: `GaugeMath.swift:59-103` enforces finite values and approved ranges before compute. Maximum accepted intermediates remain finite and safely within `Int`.
+- Unit conversion: `MeasurementUnit.swift:32-47,50-87` keeps centimetres canonical, uses exact `2.54`, and safely rejects reverse-conversion overflow.
+- Determinism: `GaugeMath.swift` has no clock, random, logging, analytics, mutable static state, `NumberFormatter`, or user-input force unwrap. `GaugeMathMetrics.swift:41-53` is a pure classifier.
+- Test correspondence: `GaugeMathTests.swift:12-49` covers all six JS scenarios; `51-108` covers range/finite validation and formatters; `113-180` covers extreme drift, exact-match determinism, cast-on, and reciprocal scales; `240-313` covers section rows and optional absence; `492-617` covers unit conversion.
+
+No harmless implementation difference changes the contract. No build was run, per Curie's ownership.
+
+---
+
+### 2026-07-15T13:58:22.271-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Execute the complete Squad Work Loop autonomously; use `gpt-5.6-sol` for every member including Ralph and Scribe; keep Ponytail full active; preserve ambiguous or unrelated state; require one coherent issue per MR, warning-free local tests, exact-pushed-SHA green CI, merge and safe cleanup, then parallel final reviews until all five goals pass or unavailable human input truly blocks progress.
+**Why:** User request — captured for team memory
+
+---
+
+# Edison final UI implementation review
+
+**Date:** 2026-07-15T14:38:21.113-07:00
+**Owner:** Edison
+**Verdict:** **FAIL**
+
+The shipped authorized UI tree matches issue #65 exact source commit, and local
+`swiftlint lint --quiet --no-cache app/KnittingGaugeReconciler` exits 0.
+
+## Evidence
+
+- **PASS — four primary inputs:** `GaugeInputsCard.swift:45-58,99-154` presents
+  pattern stitches/rows and swatch stitches/rows on one card with the required
+  24-point group spacing.
+- **PASS — identical constraints:** `GaugeMath.swift:59-102` owns finite/range
+  validation; `ContentView.swift:76-98,381-385` is the only raw-to-model route;
+  `GaugeStepperField.swift:443-450` also initializes the wheel through that
+  validator.
+- **FAIL — live recalculation:** `ContentView.swift:230-233,654-658` invalidates
+  cached results and dismisses the result sheet on every edit.
+  `RequiredAdjustmentsCard.swift:48-52` computes and presents results only after
+  `View results` is tapped.
+- **FAIL — hero results:** repository search finds `HeroTilesView` only at its
+  declaration (`HeroTilesView.swift:3`). The shipped sheet instead uses
+  `GaugeSummaryRow` (`RequiredAdjustmentsCard.swift:281-297,390-429`), so the
+  requested live hero has no call site.
+- **PASS — adjustment output:** `RequiredAdjustmentsCard.swift:180-239` presents
+  gauge summary plus conditional yoke, body/sleeve, shaping, and cast-on rows.
+- **PASS — optional details:** `PatternInstructionsCard.swift:44-72` is a
+  disclosure; `ContentView.swift:42-53` defaults optionals to blank and collapsed;
+  conditional result omission is guarded by
+  `KnittingGaugeReconcilerUITests.swift:386-445`.
+- **PASS — issue #65 interaction state:** inline correction and first-invalid
+  focus/announcement are at `ContentView.swift:401-450`; exact reset/Undo is at
+  `ContentView.swift:605-652`; exact reset copy is at
+  `RequiredAdjustmentsCard.swift:130-135`; scene-local raw/disclosure restoration
+  is at `ContentView.swift:34-53,454-597`. UI guardrails are
+  `KnittingGaugeReconcilerUITests.swift:447-571`.
+- **PASS — accessibility/warning regression scan:** Dynamic Type reflow is at
+  `GaugeInputsCard.swift:61-96`; field labels, hints, identifiers, 44-point
+  controls, and inline errors are at `GaugeStepperField.swift:179-250`;
+  accessibility audits cover collapsed, expanded, and required-only results at
+  `AccessibilityAuditTests.swift:200-228`. No banned Dynamic Type modifier,
+  force-unwrap, `try!`, or `#warning` was found.
+
+## Required owner follow-up
+
+**Owner:** Edison
+**Goal:** Make the four validated required values drive a continuously visible
+stitch/row hero while preserving issue #65 validation, optional omission,
+adjustment output, reset/Undo, and scene restoration.
+
+**Acceptance criteria:**
+
+1. Four valid required values show stitch-wise and row-wise percentage/status
+   heroes without tapping `View results`.
+2. Keyboard typing, paste, and wheel commits all update the same hero through
+   `GaugeMath.validate`; invalid input preserves raw text, removes stale hero
+   output, shows/focuses the specific error, and recovery restores live output.
+3. Conditional adjustment rows and blank optional behavior remain unchanged.
+4. Existing identifiers, Dynamic Type reflow, accessibility audits, and
+   warning-free gates remain green.
+
+**Runnable regression guardrail:** add
+`testLiveHeroResultsRecalculateAcrossKeyboardPasteAndWheelAndHideWhenInvalid`
+to `KnittingGaugeReconcilerUITests.swift`, then run:
+
+```bash
+xcodebuild test \
+  -project app/app.xcodeproj \
+  -scheme KnittingGaugeReconciler \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -only-testing:KnittingGaugeReconcilerUITests/KnittingGaugeReconcilerUITests/testLiveHeroResultsRecalculateAcrossKeyboardPasteAndWheelAndHideWhenInvalid
+```
+
+---
+
+# Hopper final build review
+
+**Reviewed:** 2026-07-15T14:38:21.113-07:00
+**Commit:** `1608bcc5b2cba824b54a600c6a7590a8ed681c19`
+**Verdict:** **FAIL — existing tooling issue #59**
+
+## Static evidence
+
+- `app/build.sh:155-170` maps `build` to Fastlane `build` with Debug/`iphonesimulator`, `test` to `ci` with Debug/`iphonesimulator`, and `release` to Fastlane `build` with Release/`iphoneos` and `generic/platform=iOS`.
+- `app/build.sh:7,87-123,188-194` defaults to iPhone 17 Pro, rejects non-simulator test/build destinations, resolves a simulator UDID, and runs foreign-app cleanup only for tests.
+- `app/build.sh:196-205` passes `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`, GCC/Clang warnings-as-errors, and `OTHER_SWIFT_FLAGS=-warnings-as-errors`; non-release modes also disable code signing.
+- `app/app.xcodeproj/project.pbxproj:283-342` enables Clang/GCC warnings-as-errors in Debug and Release. Lines 344-464 enable Swift warnings-as-errors for the app, unit-test, and UI-test targets in both configurations.
+- `app/build.sh:2,148-153,239` uses `set -euo pipefail` and executes Fastlane without swallowing its status. Invalid modes exit 64; preflight failures exit 65.
+- `app/build.sh` passes `bash -n`.
+- `.github/workflows/cd.yml:154-172` gates distribution through Fastlane tests unless the explicit `skip_tests` dispatch input is selected, then invokes only the selected `beta` or `release` lane.
+
+## Exact-SHA evidence
+
+- MR !46 merged source `99fd75d096daf74de1edd272bf24325f732f9920` as exact main commit `1608bcc5b2cba824b54a600c6a7590a8ed681c19`; the authorized tooling inputs are identical between those commits.
+- GitLab pipeline `2680031750` is `success` on ref `main` at that exact merge SHA.
+- Its linked GitHub run `29450412735` is successful, resolved iPhone 17 Pro, reported `Found 0 violations`, ended with `Test Succeeded`, and had no compiler `warning:` signature.
+- The pipeline demonstrates Fastlane formatting: Release build output uses `xcpretty`; test output uses `xcbeautify`.
+
+## Contract failure
+
+`docs/swift_coding_standards.md:159-161` requires `-quiet`, xcpretty, and SwiftLint before every Xcode invocation. The shipped `app/build.sh` has no `-quiet` token and no formatter function or pipe; exact pipeline commands likewise omit `-quiet`, and tests use xcbeautify rather than the documented xcpretty path. SwiftLint also remains optional for wrapper `build`/`release` when the executable is absent (`app/build.sh:68-75`).
+
+This is already owned by open domain issue #59, which explicitly requires Fastlane canonical ownership while preserving warnings-as-errors, quiet output, actionable exits, zero SwiftLint violations, and a passing `./app/build.sh test` compatibility path. The shortest compliant revision is in Fastlane plus a thin wrapper; do not restore the larger native shell implementation.
+
+## Required gate
+
+Curie issue #80 owns the concurrent runtime `./app/build.sh test`; this review did not run it. Final acceptance remains conditional on Curie recording the exact SHA, all tests passing, zero SwiftLint/compiler warnings, and the matching successful GitHub/GitLab status.
+
+---
+
+# APPROVED — Goal 2 final UX sign-off
+
+**Date:** 2026-07-15T14:38:21.113-07:00
+**Owner:** Ive
+**Goal:** 2
+**Review mode:** Source-and-test evidence; no simulator or build launched.
+
+## Verdict
+
+**APPROVED.** No user-facing or accessibility defect was found. Shipped commit
+`1608bcc5b2cba824b54a600c6a7590a8ed681c19` contains issue #65 exact commit
+`99fd75d096daf74de1edd272bf24325f732f9920`; all authorized production and UI-test
+paths are clean.
+
+## Evidence
+
+- **Core task and hierarchy:** `ContentView.swift:125-179` presents the exact issue lead, then one gauge surface,
+  optional pattern details, and the results/reset actions. `GaugeInputsCard.swift:45-59` keeps Pattern Gauge and
+  Swatch Gauge together with the required 24-point group break.
+- **Four required inputs:** `GaugeInputsCard.swift:99-155` exposes stitches and rows for pattern and swatch.
+  `ContentView.swift:76-99` requires all four while permitting blank optionals. Required-only results are guarded by
+  `AccessibilityAuditTests.swift:219-228`.
+- **Hero outputs:** The prototype's always-live main-screen heroes are intentionally replaced by an on-demand native
+  results sheet, consistent with the authoritative main-screen task-execution decision. The sheet retains both hero
+  meanings as “Stitch-wise width” and “Row-wise density” in
+  `RequiredAdjustmentsCard.swift:281-298,390-428`, with text labels and VoiceOver labels rather than color-only status.
+- **Adjustment table:** The prototype's always-populated rows are intentionally replaced by conditional adjustment
+  cards. `RequiredAdjustmentsCard.swift:180-239` emits only supplied yoke, body/sleeve, shaping, and cast-on guidance;
+  `KnittingGaugeReconcilerUITests.swift:386-445` covers none, each representative optional class, and all optionals.
+- **Labels, roles, state, and focus:** Fields expose label, value, hint, mismatch, and error
+  (`GaugeStepperField.swift:105-131,179-249`). Native `Button`, `TextField`, `Picker`, `DisclosureGroup`, `Alert`, and
+  sheets preserve platform roles and states. Submission expands hidden invalid optionals, focuses the first invalid
+  field, and announces its exact correction (`ContentView.swift:437-449`); the correction round trip is guarded by
+  `KnittingGaugeReconcilerUITests.swift:447-495`.
+- **Errors and contrast semantics:** Invalid values remain raw, receive wrapped inline text, an accessibility value,
+  and a correction hint; results remain disabled (`GaugeStepperField.swift:105-123,242-250`;
+  `RequiredAdjustmentsCard.swift:46-88`). Mismatch and invalid styling is never the sole signal. The lead uses
+  `AppTheme.ink` on an opaque `AppTheme.background` surface (`ContentView.swift:125-137`).
+- **Target sizes and HIG:** Primary result, reset, Undo, disclosure, field, picker, and Close controls provide 44-point
+  minimum targets. Optional details use native disclosure and segmented picker; results, wheel selection, reset
+  confirmation, and sharing use native sheets, picker, alert, and activity controller.
+- **Dynamic Type:** No text-size cap or `minimumScaleFactor` exists in the reviewed SwiftUI source. Input grids and
+  result pairs stack at accessibility sizes (`GaugeInputsCard.swift:61-97`;
+  `GaugeMeasurementPair.swift:12-31`), long text wraps, and the AX5 input-stack behavior is guarded by
+  `KnittingGaugeReconcilerUITests.swift:210-233`.
+- **Keyboard, paste, and wheel parity:** The native `UITextField` accepts direct entry and paste into the raw binding
+  (`GaugeStepperField.swift:312-344,383-401`). Calculation validates through `GaugeMath.validate`
+  (`ContentView.swift:381-385`), and wheel initialization uses the same validator
+  (`GaugeStepperField.swift:443-451`) before bounded selection.
+- **Reset and Undo:** Exact confirmation copy appears in `RequiredAdjustmentsCard.swift:90-135`; the full raw draft
+  and disclosure state are snapshotted, reset, and restored in `ContentView.swift:605-652`. The complete user flow is
+  guarded by `KnittingGaugeReconcilerUITests.swift:497-571`.
+- **Optional disclosures:** `PatternInstructionsCard.swift:44-71` uses a collapsed native disclosure with an explicit
+  optional label and state-bound content. Full math remains a secondary disclosure inside results
+  (`RequiredAdjustmentsCard.swift:325-357`).
+- **Canonical evidence:** Issue #65 records every acceptance item complete, exact-commit verification, zero SwiftLint
+  violations, and a passing canonical test gate. Current decisions additionally record the final accessibility,
+  focus, restoration, and warning-free approvals.
+
+## Intentional prototype differences
+
+The archival prototype's live fallback calculation, always-visible hero/verdict block, populated optional rows,
+privacy card, browser storage, and share-link behavior conflict with current canonical decisions and are correctly
+absent. Native controls and the smaller required-first surface are positive, not parity defects.
+
+## Regression guardrail
+
+Retain the existing accessibility audits, AX5 stacking test, optional-output matrix, validation/focus round trip, and
+Reset/Undo round trip. No revision owner is required because the verdict is approved.
+
+---
+
+# Jacquard — Goal 4 Final Math Signoff
+
+**Date:** 2026-07-15T14:38:21.113-07:00
+**Requested by:** Tesla
+**Verdict:** **SIGNED OFF**
+
+## Formula evidence
+
+- Stitch percentage is width at the pattern count: `patternStitches / yourStitches`.
+  A denser 36-stitch swatch against 32 displays `32 / 36 = 88.89% → 89%`; a looser
+  28-stitch swatch displays `32 / 28 = 114.29% → 114%`.
+- Cast-on correction is the reciprocal: `patternCastOn × yourStitches / patternStitches`,
+  rounded once to the nearest whole stitch. Thus `128 × 36 / 32 = 144` and
+  `128 × 28 / 32 = 112`. Whole stitches are the minimum physically usable count;
+  no repeat multiple can be inferred without a pattern-repeat input.
+- Row percentage is density: `yourRows / patternRows`. A denser 32-row swatch against
+  24 displays `133%`; a looser 20-row swatch against 24 displays `83%`.
+- Legacy adjusted centimetres remain `patternCm × patternRows / yourRows`; shaping remains
+  `patternInterval × yourRows / patternRows`. Section guidance uses the current contract,
+  `round((patternCm / 10) × yourRows)`.
+- Positive validated values make Swift's `.rounded()` equivalent to JavaScript
+  `Math.round`: centimetres show one decimal, rows are whole with a minimum of one,
+  and percentages are whole numbers.
+
+## Six realistic scenarios
+
+| Scenario | Width | Row density | Dimension | Lengths (cm) | Shaping | Cast-on |
+|---|---:|---:|---:|---|---:|---:|
+| 32/24 → 32/24 | 100% | 100% | 1 | 20 / 50 / 45 | 6 | 128 |
+| 32/24 → 32/32 | 100% | 133% | 0.75 | 15 / 37.5 / 33.8 displayed | 8 | 128 |
+| 32/24 → 32/20 | 100% | 83% | 1.2 | 24 / 60 / 54 | 5 | 128 |
+| 32/24 → 36/24 | 89% | 100% | 1 | 20 / 50 / 45 | 6 | 144 |
+| 32/24 → 28/24 | 114% | 100% | 1 | 20 / 50 / 45 | 6 | 112 |
+| 32/24 → 36/32 | 89% | 133% | 0.75 | 15 / 37.5 / 33.8 displayed | 8 | 144 |
+
+## Contract-preserving refactors versus drift
+
+- Preserving: `GaugeMath.compute` names both reciprocal stitch scales, maps optional
+  lengths/shaping/cast-on so absence never enters arithmetic, and uses checked
+  `Int(exactly: value.rounded())`.
+- Preserving: lengths remain canonical centimetres; inches are entry/display conversion
+  only at exact `1 in = 2.54 cm`, with the established whole-unit UI rounding.
+- Preserving: `GaugeMathMetrics` classifies completed output outside the pure math layer;
+  `ContentViewHelpers` only maps form fields to the central validator.
+- Intentional non-formula drift: Swift rejects non-finite/out-of-range raw text and leaves
+  blank optionals absent. The prototype silently substitutes defaults. The active contract
+  requires the Swift behavior.
+- The exact nested `.squad/decisions/decisions.md` contains no gauge-math clause and no
+  conflicting requirement. The active formula authority is `.squad/decisions.md`, which
+  explicitly records the formulas above.
+
+## Guardrails run
+
+- `node prototype/tests/gauge-math.test.js`: 77 passed, 0 failed, 0 pending.
+- Focused Swift source execution against `GaugeMath.swift` and `MeasurementUnit.swift`:
+  all six scenarios plus formatting, finite/range, optional, and inch checks passed.
+- The focused Xcode command could not run because this checkout contains no
+  `app/KnittingGaugeReconciler.xcodeproj`; this does not alter the source-level signoff.
+
+---
+
+# Mendel — Goal 3 final scenario sign-off
+
+**Date:** 2026-07-15T14:38:21.113-07:00
+**Issue:** #78
+**Verdict:** **NOT CONFIRMED**
+
+## Six-scenario map
+
+The shared pattern inputs are 32 stitches/10 cm, 24 rows/10 cm, yoke 20 cm, body 50 cm,
+sleeve 45 cm, shaping every 6 rows, and cast-on 128.
+
+1. **Perfect match** — swatch 32 stitches / 24 rows. Expected visible values: width 100%,
+   row density 100%, yoke 20.0 cm, body 50.0 cm, sleeve 45.0 cm, shaping every 6 rows,
+   cast on 128. Swift: `scenario1PerfectMatch`,
+   `app/KnittingGaugeReconcilerTests/GaugeMathTests.swift:12`.
+2. **Denser rows only** — swatch 32 / 32. Expected: width 100%, row density 133%,
+   yoke 15.0 cm, body 37.5 cm, sleeve 33.8 cm, shaping every 8 rows, cast on 128.
+   Swift: `scenario2DenserRowsOnly`,
+   `app/KnittingGaugeReconcilerTests/GaugeMathTests.swift:17`.
+3. **Looser rows only** — swatch 32 / 20. Expected: width 100%, row density 83%,
+   yoke 24.0 cm, body 60.0 cm, sleeve 54.0 cm, shaping every 5 rows, cast on 128.
+   Swift: `scenario3LooserRowsOnly`,
+   `app/KnittingGaugeReconcilerTests/GaugeMathTests.swift:26`.
+4. **Denser stitches only** — swatch 36 / 24. Expected: width 89%, row density 100%,
+   yoke 20.0 cm, body 50.0 cm, sleeve 45.0 cm, shaping every 6 rows, cast on 144.
+   Swift: `scenario4DenserStitchesOnly`,
+   `app/KnittingGaugeReconcilerTests/GaugeMathTests.swift:33`.
+5. **Looser stitches / Hisahashisaka** — swatch 28 / 24. Expected: width 114%, row
+   density 100%, yoke 20.0 cm, body 50.0 cm, sleeve 45.0 cm, shaping every 6 rows,
+   cast on 112. Swift: `scenario5LooserStitchesHisahashisakaCase`,
+   `app/KnittingGaugeReconcilerTests/GaugeMathTests.swift:39`.
+6. **Both denser** — swatch 36 / 32. Expected: width 89%, row density 133%,
+   yoke 15.0 cm, body 37.5 cm, sleeve 33.8 cm, shaping every 8 rows, cast on 144.
+   Swift: `scenario6BothDenser`,
+   `app/KnittingGaugeReconcilerTests/GaugeMathTests.swift:45`.
+
+## Direct UI evidence
+
+`testAllJacquardScenariosAreVisibleInUI`
+(`app/KnittingGaugeReconcilerUITests/KnittingGaugeReconcilerUITests.swift:235`) directly
+checks all six inputs, mismatch accessibility behavior, and visible scale summaries.
+`testOptionalOutputMatrixNeverShowsIrrelevantScreenSections`
+(`app/KnittingGaugeReconcilerUITests/KnittingGaugeReconcilerUITests.swift:386`) directly
+checks screen-section presence/absence. `optionalOutputMatrixOmitsIrrelevantExportAndShareSections`
+(`app/KnittingGaugeReconcilerTests/GaugeMathTests.swift:254`) checks export/share omission.
+Issue #78 does not require six
+duplicate timing-dependent UI arithmetic tests; one table-driven presentation-level unit
+guard is sufficient.
+
+## Blocking gaps
+
+- The six named unit tests primarily assert `GaugeMathResult` implementation fields through
+  `expect` (`GaugeMathTests.swift:437–455`). Formatting is asserted only selectively or in
+  separate generic tests. Therefore none directly maps every required user-visible scale,
+  adjusted measurement, shaping interval, and cast-on string for its scenario. Coverage is
+  indirect and ambiguous against issue #78's acceptance criterion and regression guardrail.
+- The omission matrices cover none, cast-on only, yoke only, shaping only, and all fields,
+  but not body-only or sleeve-only. They do not yet cover each optional construction input.
+
+## Required issue #78 update
+
+Keep Goal 3 open and record a bounded Curie-owned revision:
+
+- **Owner:** Curie
+- **Acceptance criterion:** Add one table-driven, UI-timing-independent Swift test with six
+  named rows that asserts the display-facing percentage, formatted yoke/body/sleeve values,
+  shaping interval, and cast-on guidance above. Extend omission coverage with body-only and
+  sleeve-only rows, preserving irrelevant screen/export/share absence.
+- **Runnable regression guardrail:**
+
+```bash
+xcodebuild test \
+  -project app/app.xcodeproj \
+  -scheme KnittingGaugeReconciler \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -only-testing:KnittingGaugeReconcilerTests/GaugeMathTests
+```
+
+No additional per-scenario UI test is required.
+
+---
+
+# Post-#65 queue and cleanup classification
+
+**Recorded:** 2026-07-15T13:58:22.271-07:00
+
+GitLab confirms MR !46 merged exact SHA `99fd75d096daf74de1edd272bf24325f732f9920` with a successful exact-SHA pipeline and issue #65 closed. No merge request is open.
+
+## Removed because GitLab proves shipped
+
+- Clean detached worktree `~/.copilot/session-state/dba12446-c72d-4542-8b74-70fb4af58ee8/files/issue65-commit-worktree`; its `dc1a8fa` commit is included in merged !46.
+- Local branches `fix/24-followup-sheet-identifiers`, `fix/40-reset-confirmation-lift-v2`, `fix/a11y-audit-offscreen-filter`, `fix/ci-shared-scheme`, and `squad/20260714-work-loop`; their tips are the merged MR source tips.
+- Local branches `squad/48-49-gauge-display-fixes`, `squad/50-unit-toggle-phase1`, and `squad/dynamic-type-elastic-layout`; their tips are ancestors of merged MR !44's source.
+
+Each cleanup used forced worktree removal where applicable, forced local branch deletion where applicable, and worktree pruning.
+
+## Preserved live or ambiguous state
+
+- Current worktree on `squad/65-harden-form-state` at merged SHA `99fd75d` is dirty: 13 tracked Squad-state paths, `ContentView.swift`, `AccessibilityAuditTests.swift`, plus untracked `.scratch-ada-xcresult/`, `.squad/agents/babbage/`, and `.squad/agents/turing/`.
+- Detached worktree `/Users/yashasgujjar/dev/knitting-gauge-reconciler-issue65-turing` at `99fd75d` is dirty in `ContentView.swift`, `AccessibilityAuditTests.swift`, and `KnittingGaugeReconcilerUITests.swift`.
+- All 70 stashes, `stash@{0}` through `stash@{69}`. None has an exact payload snapshot matching shipped `origin/main`; 60 also contain untracked payloads. Their bases being shipped is insufficient proof.
+- Ambiguous local branches: `ci-smoke-test` (closed, unmerged !28), `fix/38-about-sheet-decorative-rectangle-hidden` (closed, unmerged !25), `fix/asc-numeric-app-id` (closed, unmerged !40), `fix/24-navstack-in-sheet` and `fix/cast-on-result-a11y-identifier` (local tips continue beyond their merged MR source), and `fix/cast-on-result-a11y-identifier-v2` and `squad/consolidated-release` (no proof their local tips shipped).
+- Retain `main` and the dirty current `squad/65-harden-form-state` branch.
+
+No Git notes or inbox records represented additional loop-preserved work before this decision.
+
+## Exact open queue
+
+Open issues are #1, #9, #51, #52, #57, #59, #60, #62, #66, #70, and #77–#80. #1 is the project brief, #9 is the metrics tracker, and every domain/final-review issue is labeled `follow-up`.
+
+Under the loop contract, no domain issue is currently runnable while that label remains. #62 is the dependency-frontier candidate to promote next; #66 waits on #62, #70 waits on #66, and final review #77–#80 remains blocked.
+
+---
+
+# Post-#65 reconciliation update
+
+**Recorded:** 2026-07-15T14:38:21.113-07:00
+
+- Primary worktree is now clean on `main`, exactly aligned with `origin/main` at `1608bcc5b2cba824b54a600c6a7590a8ed681c19`.
+- Only local branch `squad/65-harden-form-state` was deleted after MR !46 and issue #65 were independently reconfirmed shipped.
+- Preserve the detached issue65 worktree: it remains dirty in `ContentView.swift`, `AccessibilityAuditTests.swift`, and `KnittingGaugeReconcilerUITests.swift`.
+- Preserve all 71 stashes and every other local branch. The previous record counted 70 stashes; the additional newest stash is also ambiguous, so shipped ancestry is not deletion proof.
+- No merge request is open. #62 is the top dependency-frontier domain issue, but it and every other open domain/final-review issue remain `follow-up` and therefore are not runnable without deliberate canonical promotion.
+
+---
+
+### 2026-07-15T14:58:16.016-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Use gpt-5.6-sol for every agent launched in this session, including Ralph and Scribe; run the entire Knitting Gauge Reconciler Squad Work Loop autonomously with Ponytail full mode.
+**Why:** User request — captured for team memory
+
+---
+
+# Curie runtime gate — Issue #82
+
+- Timestamp: 2026-07-15T14:58:16.016-07:00
+- Verdict: **PASS**
+- Exact SHA: `b22c775e26507b94d4c11ca382e71f2c24c057de`
+- Initial and final issue-worktree state: clean
+- Required command: `./app/build.sh test`
+- Exit status: 0
+- Simulator used by the test result: Babbage Issue 65 Gate, iPhone 17 Pro, iOS 26.5, `A7D4383A-757A-499C-9CA9-8CB02C7CE58A`
+- Tests: 77 total, 77 passed, 0 failed, 0 skipped, 0 expected failures
+- Crashes: 0
+- Build warnings: 0; analyzer warnings: 0
+- SwiftLint violations: 0
+- Test action elapsed time: 300.009 seconds; complete Fastlane lane elapsed time: 304.773 seconds
+
+All 77 expected tests executed. The result bundle contains exactly 77 passed test-case nodes and no failure insights, errors, warnings, skips, or crashes.
+
+---
+
+# Issue #82 reconciliation
+
+**Recorded:** 2026-07-15T14:58:16.016-07:00
+**Verdict:** READY-BUT-BLOCKED-ON-CURIE
+
+## Contract evidence
+
+- `squad/82-restore-production-scene-persistence` is clean at
+  `b22c775e26507b94d4c11ca382e71f2c24c057de`, one commit ahead of
+  `origin/main`, and the remote branch resolves to that exact SHA.
+- The branch diff contains only the three authorized paths:
+  `ContentView.swift`, `AccessibilityAuditTests.swift`, and
+  `KnittingGaugeReconcilerUITests.swift`.
+- Their blobs exactly match the issue-approved revisions `40e80fbe`,
+  `3f86ddc`, and `e1ef916`; unchanged `GaugeMath.swift` exactly matches
+  `cc875582`.
+- MR !47 is the sole merge request for this source branch, targets `main`,
+  carries exact SHA `b22c775`, and contains only issue #82's domain.
+
+## Publication boundary
+
+No Curie-owned `./app/build.sh test` result is recorded for exact SHA
+`b22c775`. MR !47 has no pipeline. The prior 77/77 and reviewer-approval
+claims in the issue/MR are therefore not acceptance evidence.
+
+The canonical issue description now records the committed/pushed candidate,
+the single existing MR, and the pending hard prerequisite without marking any
+acceptance or reviewer checkbox complete. Do not merge or accept publication
+until Curie runs the exact-SHA gate and records 77/77 passing, zero failures,
+zero skips, zero compiler warnings, and zero SwiftLint violations.
+
+This is not a rejection: the static restoration contract passes, so no
+reviewer lockout or revision owner is activated.
+
+---
+
+# Issue #82 gate reconciliation update
+
+**Recorded:** 2026-07-15T14:58:16.016-07:00
+
+Curie subsequently completed the required canonical local gate on exact SHA
+`b22c775e26507b94d4c11ca382e71f2c24c057de`: 77/77 passed with zero failures,
+skips, warnings, crashes, analyzer warnings, or SwiftLint violations. This
+supersedes only the earlier Curie-blocked publication boundary. MR !47 remains
+awaiting exact-SHA CI and reviewer/acceptance gates and is not recorded as
+merged or complete.

@@ -153,5 +153,5 @@ jobs:
             -H "PRIVATE-TOKEN: ${{ secrets.GITLAB_PAT }}" \
             "https://gitlab.com/api/v4/projects/${{ github.event.client_payload.project_id }}/statuses/${{ github.event.client_payload.sha }}" \
             -d "state=${STATE}" \
-            -d "name=Build & Test" \
+            --data-urlencode "name=Build & Test" \
             -d "target_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

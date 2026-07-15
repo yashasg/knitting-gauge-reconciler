@@ -60,3 +60,46 @@ The external CI gate is red before checkout: both recent GitHub mirror runs fail
 `squad/20260714-work-loop` is a valid **Goal 1 candidate**, two commits ahead of `origin/main`, and its local gate is green. It is not merge-ready or suitable as a shared specialist branch: it has no remote/upstream, contains an unrelated uncommitted `.squad/identity/now.md` update, and CI authentication is blocked. Preserve it; use isolated issue branches from `origin/main` for #65 and any reviewer-directed revisions.
 
 Recommended first batch: Hopper on #76, Ada on the #79 ledger restoration, Mendel on #78, and Ive on #77. These scopes are independent; Jacquard waits only for Ada, and Curie waits for all merged work.
+
+---
+
+## 2026-07-14T20:12:26.685-07:00 — INBOX MERGE: tesla-work-loop-design-review.md
+
+# Before-work design review — complete Squad Work Loop
+
+**Date:** 2026-07-14T19:52:25.092-07:00  
+**Author:** Tesla  
+**Verdict:** APPROVED WITH ORDERED GATES
+
+## Baseline and changed reality
+
+- `./app/build.sh test` passes on iPhone 17 Pro / iOS 26.5: 70 passed, 0 failed, 0 skipped; SwiftLint, compiler, and analyzer warnings are all zero.
+- The archival JavaScript harness passes 77/77 with no pending tests. It corroborates the formulas but is not the UI or scenario authority.
+- GitHub mirror authentication is restored and GitLab #76 is closed. Main commit `41050a1` has a successful exact-commit GitLab pipeline.
+- `squad/20260714-work-loop` is clean and three commits ahead of `origin/main`, but has no remote branch, MR, or exact-commit external gate.
+- The prior queue is stale: #77 now reviews canonical design issues rather than `prototype/`; #78 and #79 now include omission semantics; #76 is resolved.
+- The requested `app/KnittingGaugeReconciler.xcodeproj` path does not exist. The checked-in, scheme-valid project is `app/app.xcodeproj`; renaming it adds risk without user value.
+
+## Contracts
+
+- Keep the native `./app/build.sh` gate for local build/test/release-build work; Fastlane remains for signed distribution. Close #59 as superseded rather than reintroducing Fastlane into the local gate.
+- Restore the canonical formulas and six scenarios from `93323af` to `.squad/decisions/decisions.md` before domain sign-off.
+- Validation must produce typed required/optional values before `GaugeMath.compute`; no raw, non-finite, omitted, or out-of-range text may reach integer conversion. Valid calculations and rounding remain unchanged.
+- Optional values stay absent through calculation, results, full math, sharing, persistence signatures, and VoiceOver. No layer may invent defaults.
+- Prototype parity is forbidden. #72 and the current issue contracts are the design authority.
+- Every implementation MR needs Curie evidence and its named reviewer. A rejection locks that artifact's author out of the next revision.
+
+## Smallest dependency-aware queue
+
+1. **Hopper → Tesla:** push the current work-loop branch, open an MR, obtain exact-SHA GitHub/GitLab green status; Tesla reviews and merges. Hopper then owns #57 → #58 and #63. No #59 implementation.
+2. **Foundation, in isolated branches:** Ada owns #62 and the canonical math-ledger restoration; Curie owns #51 and #60; Edison owns #61 and #74. These are behavior-preserving cuts or missing test/status gates.
+3. **P0 #65:** Ada owns the pure validation/conversion contract; Edison owns field integration and accessible error behavior; Curie owns the table/UI/a11y tests; Ive reviews. Merge only as one coherent contract.
+4. **Locked StoreKit/Settings chain:** Edison is prohibited from #53–#56. A newly assigned SwiftUI/StoreKit specialist must own #53 and #54, then #55, then #56. #56 also waits for #65 and #68 despite its issue listing only #55. Curie tests; Ive reviews purchase and settings UX; Tesla reviews boundaries.
+5. **Core P1 workflow:** Edison implements #68 → #66, then #73. Curie tests omission behavior; Ive reviews hierarchy/accessibility; Ada reviews typed model seams.
+6. **P2 closure:** Edison implements #67 and #69, then #70, then #71; #75 follows #62 and #68. Preserve #74 if already merged. Curie restores audits before #71 can close.
+7. **Independent final reviews:** Mendel performs #78 after #62/#65/#66/#68; Jacquard performs #79 after #62/#65/#68 and ledger restoration. Each must record APPROVED or REJECTED.
+8. **Ive → Curie → Tesla:** Ive performs #77 only after its listed implementation dependencies are closed. Curie performs #80 on the exact final `main` SHA with matching GitHub and GitLab evidence. Tesla gives final integration approval only after all reviewer inboxes are resolved.
+
+## Trade-off and blocker
+
+This queue favors sequential shared-model/UI changes over maximum parallelism, reducing merge and contract drift at the cost of elapsed time. Work may proceed on steps 1–3 and independent foundation items now. The StoreKit/Settings chain cannot proceed until a non-Edison implementation specialist is assigned; bypassing that lockout is prohibited.

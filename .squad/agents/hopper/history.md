@@ -144,3 +144,13 @@ All 70 tests' assertions passed in both attempts. No code defect. All merged wor
 - **2026-07-14T16:52:21.053-07:00 — Native build gate:** Local `build`, `test`, and `release` modes need only the checked-in Xcode project/scheme and direct `xcodebuild`; Fastlane remains necessary for signed distribution lanes, not local compilation.
 - An explicit simulator UDID must be checked against `simctl list devices available` and limited to iPhones. When the default model is absent, selecting the first available iPhone keeps new Xcode runtimes usable without weakening explicit override validation.
 - Homebrew Fastlane includes `xcpretty` under its `libexec/bin` even when `xcpretty` is not on `PATH`; the build script can preserve formatted output without adding another package.
+
+## 2026-07-14T20:12:26.685-07:00 — Autonomous Work Loop Gate 1
+
+- Confirmed `squad/20260714-work-loop` was clean at `462057686e5c08f39f7bbd1f813c9529d553263b` before testing.
+- Archival JavaScript baseline passed: 77 passed, 0 failed, 0 pending.
+- Sequential `build`, `test`, and `release` modes all exited 0; each SwiftLint pass found 0 violations in 22 files.
+- Test xcresult recorded 70 passed, 0 failed, 0 skipped, 0 expected failures, 0 build errors, 0 compiler warnings, and 0 analyzer warnings on iPhone 17 Pro / iOS 26.5; no crashes were reported.
+- Audited `app/build.sh`: required modes, simulator-only test destination, lock/trap cleanup, warnings-as-errors, `set -o pipefail`, `-quiet`, and xcpretty/native-output fallbacks are intact.
+- A disposable failing-`xcodebuild` probe exited through the formatter pipeline with status 42, proving formatting cannot mask an xcodebuild failure.
+- No build-tooling defect found; no product, project, scheme, build-script, dependency, decision, or reusable-skill change was needed.

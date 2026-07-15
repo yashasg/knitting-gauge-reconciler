@@ -597,6 +597,7 @@ struct ContentView: View {
         focusedField = nil
         showFullMath = false
         invalidateResults()
+        updateSceneRestorationActivity()
     }
 
     private func undoReset() {
@@ -615,6 +616,7 @@ struct ContentView: View {
         focusedField = nil
         showFullMath = false
         invalidateResults()
+        updateSceneRestorationActivity()
     }
 
     private func invalidateResults() {

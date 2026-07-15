@@ -21,16 +21,21 @@ Always use `gpt-5.6-sol` for every Squad agent launched by this loop, including 
 
 ## Each cycle
 
-1. Check `.squad/decisions/inbox/` and `.squad/log/` for open items.
-2. Pick the top **runnable domain issue**. Skip trackers and issues labeled `follow-up`; respect dependencies in the issue description. Assign the domain to the right member(s).
-3. Use the full 30-minute cycle budget productively:
+1. **Reconcile unfinished work before selecting anything fresh.** Inspect the current branch, `git worktree list`, stray local branches with no worktree, `git stash list` and any other loop-preserved saved state, plus the corresponding GitLab issue and merge request state. Resume real unfinished, unshipped work. Discard a stale worktree, branch, stash, or saved state only when GitLab confirms its issue or merge request already shipped. For each GitLab-confirmed stale worktree/branch (issue closed or MR merged), run `git worktree remove --force <path>`, `git branch -D <branch>`, and `git worktree prune`. Never delete an active or unshipped worktree; if GitLab state is ambiguous, preserve it and report it. Never dispatch a new implementation while unfinished work for the same issue exists.
+2. **Finish any merge request that is already ready.** Check all open merge requests, including those found in step 1. If one has a green pipeline for its exact current commit and no unresolved blocker, merge it and complete step 9 cleanup before starting new work.
+3. Check `.squad/decisions/inbox/` and `.squad/log/` for open items.
+4. Only after steps 1–3 leave nothing to resume or merge, pick the top **runnable domain issue**. Skip trackers and issues labeled `follow-up`; respect dependencies in the issue description. Assign the domain to the right member(s).
+5. Work on a feature branch and use the full 30-minute cycle budget productively:
    - Continue through the issue checklist; do not stop after one subtask, one file, one agent response, or session logging.
    - Run independent domain work in parallel when files do not conflict.
+   - Parallel helpers are allowed only while the coordinator remains active to collect and integrate their results. Required implementation or review work may not be abandoned in the background at cycle end.
    - End early only when the domain issue is complete, the queue is empty, or progress requires unavailable human input.
    - If the 30-minute limit arrives before completion, preserve the branch and continue the **same domain issue** next cycle.
-4. Do not open a merge request until every acceptance criterion for exit and every explicit regression guardrail in the domain issue passes locally. Run `./app/build.sh test`; **a warning = a failure.**
-5. Create exactly one merge request for the completed domain issue. Link the issue, list its satisfied exit criteria and guardrails, push the branch, and wait for CI/CD on the exact commit. Do not merge until the pipeline is green and the implementation matches the issue contract.
-6. Re-evaluate all five goals.
+6. Complete every acceptance criterion for exit and explicit regression guardrail in the domain issue, then run `./app/build.sh test`; **a warning = a failure.** Fix failures before publishing.
+7. Commit the coherent domain-issue change, push its feature branch, and create exactly one merge request. Link the issue and list its satisfied exit criteria and guardrails.
+8. Record the pushed commit SHA and wait for that exact SHA's CI/CD pipeline to turn green. Confirm the merge request still matches the issue contract and has no unresolved blockers, then merge it.
+9. After merge, verify the issue worktree is clean, remove it, delete the merged local branch, remove only that shipped issue's obsolete loop-preserved saved state, and run `git worktree prune`. If anything is dirty or cannot be attributed safely, preserve it and report it instead of deleting it.
+10. Re-evaluate all five goals.
    - Any goal ❌ or new drift found → **open a GitLab issue** (`gitlab.com/yashasg/knitting-gauge-reconciler`) with member name, goal #, and one-line description. Add to work items. Keep looping.
    - All five ✅ → proceed to final review.
 

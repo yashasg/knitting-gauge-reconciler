@@ -1017,3 +1017,17 @@ MR !47 must not merge. The exact-SHA remote suite is red, and the GitHub workflo
 1. **#59 — Hopper — runnable now.** Change only the GitHub CI checkout/exact-SHA assertion and Build & Test entrypoint; treat `app/build.sh` and `app/fastlane/Fastfile` as read-only unless a demonstrated compatibility defect requires otherwise. Acceptance is an exact-SHA repository-root `./app/build.sh test` run with warning flags, serial/bounded retry policy, all tests passing, zero warnings/lint/crashes, and matching GitLab status.
 2. **#82 — Edison — blocked on #59.** After #59 is accepted, independently revise only `ContentView.swift`, `KnittingGaugeReconcilerUITests.swift`, and `AccessibilityAuditTests.swift`; keep `GaugeMath.swift` exact and preserve all #65 behavior. Acceptance is deterministic full-suite and exact-SHA remote success, including contrast, optional-output, and process-restoration coverage, followed by Ive, Mendel, Jacquard, and Curie gates.
 3. Keep candidate `b22c775` and MR !47 unchanged until #59 clears the dependency.
+
+---
+
+# Issue #59 canonical exact-SHA CI implementation
+
+**Recorded:** 2026-07-15T14:58:16.016-07:00
+**Owner:** Hopper
+
+- Branch `squad/59-canonical-exact-sha-ci` produced exact SHA `f37cf5f54be483c060710134af3cfae8ec0599c2` in MR !48.
+- The GitHub-only workflow now fetches and verifies the GitLab payload SHA before status reuse and uses repository-root `./app/build.sh test` as its sole test entrypoint.
+- Dispatch events, payload fields, simulator selection, caches, concurrency, callback, and failure propagation were preserved. `app/build.sh`, Fastfile, app code, tests, formulas, release scope, and #82 were unchanged.
+- Local iPhone 17 Pro gate passed 75/75 with zero failures, skips, retries, warnings, crashes, or SwiftLint violations.
+- GitHub runs `29456924170` and `29456926171` passed on the exact source SHA; GitLab external pipeline `2680206053` matched it and passed.
+- Tesla merged !48 after the exact-SHA green result; Hopper did not merge it.

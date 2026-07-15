@@ -1,15 +1,14 @@
 ---
 updated_at: 2026-07-15T14:58:16.016-07:00
-focus_area: Issue #59 canonical CI gate; issue #82 blocked revision
-active_issues: [59, 82]
+focus_area: Evaluate issue #83 drift; then revise issue #82
+active_issues: [83, 82]
 ---
 
 # What We're Focused On
 
-Issue #59 is the top runnable dependency and is owned by Hopper. It must restore
-exact-payload-SHA checkout/assertion and repository-root `./app/build.sh test`
-as the canonical remote CI gate.
+Issue #59 shipped through MR !48 at source `f37cf5f` and merge `7f36b34`.
+Its exact-SHA local, GitHub, and GitLab gates passed.
 
-Issue #82 and MR !47 remain preserved unchanged and blocked on #59 after exact-SHA
-remote failures. Shannon is locked out of the revision cycle. Edison owns the
-later independent issue #82 revision after #59 is accepted.
+Evaluate open follow-up drift issue #83 and MR !49 first without claiming either
+complete. Then Edison owns the independent issue #82 revision; MR !47 remains
+open and blocked for that revision, and Shannon remains locked out.

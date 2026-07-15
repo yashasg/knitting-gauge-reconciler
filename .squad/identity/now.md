@@ -1,10 +1,14 @@
 ---
-updated_at: 2026-05-20T19:26:30-07:00
-focus_area: MetricKit V1 shipped — 9 MXSignpost names, PrivacyInfo.xcprivacy, 49/49 tests
-active_issues: [9]
+updated_at: 2026-07-14T20:12:26.685-07:00
+focus_area: Five-goal 2026-07-14 Squad Work Loop
+active_issues: [65, 77, 78, 79, 80]
 ---
 
 # What We're Focused On
+
+**Current focus:** Complete the five-goal Squad Work Loop on branch `squad/20260714-work-loop`: preserve the native green build gate, obtain current design approval, verify all six scenarios, restore and review the canonical math contract, and finish with a zero-failure/warning/crash/lint final gate. Tesla's open ordered design review is the governing queue.
+
+## Still-relevant shipped context
 
 **MetricKit V1 implementation shipped 2026-05-20.** User directive pivot from apple/swift-metrics (vocabulary-only, no production sink) to Apple MetricKit (system framework, zero third-party SDKs, OS-mediated daily aggregation to App Store Connect Analytics).
 

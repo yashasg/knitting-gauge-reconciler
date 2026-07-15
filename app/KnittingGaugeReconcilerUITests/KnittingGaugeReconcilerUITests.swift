@@ -570,6 +570,39 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         }
     }
 
+    func testSceneRestorationPreservesValidInvalidPartialAndResetDraftsAcrossProcessInterruption() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-UIPreferredContentSizeCategoryName",
+            UIContentSizeCategory.large.rawValue,
+            "-KGRIgnoreStoredDraft",
+            "YES",
+        ]
+        app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
+            "KGR_PS": "31.5",
+            "KGR_PR": "0",
+            "KGR_YOKE": "20.5",
+            "KGR_BODY": ".",
+            "KGR_SHOW_PATTERN_DETAILS": "1",
+        ]) { _, new in new }
+        app.launch()
+
+        assertRestoredMixedDraft(in: app)
+        backgroundAndReactivate(app)
+        assertRestoredMixedDraft(in: app)
+        relaunchFromSceneState(app)
+        assertRestoredMixedDraft(in: app)
+
+        resetToSamples(in: app)
+        backgroundAndReactivate(app)
+        relaunchFromSceneState(app)
+        assertFieldRaw("pattern-stitches", equals: "32", in: app)
+        assertFieldRaw("pattern-rows", equals: "24", in: app)
+        assertFieldRaw("your-stitches", equals: "32", in: app)
+        assertFieldRaw("your-rows", equals: "32", in: app)
+        XCTAssertFalse(app.textFields["pattern-cast-on-field"].exists)
+    }
+
     private func launchApp(environment: [String: String]) -> XCUIApplication {
         let app = XCUIApplication()
         useDefaultDynamicType(app)
@@ -615,6 +648,43 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         )
         XCTAssertTrue(alert.buttons["Reset values"].exists, file: file, line: line)
         XCTAssertTrue(alert.buttons["Keep editing"].exists, file: file, line: line)
+    }
+
+    private func resetToSamples(in app: XCUIApplication) {
+        dismissKeyboard(in: app)
+        let reset = app.buttons["reset-defaults"]
+        scrollToElement(reset, in: app, requireHittable: true)
+        tapElement(reset)
+        assertResetCopy(in: app)
+        tapElement(app.alerts.buttons["Reset values"])
+        XCTAssertFalse(app.textFields["pattern-cast-on-field"].exists)
+    }
+
+    private func backgroundAndReactivate(_ app: XCUIApplication) {
+        XCUIDevice.shared.press(.home)
+        XCTAssertTrue(waitUntil(timeout: 5) { app.state != .runningForeground })
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+    }
+
+    private func relaunchFromSceneState(_ app: XCUIApplication) {
+        app.launchArguments = [
+            "-UIPreferredContentSizeCategoryName",
+            UIContentSizeCategory.large.rawValue,
+        ]
+        app.launchEnvironment = Self.defaultLaunchEnvironment
+        app.terminate()
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+    }
+
+    private func assertRestoredMixedDraft(in app: XCUIApplication) {
+        assertFieldRaw("pattern-stitches", equals: "31.5", in: app)
+        assertFieldRaw("pattern-rows", equals: "0", in: app)
+        XCTAssertTrue(app.textFields["pattern-yoke-field"].waitForExistence(timeout: 2))
+        assertFieldRaw("pattern-yoke", equals: "20.5", in: app)
+        assertFieldRaw("pattern-body", equals: ".", in: app)
+        XCTAssertFalse(app.buttons["calculate-button"].isEnabled)
     }
 
     private func setNumericField(

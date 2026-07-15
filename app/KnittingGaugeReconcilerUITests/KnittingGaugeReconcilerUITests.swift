@@ -674,7 +674,7 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         ]
         app.launchEnvironment = Self.defaultLaunchEnvironment
         app.terminate()
-        app.activate()
+        app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
     }
 

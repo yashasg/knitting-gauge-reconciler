@@ -132,6 +132,7 @@ final class AccessibilityAuditTests: XCTestCase {
             return identifier == "gauge-lead"
                 || identifier == "reset-defaults"
                 || label.hasPrefix("Compare your pattern gauge with your swatch")
+                || label == "Pattern 100%"
         case .hitRegion:
             // Toolbar buttons are ~36pt tall by iOS default; HIG carves out an
             // explicit exception for system bars. Real user controls (fields,

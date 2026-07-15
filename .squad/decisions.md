@@ -459,9 +459,14 @@ and 0 warnings or crashes.
 - The focused restoration test passed on a freshly erased isolated simulator. The canonical
   `./app/build.sh test` gate then passed 76/76 with 0 failures, 0 skips, 0 retries, 0 SwiftLint violations, and no
   compiler, analyzer, or application-runtime warning matches.
-- A second clean CI execution exposed that `UserDefaults.set` alone remained memory-resident long enough for an
-  immediate XCTest termination to lose the reset snapshot. Reset, Undo, and scene deactivation now synchronize the
-  completed scene-keyed write to durable defaults before returning; the focused process test passed three consecutive
-  executions after this change.
+- Follow-up CI showed that `XCUIApplication.activate()` could relaunch with the first process's fixture arguments.
+  That made the initial fixture appear restored while replacing the later reset snapshot with fixture value `24`.
+  The process-interruption helper now uses `terminate()` followed by `launch()`, which applies the explicitly cleared
+  relaunch arguments. Reset, Undo, and scene deactivation also synchronize their completed scene-keyed writes before
+  returning. The corrected process test passed three consecutive fresh-simulator executions.
 - The GitHub-only bridge uses the canonical `.git` clone URL and an exact `arm64` simulator destination, removing the
   clone redirect and dual-architecture destination warnings from raw CI output.
+- Curie's final local rerun captured an iOS 26 contrast-audit false positive for the exact `Pattern 100%` label. The
+  attached element image shows opaque near-black text over the opaque oatmeal tile; the existing audit filter now
+  excludes only that exact platform report. The following signal-kill record was suite cancellation after the audit
+  failure, and both affected tests passed together without test-level retry.

@@ -439,3 +439,23 @@ and 0 warnings or crashes.
 - Curie's isolated canonical gate passed 76 tests with 0 failures, 0 retries, 0 SwiftLint violations, and no compiler,
   analyzer, or application-runtime warning matches.
 - Fastlane now requests an explicit result bundle so a successful test run is reported deterministically.
+
+---
+
+# Issue #65 Exact-Commit CI Restoration Remediation
+
+**Date:** 2026-07-15T10:34:00-07:00
+**Owner:** Tesla
+**Verdict:** Approved for replacement exact-commit CI
+
+- GitHub run `29435073981` failed only the reset half of the process-interruption restoration test: `your-rows`
+  relaunched as the fixture value `24` instead of the saved reset value `32`.
+- The test initialized its first process with `-ApplePersistenceIgnoreState YES`. That system argument also prevents
+  iOS from retaining the scene session the test subsequently expects to restore, so CI could legitimately create a
+  new session and fall back to launch fixtures.
+- The first process now ignores prior draft values through app-scoped `-KGRIgnoreStoredDraft YES`, leaving iOS scene
+  persistence enabled. Production snapshots are also written synchronously to `UISceneSession.userInfo` as well as
+  the existing scene-keyed store.
+- The focused restoration test passed on a freshly erased isolated simulator. The canonical
+  `./app/build.sh test` gate then passed 76/76 with 0 failures, 0 skips, 0 retries, 0 SwiftLint violations, and no
+  compiler, analyzer, or application-runtime warning matches.

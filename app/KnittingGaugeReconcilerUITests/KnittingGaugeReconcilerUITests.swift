@@ -572,7 +572,12 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
 
     func testSceneRestorationPreservesValidInvalidPartialAndResetDraftsAcrossProcessInterruption() {
         let app = XCUIApplication()
-        useDefaultDynamicType(app)
+        app.launchArguments = [
+            "-UIPreferredContentSizeCategoryName",
+            UIContentSizeCategory.large.rawValue,
+            "-KGRIgnoreStoredDraft",
+            "YES",
+        ]
         app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
             "KGR_PS": "31.5",
             "KGR_PR": "0",

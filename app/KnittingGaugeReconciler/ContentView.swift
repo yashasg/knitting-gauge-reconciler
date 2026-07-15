@@ -498,11 +498,16 @@ struct ContentView: View {
 
     private static var ignoresPersistentState: Bool {
         let arguments = ProcessInfo.processInfo.arguments
-        guard let index = arguments.lastIndex(of: "-ApplePersistenceIgnoreState"),
-              arguments.indices.contains(index + 1) else {
-            return false
+        for key in ["-ApplePersistenceIgnoreState", "-KGRIgnoreStoredDraft"] {
+            guard let index = arguments.lastIndex(of: key),
+                  arguments.indices.contains(index + 1) else {
+                continue
+            }
+            if arguments[index + 1].caseInsensitiveCompare("YES") == .orderedSame {
+                return true
+            }
         }
-        return arguments[index + 1].caseInsensitiveCompare("YES") == .orderedSame
+        return false
     }
 
     private static func isOnlyOpenSession(_ session: UISceneSession) -> Bool {
@@ -554,6 +559,10 @@ struct ContentView: View {
             Self.sceneDraftValuesKey: rawTextValues,
             Self.sceneDraftDisclosureKey: patternDetailsExpanded,
         ]
+        var userInfo = session.userInfo ?? [:]
+        userInfo[Self.sceneDraftValuesKey] = rawTextValues
+        userInfo[Self.sceneDraftDisclosureKey] = patternDetailsExpanded
+        session.userInfo = userInfo
         SceneDraftStore.save(draft, sceneID: session.persistentIdentifier)
         if Self.isOnlyOpenSession(session) {
             SceneDraftStore.setSingleSceneID(session.persistentIdentifier)

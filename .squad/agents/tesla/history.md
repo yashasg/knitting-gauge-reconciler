@@ -248,3 +248,12 @@ No conflicts. Sibling worktree cleaned up. Main is up-to-date locally. VerdictCa
 **Impact:** Fixes GitHub Actions CD workflow step-level env scoping issue. Release workflows can now proceed with correct App Store Connect authentication.
 
 **Local status:** Main pulled locally after merge. Ready for next CD phases.
+
+---
+
+### 2026-07-15T00:51:39.795-07:00 — Issue #65 remains the runnable domain gate
+
+- GitLab issue #65 is open with 0/10 acceptance items complete, no related MR, and no remote issue branch.
+- Local `squad/65-harden-form-state` is clean at intake and 2 commits ahead / 0 behind `origin/main`; its diff is coordination state only, with no product implementation.
+- No Edison agent remains active, so the prior “running” claim is stale rather than evidence of completion.
+- The existing approved contract remains authoritative: Edison owns the five production files first, Curie owns the three test files only after API freeze, then read-only review gates proceed in order.

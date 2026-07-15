@@ -39,3 +39,9 @@ Merged four inbox decisions into `decisions.md`, wrote orchestration/session log
 - **Archive gate:** 1 inbox decision processed; no backlog
 
 **Lesson:** CD workflow step-level env vars require fallback to stable on-disk artifacts when those artifacts persist between steps. GitHub Actions env isolation is by design; Fastlane's dual-source auth strategy (env + file) is the right answer.
+
+### 2026-07-15T00:51:39.795-07:00 — Issue #65 selection gate recorded
+
+- Consolidated the repeated Work Loop directive and cleared its inbox file.
+- Logged Tesla's selection of GitLab issue #65 and the Edison → Curie → Ive → Jacquard → Mendel → final Curie gate order.
+- No decision archival, cross-agent propagation, or history summarization was required.

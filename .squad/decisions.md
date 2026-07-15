@@ -1,10 +1,10 @@
 # Active Decisions
 
-## 2026-07-14T23:38:12.955-07:00 — User directive
+## 2026-07-15T00:51:39.795-07:00 — User directive
 
-### 2026-07-14T23:38:12.955-07:00: User directive
+### 2026-07-15T00:51:39.795-07:00: User directive (consolidated)
 **By:** Tesla (Squad) (via Copilot)
-**What:** Run the complete Squad Work Loop autonomously; use `gpt-5.6-sol` for every launched agent including Ralph and Scribe; keep Ponytail full active; require local zero-warning tests and all named reviews before MR/merge; skip tracker/follow-up work; do not fake unavailable remote actions.
+**What:** Run the complete Squad Work Loop autonomously. Use `gpt-5.6-sol` for every launched member, including Ralph and Scribe. Keep Ponytail full active: choose the smallest correct native or standard-library implementation without skipping explicit acceptance criteria, validation, security, accessibility, error handling, tests, warnings-as-errors, exact-commit CI, or the one-domain-issue/one-MR contract. Preserve unrelated working-tree changes and stop only when all five stated goals and final review are complete, or when a genuine external blocker remains after safe alternatives are exhausted. Do not fake unavailable remote actions.
 **Why:** User request — captured for team memory
 
 ---

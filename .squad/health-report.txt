@@ -1,24 +1,22 @@
-SCRIBE HEALTH REPORT — 2026-07-14T23:38:12.955-07:00
+SCRIBE HEALTH REPORT — 2026-07-15T00:51:39.795-07:00
 
 DECISIONS
-- Before: 33,307 bytes
-- After: 7,281 bytes
-- Archive: 65,235 → 114,028 bytes
-- Trigger: >=20,480 bytes; entries older than 30 days archived
-- Inbox: 5 files processed; 0 remaining
-- Deduplication: no matching decision content found before merge
-- User directive and Tesla issue #65 gate preserved in active decisions
+- Before: 7,281 bytes
+- After: 7,646 bytes
+- Archive: 114,028 bytes, unchanged
+- Trigger: >=20,480 bytes; archive gate not reached
+- Inbox: 1 file processed; 0 remaining
+- Deduplication: repeated Work Loop directives consolidated
 
 HISTORY
-- 6 history files at or above 15,360 bytes summarized
-- Largest remaining active history: Tesla, 15,098 bytes
-- Cross-agent update: none; Tesla's gate entry was already present
+- 0 history files at or above 15,360 bytes
+- Largest active history: Tesla, 15,134 bytes
+- Cross-agent update: none needed
 
 LOGS
 - Wrote 1 Tesla orchestration log
-- Wrote 1 design-gate session log
-- Edison remains running; no outcome recorded
+- Wrote 1 issue-selection session log
 
 SCOPE
-- Product/app/config files touched: 0
-- Only exact Scribe-owned `.squad/` outputs are eligible for staging
+- Product, test, and prototype files touched: 0
+- Only exact session outputs and the listed Tesla state files are eligible for staging

@@ -459,3 +459,9 @@ and 0 warnings or crashes.
 - The focused restoration test passed on a freshly erased isolated simulator. The canonical
   `./app/build.sh test` gate then passed 76/76 with 0 failures, 0 skips, 0 retries, 0 SwiftLint violations, and no
   compiler, analyzer, or application-runtime warning matches.
+- A second clean CI execution exposed that `UserDefaults.set` alone remained memory-resident long enough for an
+  immediate XCTest termination to lose the reset snapshot. Reset, Undo, and scene deactivation now synchronize the
+  completed scene-keyed write to durable defaults before returning; the focused process test passed three consecutive
+  executions after this change.
+- The GitHub-only bridge uses the canonical `.git` clone URL and an exact `arm64` simulator destination, removing the
+  clone redirect and dual-architecture destination warnings from raw CI output.

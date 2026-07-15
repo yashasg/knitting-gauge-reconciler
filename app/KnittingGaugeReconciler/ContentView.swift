@@ -271,7 +271,7 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active {
-                updateSceneRestorationActivity()
+                updateSceneRestorationActivity(synchronizingDefaults: true)
             }
         }
     }
@@ -541,7 +541,10 @@ struct ContentView: View {
         return true
     }
 
-    private func updateSceneRestorationActivity(for resolvedSession: UISceneSession? = nil) {
+    private func updateSceneRestorationActivity(
+        for resolvedSession: UISceneSession? = nil,
+        synchronizingDefaults: Bool = false
+    ) {
         let session: UISceneSession?
         if let resolvedSession {
             session = resolvedSession
@@ -570,6 +573,9 @@ struct ContentView: View {
         } else {
             SceneDraftStore.setSingleSceneID(nil)
             SceneDraftStore.setSingleSceneHandoff(nil)
+        }
+        if synchronizingDefaults {
+            UserDefaults.standard.synchronize()
         }
     }
 
@@ -606,7 +612,7 @@ struct ContentView: View {
         focusedField = nil
         showFullMath = false
         invalidateResults()
-        updateSceneRestorationActivity()
+        updateSceneRestorationActivity(synchronizingDefaults: true)
     }
 
     private func undoReset() {
@@ -625,7 +631,7 @@ struct ContentView: View {
         focusedField = nil
         showFullMath = false
         invalidateResults()
-        updateSceneRestorationActivity()
+        updateSceneRestorationActivity(synchronizingDefaults: true)
     }
 
     private func invalidateResults() {

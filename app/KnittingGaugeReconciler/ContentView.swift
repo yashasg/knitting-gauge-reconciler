@@ -468,13 +468,13 @@ struct ContentView: View {
                 restored = restoreSceneDraft(from: userInfo)
             }
             if !restored,
-               Self.isOnlyOpenSession(session),
+               Self.canUseSingleSceneHandoff(session),
                let previousIdentifier = SceneDraftStore.singleSceneID(),
                let userInfo = SceneDraftStore.load(sceneID: previousIdentifier) {
                 restored = restoreSceneDraft(from: userInfo)
             }
             if !restored,
-               Self.isOnlyOpenSession(session),
+               Self.canUseSingleSceneHandoff(session),
                let userInfo = SceneDraftStore.singleSceneHandoff() {
                 restoreSceneDraft(from: userInfo)
             }
@@ -497,22 +497,26 @@ struct ContentView: View {
     }
 
     private static var ignoresPersistentState: Bool {
+        launchArgumentEnabled("-ApplePersistenceIgnoreState")
+            || launchArgumentEnabled("-KGRIgnoreStoredDraft")
+    }
+
+    private static func launchArgumentEnabled(_ key: String) -> Bool {
         let arguments = ProcessInfo.processInfo.arguments
-        for key in ["-ApplePersistenceIgnoreState", "-KGRIgnoreStoredDraft"] {
-            guard let index = arguments.lastIndex(of: key),
-                  arguments.indices.contains(index + 1) else {
-                continue
-            }
-            if arguments[index + 1].caseInsensitiveCompare("YES") == .orderedSame {
-                return true
-            }
+        guard let index = arguments.lastIndex(of: key),
+              arguments.indices.contains(index + 1) else {
+            return false
         }
-        return false
+        return arguments[index + 1].caseInsensitiveCompare("YES") == .orderedSame
     }
 
     private static func isOnlyOpenSession(_ session: UISceneSession) -> Bool {
         let openSessions = UIApplication.shared.openSessions
         return openSessions.count == 1 && openSessions.contains(session)
+    }
+
+    private static func canUseSingleSceneHandoff(_ session: UISceneSession) -> Bool {
+        isOnlyOpenSession(session) || launchArgumentEnabled("-KGRUITestSingleSceneHandoff")
     }
 
     @discardableResult
@@ -567,7 +571,7 @@ struct ContentView: View {
         userInfo[Self.sceneDraftDisclosureKey] = patternDetailsExpanded
         session.userInfo = userInfo
         SceneDraftStore.save(draft, sceneID: session.persistentIdentifier)
-        if Self.isOnlyOpenSession(session) {
+        if Self.canUseSingleSceneHandoff(session) {
             SceneDraftStore.setSingleSceneID(session.persistentIdentifier)
             SceneDraftStore.setSingleSceneHandoff(draft)
         } else {

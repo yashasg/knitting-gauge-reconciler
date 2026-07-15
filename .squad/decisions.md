@@ -459,11 +459,13 @@ and 0 warnings or crashes.
 - The focused restoration test passed on a freshly erased isolated simulator. The canonical
   `./app/build.sh test` gate then passed 76/76 with 0 failures, 0 skips, 0 retries, 0 SwiftLint violations, and no
   compiler, analyzer, or application-runtime warning matches.
-- Follow-up CI showed that `XCUIApplication.activate()` could relaunch with the first process's fixture arguments.
-  That made the initial fixture appear restored while replacing the later reset snapshot with fixture value `24`.
-  The process-interruption helper now uses `terminate()` followed by `launch()`, which applies the explicitly cleared
-  relaunch arguments. Reset, Undo, and scene deactivation also synchronize their completed scene-keyed writes before
-  returning. The corrected process test passed three consecutive fresh-simulator executions.
+- Follow-up CI showed that `XCUIApplication` can allocate a new synthetic scene session while retaining prior UI-test
+  sessions in `UIApplication.openSessions`. Production correctly refuses its single-scene handoff in that state, but
+  the harness then cannot represent a one-window process relaunch. The process test now uses `terminate()` followed by
+  `launch()` with cleared fixtures and an explicit test-only single-window handoff flag. Production launches remain
+  guarded by the real open-session count; separate store tests preserve the multiple-scene isolation contract. Reset,
+  Undo, and scene deactivation also synchronize completed scene-keyed writes before returning. The corrected
+  process-interruption test passed three consecutive fresh-simulator executions.
 - The GitHub-only bridge uses the canonical `.git` clone URL and an exact `arm64` simulator destination, removing the
   clone redirect and dual-architecture destination warnings from raw CI output.
 - Curie's final local rerun captured an iOS 26 contrast-audit false positive for the exact `Pattern 100%` label. The

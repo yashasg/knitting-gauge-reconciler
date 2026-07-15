@@ -577,6 +577,8 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
             UIContentSizeCategory.large.rawValue,
             "-KGRIgnoreStoredDraft",
             "YES",
+            "-KGRUITestSingleSceneHandoff",
+            "YES",
         ]
         app.launchEnvironment = Self.defaultLaunchEnvironment.merging([
             "KGR_PS": "31.5",
@@ -671,6 +673,8 @@ final class KnittingGaugeReconcilerUITests: XCTestCase {
         app.launchArguments = [
             "-UIPreferredContentSizeCategoryName",
             UIContentSizeCategory.large.rawValue,
+            "-KGRUITestSingleSceneHandoff",
+            "YES",
         ]
         app.launchEnvironment = Self.defaultLaunchEnvironment
         app.terminate()

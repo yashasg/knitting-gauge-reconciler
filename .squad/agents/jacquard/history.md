@@ -39,3 +39,8 @@ MetricKit V1 implementation completed. Signpost #9 (`cast_on.driftBandShown`) ga
 
 **New regime:** The app is the source of truth. `prototype/` is archival/sketch only, not a reference, spec, or test oracle. Drift audits are against `.squad/decisions.md` and Tesla directives, never against the prototype. Charter updated; see `.squad/agents/jacquard/charter.md`.
 
+## 2026-07-15T09:08:17-07:00 — Issue #65 math approval
+
+- Approved the central finite/range validator, stitch-width and cast-on reciprocals, row/dimension scales,
+  canonical-centimetre section math, established rounding, and omission of absent optional values.
+- All six scenario vectors match the formula authority in `.squad/decisions.md`.

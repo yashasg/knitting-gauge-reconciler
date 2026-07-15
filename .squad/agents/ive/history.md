@@ -66,3 +66,8 @@ All decisions from this session merged to `.squad/decisions.md` (inbox cleared).
 
 **Decision:** Postmortem and governance directives merged to `.squad/decisions.md` (2026-05-22T19:23:34 through 2026-05-22T19:39:36-07:00).
 
+## 2026-07-15T09:08:17-07:00 — Issue #65 UX approval
+
+- Approved the single required-gauge surface, 24-point pattern/swatch separation, collapsed blank optional details,
+  inline correction/focus flow, Reset/Undo discoverability, Dynamic Type reflow, semantic text colors, and VoiceOver
+  behavior against the issue contract and the session-authorized prototype comparison.

@@ -134,6 +134,13 @@ All 70 tests' assertions passed in both attempts. No code defect. All merged wor
 
 **Lesson:** NEVER merge to main without waiting for the GitHub Actions CI run to conclude green. The CI run takes ~10 minutes; `gh run list -R yashasg/knitting-gauge-reconciler --branch main` shows the status. The `display_title` (not `head_sha`) identifies the right run since `repository_dispatch` events don't expose the GitLab commit SHA in the GitHub `head_sha` field.
 
+## 2026-07-15T09:08:17-07:00 — Issue #65 revision accepted
+
+- Replaced the SwiftUI keyboard toolbar with the existing UIKit accessory path, eliminating the runtime frame warning
+  while preserving direct entry, wheel input, Done, validation, and focus transfer.
+- Added explicit Fastlane result-bundle output so `./app/build.sh test` reports successful Xcode 26 runs reliably.
+- Final isolated gate: 76/76, 0 retries, 0 warnings.
+
 ## See Also
 
 - **Archive:** `history-archive.md` — prior sessions (template sync groups, Ruby guard, iOS bootstrap, Fastlane docs)

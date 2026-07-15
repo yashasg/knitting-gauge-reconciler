@@ -128,3 +128,8 @@ Categorical buckets, not raw values; no wall-clock timestamps; no session IDs; n
 ## 2026-05-20T19:26:30Z — MetricKit V1 shipped (Team session)
 
 MetricKit V1 implementation completed. User directives: (1) MetricKit pivot from swift-metrics (2026-05-20T18:50:53), (2) privacy card stays removed (2026-05-20T19:22:50), (3) 9-signpost roster locked (2026-05-20T19:26:30). Build: 49/49 tests pass (was 25). Session log: .squad/log/2026-05-20T19-26-30Z-metrickit-pivot-shipped.md. Orchestration logs: .squad/orchestration-log/2026-05-21T02-26-30Z-{agent-round}.md.
+
+## 2026-07-15T09:08:17-07:00 — Issue #65 scenario approval
+
+- Approved exact Swift unit mappings and visible stitch/row summary assertions for all six Jacquard scenarios.
+- Approved the deterministic production-path test that saves, restores, and discards distinct scene-keyed drafts.

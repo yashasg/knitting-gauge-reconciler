@@ -96,6 +96,7 @@ def lane_test_options(options, extra_xcargs: nil)
     configuration: options[:configuration] || "Debug",
     derived_data_path: lane_derived_data_path(options),
     code_coverage: true,
+    result_bundle: true,
     xcargs: [
       "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 30",
       extra_xcargs,

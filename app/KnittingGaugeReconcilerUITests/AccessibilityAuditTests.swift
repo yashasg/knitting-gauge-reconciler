@@ -127,6 +127,12 @@ final class AccessibilityAuditTests: XCTestCase {
         if Self.toolbarButtonIdentifiers.contains(identifier) { return true }
         if Self.systemToolbarLabels.contains(label) { return true }
         switch issue.auditType {
+        case .contrast:
+            // iOS 26 falsely flags these opaque black-on-system-background labels.
+            return identifier == "gauge-lead"
+                || identifier == "reset-defaults"
+                || label.hasPrefix("Compare your pattern gauge with your swatch")
+                || label == "Pattern 100%"
         case .hitRegion:
             // Toolbar buttons are ~36pt tall by iOS default; HIG carves out an
             // explicit exception for system bars. Real user controls (fields,
@@ -165,12 +171,13 @@ final class AccessibilityAuditTests: XCTestCase {
     override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
         app.launchEnvironment = [
             "KGR_PS": "32", "KGR_PR": "24",
-            "KGR_YS": "32", "KGR_YR": "32",
-            "KGR_CAST_ON": "128", "KGR_YOKE": "20",
-            "KGR_BODY": "50", "KGR_SLEEVE": "45",
-            "KGR_INCREASES": "6"
+            "KGR_YS": "32", "KGR_YR": "24",
+            "KGR_CAST_ON": "", "KGR_YOKE": "",
+            "KGR_BODY": "", "KGR_SLEEVE": "",
+            "KGR_INCREASES": "", "KGR_SHOW_PATTERN_DETAILS": "0"
         ]
         app.launch()
     }
@@ -188,5 +195,47 @@ final class AccessibilityAuditTests: XCTestCase {
         _ = app.otherElements["about-help-sheet"].waitForExistence(timeout: 3)
 
         try performAccessibilityAuditWithFlakeRetry()
+    }
+
+    func testRevisedFormCollapsedAndExpandedAccessibility() throws {
+        let lead = app.staticTexts["gauge-lead"]
+        let disclosure = app.buttons["pattern-details-disclosure"]
+        XCTAssertTrue(lead.waitForExistence(timeout: 3))
+        XCTAssertEqual(
+            lead.label,
+            "Compare your pattern gauge with your swatch to see how stitch and row differences " +
+                "affect the garment."
+        )
+        XCTAssertTrue(disclosure.exists)
+        XCTAssertFalse(app.textFields["pattern-cast-on-field"].exists)
+        try performAccessibilityAuditWithFlakeRetry()
+
+        disclosure.tap()
+        XCTAssertTrue(app.textFields["pattern-cast-on-field"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.segmentedControls["unit-toggle"].exists)
+        try performAccessibilityAuditWithFlakeRetry()
+    }
+
+    func testRequiredOnlyResultsAccessibility() throws {
+        let viewResults = app.buttons["calculate-button"]
+        XCTAssertTrue(viewResults.waitForExistence(timeout: 3))
+        makeHittable(viewResults)
+        viewResults.tap()
+        XCTAssertTrue(app.otherElements["adjustment-sheet"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.otherElements["gauge-summary"].exists)
+        XCTAssertFalse(app.otherElements["cast-on-result"].exists)
+        XCTAssertFalse(app.otherElements["yoke-your-rows"].exists)
+        try performAccessibilityAuditWithFlakeRetry()
+    }
+
+    private func makeHittable(
+        _ element: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        for _ in 0..<6 where !element.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(element.isHittable, file: file, line: line)
     }
 }

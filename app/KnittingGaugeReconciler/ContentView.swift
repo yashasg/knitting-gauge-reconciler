@@ -8,22 +8,50 @@ import os.signpost
 // swiftlint:disable:next type_body_length
 struct ContentView: View {
     private static let defaults = GaugeTextDefaults()
+    private static let sceneDraftValuesKey = "gauge.raw-values"
+    private static let sceneDraftDisclosureKey = "gauge.pattern-details-expanded"
+
+    private struct ResetSnapshot {
+        let patternStitches: String
+        let patternRows: String
+        let yourStitches: String
+        let yourRows: String
+        let patternCastOn: String
+        let patternYoke: String
+        let patternBody: String
+        let patternSleeve: String
+        let patternIncreases: String
+        let patternDetailsExpanded: Bool
+    }
 
     // MARK: - Adaptive layout
 
+    @Environment(\.scenePhase) private var scenePhase
     @ScaledMetric(relativeTo: .body) private var cardSpacing: CGFloat = 12
 
     // MARK: - State
 
-    @State private var patternStitches = initialText("KGR_PS", defaultValue: "32")
-    @State private var patternRows = initialText("KGR_PR", defaultValue: "24")
-    @State private var yourStitches = initialText("KGR_YS", defaultValue: "32")
-    @State private var yourRows = initialText("KGR_YR", defaultValue: "32")
-    @State private var patternCastOn = initialText("KGR_CAST_ON", defaultValue: "128")
-    @State private var patternYoke = initialText("KGR_YOKE", defaultValue: "20")
-    @State private var patternBody = initialText("KGR_BODY", defaultValue: "50")
-    @State private var patternSleeve = initialText("KGR_SLEEVE", defaultValue: "45")
-    @State private var patternIncreases = initialText("KGR_INCREASES", defaultValue: "6")
+    @SceneStorage("gauge.pattern-stitches")
+    private var patternStitches = initialText("KGR_PS", defaultValue: "32")
+    @SceneStorage("gauge.pattern-rows")
+    private var patternRows = initialText("KGR_PR", defaultValue: "24")
+    @SceneStorage("gauge.swatch-stitches")
+    private var yourStitches = initialText("KGR_YS", defaultValue: "32")
+    @SceneStorage("gauge.swatch-rows")
+    private var yourRows = initialText("KGR_YR", defaultValue: "32")
+    @SceneStorage("gauge.pattern-cast-on")
+    private var patternCastOn = initialText("KGR_CAST_ON", defaultValue: "")
+    @SceneStorage("gauge.pattern-yoke")
+    private var patternYoke = initialText("KGR_YOKE", defaultValue: "")
+    @SceneStorage("gauge.pattern-body")
+    private var patternBody = initialText("KGR_BODY", defaultValue: "")
+    @SceneStorage("gauge.pattern-sleeve")
+    private var patternSleeve = initialText("KGR_SLEEVE", defaultValue: "")
+    @SceneStorage("gauge.pattern-increases")
+    private var patternIncreases = initialText("KGR_INCREASES", defaultValue: "")
+    @SceneStorage("gauge.pattern-details-expanded")
+    private var patternDetailsExpanded = initialBool("KGR_SHOW_PATTERN_DETAILS")
+
     @State private var showFullMath = initialBool("KGR_SHOW_FULL_MATH")
     @State private var showVerdictHelp = initialBool("KGR_SHOW_VERDICT_HELP")
     @State private var showAboutHelp = initialBool("KGR_SHOW_ABOUT_HELP")
@@ -32,6 +60,10 @@ struct ContentView: View {
     @State private var driftBandSignpostFired = false
     /// Latest result presented from a "View Adjustments" tap.
     @State private var cachedResult: GaugeMathResult?
+    @State private var resetSnapshot: ResetSnapshot?
+    @State private var focusedField: GaugeFormField?
+    @State private var sceneSessionIdentifier: String?
+    @State private var sceneRestorationReady = false
 
     // MARK: - Persisted unit preference
 
@@ -41,31 +73,47 @@ struct ContentView: View {
 
     // MARK: - Derived
 
-    private var inputs: GaugeInputs {
-        GaugeInputs(
-            patternStitches: read(patternStitches, defaultValue: 32),
-            patternRows: read(patternRows, defaultValue: 24),
-            yourStitches: read(yourStitches, defaultValue: 32),
-            yourRows: read(yourRows, defaultValue: 32),
-            patternYokeDepth: read(patternYoke, defaultValue: 20),
-            patternBodyLength: read(patternBody, defaultValue: 50),
-            patternSleeveLength: read(patternSleeve, defaultValue: 45),
-            patternIncreaseSpacing: read(patternIncreases, defaultValue: 6),
-            patternCastOn: read(patternCastOn, defaultValue: 128)
+    private var inputs: GaugeInputs? {
+        guard case let .success(patternStitches?) = validationResult(for: .patternStitches),
+              case let .success(patternRows?) = validationResult(for: .patternRows),
+              case let .success(yourStitches?) = validationResult(for: .yourStitches),
+              case let .success(yourRows?) = validationResult(for: .yourRows),
+              case let .success(patternCastOn) = validationResult(for: .patternCastOn),
+              case let .success(patternYoke) = validationResult(for: .patternYoke),
+              case let .success(patternBody) = validationResult(for: .patternBody),
+              case let .success(patternSleeve) = validationResult(for: .patternSleeve),
+              case let .success(patternIncreases) = validationResult(for: .patternIncreases) else {
+            return nil
+        }
+        return GaugeInputs(
+            patternStitches: patternStitches,
+            patternRows: patternRows,
+            yourStitches: yourStitches,
+            yourRows: yourRows,
+            patternYokeDepth: patternYoke,
+            patternBodyLength: patternBody,
+            patternSleeveLength: patternSleeve,
+            patternIncreaseSpacing: patternIncreases,
+            patternCastOn: patternCastOn
         )
     }
 
-    /// Always-live result — used for the verdict help sheet so it has content
-    /// even before the first View Adjustments tap. NOT used for the signpost-tracked
-    /// verdictTitle (which only changes on sheet presentation).
-    private var liveResult: GaugeMathResult {
-        cachedResult ?? GaugeMath.compute(inputs)
+    private var liveResult: GaugeMathResult? {
+        guard let inputs else { return nil }
+        return cachedResult ?? GaugeMath.compute(inputs)
     }
 
-    private func recomputeResult() {
+    @discardableResult
+    private func recomputeResult() -> GaugeMathResult? {
+        guard let inputs else {
+            invalidateResults()
+            return nil
+        }
         os_signpost(.begin, log: MetricsSubscriber.log, name: SignpostNames.compute)
-        cachedResult = GaugeMath.compute(inputs)
+        let result = GaugeMath.compute(inputs)
+        cachedResult = result
         os_signpost(.end, log: MetricsSubscriber.log, name: SignpostNames.compute)
+        return result
     }
 
     // MARK: - Body
@@ -74,15 +122,36 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: cardSpacing) {
-                    UnitToggleView(unit: $measurementUnit)
-                    PatternGaugeCard(patternStitches: $patternStitches, patternRows: $patternRows)
-                    YourGaugeCard(
+                    Text(
+                        "Compare your pattern gauge with your swatch to see how stitch and row differences " +
+                            "affect the garment."
+                    )
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(AppTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(AppTheme.background)
+                    .accessibilityIdentifier("gauge-lead")
+
+                    GaugeInputsCard(
+                        patternStitches: $patternStitches,
+                        patternRows: $patternRows,
                         yourStitches: $yourStitches,
                         yourRows: $yourRows,
-                        stitchMismatch: inputs.stitchMismatch,
-                        rowMismatch: inputs.rowMismatch,
-                        stitchDelta: Int(inputs.yourStitches - inputs.patternStitches),
-                        rowDelta: Int(inputs.yourRows - inputs.patternRows)
+                        stitchMismatch: inputs?.stitchMismatch ?? false,
+                        rowMismatch: inputs?.rowMismatch ?? false,
+                        stitchDelta: roundedDelta(
+                            inputs.map { $0.yourStitches - $0.patternStitches }
+                        ),
+                        rowDelta: roundedDelta(
+                            inputs.map { $0.yourRows - $0.patternRows }
+                        ),
+                        validationMessages: validationMessages,
+                        focusedField: $focusedField,
+                        onSubmit: finishEditing
                     )
                     PatternInstructionsCard(
                         patternCastOn: $patternCastOn,
@@ -90,7 +159,11 @@ struct ContentView: View {
                         patternBody: $patternBody,
                         patternSleeve: $patternSleeve,
                         patternIncreases: $patternIncreases,
-                        unit: measurementUnit
+                        unit: $measurementUnit,
+                        isExpanded: $patternDetailsExpanded,
+                        validationMessages: validationMessages,
+                        focusedField: $focusedField,
+                        onSubmit: finishEditing
                     )
                     RequiredAdjustmentsCard(
                         cachedResult: cachedResult,
@@ -98,17 +171,18 @@ struct ContentView: View {
                         unit: measurementUnit,
                         showFullMath: $showFullMath,
                         showAdjustmentSheet: $showAdjustmentSheet,
+                        canUndoReset: resetSnapshot != nil,
                         onRecalculate: recomputeResult,
-                        onReset: {
-                            resetToDefaults()
-                            showAdjustmentSheet = false
-                        },
+                        onReset: resetToDefaults,
+                        onUndoReset: undoReset,
                         onShare: { result in await shareItems(for: result) }
                     )
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 16)
+                .opacity(sceneRestorationReady ? 1 : 0)
+                .accessibilityHidden(!sceneRestorationReady)
             }
             // While a help sheet is presented, the underlying view is still rendered
             // (dimmed) behind the sheet. Apple's accessibility audit traverses every
@@ -116,14 +190,10 @@ struct ContentView: View {
             // render in full width. Mark the main content inert to a11y while a
             // *help* sheet is up so the audit focuses on the sheet itself.
             //
-            // The Adjustment sheet is deliberately NOT included here: doing so makes
-            // SwiftUI propagate the hidden state into the sheet's own accessibility
-            // tree on some iOS versions, which hides the sheet's "Close" button
-            // from XCUITest queries (regression caught by
-            // testAllJacquardScenariosAreVisibleInUI). The audit's element filter
-            // already handles parent stepper-shim and pill noise that surfaces
-            // behind the Adjustment sheet.
-            .accessibilityHidden(showVerdictHelp || showAboutHelp)
+            // Modal sheets own accessibility focus while presented. Their roots
+            // explicitly opt back in below so underlying controls are not audited
+            // through the system dimming layer.
+            .accessibilityHidden(showVerdictHelp || showAboutHelp || showAdjustmentSheet)
             .navigationTitle("Stitchwise")
             .background(
                 ZStack {
@@ -135,18 +205,6 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     AboutHelpToolbarButton(showAboutHelp: $showAboutHelp)
-                }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") {
-                        UIApplication.shared.sendAction(
-                            #selector(UIResponder.resignFirstResponder),
-                            to: nil,
-                            from: nil,
-                            for: nil
-                        )
-                    }
-                    .accessibilityIdentifier("keyboard-done")
                 }
             }
             .sheet(isPresented: $showVerdictHelp) {
@@ -169,9 +227,20 @@ struct ContentView: View {
                     os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.sheetAboutHelpOpened)
                 }
             }
+            .onChange(of: rawTextValues) {
+                invalidateResults()
+                updateSceneRestorationActivity()
+            }
+            .onChange(of: patternDetailsExpanded) {
+                updateSceneRestorationActivity()
+            }
             // verdict.improved / verdict.degraded fire only when cachedResult changes (i.e. on
             // View Adjustments tap), because verdictTitle returns "" while cachedResult is nil.
             .onChange(of: verdictTitle) { _, newValue in
+                guard !newValue.isEmpty else {
+                    previousVerdictBucket = nil
+                    return
+                }
                 let current = VerdictBucket(verdictTitle: newValue)
                 if let decision = GaugeMathMetrics.classifyVerdictDelta(
                     previous: previousVerdictBucket,
@@ -186,7 +255,9 @@ struct ContentView: View {
                 }
                 previousVerdictBucket = current
             }
-            .onChange(of: cachedResult.map { abs($0.castOnRoundingDriftPercent) >= 3 } ?? false) { _, isVisible in
+            .onChange(
+                of: cachedResult?.castOnRoundingDriftPercent.map { abs($0) >= 3 } ?? false
+            ) { _, isVisible in
                 if isVisible, !driftBandSignpostFired {
                     os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.castOnDriftBandShown)
                     driftBandSignpostFired = true
@@ -195,19 +266,35 @@ struct ContentView: View {
                 }
             }
         }
+        .background {
+            SceneSessionReader(onResolve: connectToSceneSession)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase != .active {
+                updateSceneRestorationActivity(synchronizingDefaults: true)
+            }
+        }
     }
 
     // MARK: - Verdict (signpost-only; derived from cachedResult so it changes only on sheet presentation)
 
     /// Returns "" when no result exists — prevents spurious signpost fires before first sheet presentation.
     private var verdictTitle: String {
-        guard let result = cachedResult else { return "" }
+        guard inputs != nil, let result = cachedResult else { return "" }
         return verdictTitleComputed(result: result)
     }
 
-    /// Live verdict for the help sheet — always has content, regardless of Calculate state.
-    private var sheetVerdictTitle: String { verdictTitleComputed(result: liveResult) }
-    private var sheetVerdictBody: String { verdictBodyComputed(result: liveResult) }
+    private var sheetVerdictTitle: String {
+        guard let liveResult else { return "Correct your gauge values" }
+        return verdictTitleComputed(result: liveResult)
+    }
+
+    private var sheetVerdictBody: String {
+        guard let liveResult, let inputs else {
+            return "Correct the highlighted fields before viewing gauge guidance."
+        }
+        return verdictBodyComputed(result: liveResult, inputs: inputs)
+    }
 
     private func verdictTitleComputed(result: GaugeMathResult) -> String {
         let stitchDrift = abs(result.stitchWidthScale - 1)
@@ -220,7 +307,7 @@ struct ContentView: View {
         return "Drift"
     }
 
-    private func verdictBodyComputed(result: GaugeMathResult) -> String {
+    private func verdictBodyComputed(result: GaugeMathResult, inputs: GaugeInputs) -> String {
         let stitchDrift   = abs(result.stitchWidthScale - 1)
         let rowDrift      = abs(result.rowCountScale - 1)
         let stitchPercent = abs(GaugeMath.fmtPct(result.stitchWidthScale) - 100)
@@ -232,52 +319,348 @@ struct ContentView: View {
         let majorNote = (stitchDrift >= 0.15 || rowDrift >= 0.15)
             ? " Over 15% drift. Consider re-swatching or changing needle size before proceeding."
             : ""
+        let castOnGuidance = castOnGuidance(result: result, inputs: inputs)
         if !stitchOff && !rowOff {
-            return "Both gauges match. Cast on \(result.adjustedCastOn) stitches as written. " +
-                "Knit straight from the pattern. No adjustments needed. Re-check after blocking."
+            return "Both gauges match. \(castOnGuidance)" +
+                "No gauge adjustments are needed. Re-check after blocking."
         }
         if stitchOff && !rowOff {
             return (
                 "Your row gauge matches, but your stitch gauge is \(stitchPercent)% \(stitchDir). " +
-                "Cast on \(result.adjustedCastOn) stitches instead of the pattern's \(Int(inputs.patternCastOn)) " +
-                "to hit the same width. Vertical sections need no adjustment.\(majorNote)"
+                "\(castOnGuidance)Vertical sections need no adjustment.\(majorNote)"
             )
         }
         if !stitchOff {
             return (
-                "Your stitch gauge matches. Cast on \(result.adjustedCastOn) stitches as written. " +
+                "Your stitch gauge matches. \(castOnGuidance)" +
                 "Your row gauge is \(rowPercent)% \(rowDir) than expected; use the row count guidance " +
                 "for each vertical section.\(majorNote)"
             )
         }
         return (
             "Both axes are off: stitch gauge \(stitchPercent)% \(stitchDir), row gauge \(rowPercent)% \(rowDir). " +
-            "Cast on \(result.adjustedCastOn) stitches (not \(Int(inputs.patternCastOn))) and use the row count " +
-            "guidance for vertical sections.\(majorNote)"
+            "\(castOnGuidance)Use the row count guidance for any supplied vertical sections.\(majorNote)"
         )
+    }
+
+    private func castOnGuidance(result: GaugeMathResult, inputs: GaugeInputs) -> String {
+        guard let patternCastOn = inputs.patternCastOn,
+              let adjustedCastOn = result.adjustedCastOn else {
+            return ""
+        }
+        if Double(adjustedCastOn) == patternCastOn {
+            return "Cast on \(adjustedCastOn) stitches as written. "
+        }
+        return "Cast on \(adjustedCastOn) stitches instead of \(plain(patternCastOn)). "
+    }
+
+    // MARK: - Validation
+
+    private var rawTextValues: [String] {
+        [
+            patternStitches,
+            patternRows,
+            yourStitches,
+            yourRows,
+            patternCastOn,
+            patternYoke,
+            patternBody,
+            patternSleeve,
+            patternIncreases
+        ]
+    }
+
+    private var validationMessages: [GaugeFormField: String] {
+        Dictionary(
+            uniqueKeysWithValues: GaugeFormField.allCases.compactMap { field in
+                validationMessage(for: field).map { (field, $0) }
+            }
+        )
+    }
+
+    private func validationResult(
+        for field: GaugeFormField
+    ) -> Result<Double?, GaugeMath.ValidationError> {
+        GaugeMath.validate(rawText(for: field), for: field.mathField)
+    }
+
+    private func rawText(for field: GaugeFormField) -> String {
+        switch field {
+        case .patternStitches: return patternStitches
+        case .patternRows: return patternRows
+        case .yourStitches: return yourStitches
+        case .yourRows: return yourRows
+        case .patternCastOn: return patternCastOn
+        case .patternYoke: return patternYoke
+        case .patternBody: return patternBody
+        case .patternSleeve: return patternSleeve
+        case .patternIncreases: return patternIncreases
+        }
+    }
+
+    private func validationMessage(for field: GaugeFormField) -> String? {
+        if let invalidInches = MeasurementUnit.invalidInchesText(from: rawText(for: field)) {
+            let range = MeasurementUnit.inches.displayRange(from: 5...100)
+            return "\(field.correctionName) must be a whole number between \(range.lowerBound) and " +
+                "\(range.upperBound) in. Entered: \(invalidInches)."
+        }
+        guard case let .failure(error) = validationResult(for: field) else {
+            return nil
+        }
+        switch error {
+        case .required:
+            return "\(field.correctionName) is required."
+        case .invalidNumber:
+            return "Enter \(field.correctionName.lowercased()) as a number."
+        case .outOfRange:
+            let bounds = displayedBounds(for: field)
+            return "\(field.correctionName) must be between \(bounds.range.lowerBound) and " +
+                "\(bounds.range.upperBound) \(bounds.unit)."
+        }
+    }
+
+    private func displayedBounds(for field: GaugeFormField) -> (range: ClosedRange<Int>, unit: String) {
+        switch field {
+        case .patternStitches, .yourStitches:
+            return (1...99, "stitches")
+        case .patternRows, .yourRows:
+            return (1...99, "rows")
+        case .patternCastOn:
+            return (40...400, "stitches")
+        case .patternYoke, .patternBody, .patternSleeve:
+            return (measurementUnit.displayRange(from: 5...100), measurementUnit.label)
+        case .patternIncreases:
+            return (1...30, "rows")
+        }
+    }
+
+    private func finishEditing() {
+        let firstInvalidField = GaugeFormField.allCases.first(where: {
+            validationMessage(for: $0) != nil
+        })
+        if firstInvalidField?.isPatternDetail == true {
+            patternDetailsExpanded = true
+        }
+        focusedField = firstInvalidField
+
+        if let firstInvalidField,
+           let message = validationMessage(for: firstInvalidField) {
+            UIAccessibility.post(notification: .announcement, argument: message)
+        }
+    }
+
+    // MARK: - Scene restoration
+
+    private func connectToSceneSession(_ session: UISceneSession) {
+        guard sceneSessionIdentifier != session.persistentIdentifier else { return }
+        sceneSessionIdentifier = session.persistentIdentifier
+        if Self.ignoresPersistentState {
+            restoreLaunchDraft()
+        } else {
+            var restored = session.stateRestorationActivity.map {
+                restoreSceneDraft(from: $0)
+            } ?? false
+            if !restored, let userInfo = session.userInfo {
+                restored = restoreSceneDraft(from: userInfo)
+            }
+            if !restored,
+               let userInfo = SceneDraftStore.load(sceneID: session.persistentIdentifier) {
+                restored = restoreSceneDraft(from: userInfo)
+            }
+            if !restored,
+               Self.canUseSingleSceneHandoff(session),
+               let previousIdentifier = SceneDraftStore.singleSceneID(),
+               let userInfo = SceneDraftStore.load(sceneID: previousIdentifier) {
+                restored = restoreSceneDraft(from: userInfo)
+            }
+            if !restored,
+               Self.canUseSingleSceneHandoff(session),
+               let userInfo = SceneDraftStore.singleSceneHandoff() {
+                restoreSceneDraft(from: userInfo)
+            }
+        }
+        updateSceneRestorationActivity(for: session)
+        sceneRestorationReady = true
+    }
+
+    private func restoreLaunchDraft() {
+        patternStitches = initialText("KGR_PS", defaultValue: Self.defaults.patternStitches)
+        patternRows = initialText("KGR_PR", defaultValue: Self.defaults.patternRows)
+        yourStitches = initialText("KGR_YS", defaultValue: Self.defaults.yourStitches)
+        yourRows = initialText("KGR_YR", defaultValue: Self.defaults.yourRows)
+        patternCastOn = initialText("KGR_CAST_ON", defaultValue: "")
+        patternYoke = initialText("KGR_YOKE", defaultValue: "")
+        patternBody = initialText("KGR_BODY", defaultValue: "")
+        patternSleeve = initialText("KGR_SLEEVE", defaultValue: "")
+        patternIncreases = initialText("KGR_INCREASES", defaultValue: "")
+        patternDetailsExpanded = initialBool("KGR_SHOW_PATTERN_DETAILS")
+    }
+
+    private static var ignoresPersistentState: Bool {
+        launchArgumentEnabled("-ApplePersistenceIgnoreState")
+            || shouldResetUITestDraftOnce
+    }
+
+    private static var shouldResetUITestDraftOnce: Bool {
+        guard let token = ProcessInfo.processInfo.environment["KGR_RESET_DRAFT_ONCE"] else {
+            return false
+        }
+        let key = "gauge.ui-test-reset-token"
+        guard UserDefaults.standard.string(forKey: key) != token else {
+            return false
+        }
+        UserDefaults.standard.set(token, forKey: key)
+        UserDefaults.standard.synchronize()
+        return true
+    }
+
+    private static func launchArgumentEnabled(_ key: String) -> Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.lastIndex(of: key),
+              arguments.indices.contains(index + 1) else {
+            return false
+        }
+        return arguments[index + 1].caseInsensitiveCompare("YES") == .orderedSame
+    }
+
+    private static func isOnlyOpenSession(_ session: UISceneSession) -> Bool {
+        let openSessions = UIApplication.shared.openSessions
+        return openSessions.count == 1 && openSessions.contains(session)
+    }
+
+    private static func canUseSingleSceneHandoff(_ session: UISceneSession) -> Bool {
+        isOnlyOpenSession(session) || launchArgumentEnabled("-KGRUITestSingleSceneHandoff")
+    }
+
+    @discardableResult
+    private func restoreSceneDraft(from activity: NSUserActivity) -> Bool {
+        guard let userInfo = activity.userInfo else { return false }
+        return restoreSceneDraft(from: userInfo)
+    }
+
+    @discardableResult
+    private func restoreSceneDraft(from userInfo: [AnyHashable: Any]) -> Bool {
+        guard let values = userInfo[Self.sceneDraftValuesKey] as? [String],
+              values.count == rawTextValues.count,
+              let disclosure = userInfo[Self.sceneDraftDisclosureKey] as? Bool else {
+            return false
+        }
+        patternStitches = values[0]
+        patternRows = values[1]
+        yourStitches = values[2]
+        yourRows = values[3]
+        patternCastOn = values[4]
+        patternYoke = values[5]
+        patternBody = values[6]
+        patternSleeve = values[7]
+        patternIncreases = values[8]
+        patternDetailsExpanded = disclosure
+        return true
+    }
+
+    private func updateSceneRestorationActivity(
+        for resolvedSession: UISceneSession? = nil,
+        synchronizingDefaults: Bool = false
+    ) {
+        let session: UISceneSession?
+        if let resolvedSession {
+            session = resolvedSession
+        } else if let sceneSessionIdentifier {
+            session = UIApplication.shared.connectedScenes.first(where: {
+                $0.session.persistentIdentifier == sceneSessionIdentifier
+            })?.session
+        } else {
+            session = nil
+        }
+        guard let session else { return }
+
+        // Namespace process-loss snapshots by scene; the single-scene alias is removed when another scene exists.
+        let draft: [String: Any] = [
+            Self.sceneDraftValuesKey: rawTextValues,
+            Self.sceneDraftDisclosureKey: patternDetailsExpanded,
+        ]
+        var userInfo = session.userInfo ?? [:]
+        userInfo[Self.sceneDraftValuesKey] = rawTextValues
+        userInfo[Self.sceneDraftDisclosureKey] = patternDetailsExpanded
+        session.userInfo = userInfo
+        SceneDraftStore.save(draft, sceneID: session.persistentIdentifier)
+        if Self.canUseSingleSceneHandoff(session) {
+            SceneDraftStore.setSingleSceneID(session.persistentIdentifier)
+            SceneDraftStore.setSingleSceneHandoff(draft)
+        } else {
+            SceneDraftStore.setSingleSceneID(nil)
+            SceneDraftStore.setSingleSceneHandoff(nil)
+        }
+        if synchronizingDefaults {
+            UserDefaults.standard.synchronize()
+        }
+    }
+
+    private func roundedDelta(_ value: Double?) -> Int? {
+        value.flatMap { Int(exactly: $0.rounded()) }
     }
 
     // MARK: - Actions
 
     private func resetToDefaults() {
+        resetSnapshot = ResetSnapshot(
+            patternStitches: patternStitches,
+            patternRows: patternRows,
+            yourStitches: yourStitches,
+            yourRows: yourRows,
+            patternCastOn: patternCastOn,
+            patternYoke: patternYoke,
+            patternBody: patternBody,
+            patternSleeve: patternSleeve,
+            patternIncreases: patternIncreases,
+            patternDetailsExpanded: patternDetailsExpanded
+        )
         os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.resetTapped)
         patternStitches = Self.defaults.patternStitches
         patternRows = Self.defaults.patternRows
         yourStitches = Self.defaults.yourStitches
         yourRows = Self.defaults.yourRows
-        patternCastOn = Self.defaults.patternCastOn
-        patternYoke = Self.defaults.patternYoke
-        patternBody = Self.defaults.patternBody
-        patternSleeve = Self.defaults.patternSleeve
-        patternIncreases = Self.defaults.patternIncreases
-        cachedResult = nil
-        // Reset previousVerdictBucket so no spurious signpost fires when verdictTitle
-        // transitions "" → "" on next render after clearing cachedResult.
+        patternCastOn = ""
+        patternYoke = ""
+        patternBody = ""
+        patternSleeve = ""
+        patternIncreases = ""
+        patternDetailsExpanded = false
+        focusedField = nil
+        showFullMath = false
+        invalidateResults()
+        updateSceneRestorationActivity(synchronizingDefaults: true)
+    }
+
+    private func undoReset() {
+        guard let snapshot = resetSnapshot else { return }
+        resetSnapshot = nil
+        patternStitches = snapshot.patternStitches
+        patternRows = snapshot.patternRows
+        yourStitches = snapshot.yourStitches
+        yourRows = snapshot.yourRows
+        patternCastOn = snapshot.patternCastOn
+        patternYoke = snapshot.patternYoke
+        patternBody = snapshot.patternBody
+        patternSleeve = snapshot.patternSleeve
+        patternIncreases = snapshot.patternIncreases
+        patternDetailsExpanded = snapshot.patternDetailsExpanded
+        focusedField = nil
+        showFullMath = false
+        invalidateResults()
+        updateSceneRestorationActivity(synchronizingDefaults: true)
+    }
+
+    private func invalidateResults() {
         previousVerdictBucket = nil
+        cachedResult = nil
+        showAdjustmentSheet = false
+        driftBandSignpostFired = false
     }
 
     @MainActor
     private func shareItems(for result: GaugeMathResult) async -> [Any] {
+        guard let inputs else { return [] }
         let summary = ResultsExportSummary(inputs: inputs, result: result, unit: measurementUnit)
         if let imageURL = await renderShareImageURL(summary: summary) {
             os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareInvoked)
@@ -345,7 +728,7 @@ private struct VerdictHelpSheet: View {
                     Text(explanation)
                         .font(.body)
                         .lineSpacing(4)
-                        .foregroundStyle(AppTheme.ink)
+                        .foregroundStyle(.primary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding()
@@ -461,26 +844,5 @@ private struct HelpSheetHeader: View {
         }
         .padding(.horizontal, 8)
         .padding(.top, 4)
-    }
-}
-
-// MARK: - UnitToggleView
-
-/// Global cm / in segmented control displayed at the top of the main screen.
-/// Toggling re-renders all measurement fields; the model stays in centimetres.
-private struct UnitToggleView: View {
-    @Binding var unit: MeasurementUnit
-
-    var body: some View {
-        Picker("Measurement unit", selection: $unit) {
-            ForEach(MeasurementUnit.allCases, id: \.self) { option in
-                Text(option.label).tag(option)
-            }
-        }
-        .pickerStyle(.segmented)
-        .accessibilityIdentifier("unit-toggle")
-        .accessibilityLabel("Measurement unit")
-        .accessibilityHint("Switches all length fields between centimetres and inches")
-        .padding(.bottom, 4)
     }
 }

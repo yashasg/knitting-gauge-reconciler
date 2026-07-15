@@ -138,3 +138,9 @@ All 70 tests' assertions passed in both attempts. No code defect. All merged wor
 
 - **Archive:** `history-archive.md` — prior sessions (template sync groups, Ruby guard, iOS bootstrap, Fastlane docs)
 - **Decisions:** `.squad/decisions.md`
+
+## Learnings
+
+- **2026-07-14T16:52:21.053-07:00 — Native build gate:** Local `build`, `test`, and `release` modes need only the checked-in Xcode project/scheme and direct `xcodebuild`; Fastlane remains necessary for signed distribution lanes, not local compilation.
+- An explicit simulator UDID must be checked against `simctl list devices available` and limited to iPhones. When the default model is absent, selecting the first available iPhone keeps new Xcode runtimes usable without weakening explicit override validation.
+- Homebrew Fastlane includes `xcpretty` under its `libexec/bin` even when `xcpretty` is not on `PATH`; the build script can preserve formatted output without adding another package.

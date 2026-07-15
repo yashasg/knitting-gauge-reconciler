@@ -142,3 +142,15 @@ This is optional follow-up work; current behavior is a11y-correct.
 **Orchestration:** `.squad/orchestration-log/2026-06-03T01:41:25Z-ive.md`
 
 **STATUS: COMPLETED 2026-06-02T18:32:46-07:00 — MR !43**
+
+---
+
+## 2026-07-15T14:38:21.113-07:00 — Final shipped UI review
+
+- **Verdict: FAIL** for the explicit live-result/hero acceptance request.
+- The four primary inputs, shared validator, conditional adjustment sections, collapsed blank optionals, validation/focus, reset/Undo, scene-local restoration, Dynamic Type, and accessibility contracts are present.
+- Editing raw text invalidates and closes results; recomputation happens only after `View results`. `HeroTilesView` is defined but has no shipped call site, so the visible result surface is not the requested live hero.
+- Owner Edison: wire the existing validated result to an always-visible live hero without weakening issue #65 behavior, guarded by one UI test covering keyboard, paste, wheel, invalidation, and recovery.
+- Read-only verification: shipped authorized UI tree matches issue #65 exact source commit; SwiftLint exits 0. No full build was run.
+
+📌 Team update (2026-07-15T14:58:16.016-07:00): Edison owns the independent issue #82 revision only after Hopper's #59 CI dependency is accepted; scope stays limited to the three candidate files, with `GaugeMath.swift` unchanged and all #65 behavior preserved — decided by Tesla.

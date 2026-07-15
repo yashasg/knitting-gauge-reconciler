@@ -1,14 +1,15 @@
 ---
 updated_at: 2026-07-15T14:58:16.016-07:00
-focus_area: Issue #82 / MR !47 — exact-SHA CI and reviewer gates
-active_issues: [82]
+focus_area: Issue #59 canonical CI gate; issue #82 blocked revision
+active_issues: [59, 82]
 ---
 
 # What We're Focused On
 
-Issue #82's clean candidate at exact SHA `b22c775e26507b94d4c11ca382e71f2c24c057de`
-has passed Curie's local runtime gate: 77/77 tests, with zero failures, skips,
-warnings, crashes, or SwiftLint violations.
+Issue #59 is the top runnable dependency and is owned by Hopper. It must restore
+exact-payload-SHA checkout/assertion and repository-root `./app/build.sh test`
+as the canonical remote CI gate.
 
-MR !47 remains open and must not be described as merged or complete. The next
-focus is exact-SHA CI evidence and the remaining reviewer/acceptance gates.
+Issue #82 and MR !47 remain preserved unchanged and blocked on #59 after exact-SHA
+remote failures. Shannon is locked out of the revision cycle. Edison owns the
+later independent issue #82 revision after #59 is accepted.

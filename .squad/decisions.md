@@ -948,3 +948,72 @@ skips, warnings, crashes, analyzer warnings, or SwiftLint violations. This
 supersedes only the earlier Curie-blocked publication boundary. MR !47 remains
 awaiting exact-SHA CI and reviewer/acceptance gates and is not recorded as
 merged or complete.
+
+---
+
+# Issue #82 exact-SHA CI evidence
+
+**Date:** 2026-07-15T14:58:16.016-07:00
+**Owner:** Hopper
+**Verdict:** FAIL
+
+## Exact candidate
+
+- Branch: `squad/82-restore-production-scene-persistence`
+- SHA: `b22c775e26507b94d4c11ca382e71f2c24c057de`
+- MR: https://gitlab.com/yashasg/knitting-gauge-reconciler/-/merge_requests/47
+- Local, remote branch, MR head, GitHub status callback, and GitLab external pipeline all resolved to the same SHA. No candidate commit was changed.
+
+## Supported trigger path
+
+The established GitLab webhook at `gitlab-build-trigger.yashas-c4d.workers.dev` handles push and merge-request events and dispatches GitHub workflow `CI` with `gitlab_push` or `gitlab_mr`. The workflow has no `workflow_dispatch` trigger, so direct manual dispatch is unsupported. The candidate's normal push and MR events produced the two exact-SHA runs below without another push or MR mutation.
+
+## GitHub evidence
+
+- Push run: https://github.com/yashasg/knitting-gauge-reconciler/actions/runs/29453818048 — failed.
+- MR run: https://github.com/yashasg/knitting-gauge-reconciler/actions/runs/29453873473 — failed.
+- Both callbacks explicitly targeted exact SHA `b22c775e26507b94d4c11ca382e71f2c24c057de`.
+- Push run: SwiftLint found 0 violations. The UI suite reported 21 assertion failures, concentrated in optional-output visibility and process-interruption scene restoration.
+- MR run: SwiftLint found 0 violations. The actionable failures were an accessibility contrast audit failure and `testSceneRestorationPreservesValidInvalidPartialAndResetDraftsAcrossProcessInterruption` expecting raw `your-rows` value `32` but receiving `24 rows`.
+- The established workflow ran `fastlane ci configuration:Debug`, not `./app/build.sh test`. Consequently it bypassed `app/build.sh`'s `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`, `GCC_TREAT_WARNINGS_AS_ERRORS=YES`, `CLANG_TREAT_WARNINGS_AS_ERRORS=YES`, and `OTHER_SWIFT_FLAGS=-warnings-as-errors` wiring. No warning-as-error evidence can be claimed from these runs.
+
+## GitLab evidence
+
+- External pipeline: https://gitlab.com/yashasg/knitting-gauge-reconciler/-/pipelines/2680130215
+- Pipeline ID: `2680130215`
+- Exact SHA: `b22c775e26507b94d4c11ca382e71f2c24c057de`
+- Final status: failed
+- The bridge attached both GitHub run callbacks to this exact-SHA external pipeline, so mirroring worked; no recovery or fabricated status was needed.
+
+## Blockers
+
+MR !47 must not merge. The exact-SHA remote suite is red, and the GitHub workflow does not execute the required `./app/build.sh test` warning-as-error gate.
+
+---
+
+### 2026-07-15T14:58:16.016-07:00: Issue #82 failure retrospective
+**By:** Tesla
+**What:** Reject candidate `b22c775e26507b94d4c11ca382e71f2c24c057de` for an independent Edison revision after Hopper completes canonical CI issue #59. Shannon is locked out of the issue #82 revision cycle.
+**Why:** The candidate restores the authorized blobs exactly but does not preserve the accepted cross-version contract. Both exact-candidate runs fail the revised-form contrast audit after the restored `ContentView` moves `gauge-lead`'s identifier ahead of its full opaque background. The restored process test still supplies removed `-KGRIgnoreStoredDraft` behavior, so scene and optional-output failures vary with prior simulator/session state. Separately, CI invokes Fastlane directly instead of required `./app/build.sh test`, bypassing warning enforcement and test preflight policy.
+
+## Classification
+
+1. **Candidate contract:** FAIL. Exact blob identity and Curie's isolated 77/77 pass are true, but the two remote runs expose a deterministic accessibility regression and a non-isolated protected persistence test. Issue #82's #65-preservation and remote-pass criteria are unmet.
+2. **CI contract:** FAIL. The Build & Test workflow runs `fastlane ci configuration:Debug`, not repository-root `./app/build.sh test`; it therefore cannot prove warnings-as-errors, foreign-app preflight, serial execution, or bounded retries. Branch checkout also needs an exact payload-SHA assertion.
+3. **Failure character:** Mixed.
+   - `testRevisedFormCollapsedAndExpandedAccessibility` fails in both runs and is candidate behavior under the remote environment.
+   - Optional-output failures occur only in run `29453818048`; the same test passes in `29453873473`.
+   - Scene restoration fails with inherited defaults in the first run and only reset `your-rows` (`24` versus `32`) in the second. The obsolete launch argument and changing state prove environment/session contamination; they do not deterministically prove the production persistence model is wrong.
+
+## Routing
+
+- Existing issue #59 is the exact CI domain. Its canonical title and description now make Hopper the owner, constrain scope to the exact-SHA canonical test gate, and record no dependency. Only #59 had `follow-up` removed.
+- Issue #82 now records rejection, exact failures, unchecked acceptance, the dependency on #59, and Edison as independent revision owner. Its `follow-up` label remains while blocked.
+- Shannon's `squad:shannon` route was removed and `squad:edison` applied. Shannon may not produce, advise, pair on, review-guide, or co-author the next issue #82 revision.
+- MR !47, its branch, and candidate SHA remain open and unchanged.
+
+## Ordered handoff
+
+1. **#59 — Hopper — runnable now.** Change only the GitHub CI checkout/exact-SHA assertion and Build & Test entrypoint; treat `app/build.sh` and `app/fastlane/Fastfile` as read-only unless a demonstrated compatibility defect requires otherwise. Acceptance is an exact-SHA repository-root `./app/build.sh test` run with warning flags, serial/bounded retry policy, all tests passing, zero warnings/lint/crashes, and matching GitLab status.
+2. **#82 — Edison — blocked on #59.** After #59 is accepted, independently revise only `ContentView.swift`, `KnittingGaugeReconcilerUITests.swift`, and `AccessibilityAuditTests.swift`; keep `GaugeMath.swift` exact and preserve all #65 behavior. Acceptance is deterministic full-suite and exact-SHA remote success, including contrast, optional-output, and process-restoration coverage, followed by Ive, Mendel, Jacquard, and Curie gates.
+3. Keep candidate `b22c775` and MR !47 unchanged until #59 clears the dependency.

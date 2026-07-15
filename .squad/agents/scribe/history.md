@@ -51,3 +51,9 @@ Merged four inbox decisions into `decisions.md`, wrote orchestration/session log
 - Merged three current inbox records and logged Curie, Tesla, and Coordinator outcomes.
 - Recorded Curie's 77/77 exact-SHA local pass and MR !47 as awaiting exact-SHA CI and reviewer gates.
 - The decisions archive hard gate found no entries older than seven days; Tesla history crossed 15 KB and was summarized.
+
+### 2026-07-15T14:58:16.016-07:00 — Issue #82 failure routing recorded
+
+- Merged Hopper's exact-SHA CI failure and Tesla's retrospective decision; inbox cleared.
+- Recorded #59 as Hopper's top runnable dependency and #82 as an Edison-owned later revision, with Shannon locked out and MR !47 preserved unchanged.
+- Active decisions exceeded the hard-gate ceilings, but no entry was older than seven days; all active histories remained below 15 KB.

@@ -145,3 +145,19 @@ All 70 tests' assertions passed in both attempts. No code defect. All merged wor
 
 - **Archive:** `history-archive.md` — prior sessions (template sync groups, Ruby guard, iOS bootstrap, Fastlane docs)
 - **Decisions:** `.squad/decisions.md`
+
+## 2026-07-15T14:38:21.113-07:00 — Shipped-main tooling review
+
+- Reviewed exact main commit `1608bcc5b2cba824b54a600c6a7590a8ed681c19` without running Xcode or `app/build.sh`.
+- Build/test/release selection, iPhone 17 Pro simulator resolution, warnings-as-errors settings, and shell/Fastlane failure propagation are statically sound.
+- Exact-SHA GitLab pipeline `2680031750` and linked GitHub run `29450412735` passed; evidence reports zero SwiftLint violations, successful tests, and no compiler-warning signature.
+- Final tooling verdict is **FAIL** because `app/build.sh` contains neither `-quiet` nor formatter wiring. This is the unresolved #59 contract; Curie #80 still owns the exact-main local runtime gate.
+
+## 2026-07-15T14:58:16.016-07:00 — Issue #82 exact-SHA CI
+
+- The supported no-mutation trigger is the existing GitLab push/MR webhook to GitHub `repository_dispatch`; `CI` does not support `workflow_dispatch`.
+- Exact SHA `b22c775e26507b94d4c11ca382e71f2c24c057de` failed GitHub runs `29453818048` and `29453873473`; GitLab correctly attached failed external pipeline `2680130215`.
+- Remote failures reproduced scene-restoration raw-value loss, plus optional-output and accessibility contrast failures.
+- The GitHub workflow invokes Fastlane directly rather than `./app/build.sh test`, so it does not establish the required warning-as-error gate even when lint is clean.
+
+📌 Team update (2026-07-15T14:58:16.016-07:00): Issue #59 is the top runnable dependency and Hopper owns its exact-SHA checkout/assertion plus canonical `./app/build.sh test` CI correction; preserve issue #82 and MR !47 unchanged until #59 passes — decided by Tesla.

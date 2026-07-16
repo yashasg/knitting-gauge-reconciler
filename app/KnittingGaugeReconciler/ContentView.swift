@@ -121,18 +121,22 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: cardSpacing) {
-                    Text(
-                        "Compare your pattern gauge with your swatch to see how stitch and row differences " +
-                            "affect the garment."
-                    )
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
-                    .padding(.bottom, 8)
+                    ZStack(alignment: .leading) {
+                        AppTheme.background
+                        Text(
+                            "Compare your pattern gauge with your swatch to see how stitch and row differences " +
+                                "affect the garment."
+                        )
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(AppTheme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 8)
+                    }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(AppTheme.background)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAddTraits(.isStaticText)
                     .accessibilityIdentifier("gauge-lead")
 
                     GaugeInputsCard(

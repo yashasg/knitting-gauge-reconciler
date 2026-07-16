@@ -327,9 +327,11 @@ struct ContentView: View {
             return ""
         }
         if Double(adjustedCastOn) == patternCastOn {
-            return "Cast on \(adjustedCastOn) stitches as written. "
+            return "Cast on \(adjustedCastOn) stitches as written. " +
+                "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple. "
         }
-        return "Cast on \(adjustedCastOn) stitches instead of \(plain(patternCastOn)). "
+        return "Cast on \(adjustedCastOn) stitches instead of \(plain(patternCastOn)). " +
+            "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple. "
     }
 
     // MARK: - Validation
@@ -421,6 +423,8 @@ struct ContentView: View {
             return "\(field.correctionName) is required."
         case .invalidNumber:
             return "Enter \(field.correctionName.lowercased()) as a number."
+        case .wholeNumberRequired:
+            return "Enter \(field.correctionName.lowercased()) as a whole number."
         case .outOfRange:
             let bounds = displayedBounds(for: field)
             return "\(field.correctionName) must be between \(bounds.range.lowerBound) and " +

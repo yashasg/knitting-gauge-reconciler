@@ -165,13 +165,19 @@ private struct LiveResultsView: View {
             if let patternCastOn = inputs.patternCastOn,
                let adjustedCastOn = result.adjustedCastOn {
                 sectionCard(title: "Cast-on", subtitle: "To preserve pattern width") {
-                    AdjustmentRow(
-                        name: "Cast-on stitches",
-                        pattern: "\(plain(patternCastOn)) stitches",
-                        adjusted: "\(adjustedCastOn) stitches",
-                        adjustedIdentifier: "cast-on-result",
-                        driftPill: castOnDriftPill
-                    )
+                    VStack(alignment: .leading, spacing: 8) {
+                        AdjustmentRow(
+                            name: "Cast-on stitches",
+                            pattern: "\(plain(patternCastOn)) stitches",
+                            adjusted: "\(adjustedCastOn) stitches",
+                            adjustedIdentifier: "cast-on-result",
+                            driftPill: castOnDriftPill
+                        )
+                        Text("Reconcile this rounded stitch count with your pattern's stitch-repeat multiple.")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
 
@@ -316,6 +322,7 @@ private struct LiveResultsView: View {
         }
         if let castOn = inputs.patternCastOn, let adjusted = result.adjustedCastOn {
             lines.append("cast-on adjust = your_st / pattern_st x \(plain(castOn)) = \(adjusted) stitches")
+            lines.append("reconcile the rounded stitch count with the pattern stitch-repeat multiple")
         }
         return lines.joined(separator: "\n")
     }

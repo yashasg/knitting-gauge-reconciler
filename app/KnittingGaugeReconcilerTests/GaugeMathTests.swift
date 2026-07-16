@@ -55,11 +55,17 @@ struct GaugeMathTests {
             ValidationRow(field: .patternRows, lower: 1, upper: 99, decimal: 24.5, isRequired: true),
             ValidationRow(field: .yourStitches, lower: 1, upper: 99, decimal: 21.5, isRequired: true),
             ValidationRow(field: .yourRows, lower: 1, upper: 99, decimal: 30.5, isRequired: true),
-            ValidationRow(field: .patternCastOn, lower: 40, upper: 400, decimal: 128.5, isRequired: false),
+            ValidationRow(
+                field: .patternCastOn, lower: 40, upper: 400, decimal: 128.5,
+                isRequired: false, requiresWholeNumber: true
+            ),
             ValidationRow(field: .patternYokeDepth, lower: 5, upper: 100, decimal: 20.5, isRequired: false),
             ValidationRow(field: .patternBodyLength, lower: 5, upper: 100, decimal: 50.5, isRequired: false),
             ValidationRow(field: .patternSleeveLength, lower: 5, upper: 100, decimal: 45.5, isRequired: false),
-            ValidationRow(field: .patternIncreaseSpacing, lower: 1, upper: 30, decimal: 6.5, isRequired: false),
+            ValidationRow(
+                field: .patternIncreaseSpacing, lower: 1, upper: 30, decimal: 6.5,
+                isRequired: false, requiresWholeNumber: true
+            ),
         ]
 
         #expect(rows.count == GaugeMath.Field.allCases.count)
@@ -71,7 +77,11 @@ struct GaugeMathTests {
                 ValidationCase(name: "whitespace", text: " \n\t ", expectation: blank),
                 ValidationCase(name: "zero", text: "0", expectation: .error(.outOfRange(range))),
                 ValidationCase(name: "negative", text: "-1", expectation: .error(.outOfRange(range))),
-                ValidationCase(name: "decimal", text: plain(row.decimal), expectation: .value(row.decimal)),
+                ValidationCase(
+                    name: "decimal",
+                    text: plain(row.decimal),
+                    expectation: row.requiresWholeNumber ? .error(.wholeNumberRequired) : .value(row.decimal)
+                ),
                 ValidationCase(name: "lower bound", text: plain(row.lower), expectation: .value(row.lower)),
                 ValidationCase(name: "upper bound", text: plain(row.upper), expectation: .value(row.upper)),
                 ValidationCase(
@@ -214,7 +224,10 @@ struct GaugeMathTests {
         #expect(summary.swatchGauge.rows == "32 rows / 10 cm")
         #expect(summary.stitchMetric == .init(title: "Stitch-wise", value: "89%", status: "Much tighter"))
         #expect(summary.rowMetric == .init(title: "Row-wise", value: "133%", status: "Much denser"))
-        #expect(summary.castOn == "Cast on 144 stitches instead of 128")
+        #expect(
+            summary.castOn == "Cast on 144 stitches instead of 128. " +
+                "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
+        )
         #expect(summary.sections.map(\.name) == ["Yoke depth", "Body length", "Sleeve length", "Increase-row spacing"])
         // body: (50/10)*32 = 160 rows at user gauge; default unit is cm so pattern shows "50 cm"
         #expect(summary.sections[1].pattern == "50 cm")
@@ -233,7 +246,12 @@ struct GaugeMathTests {
         #expect(summary.contains("Swatch gauge\n• Stitches: 36 st / 10 cm\n• Rows: 32 rows / 10 cm"))
         #expect(summary.contains("• Stitch-wise: 89% (Much tighter)"))
         #expect(summary.contains("• Row-wise: 133% (Much denser)"))
-        #expect(summary.contains("• Cast-on: cast on 144 stitches instead of 128"))
+        #expect(
+            summary.contains(
+                "• Cast-on: cast on 144 stitches instead of 128. " +
+                    "reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
+            )
+        )
         // rows at your gauge: yoke (20/10)*32=64, body (50/10)*32=160, sleeve (45/10)*32=144
         #expect(summary.contains("• Yoke depth: 20 cm → knit 64 rows"))
         #expect(summary.contains("• Body length: 50 cm → knit 160 rows"))
@@ -747,6 +765,7 @@ struct GaugeMathTests {
         let upper: Double
         let decimal: Double
         let isRequired: Bool
+        var requiresWholeNumber = false
     }
 
     private struct ValidationCase {

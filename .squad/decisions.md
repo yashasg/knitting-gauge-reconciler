@@ -490,3 +490,22 @@ and 0 warnings or crashes.
 - This supersedes every earlier decision, issue criterion, merge-request claim, or guardrail requiring protected
   process-restoration UI coverage.
 - Contrast and unrelated stable UI/accessibility assertions remain in force.
+
+---
+
+# Temporary UI Test Execution Prohibition
+
+**Date:** 2026-07-15T21:34:56.578-07:00
+**Owner:** User
+**Verdict:** Canonical superseding decision
+
+- The user decided that no UI tests or XCUITests run until the implementation issue queue is clear.
+- During this temporary period, do not add, restore, fix, invoke, require, or gate issues, merge requests, or CI on
+  `KnittingGaugeReconcilerUITests`, `AccessibilityAuditTests`, or any UI-test equivalent.
+- Keep UI test source files intact except for prior explicit deletions; disable execution through the shared scheme.
+- Use deterministic unit, static, compile, and SwiftLint guardrails instead. Accessibility production requirements
+  remain mandatory and are reviewed through deterministic, static, and manual checks while UI tests are disabled.
+- This temporarily supersedes all prior decisions, issue acceptance criteria, merge-request claims, and guardrails
+  requiring UI tests.
+- Re-enable UI tests only after the issue queue is clear and the user explicitly approves re-enabling. Revert by
+  changing the shared scheme value back to `skipped = "NO"`.

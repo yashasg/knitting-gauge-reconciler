@@ -5,6 +5,7 @@ require "json"
 require "fileutils"
 require "shellwords"
 require "xcodeproj"
+require_relative "diagnostics_verifier"
 
 # This file contains the fastlane.tools configuration
 # You can find the documentation at https://docs.fastlane.tools
@@ -30,21 +31,6 @@ APP_PROJECT = File.expand_path("../app.xcodeproj", __dir__)
 APPFILE_PATH = File.expand_path("Appfile", __dir__)
 APP_TARGET = "KnittingGaugeReconciler"
 APP_SCHEME = "KnittingGaugeReconciler"
-PROHIBITED_TEST_DIAGNOSTIC = /
-  IOHID |
-  IOSurface |
-  IOCreatePlugInInterfaceForService |
-  \[plugin\].*\b(?:cannot|error|failed|failure)\b |
-  ^\d{4}-\d{2}-\d{2}.*\b(?:error|failed|failure)\b |
-  \bwarning: |
-  \badvisory\b |
-  \bfalling\s+back\b |
-  \bbootstrap\w*\b.*\b(?:error|fail(?:ed|ure)?|killed)\b |
-  \b(?:error|fail(?:ed|ure)?|killed)\b.*\bbootstrap\w*\b |
-  \b(?:killed|terminated)\b.*\bsignal\b |
-  \bsignal\s+(?:kill|term|[0-9]+)\b |
-  \b(?:crashed|crash\s+report\s+found|unexpectedly\s+exited)\b
-/ix
 BUILD_OUTPUT_DIRECTORY = "."
 BUILD_LOG_PATH = "../.build/gym"
 CI_KEYCHAIN_NAME = "fastlane_tmp_keychain"
@@ -148,19 +134,9 @@ def verify_test_diagnostics(output_directory)
   FileUtils.rm_rf(diagnostics_path)
   sh("xcrun xcresulttool export diagnostics --path #{Shellwords.escape(result_bundle_path)} --output-path #{Shellwords.escape(diagnostics_path)}")
 
-  diagnostic_paths = Dir.glob(File.join(diagnostics_path, "**", "StandardOutputAndStandardError.txt")).sort
-  UI.user_error!("No test-runner diagnostics found in #{result_bundle_path}") if diagnostic_paths.empty?
-  UI.user_error!("Raw xcodebuild log not found at #{raw_log_path}") unless File.file?(raw_log_path)
-
-  prohibited_lines = []
-  ([raw_log_path] + diagnostic_paths).each do |path|
-    contents = File.read(path)
-    $stdout.write(contents)
-    $stdout.write("\n") unless contents.end_with?("\n")
-    prohibited_lines.concat(contents.lines.grep(PROHIBITED_TEST_DIAGNOSTIC))
-  end
-
-  UI.user_error!("Prohibited Xcode/test-runner diagnostics detected") unless prohibited_lines.empty?
+  verify_exported_test_diagnostics(raw_log_path, diagnostics_path)
+rescue TestDiagnosticsError => error
+  UI.user_error!(error.message)
 end
 
 

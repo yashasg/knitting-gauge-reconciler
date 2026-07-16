@@ -81,3 +81,10 @@ Merged four inbox decisions into `decisions.md`, wrote orchestration/session log
 - Logged Ralph's empty runnable queue, exact-main pipeline pass, and preservation boundary.
 - Recorded a final-review handoff only; no final approval was claimed.
 - No decision entry qualified for seven-day archival, and no history crossed 15,360 bytes.
+
+### 2026-07-16T11:12:49.308-07:00 — Issue #51 runnable-queue correction recorded
+
+- Recorded Tesla's and Ralph's reconciliation: #51 is open and runnable under explicit user authorization.
+- Superseded the stale empty-queue/final-review handoff and routed independent revision ownership to Hopper.
+- Preserved local main `cd42034`, all ambiguous state, and the already-dirty Ada/Jacquard/Ralph histories.
+- Inbox was empty; no decision archival or history summarization was eligible.

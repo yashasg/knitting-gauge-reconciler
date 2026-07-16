@@ -1291,3 +1291,10 @@ Preserve `b8f1930`, its local branch/worktree, all 32 stashes now present (31 at
 **By:** Tesla
 **What:** Final review is authorized at frozen SHA `68371960f65911ad94c3c6a1040568fec1086c6d`; no implementation dispatch or GitLab issue mutation is warranted. Exact pipeline `2682301311` and `Build & Test` passed, no merge request is open, and the remaining non-tracker issues are follow-up or blocked.
 **Why:** All five goals have exact-SHA evidence, while no concrete goal gap requires issue creation or update. Ambiguous repository state remains preserved. This is a handoff authorization, not final approval.
+
+---
+
+### 2026-07-16T11:12:49.308-07:00: Issue #51 is the canonical runnable domain issue
+**By:** Tesla, Ralph
+**What:** Issue #51 is open and runnable under the user's explicit complete-loop authorization. It supersedes the stale empty-runnable-queue and final-review-handoff conclusions. There is no open merge request. Issue #1 remains a tracker; #52, #57, #60, #62, and #66 remain follow-up or blocked. Hopper owns the independent #51 revision because Tesla is locked out. Work begins from `origin/main` in isolated worktree `/Users/yashasgujjar/dev/knitting-gauge-reconciler-51` on `squad/51-restore-canonical-serial-ui-test-gate`.
+**Why:** Issue #51 itself and the user's explicit instruction resolve Ralph's initial authority concern. Preserve local main commit `cd42034`, the pre-existing dirty Ada/Jacquard/Ralph histories, and all other ambiguous local state; do not reset, delete, overwrite, stage, or clean them.

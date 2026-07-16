@@ -68,3 +68,9 @@ Earlier durable detail is summarized in `history-archive.md`.
 - Diagnostics: four exported files scanned, final pipeline green.
 - **Verdict:** PASS on all five goals; overall PASS.
 - Next: Issue #90 (Hopper) sole open owner, depends on shipped #89.
+
+### 2026-07-16T11:12:49.308-07:00 — Issue #51 reconciliation correction
+
+- Issue #51 is open and is the canonical runnable domain issue under the user's explicit complete-loop authorization.
+- This supersedes the stale empty-queue/final-handoff conclusion. Hopper owns the independent revision because Tesla is locked out.
+- Preserve local main `cd42034`, all pre-existing dirty histories, and every ambiguous saved state. Implementation starts only in the isolated #51 worktree from `origin/main`.

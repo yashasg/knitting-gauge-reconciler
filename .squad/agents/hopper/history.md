@@ -161,3 +161,5 @@ All 70 tests' assertions passed in both attempts. No code defect. All merged wor
 - The GitHub workflow invokes Fastlane directly rather than `./app/build.sh test`, so it does not establish the required warning-as-error gate even when lint is clean.
 
 📌 Team update (2026-07-15T14:58:16.016-07:00): Issue #59 is the top runnable dependency and Hopper owns its exact-SHA checkout/assertion plus canonical `./app/build.sh test` CI correction; preserve issue #82 and MR !47 unchanged until #59 passes — decided by Tesla.
+
+📌 Team update (2026-07-16T11:12:49.308-07:00): Issue #51 is the canonical runnable domain issue under explicit user authorization. Hopper owns its independent revision because Tesla is locked out; use only `/Users/yashasgujjar/dev/knitting-gauge-reconciler-51` on `squad/51-restore-canonical-serial-ui-test-gate` from `origin/main`, preserving all ambiguous state. — decided by Tesla and Ralph

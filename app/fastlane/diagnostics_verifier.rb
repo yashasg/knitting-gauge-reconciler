@@ -66,14 +66,28 @@ def diagnostics_open_at(directory, name, display_path)
     raise diagnostics_native_error("Cannot open #{display_path}", errno)
   end
 
-  IO.new(descriptor, "rb").tap { |file| file.close_on_exec = true }
+  file = IO.new(descriptor, "rb")
+  descriptor = nil
+  file.close_on_exec = true
+  file
+rescue
+  file&.close unless file&.closed?
+  NativeDiagnosticsFile.close(descriptor) if descriptor && !descriptor.negative?
+  raise
 end
 
 def diagnostics_duplicate(file)
   descriptor = NativeDiagnosticsFile.dup(file.fileno)
   raise diagnostics_native_error("Cannot duplicate file descriptor", Fiddle.last_error) if descriptor.negative?
 
-  IO.new(descriptor, "rb").tap { |copy| copy.close_on_exec = true }
+  copy = IO.new(descriptor, "rb")
+  descriptor = nil
+  copy.close_on_exec = true
+  copy
+rescue
+  copy&.close unless copy&.closed?
+  NativeDiagnosticsFile.close(descriptor) if descriptor && !descriptor.negative?
+  raise
 end
 
 def diagnostics_open_from(directory, components, base_path)
@@ -81,10 +95,15 @@ def diagnostics_open_from(directory, components, base_path)
   components.each_with_index do |component, index|
     display_path = File.join(base_path, *components.take(index + 1))
     child = diagnostics_open_at(current, component, display_path)
-    current.close
-    current = child
-    unless index == components.length - 1 || current.stat.directory?
-      raise TestDiagnosticsError, "Non-directory path component rejected: #{display_path}"
+    begin
+      current.close
+      current = child
+      child = nil
+      unless index == components.length - 1 || current.stat.directory?
+        raise TestDiagnosticsError, "Non-directory path component rejected: #{display_path}"
+      end
+    ensure
+      child&.close unless child&.closed?
     end
   end
   current
@@ -108,9 +127,9 @@ def diagnostics_directory_entries(directory, display_path)
   stream = NativeDiagnosticsFile.fdopendir(descriptor)
   if stream.to_i.zero?
     errno = Fiddle.last_error
-    NativeDiagnosticsFile.close(descriptor)
     raise diagnostics_native_error("Cannot enumerate #{display_path}", errno)
   end
+  descriptor = nil
 
   entries = []
   errno_pointer = NativeDiagnosticsFile.__error
@@ -131,10 +150,17 @@ def diagnostics_directory_entries(directory, display_path)
   end
   entries.sort
 ensure
-  NativeDiagnosticsFile.closedir(stream) if stream && !stream.to_i.zero?
+  if stream && !stream.to_i.zero?
+    NativeDiagnosticsFile.closedir(stream)
+  elsif descriptor && !descriptor.negative?
+    NativeDiagnosticsFile.close(descriptor)
+  end
 end
 
-def collect_diagnostic_files(directory, display_path, relative_components, keep_open, files = [])
+def collect_diagnostic_files(directory, display_path, relative_components, keep_open, files = nil)
+  owns_retained_files = files.nil?
+  files ||= []
+  completed = false
   diagnostics_directory_entries(directory, display_path).each do |name|
     child_path = File.join(display_path, name)
     child = diagnostics_open_at(directory, name, child_path)
@@ -151,7 +177,15 @@ def collect_diagnostic_files(directory, display_path, relative_components, keep_
   ensure
     child&.close unless child&.closed?
   end
+  completed = true
   files
+ensure
+  if owns_retained_files && !completed
+    files&.each do |record|
+      file = record[2]
+      file&.close unless file&.closed?
+    end
+  end
 end
 
 def same_diagnostic_file?(file, device, inode)
@@ -322,6 +356,35 @@ def diagnostics_verifier_self_check
   raise "outside symlink content was scanned" if stdout.include?("outside content")
   puts "ok: outside-file symlink rejected without scanning target, exit #{status.exitstatus}"
   FileUtils.rm_f(linked_path)
+
+  leak_diagnostics_path = File.join(root, "fd-leak-export")
+  FileUtils.mkdir_p(leak_diagnostics_path)
+  File.binwrite(File.join(leak_diagnostics_path, "a-regular.log"), "clean\n")
+  File.symlink(outside_path, File.join(leak_diagnostics_path, "z-symlink.log"))
+  leak_directory = diagnostics_open_anchored(leak_diagnostics_path)
+  begin
+    gc_was_disabled = GC.disable
+    fd_before = Dir.children("/dev/fd").length
+    100.times do |iteration|
+      rejection = nil
+      begin
+        collect_diagnostic_files(leak_directory, leak_diagnostics_path, [], true)
+      rescue TestDiagnosticsError => error
+        rejection = error
+      end
+      unless rejection&.message&.include?("Symlink path rejected")
+        raise "partial collection failure was accepted at iteration #{iteration + 1}"
+      end
+    end
+    fd_after = Dir.children("/dev/fd").length
+    fd_delta = fd_after - fd_before
+    raise "partial collection leaked #{fd_delta} file descriptors" unless fd_delta.zero?
+
+    puts "ok: partial collection failure x100 FD before=#{fd_before} after=#{fd_after} delta=#{fd_delta}"
+  ensure
+    GC.enable unless gc_was_disabled
+    leak_directory.close unless leak_directory.closed?
+  end
 
   socket_path = File.join(diagnostics_path, "socket")
   socket = Dir.chdir(root) { UNIXServer.new(File.join("export", "socket")) }

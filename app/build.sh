@@ -149,7 +149,10 @@ run_fastlane() {
   command -v fastlane >/dev/null 2>&1 || fail "fastlane not found; install via: brew install fastlane"
   local lane="$1"
   shift
-  (cd "$PROJECT_DIR" && fastlane "$lane" "$@")
+  (
+    cd "$PROJECT_DIR"
+    SKIP_SLOW_FASTLANE_WARNING=1 FASTLANE_SKIP_UPDATE_CHECK=1 fastlane "$lane" "$@"
+  )
 }
 
 case "$MODE" in

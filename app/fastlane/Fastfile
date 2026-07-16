@@ -110,6 +110,7 @@ def lane_test_options(options, extra_xcargs: nil)
   destination = lane_destination(options)
   if options[:destination] || ENV["DESTINATION"]
     test_options[:destination] = destination
+    test_options[:skip_detect_devices] = true
   else
     test_options[:devices] = [options[:device] || ENV["SIMULATOR_NAME"] || "iPhone 17 Pro"]
   end

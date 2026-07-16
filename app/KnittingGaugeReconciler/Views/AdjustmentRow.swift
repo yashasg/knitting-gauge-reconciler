@@ -55,7 +55,7 @@ struct AdjustmentRow: View {
             VStack(alignment: .center, spacing: 4) {
                 Text("Adjusted")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.white.opacity(0.85))
+                    .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                 Text(adjusted)
                     .font(.system(.body, design: .monospaced).weight(.bold))

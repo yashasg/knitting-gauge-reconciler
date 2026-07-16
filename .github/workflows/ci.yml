@@ -50,9 +50,16 @@ jobs:
 
       - name: Require SwiftLint before Xcode
         run: |
+          sentinel_dir="$(mktemp -d "${RUNNER_TEMP}/xcrun-sentinel.XXXXXX")"
+          printf '%s\n' '#!/bin/bash' 'touch "${0%/*}/invoked"' > "$sentinel_dir/xcrun"
+          chmod +x "$sentinel_dir/xcrun"
           for mode in build test release; do
-            output="$(PATH=/usr/bin:/bin /bin/bash ./app/build.sh "$mode" 2>&1)" && {
+            output="$(PATH="$sentinel_dir:/usr/bin:/bin" /bin/bash ./app/build.sh "$mode" 2>&1)" && {
               echo "::error::${mode} succeeded without SwiftLint"
+              exit 1
+            }
+            [[ ! -e "$sentinel_dir/invoked" ]] || {
+              echo "::error::${mode} invoked xcrun before SwiftLint"
               exit 1
             }
             [[ "$output" == "error: swiftlint not found; install via: brew install swiftlint" ]] || {

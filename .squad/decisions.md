@@ -1031,3 +1031,82 @@ MR !47 must not merge. The exact-SHA remote suite is red, and the GitHub workflo
 - Local iPhone 17 Pro gate passed 75/75 with zero failures, skips, retries, warnings, crashes, or SwiftLint violations.
 - GitHub runs `29456924170` and `29456926171` passed on the exact source SHA; GitLab external pipeline `2680206053` matched it and passed.
 - Tesla merged !48 after the exact-SHA green result; Hopper did not merge it.
+
+---
+
+### 2026-07-15T16:38:18.613-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Run the complete autonomous Knitting Gauge Reconciler work loop until all five stated goals pass or unavailable human input is the concrete blocker. Use gpt-5.6-sol for every agent, including Ralph and Scribe. Keep Ponytail full active: prefer the smallest native/stdlib solution without skipping explicit requirements, validation, error handling, security, accessibility, tests, GitLab exact-SHA CI gates, merge/cleanup, or persistent logging.
+**Why:** User request — captured for team memory
+
+---
+
+# Issue #83 exact-SHA CI gate
+
+**Date:** 2026-07-15T14:58:16.016-07:00
+**Owner:** Hopper
+**Verdict:** PASS
+
+## Candidate
+
+- Issue: #83
+- MR: !49
+- Exact GitLab SHA: `fbcdbb473bdd274c670be1f3eb9c22ea9b4054da`
+- GitHub workflow mirror SHA: `173e7ab51815a5ce222303e939e3a9df72a446c3`
+- Scope: one line in `.github/workflows/ci.yml`, replacing plain form data with
+  `--data-urlencode "name=Build & Test"`.
+
+## Verified gate
+
+- GitHub push run `29458177131` checked out the exact candidate SHA, invoked
+  repository-root `./app/build.sh test`, passed 75/75, reported zero SwiftLint
+  violations, and posted the GitLab status.
+- Duplicate MR run `29458177770` found and reused the successful exact status.
+- Later exact MR run `29458428134` independently checked out the candidate,
+  invoked the canonical command, and passed 75/75.
+- Executed exact-run logs contain no compiler-warning, crash, lint-error, or
+  test-failure signatures. Warning-as-error flags, serial testing, bounded
+  retry, formatter output, and shell/Fastlane failure propagation remained
+  active.
+- GitLab exact SHA status is successful and named exactly `Build & Test`.
+  Matching external pipeline `2680234228` is green.
+- No later exact-candidate run is failed or in progress.
+
+## Execution state
+
+Tesla merged !49 during Hopper verification and GitLab closed #83; Hopper did
+not merge. Post-merge main run `29458914430` passed at merge SHA
+`5732ce32c5eaa2330f0c4e94576587e53da40205`. Run `29458915554` is a separate
+source-branch deletion dispatch whose all-zero payload SHA failed exact
+checkout by design; it is not an exact-candidate failure.
+
+The canonical issue and MR descriptions were rewritten in place with checked
+evidence and references. No status comments were added.
+
+---
+
+# Ralph remote reconciliation
+
+**Recorded:** 2026-07-15T16:38:18.613-07:00
+
+## Decision
+
+Resume issue #82 in its existing worktree. Do not select or dispatch another domain issue, and do not merge MR !47 at its current head.
+
+## Evidence
+
+- Issue #83 is closed. MR !49 merged source `fbcdbb473bdd274c670be1f3eb9c22ea9b4054da` as `5732ce32c5eaa2330f0c4e94576587e53da40205`; exact-SHA pipeline `2680234228` passed with status `Build & Test`.
+- Issue #59 is closed. MR !48 merged source `f37cf5f54be483c060710134af3cfae8ec0599c2` as `7f36b34200637a7cbde358f655d3e03fe8be44a3`; pipeline `2680206053` passed. Issue #82's stated dependency is satisfied.
+- MR !47 remains open at `b22c775e26507b94d4c11ca382e71f2c24c057de`. GitLab reports no conflict and no required approval, but pipeline `2680130215` failed and the issue contract rejects this candidate. It cannot merge now.
+- The existing issue #82 worktree is dirty only in `ContentView.swift` with an uncommitted 175-line addition/218-line deletion revision. This is resumable state owned by Edison; Shannon remains locked out.
+
+## Canonical issue rewrites required before publication
+
+- #83: replace “IN REVIEW,” check the final exact-status criterion, and record the successful pipeline and merge SHA.
+- #82: replace “blocked on #59” with “revision in progress,” record #59 as satisfied, retain the rejected SHA as historical evidence, and state that the revised SHA is pending.
+- #82: add explicit runnable gates: `git diff --check`, focused contrast/optional-output/process-restoration tests, repository-root `./app/build.sh test`, and exact-revised-SHA GitHub/GitLab status verification. Do not weaken its existing acceptance criteria or guardrails.
+- Remove #82's `follow-up` label only when recording the resumed canonical state.
+
+All other open domain and final-review issues remain `follow-up`; #1 is the project brief and #9 is a metrics tracker. No fallback issue selection is authorized while #82 is resumable.
+
+Preserve the 41 surviving stashes, seven stray local branches, divergent local `main`, and all dirty worktree state. The prior record counted 71 stashes, so the contraction is ambiguous and is not cleanup authority.

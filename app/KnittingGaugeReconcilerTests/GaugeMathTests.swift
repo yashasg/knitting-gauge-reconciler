@@ -533,6 +533,61 @@ struct GaugeMathTests {
         }
     }
 
+    @Test func badgeCaptionTokensMeetTextContrastInLightAndDark() throws {
+        let appDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let stepper = try sourceSection(
+            "KnittingGaugeReconciler/Components/GaugeStepperField.swift",
+            from: "struct DeltaPillBadge",
+            to: "struct GaugeStepperField",
+            appDirectory: appDirectory
+        )
+        let adjustment = try sourceSection(
+            "KnittingGaugeReconciler/Views/AdjustmentRow.swift",
+            from: "if let pill = driftPill {",
+            to: ".accessibilityElement(children: .ignore)",
+            appDirectory: appDirectory
+        )
+        for source in [stepper, adjustment] {
+            #expect(source.contains(".foregroundStyle(AppTheme.card)"))
+            #expect(source.contains(".background(AppTheme.deltaPill)"))
+        }
+
+        let themeURL = appDirectory
+            .appendingPathComponent("KnittingGaugeReconciler/Components/AppTheme.swift")
+        let themeSource = try String(contentsOf: themeURL, encoding: .utf8)
+        #expect(themeSource.contains("static let deltaPill        = ink"))
+
+        let ink = try themeColors(named: "app-theme-ink", appDirectory: appDirectory)
+        let card = try themeColors(named: "app-theme-card", appDirectory: appDirectory)
+        for appearance in ["light", "dark"] {
+            #expect(
+                contrastRatio(
+                    try #require(card[appearance]),
+                    try #require(ink[appearance])
+                ) >= 4.5
+            )
+        }
+    }
+
+    private func sourceSection(
+        _ path: String,
+        from startMarker: String,
+        to endMarker: String,
+        appDirectory: URL
+    ) throws -> Substring {
+        let source = try String(
+            contentsOf: appDirectory.appendingPathComponent(path),
+            encoding: .utf8
+        )
+        let start = try #require(source.range(of: startMarker)?.lowerBound)
+        let end = try #require(
+            source.range(of: endMarker, range: start..<source.endIndex)?.lowerBound
+        )
+        return source[start..<end]
+    }
+
     private func themeColors(
         named name: String,
         appDirectory: URL

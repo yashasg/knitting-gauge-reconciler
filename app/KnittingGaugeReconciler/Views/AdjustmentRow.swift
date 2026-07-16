@@ -71,12 +71,12 @@ struct AdjustmentRow: View {
             if let pill = driftPill {
                 Text(pill)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.card)
                     .lineLimit(1)
                     .padding(.horizontal, 8)
                     .padding(.top, 4)
                     .padding(.bottom, 4)
-                    .background(AppTheme.secondary)
+                    .background(AppTheme.deltaPill)
                     .clipShape(Capsule())
                     .offset(x: -4, y: -8)
                     // Decorative drift indicator — adjacent adjusted tile

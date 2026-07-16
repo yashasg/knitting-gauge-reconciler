@@ -14,7 +14,7 @@ struct DeltaPillBadge: View {
     var body: some View {
         Text(text)
             .font(.caption2.weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(AppTheme.card)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 8)

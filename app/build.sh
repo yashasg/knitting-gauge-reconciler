@@ -76,12 +76,8 @@ acquire_build_lock() {
 }
 
 run_swiftlint() {
-  if command -v swiftlint >/dev/null 2>&1; then
-    echo "→ SwiftLint (HIG rules)..."
-    swiftlint lint --config "$REPO_ROOT/.swiftlint.yml" --reporter xcode
-  else
-    echo "⚠ SwiftLint not installed — skipping HIG lint (brew install swiftlint)"
-  fi
+  echo "→ SwiftLint (HIG rules)..."
+  swiftlint lint --config "$REPO_ROOT/.swiftlint.yml" --reporter xcode
 }
 
 telemetry_preflight() {
@@ -215,6 +211,7 @@ case "$MODE" in
     ;;
 esac
 
+command -v swiftlint >/dev/null 2>&1 || fail "swiftlint not found; install via: brew install swiftlint"
 acquire_build_lock
 telemetry_preflight
 if [[ "$MODE" != "test" ]]; then

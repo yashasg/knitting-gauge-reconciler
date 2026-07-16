@@ -48,6 +48,19 @@ jobs:
             exit 1
           }
 
+      - name: Require SwiftLint before Xcode
+        run: |
+          for mode in build test release; do
+            output="$(PATH=/usr/bin:/bin /bin/bash ./app/build.sh "$mode" 2>&1)" && {
+              echo "::error::${mode} succeeded without SwiftLint"
+              exit 1
+            }
+            [[ "$output" == "error: swiftlint not found; install via: brew install swiftlint" ]] || {
+              echo "::error::Unexpected ${mode} output: ${output}"
+              exit 1
+            }
+          done
+
       - name: Check existing exact status
         id: exact-status
         run: |

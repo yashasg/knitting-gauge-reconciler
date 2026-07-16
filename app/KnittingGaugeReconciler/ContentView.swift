@@ -8,8 +8,7 @@ import os.signpost
 // swiftlint:disable:next type_body_length
 struct ContentView: View {
     private static let defaults = GaugeTextDefaults()
-    private static let sceneDraftValuesKey = "gauge.raw-values"
-    private static let sceneDraftDisclosureKey = "gauge.pattern-details-expanded"
+    private static let sceneDraftActivityType = "com.stitchwise.scene-draft"
 
     private struct ResetSnapshot {
         let patternStitches: String
@@ -122,25 +121,29 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: cardSpacing) {
-                    Text(
-                        "Compare your pattern gauge with your swatch to see how stitch and row differences " +
-                            "affect the garment."
-                    )
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
-                    .padding(.bottom, 8)
+                    ZStack(alignment: .leading) {
+                        AppTheme.background
+                        Text(
+                            "Compare your pattern gauge with your swatch to see how stitch and row differences " +
+                                "affect the garment."
+                        )
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(AppTheme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 8)
+                    }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(AppTheme.background)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAddTraits(.isStaticText)
                     .accessibilityIdentifier("gauge-lead")
 
                     GaugeInputsCard(
-                        patternStitches: $patternStitches,
-                        patternRows: $patternRows,
-                        yourStitches: $yourStitches,
-                        yourRows: $yourRows,
+                        patternStitches: draftBinding($patternStitches, at: 0),
+                        patternRows: draftBinding($patternRows, at: 1),
+                        yourStitches: draftBinding($yourStitches, at: 2),
+                        yourRows: draftBinding($yourRows, at: 3),
                         stitchMismatch: inputs?.stitchMismatch ?? false,
                         rowMismatch: inputs?.rowMismatch ?? false,
                         stitchDelta: roundedDelta(
@@ -154,13 +157,13 @@ struct ContentView: View {
                         onSubmit: finishEditing
                     )
                     PatternInstructionsCard(
-                        patternCastOn: $patternCastOn,
-                        patternYoke: $patternYoke,
-                        patternBody: $patternBody,
-                        patternSleeve: $patternSleeve,
-                        patternIncreases: $patternIncreases,
+                        patternCastOn: draftBinding($patternCastOn, at: 4),
+                        patternYoke: draftBinding($patternYoke, at: 5),
+                        patternBody: draftBinding($patternBody, at: 6),
+                        patternSleeve: draftBinding($patternSleeve, at: 7),
+                        patternIncreases: draftBinding($patternIncreases, at: 8),
                         unit: $measurementUnit,
-                        isExpanded: $patternDetailsExpanded,
+                        isExpanded: patternDetailsBinding,
                         validationMessages: validationMessages,
                         focusedField: $focusedField,
                         onSubmit: finishEditing
@@ -227,13 +230,6 @@ struct ContentView: View {
                     os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.sheetAboutHelpOpened)
                 }
             }
-            .onChange(of: rawTextValues) {
-                invalidateResults()
-                updateSceneRestorationActivity()
-            }
-            .onChange(of: patternDetailsExpanded) {
-                updateSceneRestorationActivity()
-            }
             // verdict.improved / verdict.degraded fire only when cachedResult changes (i.e. on
             // View Adjustments tap), because verdictTitle returns "" while cachedResult is nil.
             .onChange(of: verdictTitle) { _, newValue in
@@ -271,7 +267,7 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active {
-                updateSceneRestorationActivity(synchronizingDefaults: true)
+                UserDefaults.standard.synchronize()
             }
         }
     }
@@ -370,6 +366,37 @@ struct ContentView: View {
         ]
     }
 
+    private func draftBinding(_ binding: Binding<String>, at index: Int) -> Binding<String> {
+        Binding(
+            get: { binding.wrappedValue },
+            set: { newValue in
+                guard newValue != binding.wrappedValue else { return }
+                var values = rawTextValues
+                values[index] = newValue
+                binding.wrappedValue = newValue
+                invalidateResults()
+                updateSceneRestorationActivity(
+                    values: values,
+                    disclosure: patternDetailsExpanded
+                )
+            }
+        )
+    }
+
+    private var patternDetailsBinding: Binding<Bool> {
+        Binding(
+            get: { patternDetailsExpanded },
+            set: { newValue in
+                guard newValue != patternDetailsExpanded else { return }
+                patternDetailsExpanded = newValue
+                updateSceneRestorationActivity(
+                    values: rawTextValues,
+                    disclosure: newValue
+                )
+            }
+        )
+    }
+
     private var validationMessages: [GaugeFormField: String] {
         Dictionary(
             uniqueKeysWithValues: GaugeFormField.allCases.compactMap { field in
@@ -439,7 +466,7 @@ struct ContentView: View {
             validationMessage(for: $0) != nil
         })
         if firstInvalidField?.isPatternDetail == true {
-            patternDetailsExpanded = true
+            patternDetailsBinding.wrappedValue = true
         }
         focusedField = firstInvalidField
 
@@ -455,63 +482,60 @@ struct ContentView: View {
         guard sceneSessionIdentifier != session.persistentIdentifier else { return }
         sceneSessionIdentifier = session.persistentIdentifier
         if Self.ignoresPersistentState {
-            restoreLaunchDraft()
+            restoreLaunchDraft(for: session)
         } else {
             var restored = session.stateRestorationActivity.map {
-                restoreSceneDraft(from: $0)
+                restoreSceneDraft(from: $0, for: session)
             } ?? false
             if !restored, let userInfo = session.userInfo {
-                restored = restoreSceneDraft(from: userInfo)
+                restored = restoreSceneDraft(from: userInfo, for: session)
             }
             if !restored,
                let userInfo = SceneDraftStore.load(sceneID: session.persistentIdentifier) {
-                restored = restoreSceneDraft(from: userInfo)
+                restored = restoreSceneDraft(from: userInfo, for: session)
             }
             if !restored,
-               Self.canUseSingleSceneHandoff(session),
+               Self.isOnlyOpenSession(session),
                let previousIdentifier = SceneDraftStore.singleSceneID(),
                let userInfo = SceneDraftStore.load(sceneID: previousIdentifier) {
-                restored = restoreSceneDraft(from: userInfo)
+                restored = restoreSceneDraft(from: userInfo, for: session)
             }
             if !restored,
-               Self.canUseSingleSceneHandoff(session),
+               Self.isOnlyOpenSession(session),
                let userInfo = SceneDraftStore.singleSceneHandoff() {
-                restoreSceneDraft(from: userInfo)
+                restored = restoreSceneDraft(from: userInfo, for: session)
+            }
+            if !restored {
+                updateSceneRestorationActivity(
+                    values: rawTextValues,
+                    disclosure: patternDetailsExpanded,
+                    for: session
+                )
             }
         }
-        updateSceneRestorationActivity(for: session)
         sceneRestorationReady = true
     }
 
-    private func restoreLaunchDraft() {
-        patternStitches = initialText("KGR_PS", defaultValue: Self.defaults.patternStitches)
-        patternRows = initialText("KGR_PR", defaultValue: Self.defaults.patternRows)
-        yourStitches = initialText("KGR_YS", defaultValue: Self.defaults.yourStitches)
-        yourRows = initialText("KGR_YR", defaultValue: Self.defaults.yourRows)
-        patternCastOn = initialText("KGR_CAST_ON", defaultValue: "")
-        patternYoke = initialText("KGR_YOKE", defaultValue: "")
-        patternBody = initialText("KGR_BODY", defaultValue: "")
-        patternSleeve = initialText("KGR_SLEEVE", defaultValue: "")
-        patternIncreases = initialText("KGR_INCREASES", defaultValue: "")
-        patternDetailsExpanded = initialBool("KGR_SHOW_PATTERN_DETAILS")
+    private func restoreLaunchDraft(for session: UISceneSession) {
+        applySceneDraft(
+            values: [
+                initialText("KGR_PS", defaultValue: Self.defaults.patternStitches),
+                initialText("KGR_PR", defaultValue: Self.defaults.patternRows),
+                initialText("KGR_YS", defaultValue: Self.defaults.yourStitches),
+                initialText("KGR_YR", defaultValue: Self.defaults.yourRows),
+                initialText("KGR_CAST_ON", defaultValue: ""),
+                initialText("KGR_YOKE", defaultValue: ""),
+                initialText("KGR_BODY", defaultValue: ""),
+                initialText("KGR_SLEEVE", defaultValue: ""),
+                initialText("KGR_INCREASES", defaultValue: ""),
+            ],
+            disclosure: initialBool("KGR_SHOW_PATTERN_DETAILS"),
+            for: session
+        )
     }
 
     private static var ignoresPersistentState: Bool {
         launchArgumentEnabled("-ApplePersistenceIgnoreState")
-            || shouldResetUITestDraftOnce
-    }
-
-    private static var shouldResetUITestDraftOnce: Bool {
-        guard let token = ProcessInfo.processInfo.environment["KGR_RESET_DRAFT_ONCE"] else {
-            return false
-        }
-        let key = "gauge.ui-test-reset-token"
-        guard UserDefaults.standard.string(forKey: key) != token else {
-            return false
-        }
-        UserDefaults.standard.set(token, forKey: key)
-        UserDefaults.standard.synchronize()
-        return true
     }
 
     private static func launchArgumentEnabled(_ key: String) -> Bool {
@@ -528,23 +552,28 @@ struct ContentView: View {
         return openSessions.count == 1 && openSessions.contains(session)
     }
 
-    private static func canUseSingleSceneHandoff(_ session: UISceneSession) -> Bool {
-        isOnlyOpenSession(session) || launchArgumentEnabled("-KGRUITestSingleSceneHandoff")
-    }
-
     @discardableResult
-    private func restoreSceneDraft(from activity: NSUserActivity) -> Bool {
+    private func restoreSceneDraft(from activity: NSUserActivity, for session: UISceneSession) -> Bool {
         guard let userInfo = activity.userInfo else { return false }
-        return restoreSceneDraft(from: userInfo)
+        return restoreSceneDraft(from: userInfo, for: session)
     }
 
     @discardableResult
-    private func restoreSceneDraft(from userInfo: [AnyHashable: Any]) -> Bool {
-        guard let values = userInfo[Self.sceneDraftValuesKey] as? [String],
-              values.count == rawTextValues.count,
-              let disclosure = userInfo[Self.sceneDraftDisclosureKey] as? Bool else {
-            return false
-        }
+    private func restoreSceneDraft(
+        from userInfo: [AnyHashable: Any],
+        for session: UISceneSession
+    ) -> Bool {
+        guard let draft = SceneDraftStore.deserialize(userInfo) else { return false }
+        applySceneDraft(values: draft.values, disclosure: draft.disclosure, for: session)
+        return true
+    }
+
+    private func applySceneDraft(
+        values: [String],
+        disclosure: Bool,
+        for session: UISceneSession? = nil,
+        synchronizingDefaults: Bool = false
+    ) {
         patternStitches = values[0]
         patternRows = values[1]
         yourStitches = values[2]
@@ -555,10 +584,18 @@ struct ContentView: View {
         patternSleeve = values[7]
         patternIncreases = values[8]
         patternDetailsExpanded = disclosure
-        return true
+        invalidateResults()
+        updateSceneRestorationActivity(
+            values: values,
+            disclosure: disclosure,
+            for: session,
+            synchronizingDefaults: synchronizingDefaults
+        )
     }
 
     private func updateSceneRestorationActivity(
+        values: [String],
+        disclosure: Bool,
         for resolvedSession: UISceneSession? = nil,
         synchronizingDefaults: Bool = false
     ) {
@@ -575,16 +612,20 @@ struct ContentView: View {
         guard let session else { return }
 
         // Namespace process-loss snapshots by scene; the single-scene alias is removed when another scene exists.
-        let draft: [String: Any] = [
-            Self.sceneDraftValuesKey: rawTextValues,
-            Self.sceneDraftDisclosureKey: patternDetailsExpanded,
-        ]
+        guard let draft = SceneDraftStore.serialize(values: values, disclosure: disclosure) else {
+            return
+        }
+        let activity = session.stateRestorationActivity
+            ?? NSUserActivity(activityType: Self.sceneDraftActivityType)
+        activity.addUserInfoEntries(from: draft)
+        session.stateRestorationActivity = activity
         var userInfo = session.userInfo ?? [:]
-        userInfo[Self.sceneDraftValuesKey] = rawTextValues
-        userInfo[Self.sceneDraftDisclosureKey] = patternDetailsExpanded
+        for (key, value) in draft {
+            userInfo[key] = value
+        }
         session.userInfo = userInfo
         SceneDraftStore.save(draft, sceneID: session.persistentIdentifier)
-        if Self.canUseSingleSceneHandoff(session) {
+        if Self.isOnlyOpenSession(session) {
             SceneDraftStore.setSingleSceneID(session.persistentIdentifier)
             SceneDraftStore.setSingleSceneHandoff(draft)
         } else {
@@ -616,39 +657,35 @@ struct ContentView: View {
             patternDetailsExpanded: patternDetailsExpanded
         )
         os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.resetTapped)
-        patternStitches = Self.defaults.patternStitches
-        patternRows = Self.defaults.patternRows
-        yourStitches = Self.defaults.yourStitches
-        yourRows = Self.defaults.yourRows
-        patternCastOn = ""
-        patternYoke = ""
-        patternBody = ""
-        patternSleeve = ""
-        patternIncreases = ""
-        patternDetailsExpanded = false
+        applySceneDraft(
+            values: Self.defaults.resetSceneDraftValues,
+            disclosure: false,
+            synchronizingDefaults: true
+        )
         focusedField = nil
         showFullMath = false
-        invalidateResults()
-        updateSceneRestorationActivity(synchronizingDefaults: true)
     }
 
     private func undoReset() {
         guard let snapshot = resetSnapshot else { return }
         resetSnapshot = nil
-        patternStitches = snapshot.patternStitches
-        patternRows = snapshot.patternRows
-        yourStitches = snapshot.yourStitches
-        yourRows = snapshot.yourRows
-        patternCastOn = snapshot.patternCastOn
-        patternYoke = snapshot.patternYoke
-        patternBody = snapshot.patternBody
-        patternSleeve = snapshot.patternSleeve
-        patternIncreases = snapshot.patternIncreases
-        patternDetailsExpanded = snapshot.patternDetailsExpanded
+        applySceneDraft(
+            values: [
+                snapshot.patternStitches,
+                snapshot.patternRows,
+                snapshot.yourStitches,
+                snapshot.yourRows,
+                snapshot.patternCastOn,
+                snapshot.patternYoke,
+                snapshot.patternBody,
+                snapshot.patternSleeve,
+                snapshot.patternIncreases,
+            ],
+            disclosure: snapshot.patternDetailsExpanded,
+            synchronizingDefaults: true
+        )
         focusedField = nil
         showFullMath = false
-        invalidateResults()
-        updateSceneRestorationActivity(synchronizingDefaults: true)
     }
 
     private func invalidateResults() {

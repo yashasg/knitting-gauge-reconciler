@@ -156,7 +156,7 @@ foreign_app_preflight() {
     printf '%s' "$listapps_raw" \
       | /usr/bin/awk -F '"' '/CFBundleIdentifier =/ { print $2 }' \
       | grep -E '^com\.yashasg(ujjar)?\.' \
-      | grep -v '^com\.yashasg\.KnittingGaugeReconciler' \
+      | grep -v '^com\.yashasg\.knitting-guage-reconciler$' \
       || true
   )"
   [[ -n "$foreign_bundle_ids" ]] || return 0
@@ -176,6 +176,16 @@ run_fastlane() {
     cd "$PROJECT_DIR"
     SKIP_SLOW_FASTLANE_WARNING=1 FASTLANE_SKIP_UPDATE_CHECK=1 fastlane "$lane" "$@"
   )
+}
+
+verify_fastlane_output() {
+  local output_path="$1"
+  local prohibited_pattern='\[!\]|warning:|Found [1-9][0-9]* violations|falling back|bootstrap.*(failed|failure|error)|((killed|terminated).*(signal|process))|crash(ed| report)|unexpectedly exited'
+
+  if grep -Eiq "$prohibited_pattern" "$output_path"; then
+    grep -Ei "$prohibited_pattern" "$output_path" >&2
+    fail "prohibited warning, advisory, fallback, bootstrap, signal, or crash output detected"
+  fi
 }
 
 case "$MODE" in
@@ -264,4 +274,14 @@ if [[ "$MODE" == "test" ]]; then
   )
 fi
 
-run_fastlane "$LANE" "${fastlane_args[@]}"
+if [[ "$MODE" == "test" ]]; then
+  FASTLANE_OUTPUT="$BUILD_DIR/fastlane-output.log"
+  set +e
+  run_fastlane "$LANE" "${fastlane_args[@]}" 2>&1 | tee "$FASTLANE_OUTPUT"
+  FASTLANE_STATUS=${PIPESTATUS[0]}
+  set -e
+  (( FASTLANE_STATUS == 0 )) || exit "$FASTLANE_STATUS"
+  verify_fastlane_output "$FASTLANE_OUTPUT"
+else
+  run_fastlane "$LANE" "${fastlane_args[@]}"
+fi

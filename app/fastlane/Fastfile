@@ -2,6 +2,7 @@ ENV["FASTLANE_OPT_OUT_USAGE"] = "1"
 opt_out_usage
 
 require "json"
+require "fileutils"
 require "shellwords"
 require "xcodeproj"
 
@@ -29,6 +30,21 @@ APP_PROJECT = File.expand_path("../app.xcodeproj", __dir__)
 APPFILE_PATH = File.expand_path("Appfile", __dir__)
 APP_TARGET = "KnittingGaugeReconciler"
 APP_SCHEME = "KnittingGaugeReconciler"
+PROHIBITED_TEST_DIAGNOSTIC = /
+  IOHID |
+  IOSurface |
+  IOCreatePlugInInterfaceForService |
+  \[plugin\].*\b(?:cannot|error|failed|failure)\b |
+  ^\d{4}-\d{2}-\d{2}.*\b(?:error|failed|failure)\b |
+  \bwarning: |
+  \badvisory\b |
+  \bfalling\s+back\b |
+  \bbootstrap\w*\b.*\b(?:error|fail(?:ed|ure)?|killed)\b |
+  \b(?:error|fail(?:ed|ure)?|killed)\b.*\bbootstrap\w*\b |
+  \b(?:killed|terminated)\b.*\bsignal\b |
+  \bsignal\s+(?:kill|term|[0-9]+)\b |
+  \b(?:crashed|crash\s+report\s+found|unexpectedly\s+exited)\b
+/ix
 BUILD_OUTPUT_DIRECTORY = "."
 BUILD_LOG_PATH = "../.build/gym"
 CI_KEYCHAIN_NAME = "fastlane_tmp_keychain"
@@ -90,13 +106,17 @@ end
 
 
 def lane_test_options(options, extra_xcargs: nil)
+  output_directory = options[:output_directory] || "../.build"
+  result_bundle_path = File.join(output_directory, "#{APP_SCHEME}.xcresult")
+  FileUtils.rm_rf(result_bundle_path)
+
   test_options = {
     project: APP_PROJECT,
     scheme: APP_SCHEME,
     configuration: options[:configuration] || "Debug",
     derived_data_path: lane_derived_data_path(options),
     code_coverage: true,
-    result_bundle: true,
+    result_bundle_path: result_bundle_path,
     xcargs: [
       "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 30",
       extra_xcargs,
@@ -104,7 +124,9 @@ def lane_test_options(options, extra_xcargs: nil)
     ].compact.join(" "),
     output_files: options[:output_files] || "xcodebuild-test.log",
     output_types: options[:output_types] || "junit",
-    output_directory: options[:output_directory] || "../.build"
+    output_directory: output_directory,
+    buildlog_path: output_directory,
+    xcodebuild_formatter: "xcpretty"
   }
 
   destination = lane_destination(options)
@@ -117,6 +139,30 @@ def lane_test_options(options, extra_xcargs: nil)
 
   test_options
 end
+
+
+def verify_test_diagnostics(output_directory)
+  result_bundle_path = File.join(output_directory, "#{APP_SCHEME}.xcresult")
+  diagnostics_path = File.join(output_directory, "xcresult-diagnostics")
+  raw_log_path = File.join(output_directory, "#{APP_SCHEME}-#{APP_SCHEME}.log")
+  FileUtils.rm_rf(diagnostics_path)
+  sh("xcrun xcresulttool export diagnostics --path #{Shellwords.escape(result_bundle_path)} --output-path #{Shellwords.escape(diagnostics_path)}")
+
+  diagnostic_paths = Dir.glob(File.join(diagnostics_path, "**", "StandardOutputAndStandardError.txt")).sort
+  UI.user_error!("No test-runner diagnostics found in #{result_bundle_path}") if diagnostic_paths.empty?
+  UI.user_error!("Raw xcodebuild log not found at #{raw_log_path}") unless File.file?(raw_log_path)
+
+  prohibited_lines = []
+  ([raw_log_path] + diagnostic_paths).each do |path|
+    contents = File.read(path)
+    $stdout.write(contents)
+    $stdout.write("\n") unless contents.end_with?("\n")
+    prohibited_lines.concat(contents.lines.grep(PROHIBITED_TEST_DIAGNOSTIC))
+  end
+
+  UI.user_error!("Prohibited Xcode/test-runner diagnostics detected") unless prohibited_lines.empty?
+end
+
 
 platform :ios do
   desc "Sync certificates and provisioning profiles"
@@ -131,7 +177,7 @@ platform :ios do
       mode: :lint,
       config_file: "../.swiftlint.yml",
       reporter: "xcode",
-      strict: false      # HIG rules are already :error in .swiftlint.yml
+      strict: true
     )
     xcodebuild(
       project: APP_PROJECT,
@@ -143,7 +189,9 @@ platform :ios do
       xcargs: ["CODE_SIGNING_ALLOWED=NO", options[:xcargs]].compact.join(" "),
       derived_data_path: lane_derived_data_path(options)
     )
-    run_tests(**lane_test_options(options.merge(configuration: "Debug")))
+    test_options = lane_test_options(options.merge(configuration: "Debug"))
+    run_tests(**test_options)
+    verify_test_diagnostics(test_options[:output_directory])
   end
 
   desc "Build without distribution"

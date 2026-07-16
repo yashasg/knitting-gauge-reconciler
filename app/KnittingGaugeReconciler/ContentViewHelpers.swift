@@ -51,9 +51,31 @@ final class SceneSessionReaderView: UIView {
 }
 
 enum SceneDraftStore {
+    static let rawValuesKey = "gauge.raw-values"
+    static let disclosureKey = "gauge.pattern-details-expanded"
+    private static let rawValueCount = 9
     private static let keyPrefix = "gauge.scene-draft."
     private static let singleSceneIdentifierKey = "gauge.single-scene-identifier"
     private static let singleSceneHandoffKey = "gauge.single-scene-handoff"
+
+    static func serialize(values: [String], disclosure: Bool) -> [String: Any]? {
+        guard values.count == rawValueCount else { return nil }
+        return [
+            rawValuesKey: values,
+            disclosureKey: disclosure,
+        ]
+    }
+
+    static func deserialize(
+        _ serialization: [AnyHashable: Any]
+    ) -> (values: [String], disclosure: Bool)? {
+        guard let values = serialization[rawValuesKey] as? [String],
+              values.count == rawValueCount,
+              let disclosure = serialization[disclosureKey] as? Bool else {
+            return nil
+        }
+        return (values, disclosure)
+    }
 
     static func load(sceneID: String, defaults: UserDefaults = .standard) -> [String: Any]? {
         defaults.dictionary(forKey: keyPrefix + sceneID)
@@ -110,6 +132,20 @@ struct GaugeTextDefaults {
     let patternRows = "24"
     let yourStitches = "32"
     let yourRows = "32"
+
+    var resetSceneDraftValues: [String] {
+        [
+            patternStitches,
+            patternRows,
+            yourStitches,
+            yourRows,
+            "",
+            "",
+            "",
+            "",
+            "",
+        ]
+    }
 }
 
 // MARK: - GaugeFormField

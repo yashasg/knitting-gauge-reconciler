@@ -323,16 +323,14 @@ private func fixed(_ value: Double, places: Int) -> String {
 }
 
 func gaugeStatus(scale: Double) -> String {
-    let drift = abs(scale - 1)
-    if drift < 0.03 { return "Match" }
-    if drift < 0.10 { return scale > 1 ? "Looser than pattern" : "Tighter than pattern" }
+    if scale > 0.97, scale < 1.03 { return "Match" }
+    if scale > 0.90, scale < 1.10 { return scale > 1 ? "Looser than pattern" : "Tighter than pattern" }
     return scale > 1 ? "Much looser" : "Much tighter"
 }
 
 func rowStatus(scale: Double) -> String {
-    let drift = abs(scale - 1)
-    if drift < 0.03 { return "Match" }
-    if drift < 0.10 { return scale > 1 ? "Denser than pattern" : "Looser than pattern" }
+    if scale > 0.97, scale < 1.03 { return "Match" }
+    if scale > 0.90, scale < 1.10 { return scale > 1 ? "Denser than pattern" : "Looser than pattern" }
     return scale > 1 ? "Much denser" : "Much looser"
 }
 

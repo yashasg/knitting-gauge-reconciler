@@ -2,8 +2,10 @@ ENV["FASTLANE_OPT_OUT_USAGE"] = "1"
 opt_out_usage
 
 require "json"
+require "fileutils"
 require "shellwords"
 require "xcodeproj"
+require_relative "diagnostics_verifier"
 
 # This file contains the fastlane.tools configuration
 # You can find the documentation at https://docs.fastlane.tools
@@ -90,13 +92,17 @@ end
 
 
 def lane_test_options(options, extra_xcargs: nil)
+  output_directory = options[:output_directory] || "../.build"
+  result_bundle_path = File.join(output_directory, "#{APP_SCHEME}.xcresult")
+  FileUtils.rm_rf(result_bundle_path)
+
   test_options = {
     project: APP_PROJECT,
     scheme: APP_SCHEME,
     configuration: options[:configuration] || "Debug",
     derived_data_path: lane_derived_data_path(options),
     code_coverage: true,
-    result_bundle: true,
+    result_bundle_path: result_bundle_path,
     xcargs: [
       "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 30",
       extra_xcargs,
@@ -104,18 +110,35 @@ def lane_test_options(options, extra_xcargs: nil)
     ].compact.join(" "),
     output_files: options[:output_files] || "xcodebuild-test.log",
     output_types: options[:output_types] || "junit",
-    output_directory: options[:output_directory] || "../.build"
+    output_directory: output_directory,
+    buildlog_path: output_directory,
+    xcodebuild_formatter: "xcpretty"
   }
 
   destination = lane_destination(options)
   if options[:destination] || ENV["DESTINATION"]
     test_options[:destination] = destination
+    test_options[:skip_detect_devices] = true
   else
     test_options[:devices] = [options[:device] || ENV["SIMULATOR_NAME"] || "iPhone 17 Pro"]
   end
 
   test_options
 end
+
+
+def verify_test_diagnostics(output_directory)
+  result_bundle_path = File.join(output_directory, "#{APP_SCHEME}.xcresult")
+  diagnostics_path = File.join(output_directory, "xcresult-diagnostics")
+  raw_log_path = File.join(output_directory, "#{APP_SCHEME}-#{APP_SCHEME}.log")
+  FileUtils.rm_rf(diagnostics_path)
+  sh("xcrun xcresulttool export diagnostics --path #{Shellwords.escape(result_bundle_path)} --output-path #{Shellwords.escape(diagnostics_path)}")
+
+  verify_exported_test_diagnostics(raw_log_path, diagnostics_path)
+rescue TestDiagnosticsError => error
+  UI.user_error!(error.message)
+end
+
 
 platform :ios do
   desc "Sync certificates and provisioning profiles"
@@ -130,7 +153,7 @@ platform :ios do
       mode: :lint,
       config_file: "../.swiftlint.yml",
       reporter: "xcode",
-      strict: false      # HIG rules are already :error in .swiftlint.yml
+      strict: true
     )
     xcodebuild(
       project: APP_PROJECT,
@@ -142,7 +165,9 @@ platform :ios do
       xcargs: ["CODE_SIGNING_ALLOWED=NO", options[:xcargs]].compact.join(" "),
       derived_data_path: lane_derived_data_path(options)
     )
-    run_tests(**lane_test_options(options.merge(configuration: "Debug")))
+    test_options = lane_test_options(options.merge(configuration: "Debug"))
+    run_tests(**test_options)
+    verify_test_diagnostics(test_options[:output_directory])
   end
 
   desc "Build without distribution"

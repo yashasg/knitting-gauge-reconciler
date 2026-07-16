@@ -1,0 +1,157 @@
+# CI/CD Pipeline — GitLab bridge
+# Triggered by GitLab push/MR events, builds and tests on macOS, posts status back.
+
+name: CI
+
+on:
+  repository_dispatch:
+    types: [gitlab_push, gitlab_mr]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ci-${{ github.event.client_payload.branch }}
+  cancel-in-progress: false
+
+env:
+  XCODE_VERSION: "26"
+  DERIVED_DATA_PATH: ${{ github.workspace }}/build/app/xcode-derived-data
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: macos-26
+    timeout-minutes: 60
+    if: |
+      github.event.client_payload.event == 'merge_request' ||
+      github.event.client_payload.event == 'push'
+
+    steps:
+      - name: Checkout exact GitLab payload
+        env:
+          GITLAB_REPOSITORY: ${{ github.event.client_payload.project_name }}
+          GITLAB_SHA: ${{ github.event.client_payload.sha }}
+        run: |
+          [[ "$GITLAB_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::Invalid GitLab payload SHA"
+            exit 1
+          }
+          git init .
+          git remote add origin \
+            "https://gitlab-token:${{ secrets.GITLAB_PAT }}@gitlab.com/${GITLAB_REPOSITORY}.git"
+          git fetch --depth 1 origin "$GITLAB_SHA"
+          git checkout --detach FETCH_HEAD
+          [[ "$(git rev-parse HEAD)" == "$GITLAB_SHA" ]] || {
+            echo "::error::Checked-out HEAD does not match the GitLab payload SHA"
+            exit 1
+          }
+
+      - name: Check existing exact status
+        id: exact-status
+        run: |
+          STATUSES="$(
+            curl -fsS \
+              -H "PRIVATE-TOKEN: ${{ secrets.GITLAB_PAT }}" \
+              "https://gitlab.com/api/v4/projects/${{ github.event.client_payload.project_id }}/repository/commits/${{ github.event.client_payload.sha }}/statuses?per_page=100"
+          )"
+          if jq -e 'any(.[]; .name == "Build & Test" and .status == "success")' <<< "$STATUSES" >/dev/null; then
+            echo "succeeded=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve build profile
+        run: |
+          if [[ "${{ github.event.client_payload.event }}" == "push" && "${{ github.event.client_payload.branch }}" == "main" ]]; then
+            echo "CONFIGURATION=Release" >> "$GITHUB_ENV"
+          else
+            echo "CONFIGURATION=Debug" >> "$GITHUB_ENV"
+          fi
+
+      - name: Resolve simulator
+        run: |
+          SIMULATOR_UDID="$(
+            xcrun simctl list devices available "iPhone 17 Pro" |
+              awk -F '[()]' '/^[[:space:]]+.*\([0-9A-F-]{36}\)/ { print $2; exit }'
+          )"
+          if [[ -z "$SIMULATOR_UDID" ]]; then
+            echo "::error::No available iPhone 17 Pro simulator"
+            exit 1
+          fi
+          echo "DESTINATION=platform=iOS Simulator,arch=arm64,id=${SIMULATOR_UDID}" >> "$GITHUB_ENV"
+
+      - name: Restore DerivedData cache
+        id: cache-derived-data
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: |
+            ${{ env.DERIVED_DATA_PATH }}
+            $HOME/Library/Developer/Xcode/DerivedData/ModuleCache.noindex
+          key: derived-data-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ github.event.client_payload.branch }}-${{ hashFiles('app/app.xcodeproj/**/*.pbxproj', 'app/app.xcodeproj/xcshareddata/xcschemes/*.xcscheme') }}
+          restore-keys: |
+            derived-data-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ github.event.client_payload.branch }}-
+            derived-data-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-main-
+
+      - name: Restore Fastlane cache
+        id: cache-fastlane
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: /opt/homebrew/Cellar/fastlane
+          key: fastlane-brew-${{ runner.os }}
+
+      - name: Install Fastlane
+        if: steps.cache-fastlane.outputs.cache-hit != 'true'
+        run: brew install fastlane
+
+      - name: Save Fastlane cache
+        if: steps.cache-fastlane.outputs.cache-hit != 'true'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: /opt/homebrew/Cellar/fastlane
+          key: fastlane-brew-${{ runner.os }}
+
+      - name: Restore SwiftLint cache
+        id: cache-swiftlint
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: /opt/homebrew/Cellar/swiftlint
+          key: swiftlint-brew-${{ runner.os }}
+
+      - name: Install or link SwiftLint
+        run: |
+          if [ "${{ steps.cache-swiftlint.outputs.cache-hit }}" == 'true' ]; then
+            brew link swiftlint
+          else
+            brew install swiftlint
+          fi
+
+      - name: Save SwiftLint cache
+        if: steps.cache-swiftlint.outputs.cache-hit != 'true'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: /opt/homebrew/Cellar/swiftlint
+          key: swiftlint-brew-${{ runner.os }}
+
+      - name: Build & Test
+        if: steps.exact-status.outputs.succeeded != 'true'
+        run: ./app/build.sh test
+
+      - name: Save DerivedData cache
+        if: always() && steps.cache-derived-data.outputs.cache-hit != 'true'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: |
+            ${{ env.DERIVED_DATA_PATH }}
+            $HOME/Library/Developer/Xcode/DerivedData/ModuleCache.noindex
+          key: ${{ steps.cache-derived-data.outputs.cache-primary-key }}
+
+      - name: Post status to GitLab
+        if: always() && steps.exact-status.outputs.succeeded != 'true'
+        run: |
+          STATE=$([[ "${{ job.status }}" == "success" ]] && echo "success" || echo "failed")
+          curl -fsSX POST \
+            -H "PRIVATE-TOKEN: ${{ secrets.GITLAB_PAT }}" \
+            "https://gitlab.com/api/v4/projects/${{ github.event.client_payload.project_id }}/statuses/${{ github.event.client_payload.sha }}" \
+            -d "state=${STATE}" \
+            --data-urlencode "name=Build & Test" \
+            -d "target_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

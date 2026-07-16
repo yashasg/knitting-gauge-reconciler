@@ -33,8 +33,17 @@ destination_value() {
 
 resolve_simulator_udid_by_name() {
   local name="$1"
-  xcrun simctl list devices available "$name" |
-    awk -F '[()]' '/^[[:space:]]+.*\([0-9A-F-]{36}\)/ { print $2; exit }'
+  xcrun simctl list devices available |
+    awk -F '[()]' -v name="$name" '
+      /^[[:space:]]+.*\([0-9A-F-]{36}\)/ {
+        candidate = $1
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", candidate)
+        if (candidate == name) {
+          print $2
+          exit
+        }
+      }
+    '
 }
 
 resolve_simulator_name_by_udid() {
@@ -45,8 +54,9 @@ resolve_simulator_name_by_udid() {
 
 acquire_build_lock() {
   mkdir -p "$BUILD_DIR"
-  LOCK_DIR="$BUILD_DIR/build.lock"
-  LOCK_WAIT_SECONDS="${LOCK_WAIT_SECONDS:-120}"
+  # ponytail: repository-wide lock; split by simulator only if build throughput becomes a bottleneck.
+  LOCK_DIR="$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-common-dir)/app-build.lock"
+  LOCK_WAIT_SECONDS="${LOCK_WAIT_SECONDS:-900}"
   LOCK_WAITED=0
 
   while ! mkdir "$LOCK_DIR" 2>/dev/null; do
@@ -88,7 +98,7 @@ resolve_simulator_context() {
   local destination_udid=""
   local destination_name=""
 
-  FASTLANE_TEST_DEVICE="$SIMULATOR_NAME"
+  FASTLANE_TEST_DEVICE=""
 
   if [[ -n "$DESTINATION" ]]; then
     [[ "$DESTINATION" == *"platform=iOS Simulator"* ]] || \
@@ -99,27 +109,40 @@ resolve_simulator_context() {
 
     if [[ -n "$destination_udid" ]]; then
       SIMULATOR_UDID="$destination_udid"
-      FASTLANE_TEST_DEVICE="$(resolve_simulator_name_by_udid "$SIMULATOR_UDID")"
+      SIMULATOR_NAME="$(resolve_simulator_name_by_udid "$SIMULATOR_UDID")"
+      [[ -n "$SIMULATOR_NAME" ]] || fail "no available simulator with UDID '$SIMULATOR_UDID'"
     elif [[ -n "$destination_name" ]]; then
       SIMULATOR_NAME="$destination_name"
-      FASTLANE_TEST_DEVICE="$destination_name"
       SIMULATOR_UDID="$(resolve_simulator_udid_by_name "$destination_name")"
       [[ -n "$SIMULATOR_UDID" ]] || fail "no available simulator named '$destination_name'"
+    elif [[ "$MODE" == "test" ]]; then
+      fail "DESTINATION must include an available simulator id or name for test"
     fi
   fi
 
   if [[ -z "$DESTINATION" ]]; then
     if [[ -z "$SIMULATOR_UDID" ]]; then
       SIMULATOR_UDID="$(resolve_simulator_udid_by_name "$SIMULATOR_NAME")"
+    else
+      SIMULATOR_NAME="$(resolve_simulator_name_by_udid "$SIMULATOR_UDID")"
     fi
-    [[ -n "$SIMULATOR_UDID" ]] || fail "no available simulator named '$SIMULATOR_NAME'"
+    [[ -n "$SIMULATOR_UDID" && -n "$SIMULATOR_NAME" ]] || \
+      fail "no available simulator matching SIMULATOR_NAME='$SIMULATOR_NAME' SIMULATOR_UDID='$SIMULATOR_UDID'"
     DESTINATION="platform=iOS Simulator,id=${SIMULATOR_UDID}"
   fi
 
-  if [[ -z "$FASTLANE_TEST_DEVICE" && -n "$SIMULATOR_UDID" ]]; then
-    FASTLANE_TEST_DEVICE="$(resolve_simulator_name_by_udid "$SIMULATOR_UDID")"
-  fi
-  FASTLANE_TEST_DEVICE="${FASTLANE_TEST_DEVICE:-$SIMULATOR_NAME}"
+  FASTLANE_TEST_DEVICE="$SIMULATOR_NAME"
+}
+
+simulator_test_preflight() {
+  local model_identifier
+
+  xcrun simctl bootstatus "$SIMULATOR_UDID" -b || \
+    fail "simulator '$SIMULATOR_NAME' ($SIMULATOR_UDID) could not boot"
+  model_identifier="$(xcrun simctl getenv "$SIMULATOR_UDID" SIMULATOR_MODEL_IDENTIFIER)" || \
+    fail "could not inspect simulator '$SIMULATOR_NAME' ($SIMULATOR_UDID)"
+  [[ "$model_identifier" == iPhone* ]] || \
+    fail "simulator '$SIMULATOR_NAME' ($SIMULATOR_UDID) is not an iPhone"
 }
 
 foreign_app_preflight() {
@@ -133,7 +156,7 @@ foreign_app_preflight() {
     printf '%s' "$listapps_raw" \
       | /usr/bin/awk -F '"' '/CFBundleIdentifier =/ { print $2 }' \
       | grep -E '^com\.yashasg(ujjar)?\.' \
-      | grep -v '^com\.yashasg\.KnittingGaugeReconciler' \
+      | grep -v '^com\.yashasg\.knitting-guage-reconciler$' \
       || true
   )"
   [[ -n "$foreign_bundle_ids" ]] || return 0
@@ -149,7 +172,20 @@ run_fastlane() {
   command -v fastlane >/dev/null 2>&1 || fail "fastlane not found; install via: brew install fastlane"
   local lane="$1"
   shift
-  (cd "$PROJECT_DIR" && fastlane "$lane" "$@")
+  (
+    cd "$PROJECT_DIR"
+    SKIP_SLOW_FASTLANE_WARNING=1 FASTLANE_SKIP_UPDATE_CHECK=1 fastlane "$lane" "$@"
+  )
+}
+
+verify_fastlane_output() {
+  local output_path="$1"
+  local prohibited_pattern='IOHID|IOSurface|IOCreatePlugInInterfaceForService|(^|[^[:alnum:]_])plugin([^[:alnum:]_]|$).*(cannot|error|failed|failure)([^[:alnum:]_]|$)|(^|[^[:alnum:]_])(cannot|error|failed|failure)([^[:alnum:]_]|$).*plugin([^[:alnum:]_]|$)|fopen.*(cannot|error|failed|failure)([^[:alnum:]_]|$)|\[!\]|warning:|(^|[^[:alnum:]_])advisory([^[:alnum:]_]|$)|Found [1-9][0-9]* violations?|falling[[:space:]]+back|(^|[^[:alnum:]_])fallback([^[:alnum:]_]|$).*(failed|failure|error)([^[:alnum:]_]|$)|(^|[^[:alnum:]_])(failed|failure|error)([^[:alnum:]_]|$).*fallback([^[:alnum:]_]|$)|bootstrap.*(failed|failure|error|killed)([^[:alnum:]_]|$)|(^|[^[:alnum:]_])(failed|failure|error|killed)([^[:alnum:]_]|$).*bootstrap|((killed|terminated).*(signal|process))|signal[[:space:]]+(kill|term|[0-9]+)|SIG(KILL|TERM|ABRT|SEGV)|crashed|crash[[:space:]]+report[[:space:]]+found|unexpected(ly)?[[:space:]]+exit(ed)?|exit(ed)?[[:space:]]+unexpectedly'
+
+  if LC_ALL=C grep -aEiq "$prohibited_pattern" "$output_path"; then
+    LC_ALL=C grep -aEinH "$prohibited_pattern" "$output_path" >&2
+    fail "prohibited warning, advisory, fallback, bootstrap, signal, or crash output detected"
+  fi
 }
 
 case "$MODE" in
@@ -190,10 +226,12 @@ if [[ "$MODE" != "release" ]]; then
 fi
 
 if [[ "$MODE" == "test" ]]; then
+  simulator_test_preflight
   foreign_app_preflight
 fi
 
 xcargs=(
+  "-quiet"
   "COMPILER_INDEX_STORE_ENABLE=${COMPILER_INDEX_STORE_ENABLE}"
   "SWIFT_TREAT_WARNINGS_AS_ERRORS=YES"
   "GCC_TREAT_WARNINGS_AS_ERRORS=YES"
@@ -236,4 +274,14 @@ if [[ "$MODE" == "test" ]]; then
   )
 fi
 
-run_fastlane "$LANE" "${fastlane_args[@]}"
+if [[ "$MODE" == "test" ]]; then
+  FASTLANE_OUTPUT="$BUILD_DIR/fastlane-output.log"
+  set +e
+  run_fastlane "$LANE" "${fastlane_args[@]}" 2>&1 | tee "$FASTLANE_OUTPUT"
+  FASTLANE_STATUS=${PIPESTATUS[0]}
+  set -e
+  (( FASTLANE_STATUS == 0 )) || exit "$FASTLANE_STATUS"
+  verify_fastlane_output "$FASTLANE_OUTPUT"
+else
+  run_fastlane "$LANE" "${fastlane_args[@]}"
+fi

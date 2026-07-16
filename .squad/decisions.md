@@ -473,3 +473,20 @@ and 0 warnings or crashes.
   attached element image shows opaque near-black text over the opaque oatmeal tile; the existing audit filter now
   excludes only that exact platform report. The following signal-kill record was suite cancellation after the audit
   failure, and both affected tests passed together without test-level retry.
+
+---
+
+# Process-Restoration UI Coverage Prohibition
+
+**Date:** 2026-07-15T19:12:58.363-07:00
+**Owner:** Tesla
+**Verdict:** Canonical superseding decision
+
+- Never add or reintroduce `testSceneRestorationPreservesValidInvalidPartialAndResetDraftsAcrossProcessInterruption`,
+  or an equivalent process-interruption/process-relaunch XCUITest.
+- Scene persistence, restoration, and reset coverage must use deterministic unit/static tests at the existing
+  `SceneDraftStore`/snapshot/serialization seam.
+- Do not add replacement UI/process automation or test-only production reset/handoff hooks.
+- This supersedes every earlier decision, issue criterion, merge-request claim, or guardrail requiring protected
+  process-restoration UI coverage.
+- Contrast and unrelated stable UI/accessibility assertions remain in force.

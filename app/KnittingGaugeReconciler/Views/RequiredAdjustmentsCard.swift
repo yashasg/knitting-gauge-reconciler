@@ -325,19 +325,15 @@ private struct LiveResultsView: View {
 struct HeroTilesView: View {
     var result: GaugeMathResult
 
-    private let columns = [
-        GridItem(.flexible(minimum: 0), spacing: 12),
-        GridItem(.flexible(minimum: 0), spacing: 12)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 12) {
+        GaugeMeasurementPair(spacing: 12) {
             HeroTile(
                 label: "Stitch-wise",
                 value: "\(GaugeMath.fmtPct(result.stitchWidthScale))%",
                 status: gaugeStatus(scale: result.stitchWidthScale)
             )
             .accessibilityIdentifier("stitch-summary")
+        } trailing: {
             HeroTile(
                 label: "Row-wise",
                 value: "\(GaugeMath.fmtPct(result.rowCountScale))%",

@@ -94,3 +94,10 @@ Merged four inbox decisions into `decisions.md`, wrote orchestration/session log
 - Merged two user directives and logged Tesla's local audit plus Ralph's GitLab audit.
 - Preserved issue #51 for resumption and all unrelated ambiguous state.
 - No decision was old enough to archive, and no history crossed 15,360 bytes.
+
+### 2026-07-16T16:32:43.998-07:00 — Issue #51 unfinished state recorded
+
+- Merged two unique inbox records and cleared the inbox.
+- Logged Tesla's finding that MR !66 at `ea7ca64` has failed checks, lacks Curie approval, and has three later modified files preserved for Hopper.
+- The active ledger exceeded both archive thresholds, but no decision predates the seven-day cutoff; no history reached 15,360 bytes.
+- No fresh work, cleanup, or issue-worktree code change was performed.

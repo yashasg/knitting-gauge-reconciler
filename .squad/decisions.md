@@ -1504,3 +1504,52 @@ Preserve local `main` at `3d1b464969f0e37ff0124dda7a3838d0d816eb5b`, its three u
 **By:** Tesla (Squad) (via Copilot)
 **What:** Execute one complete 30-minute Squad work cycle in Ponytail full mode. Reconcile local, Squad, and GitLab state before work; resume issue #51 without duplication; merge only exact-SHA green unblocked MRs; require warning-free `./app/build.sh test`; publish exactly one coherent commit, branch, and issue-linked MR; await exact-SHA green pipeline, merge, clean only confirmed shipped state, and re-evaluate all five goals. Use `gpt-5.6-sol` for every launched Squad member, including Ralph and Scribe.
 **Why:** User request — captured for team memory
+
+---
+
+### 2026-07-16T16:32:43.998-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Execute the complete autonomous Squad Work Loop until all five Knitting Gauge Reconciler goals and final review pass or unavailable human input genuinely blocks progress. Reconcile and resume verified unfinished Git/GitLab work before starting anything new; merge only exact-current-SHA green, unblocked MRs; use one coherent MR per domain issue; preserve ambiguous state; keep canonical scope in issue descriptions; use gpt-5.6-sol for every launched member including Ralph and Scribe. Ponytail full is active: prefer deletion, native/stdlib, and installed tools without weakening explicit criteria, validation, error handling, accessibility, or tests.
+**Why:** User request — captured for team memory
+
+---
+
+# Issue #51 mandatory reconciliation
+
+**Recorded:** 2026-07-16T16:32:43.998-07:00
+
+## Decision
+
+Fresh work is forbidden. Hopper must resume issue #51 in
+`/Users/yashasgujjar/dev/knitting-gauge-reconciler-51` on
+`squad/51-restore-canonical-serial-ui-test-gate` and update the existing MR
+!66; no second implementation, branch, or MR is allowed.
+
+MR !66 points to `ea7ca64f2e72f3f0a55744cc3d7175db24854d38`.
+It is conflict-free and has no unresolved discussion, but its exact-SHA head
+pipeline is failed, with two failed external `Build & Test` statuses. Curie's
+required independent approval is absent. The commit is Tesla-authored despite
+Tesla's implementation lockout, and later substantive changes remain
+uncommitted in:
+
+1. `app/KnittingGaugeReconcilerUITests/AccessibilityAuditTests.swift`
+2. `app/build.sh`
+3. `app/fastlane/diagnostics_verifier.rb`
+
+The published commit changes the five issue-authorized files. Hopper must
+finish the preserved three-file revision, satisfy the canonical issue gates,
+push the exact candidate to the same branch, and hand it to Curie. Merge still
+requires that exact current SHA's green pipeline and all issue blockers cleared.
+
+## Queue and preservation
+
+- Issue #51 is open, dependency-free, and the sole runnable domain issue.
+- Issue #1 is the product tracker; #52, #57, #60, #62, and #66 are labeled
+  `follow-up`. Issue #66 also depends on #62; no duplicate scope is runnable.
+- Root `main` is four coordination-only commits ahead of `origin/main` and has
+  pre-existing dirty Squad state.
+- All 34 stashes and all six safety refs contain state distinct from
+  `origin/main`. The two stray local branches map to closed, unmerged MRs, not
+  merged work.
+- No cleanup is authorized or performed. The trade-off is retained clutter in
+  exchange for no loss of ambiguous or unshipped evidence.

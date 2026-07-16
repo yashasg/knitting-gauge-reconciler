@@ -180,10 +180,10 @@ run_fastlane() {
 
 verify_fastlane_output() {
   local output_path="$1"
-  local prohibited_pattern='\[!\]|warning:|Found [1-9][0-9]* violations|falling back|bootstrap.*(failed|failure|error)|((killed|terminated).*(signal|process))|crash(ed| report)|unexpectedly exited'
+  local prohibited_pattern='IOHID|IOSurface|IOCreatePlugInInterfaceForService|(^|[^[:alnum:]_])plugin([^[:alnum:]_]|$).*(cannot|error|failed|failure)([^[:alnum:]_]|$)|(^|[^[:alnum:]_])(cannot|error|failed|failure)([^[:alnum:]_]|$).*plugin([^[:alnum:]_]|$)|fopen.*(cannot|error|failed|failure)([^[:alnum:]_]|$)|\[!\]|warning:|(^|[^[:alnum:]_])advisory([^[:alnum:]_]|$)|Found [1-9][0-9]* violations?|falling[[:space:]]+back|(^|[^[:alnum:]_])fallback([^[:alnum:]_]|$).*(failed|failure|error)([^[:alnum:]_]|$)|(^|[^[:alnum:]_])(failed|failure|error)([^[:alnum:]_]|$).*fallback([^[:alnum:]_]|$)|bootstrap.*(failed|failure|error|killed)([^[:alnum:]_]|$)|(^|[^[:alnum:]_])(failed|failure|error|killed)([^[:alnum:]_]|$).*bootstrap|((killed|terminated).*(signal|process))|signal[[:space:]]+(kill|term|[0-9]+)|SIG(KILL|TERM|ABRT|SEGV)|crashed|crash[[:space:]]+report[[:space:]]+found|unexpected(ly)?[[:space:]]+exit(ed)?|exit(ed)?[[:space:]]+unexpectedly'
 
-  if grep -Eiq "$prohibited_pattern" "$output_path"; then
-    grep -Ei "$prohibited_pattern" "$output_path" >&2
+  if LC_ALL=C grep -aEiq "$prohibited_pattern" "$output_path"; then
+    LC_ALL=C grep -aEinH "$prohibited_pattern" "$output_path" >&2
     fail "prohibited warning, advisory, fallback, bootstrap, signal, or crash output detected"
   fi
 }

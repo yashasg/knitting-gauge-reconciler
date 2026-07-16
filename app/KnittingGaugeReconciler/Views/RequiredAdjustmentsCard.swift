@@ -1,43 +1,33 @@
 // Issue #65 keeps conditional result, reset, and share UI in this existing authorized file.
-// swiftlint:disable file_length
 import SwiftUI
 
 struct RequiredAdjustmentsCard: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
     @Binding private var showFullMath: Bool
-    @Binding private var showAdjustmentSheet: Bool
-    @State private var selectedDetent: PresentationDetent = .medium
     @State private var showResetConfirmation = false
 
-    private let cachedResult: GaugeMathResult?
+    private let result: GaugeMathResult?
     private let inputs: GaugeInputs?
     private let unit: MeasurementUnit
     private let canUndoReset: Bool
-    private let onRecalculate: () -> GaugeMathResult?
     private let onReset: () -> Void
     private let onUndoReset: () -> Void
     private let onShare: (GaugeMathResult) async -> [Any]
 
     init(
-        cachedResult: GaugeMathResult?,
+        result: GaugeMathResult?,
         inputs: GaugeInputs?,
         unit: MeasurementUnit,
         showFullMath: Binding<Bool>,
-        showAdjustmentSheet: Binding<Bool>,
         canUndoReset: Bool,
-        onRecalculate: @escaping () -> GaugeMathResult?,
         onReset: @escaping () -> Void,
         onUndoReset: @escaping () -> Void,
         onShare: @escaping (GaugeMathResult) async -> [Any]
     ) {
-        self.cachedResult = cachedResult
+        self.result = result
         self.inputs = inputs
         self.unit = unit
         self._showFullMath = showFullMath
-        self._showAdjustmentSheet = showAdjustmentSheet
         self.canUndoReset = canUndoReset
-        self.onRecalculate = onRecalculate
         self.onReset = onReset
         self.onUndoReset = onUndoReset
         self.onShare = onShare
@@ -45,40 +35,15 @@ struct RequiredAdjustmentsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Button {
-                selectedDetent = dynamicTypeSize.isAccessibilitySize ? .large : .medium
-                if onRecalculate() != nil {
-                    showAdjustmentSheet = true
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "wand.and.stars")
-                        .font(.footnote.weight(.semibold))
-                        .accessibilityHidden(true)
-                    Text("View results")
-                        .font(.subheadline.weight(.semibold))
-                }
-                .foregroundStyle(AppTheme.cream)
-                .frame(minWidth: 176)
-                .padding(.horizontal, 18)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
-                .frame(minHeight: 44)
-                .background(inputs == nil ? AppTheme.muted : AppTheme.sage)
-                .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .disabled(inputs == nil)
-            .accessibilityIdentifier("calculate-button")
-            .accessibilityLabel("View results")
-            .accessibilityHint(
-                inputs == nil
-                    ? "Correct the highlighted fields before viewing results"
-                    : "Computes gauge reconciliation and opens the results sheet"
-            )
-
-            if inputs == nil {
+            if let result, let inputs {
+                LiveResultsView(
+                    result: result,
+                    inputs: inputs,
+                    unit: unit,
+                    showFullMath: $showFullMath,
+                    onShare: onShare
+                )
+            } else {
                 Text("Correct the highlighted fields to view results.")
                     .font(.caption)
                     .foregroundStyle(.primary)
@@ -98,7 +63,6 @@ struct RequiredAdjustmentsCard: View {
                 .foregroundStyle(AppTheme.ink)
                 .accessibilityIdentifier("reset-defaults")
                 .accessibilityHint("Opens a confirmation before replacing every entry")
-                .accessibilityHidden(showAdjustmentSheet)
 
                 if canUndoReset {
                     Spacer()
@@ -113,20 +77,6 @@ struct RequiredAdjustmentsCard: View {
                 }
             }
         }
-        .sheet(isPresented: $showAdjustmentSheet) {
-            if let cachedResult, let inputs {
-                AdjustmentSheetView(
-                    result: cachedResult,
-                    inputs: inputs,
-                    unit: unit,
-                    showFullMath: $showFullMath,
-                    onShare: onShare,
-                    onClose: { showAdjustmentSheet = false }
-                )
-                .presentationDetents([.medium, .large], selection: $selectedDetent)
-                .presentationDragIndicator(.visible)
-            }
-        }
         .alert("Reset all values?", isPresented: $showResetConfirmation) {
             Button("Reset values", role: .destructive, action: onReset)
             Button("Keep editing", role: .cancel) {}
@@ -136,7 +86,7 @@ struct RequiredAdjustmentsCard: View {
     }
 }
 
-private struct AdjustmentSheetView: View {
+private struct LiveResultsView: View {
     @State private var sharePayload: ShareSheetPayload?
     @State private var isPreparingShare = false
 
@@ -145,109 +95,88 @@ private struct AdjustmentSheetView: View {
     private let unit: MeasurementUnit
     @Binding private var showFullMath: Bool
     private let onShare: (GaugeMathResult) async -> [Any]
-    private let onClose: () -> Void
 
     init(
         result: GaugeMathResult,
         inputs: GaugeInputs,
         unit: MeasurementUnit,
         showFullMath: Binding<Bool>,
-        onShare: @escaping (GaugeMathResult) async -> [Any],
-        onClose: @escaping () -> Void
+        onShare: @escaping (GaugeMathResult) async -> [Any]
     ) {
         self.result = result
         self.inputs = inputs
         self.unit = unit
         self._showFullMath = showFullMath
         self.onShare = onShare
-        self.onClose = onClose
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            AdjustmentSheetHeader(
-                isPreparingShare: isPreparingShare,
-                onShare: {
-                    guard !isPreparingShare else { return }
-                    isPreparingShare = true
-                },
-                onClose: onClose
-            )
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    gaugeSummaryCard
+        VStack(alignment: .leading, spacing: 12) {
+            HeroTilesView(result: result)
 
-                    if let patternRows = result.patternYokeRows,
-                       let adjustedRows = result.yokeRowsAtYourGauge {
-                        sectionCard(title: "Yoke Depth", subtitle: "To hit target measurement") {
+            if let patternRows = result.patternYokeRows,
+               let adjustedRows = result.yokeRowsAtYourGauge {
+                sectionCard(title: "Yoke Depth", subtitle: "To hit target measurement") {
+                    AdjustmentValuePair(
+                        patternValue: GaugeMath.fmtRows(patternRows),
+                        yourValue: adjustedRows,
+                        valueIdentifier: "yoke-your-rows"
+                    )
+                }
+            }
+
+            if hasBodyOrSleeveGuidance {
+                sectionCard(title: "Body & Sleeves", subtitle: "Length correction") {
+                    VStack(spacing: 12) {
+                        if let patternRows = result.patternBodyRows,
+                           let adjustedRows = result.bodyRowsAtYourGauge {
                             AdjustmentValuePair(
                                 patternValue: GaugeMath.fmtRows(patternRows),
                                 yourValue: adjustedRows,
-                                valueIdentifier: "yoke-your-rows"
+                                patternLabel: "Body Rows",
+                                valueIdentifier: "body-your-rows"
+                            )
+                        }
+                        if let patternRows = result.patternSleeveRows,
+                           let adjustedRows = result.sleeveRowsAtYourGauge {
+                            AdjustmentValuePair(
+                                patternValue: GaugeMath.fmtRows(patternRows),
+                                yourValue: adjustedRows,
+                                patternLabel: "Sleeve Rows",
+                                valueIdentifier: "sleeve-your-rows"
                             )
                         }
                     }
-
-                    if hasBodyOrSleeveGuidance {
-                        sectionCard(title: "Body & Sleeves", subtitle: "Length correction") {
-                            VStack(spacing: 12) {
-                                if let patternRows = result.patternBodyRows,
-                                   let adjustedRows = result.bodyRowsAtYourGauge {
-                                    AdjustmentValuePair(
-                                        patternValue: GaugeMath.fmtRows(patternRows),
-                                        yourValue: adjustedRows,
-                                        patternLabel: "Body Rows",
-                                        valueIdentifier: "body-your-rows"
-                                    )
-                                }
-                                if let patternRows = result.patternSleeveRows,
-                                   let adjustedRows = result.sleeveRowsAtYourGauge {
-                                    AdjustmentValuePair(
-                                        patternValue: GaugeMath.fmtRows(patternRows),
-                                        yourValue: adjustedRows,
-                                        patternLabel: "Sleeve Rows",
-                                        valueIdentifier: "sleeve-your-rows"
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    if let patternSpacing = inputs.patternIncreaseSpacing,
-                       let adjustedSpacing = result.adjustedIncreaseSpacing {
-                        sectionCard(title: "Shaping Rates", subtitle: "Increases / decreases") {
-                            AdjustmentRow(
-                                name: "Increase-row spacing",
-                                pattern: "Every \(plain(patternSpacing)) rows",
-                                adjusted: "Every \(GaugeMath.fmtRows(adjustedSpacing)) rows",
-                                adjustedIdentifier: "increases-result"
-                            )
-                        }
-                    }
-
-                    if let patternCastOn = inputs.patternCastOn,
-                       let adjustedCastOn = result.adjustedCastOn {
-                        sectionCard(title: "Cast-on", subtitle: "To preserve pattern width") {
-                            AdjustmentRow(
-                                name: "Cast-on stitches",
-                                pattern: "\(plain(patternCastOn)) stitches",
-                                adjusted: "\(adjustedCastOn) stitches",
-                                adjustedIdentifier: "cast-on-result",
-                                driftPill: castOnDriftPill
-                            )
-                        }
-                    }
-
-                    actionsCard
                 }
-                .padding(.horizontal)
-                .padding(.top, 8)
-                .padding(.bottom)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+            if let patternSpacing = inputs.patternIncreaseSpacing,
+               let adjustedSpacing = result.adjustedIncreaseSpacing {
+                sectionCard(title: "Shaping Rates", subtitle: "Increases / decreases") {
+                    AdjustmentRow(
+                        name: "Increase-row spacing",
+                        pattern: "Every \(plain(patternSpacing)) rows",
+                        adjusted: "Every \(GaugeMath.fmtRows(adjustedSpacing)) rows",
+                        adjustedIdentifier: "increases-result"
+                    )
+                }
+            }
+
+            if let patternCastOn = inputs.patternCastOn,
+               let adjustedCastOn = result.adjustedCastOn {
+                sectionCard(title: "Cast-on", subtitle: "To preserve pattern width") {
+                    AdjustmentRow(
+                        name: "Cast-on stitches",
+                        pattern: "\(plain(patternCastOn)) stitches",
+                        adjusted: "\(adjustedCastOn) stitches",
+                        adjustedIdentifier: "cast-on-result",
+                        driftPill: castOnDriftPill
+                    )
+                }
+            }
+
+            actionsCard
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(AppTheme.background.ignoresSafeArea())
         .sheet(item: $sharePayload) { payload in
             ActivityView(activityItems: payload.items)
                 .presentationDetents([.medium, .large])
@@ -278,25 +207,6 @@ private struct AdjustmentSheetView: View {
         return String(format: "%+.0f%% width", drift)
     }
 
-    private var gaugeSummaryCard: some View {
-        sectionCard(title: "Gauge Summary", subtitle: "Pattern compared with your swatch") {
-            VStack(spacing: 12) {
-                GaugeSummaryRow(
-                    name: "Stitch-wise width",
-                    adjusted: "\(GaugeMath.fmtPct(result.stitchWidthScale))%",
-                    adjustedIdentifier: "stitch-summary"
-                )
-                GaugeSummaryRow(
-                    name: "Row-wise density",
-                    adjusted: "\(GaugeMath.fmtPct(result.rowCountScale))%",
-                    adjustedIdentifier: "row-summary"
-                )
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("gauge-summary")
-    }
-
     private func sectionCard<Content: View>(
         title: String,
         subtitle: String,
@@ -324,6 +234,31 @@ private struct AdjustmentSheetView: View {
 
     private var actionsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Button {
+                guard !isPreparingShare else { return }
+                isPreparingShare = true
+            } label: {
+                HStack {
+                    Text("Share results")
+                    Spacer()
+                    if isPreparingShare {
+                        ProgressView()
+                            .tint(AppTheme.sage)
+                    } else {
+                        Image(systemName: "square.and.arrow.up")
+                            .accessibilityHidden(true)
+                    }
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(AppTheme.sage)
+            .disabled(isPreparingShare)
+            .accessibilityIdentifier("share-results")
+            .accessibilityHint("Opens the share sheet with an image of the current results")
+
             Button(
                 action: { showFullMath.toggle() },
                 label: {
@@ -387,98 +322,70 @@ private struct AdjustmentSheetView: View {
     // swiftlint:enable line_length
 }
 
-private struct GaugeSummaryRow: View {
-    let name: String
-    let adjusted: String
-    let adjustedIdentifier: String
+struct HeroTilesView: View {
+    var result: GaugeMathResult
+
+    private let columns = [
+        GridItem(.flexible(minimum: 0), spacing: 12),
+        GridItem(.flexible(minimum: 0), spacing: 12)
+    ]
 
     var body: some View {
-        GaugeMeasurementPair(spacing: 10) {
-            VStack(spacing: 4) {
-                Text(name)
-                    .font(.caption.weight(.semibold))
-                Text("Pattern 100%")
-                    .font(.system(.body, design: .monospaced).weight(.bold))
-            }
-            .foregroundStyle(AppTheme.ink)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(14)
-            .background(AppTheme.oatmeal)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(name) in pattern: Pattern 100%")
-        } trailing: {
-            VStack(spacing: 4) {
-                Text("Adjusted")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.white.opacity(0.85))
-                Text(adjusted)
-                    .font(.system(.body, design: .monospaced).weight(.bold))
-                    .foregroundStyle(.white)
-            }
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(14)
-            .background(AppTheme.sage)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(name) adjusted: \(adjusted)")
-            .accessibilityIdentifier(adjustedIdentifier)
+        LazyVGrid(columns: columns, spacing: 12) {
+            HeroTile(
+                label: "Stitch-wise",
+                value: "\(GaugeMath.fmtPct(result.stitchWidthScale))%",
+                status: gaugeStatus(scale: result.stitchWidthScale)
+            )
+            .accessibilityIdentifier("stitch-summary")
+            HeroTile(
+                label: "Row-wise",
+                value: "\(GaugeMath.fmtPct(result.rowCountScale))%",
+                status: rowStatus(scale: result.rowCountScale)
+            )
+            .accessibilityIdentifier("row-summary")
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("gauge-summary")
     }
 }
 
-private struct AdjustmentSheetHeader: View {
-    let isPreparingShare: Bool
-    let onShare: () -> Void
-    let onClose: () -> Void
+private struct HeroTile: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var label: String
+    var value: String
+    var status: String
 
     var body: some View {
-        ZStack {
-            Text("Adjustments")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(AppTheme.muted)
+            Text(value)
+                .font(.system(.title2, design: .monospaced).weight(.bold))
                 .foregroundStyle(AppTheme.ink)
-                .accessibilityAddTraits(.isHeader)
-
-            HStack {
-                Button(action: onShare) {
-                    if isPreparingShare {
-                        ProgressView()
-                            .tint(AppTheme.sage)
-                            .frame(width: 44, height: 44)
-                    } else {
-                        Image(systemName: "square.and.arrow.up")
-                            .imageScale(.medium)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(AppTheme.sage)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                }
-                .disabled(isPreparingShare)
-                .accessibilityIdentifier("share-results")
-                .accessibilityLabel("Share results")
-                .accessibilityHint(
-                    "Opens the share sheet with an image of the current results." +
-                    " Copy is available from the share sheet."
-                )
-
-                Spacer()
-
-                Button(action: onClose) {
-                    Text("Close")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(AppTheme.sage)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .accessibilityLabel("Close")
-                .accessibilityIdentifier("Close")
-            }
+            Text(status)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(colorScheme == .dark && status != "Match" ? .black : .white)
+                .padding(.horizontal, 10)
+                .padding(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                .frame(minHeight: 44)
+                .background(tileBackground(status))
+                .clipShape(Capsule())
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 4)
-        .padding(.bottom, 4)
+        .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
+        .padding(14)
+        .background(AppTheme.oatmeal)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value), \(status)")
+    }
+
+    // swiftlint:disable:next identifier_name
+    private func tileBackground(_ s: String) -> Color {
+        if s == "Match" { return AppTheme.sage }
+        if s.hasPrefix("Much") { return AppTheme.terracotta }
+        return AppTheme.secondary
     }
 }

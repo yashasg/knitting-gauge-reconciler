@@ -63,18 +63,33 @@ final class AccessibilityAuditTests: XCTestCase {
     private enum SemanticTextStyle {
         case body
         case button
+        case lead
 
         var fontTextStyle: UIFont.TextStyle {
             switch self {
-            case .body: return .body
+            case .body, .lead: return .body
             case .button: return .subheadline
             }
         }
 
         var alignment: NSTextAlignment {
             switch self {
-            case .body: return .left
+            case .body, .lead: return .left
             case .button: return .center
+            }
+        }
+
+        var horizontalInset: CGFloat {
+            switch self {
+            case .lead: return 12
+            case .body, .button: return 0
+            }
+        }
+
+        var registrationRadius: CGFloat {
+            switch self {
+            case .lead: return 16
+            case .body, .button: return 2
             }
         }
     }
@@ -281,7 +296,7 @@ final class AccessibilityAuditTests: XCTestCase {
         case .button:
             style = .button
         case .staticText:
-            style = .body
+            style = element.identifier == "gauge-lead" ? .lead : .body
         default:
             return nil
         }
@@ -347,7 +362,10 @@ final class AccessibilityAuditTests: XCTestCase {
 
         // Registration uses any rendered color difference, never contrast strength,
         // so a nearby dark decoration cannot steer the semantic glyph mask.
-        let registrationRadius = max(1, Int((image.scale * 2).rounded()))
+        let registrationRadius = max(
+            1,
+            Int((image.scale * style.registrationRadius).rounded())
+        )
         let offset = registeredTextOffset(
             for: coreGlyphPoints,
             radius: registrationRadius,
@@ -491,16 +509,17 @@ final class AccessibilityAuditTests: XCTestCase {
             .paragraphStyle: paragraphStyle
         ]
         let options: NSStringDrawingOptions = [.usesLineFragmentOrigin, .usesFontLeading]
+        let textBounds = bounds.insetBy(dx: style.horizontalInset, dy: 0)
         let measuredBounds = (text as NSString).boundingRect(
-            with: CGSize(width: bounds.width, height: .greatestFiniteMagnitude),
+            with: CGSize(width: textBounds.width, height: .greatestFiniteMagnitude),
             options: options,
             attributes: attributes,
             context: nil
         )
         let drawingBounds = CGRect(
-            x: bounds.minX,
-            y: bounds.midY - ceil(measuredBounds.height) / 2,
-            width: bounds.width,
+            x: textBounds.minX,
+            y: textBounds.midY - ceil(measuredBounds.height) / 2,
+            width: textBounds.width,
             height: ceil(measuredBounds.height)
         )
         (text as NSString).draw(
@@ -712,6 +731,17 @@ final class AccessibilityAuditTests: XCTestCase {
                 "affect the garment."
         )
         XCTAssertTrue(disclosure.exists)
+        XCTAssertEqual(lead.frame.minX, app.frame.minX + 16, accuracy: 1)
+        XCTAssertEqual(lead.frame.maxX, app.frame.maxX - 16, accuracy: 1)
+        XCTAssertGreaterThan(
+            lead.frame.width,
+            app.frame.width * 0.85,
+            "gauge-lead must expose its full-width opaque surface"
+        )
+        XCTAssertTrue(
+            assertRenderedContrast(for: lead),
+            "gauge-lead's full-width opaque frame must meet WCAG AA"
+        )
         XCTAssertFalse(app.textFields["pattern-cast-on-field"].exists)
         try performAccessibilityAuditWithFlakeRetry()
 

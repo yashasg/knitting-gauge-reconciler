@@ -8,8 +8,6 @@ import os.signpost
 // swiftlint:disable:next type_body_length
 struct ContentView: View {
     private static let defaults = GaugeTextDefaults()
-    private static let sceneDraftValuesKey = "gauge.raw-values"
-    private static let sceneDraftDisclosureKey = "gauge.pattern-details-expanded"
     private static let sceneDraftActivityType = "com.stitchwise.scene-draft"
 
     private struct ResetSnapshot {
@@ -129,13 +127,13 @@ struct ContentView: View {
                     )
                     .font(.body.weight(.semibold))
                     .foregroundStyle(AppTheme.ink)
-                    .accessibilityIdentifier("gauge-lead")
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
                     .padding(.bottom, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(AppTheme.background)
+                    .accessibilityIdentifier("gauge-lead")
 
                     GaugeInputsCard(
                         patternStitches: draftBinding($patternStitches, at: 0),
@@ -561,12 +559,8 @@ struct ContentView: View {
         from userInfo: [AnyHashable: Any],
         for session: UISceneSession
     ) -> Bool {
-        guard let values = userInfo[Self.sceneDraftValuesKey] as? [String],
-              values.count == 9,
-              let disclosure = userInfo[Self.sceneDraftDisclosureKey] as? Bool else {
-            return false
-        }
-        applySceneDraft(values: values, disclosure: disclosure, for: session)
+        guard let draft = SceneDraftStore.deserialize(userInfo) else { return false }
+        applySceneDraft(values: draft.values, disclosure: draft.disclosure, for: session)
         return true
     }
 
@@ -614,17 +608,17 @@ struct ContentView: View {
         guard let session else { return }
 
         // Namespace process-loss snapshots by scene; the single-scene alias is removed when another scene exists.
-        let draft: [String: Any] = [
-            Self.sceneDraftValuesKey: values,
-            Self.sceneDraftDisclosureKey: disclosure,
-        ]
+        guard let draft = SceneDraftStore.serialize(values: values, disclosure: disclosure) else {
+            return
+        }
         let activity = session.stateRestorationActivity
             ?? NSUserActivity(activityType: Self.sceneDraftActivityType)
         activity.addUserInfoEntries(from: draft)
         session.stateRestorationActivity = activity
         var userInfo = session.userInfo ?? [:]
-        userInfo[Self.sceneDraftValuesKey] = values
-        userInfo[Self.sceneDraftDisclosureKey] = disclosure
+        for (key, value) in draft {
+            userInfo[key] = value
+        }
         session.userInfo = userInfo
         SceneDraftStore.save(draft, sceneID: session.persistentIdentifier)
         if Self.isOnlyOpenSession(session) {
@@ -660,17 +654,7 @@ struct ContentView: View {
         )
         os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.resetTapped)
         applySceneDraft(
-            values: [
-                Self.defaults.patternStitches,
-                Self.defaults.patternRows,
-                Self.defaults.yourStitches,
-                Self.defaults.yourRows,
-                "",
-                "",
-                "",
-                "",
-                "",
-            ],
+            values: Self.defaults.resetSceneDraftValues,
             disclosure: false,
             synchronizingDefaults: true
         )

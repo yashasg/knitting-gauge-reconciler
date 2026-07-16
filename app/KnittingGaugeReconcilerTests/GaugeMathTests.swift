@@ -314,7 +314,7 @@ struct GaugeMathTests {
     }
 
     @MainActor
-    @Test func independentSceneDraftsUseSceneLocalStorageForEveryRawValueAndDisclosure() {
+    @Test func sceneDraftSerializationPreservesEveryRawValueAndDisclosure() throws {
         let properties = Array(Mirror(reflecting: ContentView()).children)
         let stringStorage = Set(properties.compactMap { child in
             child.value is SceneStorage<String> ? child.label?.dropFirst().description : nil
@@ -329,35 +329,111 @@ struct GaugeMathTests {
         ])
         #expect(boolStorage == ["patternDetailsExpanded"])
 
+        let values = ["31.5", "0", "32", "24", "", "20.5", ".", "", "7e0"]
+        let serialization = try #require(
+            SceneDraftStore.serialize(values: values, disclosure: true)
+        )
+        let restored = try #require(SceneDraftStore.deserialize(serialization))
+
+        #expect(restored.values == values)
+        #expect(restored.disclosure)
+    }
+
+    @Test func malformedSceneDraftSerializationIsRejected() throws {
+        let values = ["31.5", "0", "32", "24", "", "20.5", ".", "", "7e0"]
+        let valid = try #require(SceneDraftStore.serialize(values: values, disclosure: true))
+        var missingDisclosure = valid
+        var wrongValueCount = valid
+        var wrongValuesType = valid
+        var wrongDisclosureType = valid
+        missingDisclosure.removeValue(forKey: SceneDraftStore.disclosureKey)
+        wrongValueCount[SceneDraftStore.rawValuesKey] = Array(values.dropLast())
+        wrongValuesType[SceneDraftStore.rawValuesKey] = values.joined(separator: ",")
+        wrongDisclosureType[SceneDraftStore.disclosureKey] = "true"
+
+        #expect(SceneDraftStore.serialize(values: Array(values.dropLast()), disclosure: true) == nil)
+        #expect(SceneDraftStore.deserialize([:]) == nil)
+        #expect(SceneDraftStore.deserialize(missingDisclosure) == nil)
+        #expect(SceneDraftStore.deserialize(wrongValueCount) == nil)
+        #expect(SceneDraftStore.deserialize(wrongValuesType) == nil)
+        #expect(SceneDraftStore.deserialize(wrongDisclosureType) == nil)
+    }
+
+    @Test func independentSceneDraftsRemainIsolated() throws {
         let suiteName = "SceneDraftStoreTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let firstValues = ["31.5", "0", "32", "24", "", "20.5", ".", "", ""]
         let secondValues = ["28", "22", "30", "26", "144", "", "", "46", "7"]
+        let firstDraft = try #require(
+            SceneDraftStore.serialize(values: firstValues, disclosure: true)
+        )
+        let secondDraft = try #require(
+            SceneDraftStore.serialize(values: secondValues, disclosure: false)
+        )
         SceneDraftStore.save(
-            ["gauge.raw-values": firstValues, "gauge.pattern-details-expanded": true],
+            firstDraft,
             sceneID: "scene-a",
             defaults: defaults
         )
         SceneDraftStore.save(
-            ["gauge.raw-values": secondValues, "gauge.pattern-details-expanded": false],
+            secondDraft,
             sceneID: "scene-b",
             defaults: defaults
         )
 
-        #expect(SceneDraftStore.load(sceneID: "scene-a", defaults: defaults)?["gauge.raw-values"] as? [String] == firstValues)
-        #expect(SceneDraftStore.load(sceneID: "scene-b", defaults: defaults)?["gauge.raw-values"] as? [String] == secondValues)
-        #expect(SceneDraftStore.load(sceneID: "scene-a", defaults: defaults)?["gauge.pattern-details-expanded"] as? Bool == true)
-        #expect(SceneDraftStore.load(sceneID: "scene-b", defaults: defaults)?["gauge.pattern-details-expanded"] as? Bool == false)
-
-        SceneDraftStore.setSingleSceneID("scene-a", defaults: defaults)
-        SceneDraftStore.setSingleSceneHandoff(
-            ["gauge.raw-values": firstValues],
-            defaults: defaults
+        let firstRestored = try #require(
+            SceneDraftStore.load(sceneID: "scene-a", defaults: defaults)
+                .flatMap(SceneDraftStore.deserialize)
         )
+        let secondRestored = try #require(
+            SceneDraftStore.load(sceneID: "scene-b", defaults: defaults)
+                .flatMap(SceneDraftStore.deserialize)
+        )
+
+        #expect(firstRestored.values == firstValues)
+        #expect(firstRestored.disclosure)
+        #expect(secondRestored.values == secondValues)
+        #expect(!secondRestored.disclosure)
+    }
+
+    @Test func resetDraftPersistsThroughHandoffAndDiscardRemovesOnlyItsScene() throws {
+        let suiteName = "SceneDraftStoreResetTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let resetValues = GaugeTextDefaults().resetSceneDraftValues
+        let resetDraft = try #require(
+            SceneDraftStore.serialize(values: resetValues, disclosure: false)
+        )
+        let otherValues = ["28", "22", "30", "26", "144", "", "", "46", "7"]
+        let otherDraft = try #require(
+            SceneDraftStore.serialize(values: otherValues, disclosure: true)
+        )
+        SceneDraftStore.save(resetDraft, sceneID: "scene-a", defaults: defaults)
+        SceneDraftStore.save(otherDraft, sceneID: "scene-b", defaults: defaults)
+        SceneDraftStore.setSingleSceneID("scene-a", defaults: defaults)
+        SceneDraftStore.setSingleSceneHandoff(resetDraft, defaults: defaults)
+
+        let resetRestored = try #require(
+            SceneDraftStore.load(sceneID: "scene-a", defaults: defaults)
+                .flatMap(SceneDraftStore.deserialize)
+        )
+        let handoffRestored = try #require(
+            SceneDraftStore.singleSceneHandoff(defaults: defaults)
+                .flatMap(SceneDraftStore.deserialize)
+        )
+
+        #expect(resetRestored.values == ["32", "24", "32", "32", "", "", "", "", ""])
+        #expect(!resetRestored.disclosure)
+        #expect(handoffRestored.values == resetRestored.values)
+        #expect(!handoffRestored.disclosure)
+
         SceneDraftStore.discard(sceneIDs: ["scene-a"], defaults: defaults)
         #expect(SceneDraftStore.load(sceneID: "scene-a", defaults: defaults) == nil)
-        #expect(SceneDraftStore.load(sceneID: "scene-b", defaults: defaults)?["gauge.raw-values"] as? [String] == secondValues)
+        #expect(
+            SceneDraftStore.load(sceneID: "scene-b", defaults: defaults)
+                .flatMap(SceneDraftStore.deserialize)?.values == otherValues
+        )
         #expect(SceneDraftStore.singleSceneID(defaults: defaults) == nil)
         #expect(SceneDraftStore.singleSceneHandoff(defaults: defaults) == nil)
     }

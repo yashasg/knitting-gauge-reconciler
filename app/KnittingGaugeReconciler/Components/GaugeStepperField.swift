@@ -233,9 +233,9 @@ struct GaugeStepperField: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(
-                        hasMismatch || validationMessage != nil
-                            ? AppTheme.mismatchText.opacity(0.5)
-                            : AppTheme.outline,
+                        (hasMismatch || validationMessage != nil
+                            ? AppTheme.mismatchText
+                            : AppTheme.muted).opacity(0.7),
                         lineWidth: 1.5
                     )
             )

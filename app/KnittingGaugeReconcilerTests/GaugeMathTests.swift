@@ -589,6 +589,38 @@ struct GaugeMathTests {
         }
     }
 
+    @Test func gaugeStepperBoundariesMeetNonTextContrastInLightAndDark() throws {
+        let appDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let boundary = try sourceSection(
+            "KnittingGaugeReconciler/Components/GaugeStepperField.swift",
+            from: ".background(AppTheme.card)",
+            to: "// Expose the entire field container",
+            appDirectory: appDirectory
+        )
+        #expect(boundary.contains("? AppTheme.mismatchText"))
+        #expect(boundary.contains(": AppTheme.muted"))
+        #expect(boundary.contains(").opacity(0.7)"))
+
+        let muted = try themeColors(named: "app-theme-muted", appDirectory: appDirectory)
+        let mismatch = try themeColors(
+            named: "app-theme-mismatch-text",
+            appDirectory: appDirectory
+        )
+        let card = try themeColors(named: "app-theme-card", appDirectory: appDirectory)
+        let ratios = ["light", "dark"].flatMap { appearance in
+            [muted, mismatch].compactMap { colors -> Double? in
+                guard let foreground = colors[appearance],
+                      let background = card[appearance] else { return nil }
+                let boundary = foreground * 0.7 + background * 0.3
+                return contrastRatio(boundary, background)
+            }
+        }
+
+        #expect(ratios.count == 4 && ratios.allSatisfy { $0 >= 3 })
+    }
+
     @Test func adjustedTileCaptionsUseSolidWhiteWithAccessibleContrast() throws {
         let appDirectory = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

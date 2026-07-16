@@ -64,7 +64,7 @@ struct AdjustmentValuePair: View {
             VStack(alignment: .center, spacing: 4) {
                 Text(yourLabel)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.white.opacity(0.85))
+                    .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                 Text("\(yourValue)")
                     .font(.system(.title, design: .monospaced).weight(.bold))

@@ -571,6 +571,53 @@ struct GaugeMathTests {
         }
     }
 
+    @Test func adjustedTileCaptionsUseSolidWhiteWithAccessibleContrast() throws {
+        let appDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sites = [
+            (
+                "KnittingGaugeReconciler/Components/AdjustmentValuePair.swift",
+                "Text(yourLabel)",
+                "Text(\"\\(yourValue)\")",
+                "private var yourTile",
+                "private var yourTileAccessibilityLabel"
+            ),
+            (
+                "KnittingGaugeReconciler/Views/AdjustmentRow.swift",
+                "Text(\"Adjusted\")",
+                "Text(adjusted)",
+                "private var adjustedTile",
+                "private var adjustedTileAccessibilityLabel"
+            ),
+        ]
+
+        for (path, captionStart, valueStart, tileStart, tileEnd) in sites {
+            let caption = try sourceSection(
+                path,
+                from: captionStart,
+                to: valueStart,
+                appDirectory: appDirectory
+            )
+            #expect(caption.contains(".foregroundStyle(.white)"))
+            #expect(!caption.contains(".opacity("))
+
+            let tile = try sourceSection(
+                path,
+                from: tileStart,
+                to: tileEnd,
+                appDirectory: appDirectory
+            )
+            #expect(tile.contains(".background(AppTheme.sage)"))
+        }
+
+        let white = SIMD3<Double>(repeating: 1)
+        let sage = try themeColors(named: "app-theme-sage", appDirectory: appDirectory)
+        for appearance in ["light", "dark"] {
+            #expect(contrastRatio(white, try #require(sage[appearance])) >= 4.5)
+        }
+    }
+
     private func sourceSection(
         _ path: String,
         from startMarker: String,

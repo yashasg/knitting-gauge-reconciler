@@ -254,7 +254,7 @@ private struct LiveResultsView: View {
             }
             .buttonStyle(.plain)
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(AppTheme.sage)
+            .foregroundStyle(AppTheme.ink)
             .disabled(isPreparingShare)
             .accessibilityIdentifier("share-results")
             .accessibilityHint("Opens the share sheet with an image of the current results")
@@ -274,7 +274,7 @@ private struct LiveResultsView: View {
             )
             .buttonStyle(.plain)
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(AppTheme.sage)
+            .foregroundStyle(AppTheme.ink)
             .accessibilityIdentifier("disclosure-full-math")
             .accessibilityLabel(showFullMath ? "Hide full math" : "Show full math")
 

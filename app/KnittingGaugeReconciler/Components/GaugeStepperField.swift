@@ -38,6 +38,7 @@ struct GaugeStepperField: View {
     private let field: GaugeFormField
     private let validationMessage: String?
     private let validationText: String
+    private let accessibilityLabel: String
     private let displayUnit: MeasurementUnit?
     private let focusedField: Binding<GaugeFormField?>
     private let onSubmit: () -> Void
@@ -48,6 +49,10 @@ struct GaugeStepperField: View {
 
     @State private var showWheelPicker = false
 
+    static func pickerAccessibilityLabel(for fieldLabel: String) -> String {
+        "Open picker for \(fieldLabel)"
+    }
+
     init(
         title: String,
         text: Binding<String>,
@@ -56,6 +61,7 @@ struct GaugeStepperField: View {
         field: GaugeFormField,
         validationMessage: String?,
         validationText: String? = nil,
+        accessibilityLabel: String? = nil,
         displayUnit: MeasurementUnit? = nil,
         focusedField: Binding<GaugeFormField?>,
         onSubmit: @escaping () -> Void,
@@ -71,6 +77,7 @@ struct GaugeStepperField: View {
         self.field = field
         self.validationMessage = validationMessage
         self.validationText = validationText ?? text.wrappedValue
+        self.accessibilityLabel = accessibilityLabel ?? title
         self.displayUnit = displayUnit
         self.focusedField = focusedField
         self.onSubmit = onSubmit
@@ -181,7 +188,7 @@ struct GaugeStepperField: View {
                     text: $text,
                     field: field,
                     focusedField: focusedField,
-                    label: title,
+                    label: accessibilityLabel,
                     value: fieldAccessibilityValue,
                     hint: fieldAccessibilityHint,
                     identifier: "\(identifier)-field",
@@ -215,7 +222,7 @@ struct GaugeStepperField: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Open picker for \(title)")
+                .accessibilityLabel(Self.pickerAccessibilityLabel(for: accessibilityLabel))
                 .accessibilityValue(pickerAccessibilityValue)
                 .accessibilityHint(pickerAccessibilityHint)
                 .accessibilityIdentifier("\(identifier)-chevron")
@@ -258,6 +265,7 @@ struct GaugeStepperField: View {
                 identifier: identifier,
                 validationText: validationText,
                 field: field,
+                accessibilityLabel: accessibilityLabel,
                 displayUnit: displayUnit,
                 mismatchLabel: mismatchSentence,
                 mismatchDeltaText: mismatchDeltaText,
@@ -411,6 +419,7 @@ private struct GaugeStepperWheelSheet: View {
     let identifier: String
     let validationText: String
     let field: GaugeFormField
+    let accessibilityLabel: String
     let displayUnit: MeasurementUnit?
     let mismatchLabel: String?
     let mismatchDeltaText: String?
@@ -425,6 +434,7 @@ private struct GaugeStepperWheelSheet: View {
         identifier: String,
         validationText: String,
         field: GaugeFormField,
+        accessibilityLabel: String,
         displayUnit: MeasurementUnit?,
         mismatchLabel: String?,
         mismatchDeltaText: String?,
@@ -436,6 +446,7 @@ private struct GaugeStepperWheelSheet: View {
         self.identifier = identifier
         self.validationText = validationText
         self.field = field
+        self.accessibilityLabel = accessibilityLabel
         self.displayUnit = displayUnit
         self.mismatchLabel = mismatchLabel
         self.mismatchDeltaText = mismatchDeltaText
@@ -488,6 +499,7 @@ private struct GaugeStepperWheelSheet: View {
             }
             .pickerStyle(.wheel)
             .labelsHidden()
+            .accessibilityLabel(accessibilityLabel)
             .accessibilityIdentifier("\(identifier)-wheel")
 
             Button("Done") {

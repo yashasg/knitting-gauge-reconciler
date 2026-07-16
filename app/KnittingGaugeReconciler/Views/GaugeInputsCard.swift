@@ -1,6 +1,13 @@
 import SwiftUI
 
 struct GaugeInputsCard: View {
+    private static let spokenGaugeBasis = "per 10 centimeters / 4 inches"
+
+    static func accessibilityLabel(for field: GaugeFormField) -> String {
+        guard !field.isPatternDetail else { return field.correctionName }
+        return "\(field.correctionName), \(spokenGaugeBasis)"
+    }
+
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @Binding private var patternStitches: String
@@ -104,6 +111,7 @@ struct GaugeInputsCard: View {
             identifier: "pattern-stitches",
             field: .patternStitches,
             validationMessage: validationMessages[.patternStitches],
+            accessibilityLabel: Self.accessibilityLabel(for: .patternStitches),
             focusedField: focusedField,
             onSubmit: onSubmit
         )
@@ -117,6 +125,7 @@ struct GaugeInputsCard: View {
             identifier: "pattern-rows",
             field: .patternRows,
             validationMessage: validationMessages[.patternRows],
+            accessibilityLabel: Self.accessibilityLabel(for: .patternRows),
             focusedField: focusedField,
             onSubmit: onSubmit
         )
@@ -130,6 +139,7 @@ struct GaugeInputsCard: View {
             identifier: "your-stitches",
             field: .yourStitches,
             validationMessage: validationMessages[.yourStitches],
+            accessibilityLabel: Self.accessibilityLabel(for: .yourStitches),
             focusedField: focusedField,
             onSubmit: onSubmit,
             hasMismatch: stitchMismatch,
@@ -146,6 +156,7 @@ struct GaugeInputsCard: View {
             identifier: "your-rows",
             field: .yourRows,
             validationMessage: validationMessages[.yourRows],
+            accessibilityLabel: Self.accessibilityLabel(for: .yourRows),
             focusedField: focusedField,
             onSubmit: onSubmit,
             hasMismatch: rowMismatch,

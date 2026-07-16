@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import Testing
 @testable import KnittingGaugeReconciler
@@ -486,6 +487,93 @@ struct GaugeMathTests {
         let defaults = GaugeInputs()
         #expect(!defaults.stitchMismatch)
         #expect(defaults.rowMismatch)
+    }
+
+    @MainActor
+    @Test func requiredGaugeAccessibilityLabelsIncludeMeasurementBasis() {
+        let expectedLabels: [(GaugeFormField, String)] = [
+            (.patternStitches, "Pattern stitch gauge, per 10 centimeters / 4 inches"),
+            (.patternRows, "Pattern row gauge, per 10 centimeters / 4 inches"),
+            (.yourStitches, "Swatch stitch gauge, per 10 centimeters / 4 inches"),
+            (.yourRows, "Swatch row gauge, per 10 centimeters / 4 inches"),
+        ]
+
+        for (field, expectedLabel) in expectedLabels {
+            let label = GaugeInputsCard.accessibilityLabel(for: field)
+            #expect(label == expectedLabel)
+            #expect(
+                GaugeStepperField.pickerAccessibilityLabel(for: label)
+                    == "Open picker for \(expectedLabel)"
+            )
+        }
+    }
+
+    @Test func resultsActionTokensMeetTextContrastInLightAndDark() throws {
+        let appDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = appDirectory
+            .appendingPathComponent("KnittingGaugeReconciler/Views/RequiredAdjustmentsCard.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let shareStart = try #require(source.range(of: "Text(\"Share results\")")?.lowerBound)
+        let mathStart = try #require(source.range(of: "Text(showFullMath ?")?.lowerBound)
+        let mathEnd = try #require(
+            source.range(of: "if showFullMath {", range: mathStart..<source.endIndex)?.lowerBound
+        )
+
+        #expect(source[shareStart..<mathStart].contains(".foregroundStyle(AppTheme.ink)"))
+        #expect(source[mathStart..<mathEnd].contains(".foregroundStyle(AppTheme.ink)"))
+
+        let ink = try themeColors(named: "app-theme-ink", appDirectory: appDirectory)
+        let card = try themeColors(named: "app-theme-card", appDirectory: appDirectory)
+        for appearance in ["light", "dark"] {
+            let foreground = try #require(ink[appearance])
+            let background = try #require(card[appearance])
+            #expect(contrastRatio(foreground, background) >= 4.5)
+        }
+    }
+
+    private func themeColors(
+        named name: String,
+        appDirectory: URL
+    ) throws -> [String: SIMD3<Double>] {
+        let url = appDirectory
+            .appendingPathComponent("KnittingGaugeReconciler/Assets.xcassets")
+            .appendingPathComponent("\(name).colorset/Contents.json")
+        let object = try JSONSerialization.jsonObject(with: Data(contentsOf: url))
+        let root = try #require(object as? [String: Any])
+        let entries = try #require(root["colors"] as? [[String: Any]])
+        var result: [String: SIMD3<Double>] = [:]
+
+        for entry in entries {
+            let appearances = entry["appearances"] as? [[String: String]]
+            let appearance = appearances?.first?["value"] ?? "light"
+            let color = try #require(entry["color"] as? [String: Any])
+            let components = try #require(color["components"] as? [String: String])
+            result[appearance] = SIMD3(
+                try #require(components["red"].flatMap(Double.init)),
+                try #require(components["green"].flatMap(Double.init)),
+                try #require(components["blue"].flatMap(Double.init))
+            )
+        }
+        return result
+    }
+
+    private func contrastRatio(_ first: SIMD3<Double>, _ second: SIMD3<Double>) -> Double {
+        let luminances = [relativeLuminance(first), relativeLuminance(second)].sorted()
+        return (luminances[1] + 0.05) / (luminances[0] + 0.05)
+    }
+
+    private func relativeLuminance(_ color: SIMD3<Double>) -> Double {
+        0.2126 * linearized(color.x) +
+            0.7152 * linearized(color.y) +
+            0.0722 * linearized(color.z)
+    }
+
+    private func linearized(_ component: Double) -> Double {
+        component <= 0.04045
+            ? component / 12.92
+            : pow((component + 0.055) / 1.055, 2.4)
     }
 
     private func withGauge(yourStitches: Double, yourRows: Double) -> GaugeInputs {

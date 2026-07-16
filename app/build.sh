@@ -54,8 +54,9 @@ resolve_simulator_name_by_udid() {
 
 acquire_build_lock() {
   mkdir -p "$BUILD_DIR"
-  LOCK_DIR="$BUILD_DIR/build.lock"
-  LOCK_WAIT_SECONDS="${LOCK_WAIT_SECONDS:-120}"
+  # ponytail: repository-wide lock; split by simulator only if build throughput becomes a bottleneck.
+  LOCK_DIR="$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-common-dir)/app-build.lock"
+  LOCK_WAIT_SECONDS="${LOCK_WAIT_SECONDS:-900}"
   LOCK_WAITED=0
 
   while ! mkdir "$LOCK_DIR" 2>/dev/null; do

@@ -33,8 +33,17 @@ destination_value() {
 
 resolve_simulator_udid_by_name() {
   local name="$1"
-  xcrun simctl list devices available "$name" |
-    awk -F '[()]' '/^[[:space:]]+.*\([0-9A-F-]{36}\)/ { print $2; exit }'
+  xcrun simctl list devices available |
+    awk -F '[()]' -v name="$name" '
+      /^[[:space:]]+.*\([0-9A-F-]{36}\)/ {
+        candidate = $1
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", candidate)
+        if (candidate == name) {
+          print $2
+          exit
+        }
+      }
+    '
 }
 
 resolve_simulator_name_by_udid() {
@@ -88,7 +97,7 @@ resolve_simulator_context() {
   local destination_udid=""
   local destination_name=""
 
-  FASTLANE_TEST_DEVICE="$SIMULATOR_NAME"
+  FASTLANE_TEST_DEVICE=""
 
   if [[ -n "$DESTINATION" ]]; then
     [[ "$DESTINATION" == *"platform=iOS Simulator"* ]] || \
@@ -99,27 +108,40 @@ resolve_simulator_context() {
 
     if [[ -n "$destination_udid" ]]; then
       SIMULATOR_UDID="$destination_udid"
-      FASTLANE_TEST_DEVICE="$(resolve_simulator_name_by_udid "$SIMULATOR_UDID")"
+      SIMULATOR_NAME="$(resolve_simulator_name_by_udid "$SIMULATOR_UDID")"
+      [[ -n "$SIMULATOR_NAME" ]] || fail "no available simulator with UDID '$SIMULATOR_UDID'"
     elif [[ -n "$destination_name" ]]; then
       SIMULATOR_NAME="$destination_name"
-      FASTLANE_TEST_DEVICE="$destination_name"
       SIMULATOR_UDID="$(resolve_simulator_udid_by_name "$destination_name")"
       [[ -n "$SIMULATOR_UDID" ]] || fail "no available simulator named '$destination_name'"
+    elif [[ "$MODE" == "test" ]]; then
+      fail "DESTINATION must include an available simulator id or name for test"
     fi
   fi
 
   if [[ -z "$DESTINATION" ]]; then
     if [[ -z "$SIMULATOR_UDID" ]]; then
       SIMULATOR_UDID="$(resolve_simulator_udid_by_name "$SIMULATOR_NAME")"
+    else
+      SIMULATOR_NAME="$(resolve_simulator_name_by_udid "$SIMULATOR_UDID")"
     fi
-    [[ -n "$SIMULATOR_UDID" ]] || fail "no available simulator named '$SIMULATOR_NAME'"
+    [[ -n "$SIMULATOR_UDID" && -n "$SIMULATOR_NAME" ]] || \
+      fail "no available simulator matching SIMULATOR_NAME='$SIMULATOR_NAME' SIMULATOR_UDID='$SIMULATOR_UDID'"
     DESTINATION="platform=iOS Simulator,id=${SIMULATOR_UDID}"
   fi
 
-  if [[ -z "$FASTLANE_TEST_DEVICE" && -n "$SIMULATOR_UDID" ]]; then
-    FASTLANE_TEST_DEVICE="$(resolve_simulator_name_by_udid "$SIMULATOR_UDID")"
-  fi
-  FASTLANE_TEST_DEVICE="${FASTLANE_TEST_DEVICE:-$SIMULATOR_NAME}"
+  FASTLANE_TEST_DEVICE="$SIMULATOR_NAME"
+}
+
+simulator_test_preflight() {
+  local model_identifier
+
+  xcrun simctl bootstatus "$SIMULATOR_UDID" -b || \
+    fail "simulator '$SIMULATOR_NAME' ($SIMULATOR_UDID) could not boot"
+  model_identifier="$(xcrun simctl getenv "$SIMULATOR_UDID" SIMULATOR_MODEL_IDENTIFIER)" || \
+    fail "could not inspect simulator '$SIMULATOR_NAME' ($SIMULATOR_UDID)"
+  [[ "$model_identifier" == iPhone* ]] || \
+    fail "simulator '$SIMULATOR_NAME' ($SIMULATOR_UDID) is not an iPhone"
 }
 
 foreign_app_preflight() {
@@ -193,10 +215,12 @@ if [[ "$MODE" != "release" ]]; then
 fi
 
 if [[ "$MODE" == "test" ]]; then
+  simulator_test_preflight
   foreign_app_preflight
 fi
 
 xcargs=(
+  "-quiet"
   "COMPILER_INDEX_STORE_ENABLE=${COMPILER_INDEX_STORE_ENABLE}"
   "SWIFT_TREAT_WARNINGS_AS_ERRORS=YES"
   "GCC_TREAT_WARNINGS_AS_ERRORS=YES"

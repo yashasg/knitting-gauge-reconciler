@@ -107,6 +107,26 @@ struct GaugeMathTests {
         #expect(GaugeMath.fmtPct(32.0 / 36.0) == 89)
     }
 
+    @Test func statusBandsAreSymmetricAtExactBoundaries() {
+        #expect(gaugeStatus(scale: 0.971) == "Match")
+        #expect(gaugeStatus(scale: 1.029) == "Match")
+        #expect(gaugeStatus(scale: 0.97) == "Tighter than pattern")
+        #expect(gaugeStatus(scale: 1.03) == "Looser than pattern")
+        #expect(gaugeStatus(scale: 0.901) == "Tighter than pattern")
+        #expect(gaugeStatus(scale: 1.099) == "Looser than pattern")
+        #expect(gaugeStatus(scale: 0.90) == "Much tighter")
+        #expect(gaugeStatus(scale: 1.10) == "Much looser")
+
+        #expect(rowStatus(scale: 0.971) == "Match")
+        #expect(rowStatus(scale: 1.029) == "Match")
+        #expect(rowStatus(scale: 0.97) == "Looser than pattern")
+        #expect(rowStatus(scale: 1.03) == "Denser than pattern")
+        #expect(rowStatus(scale: 0.901) == "Looser than pattern")
+        #expect(rowStatus(scale: 1.099) == "Denser than pattern")
+        #expect(rowStatus(scale: 0.90) == "Much looser")
+        #expect(rowStatus(scale: 1.10) == "Much denser")
+    }
+
     // MARK: - Formula guardrails from .squad/decisions.md
 
     /// yr = 2 × pr: cm dimensions halve; increase-row guidance doubles.

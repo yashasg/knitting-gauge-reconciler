@@ -75,6 +75,18 @@ function fmtRows(x) { return Math.max(1, Math.round(x)); }
 /** fmtPct — whole-number percentage (mirrors HTML fmtPct). */
 function fmtPct(x) { return Math.round(x * 100); }
 
+function gaugeStatus(scale) {
+  if (scale > 0.97 && scale < 1.03) return 'Match';
+  if (scale > 0.90 && scale < 1.10) return scale > 1 ? 'Looser than pattern' : 'Tighter than pattern';
+  return scale > 1 ? 'Much looser' : 'Much tighter';
+}
+
+function rowStatus(scale) {
+  if (scale > 0.97 && scale < 1.03) return 'Match';
+  if (scale > 0.90 && scale < 1.10) return scale > 1 ? 'Denser than pattern' : 'Looser than pattern';
+  return scale > 1 ? 'Much denser' : 'Much looser';
+}
+
 /**
  * computeActStitches — adjusted cast-on stitch count.
  * Formula: actStitches = patStitches × (ys / ps), then Math.round()
@@ -96,6 +108,16 @@ let pendingCount = 0;
 function assertEqual(actual, expected, label, tolerance = 1e-9) {
   const ok = Math.abs(actual - expected) <= tolerance;
   if (ok) {
+    console.log(`  ✓ ${label}`);
+    passed++;
+  } else {
+    console.log(`  ✗ ${label} (expected ${expected}, got ${actual})`);
+    failed++;
+  }
+}
+
+function assertSame(actual, expected, label) {
+  if (actual === expected) {
     console.log(`  ✓ ${label}`);
     passed++;
   } else {
@@ -236,6 +258,19 @@ describe('Edge: fmtRows rounding boundary cases', () => {
   assertEqual(fmtRows(6.6), 7, 'fmtRows(6.6) = 7  [rounds up]', 0);
   assertEqual(fmtRows(0.4), 1, 'fmtRows(0.4) = 1  [minimum clamp to 1]', 0);
   assertEqual(fmtRows(0.0), 1, 'fmtRows(0.0) = 1  [minimum clamp to 1]', 0);
+});
+
+describe('Edge: status bands are symmetric at exact boundaries', () => {
+  assertSame(gaugeStatus(0.971), 'Match', 'stitch -2.9% is Match');
+  assertSame(gaugeStatus(1.029), 'Match', 'stitch +2.9% is Match');
+  assertSame(gaugeStatus(0.97), 'Tighter than pattern', 'stitch -3% enters middle band');
+  assertSame(gaugeStatus(1.03), 'Looser than pattern', 'stitch +3% enters middle band');
+  assertSame(gaugeStatus(0.90), 'Much tighter', 'stitch -10% enters Much band');
+  assertSame(gaugeStatus(1.10), 'Much looser', 'stitch +10% enters Much band');
+  assertSame(rowStatus(0.97), 'Looser than pattern', 'row -3% enters middle band');
+  assertSame(rowStatus(1.03), 'Denser than pattern', 'row +3% enters middle band');
+  assertSame(rowStatus(0.90), 'Much looser', 'row -10% enters Much band');
+  assertSame(rowStatus(1.10), 'Much denser', 'row +10% enters Much band');
 });
 
 describe('Edge: floating-point precision — perfect match gives exact input values', () => {

@@ -5,7 +5,6 @@ require "json"
 require "fileutils"
 require "shellwords"
 require "xcodeproj"
-require_relative "diagnostics_verifier"
 
 # This file contains the fastlane.tools configuration
 # You can find the documentation at https://docs.fastlane.tools
@@ -134,9 +133,8 @@ def verify_test_diagnostics(output_directory)
   FileUtils.rm_rf(diagnostics_path)
   sh("xcrun xcresulttool export diagnostics --path #{Shellwords.escape(result_bundle_path)} --output-path #{Shellwords.escape(diagnostics_path)}")
 
-  verify_exported_test_diagnostics(raw_log_path, diagnostics_path)
-rescue TestDiagnosticsError => error
-  UI.user_error!(error.message)
+  verifier_path = File.expand_path("diagnostics_verifier.rb", __dir__)
+  sh("/usr/bin/ruby #{Shellwords.escape(verifier_path)} #{Shellwords.escape(raw_log_path)} #{Shellwords.escape(diagnostics_path)}")
 end
 
 

@@ -83,6 +83,7 @@ enum GaugeMath {
     enum ValidationError: Error, Equatable {
         case required
         case invalidNumber
+        case wholeNumberRequired
         case outOfRange(ClosedRange<Double>)
     }
 
@@ -95,6 +96,14 @@ enum GaugeMath {
         }
         guard let value = Double(trimmed), value.isFinite else {
             return .failure(.invalidNumber)
+        }
+        switch field {
+        case .patternCastOn, .patternIncreaseSpacing:
+            guard value.rounded(.towardZero) == value else {
+                return .failure(.wholeNumberRequired)
+            }
+        default:
+            break
         }
         guard field.range.contains(value) else {
             return .failure(.outOfRange(field.range))
@@ -210,7 +219,8 @@ struct ResultsExportSummary: Equatable {
             status: rowStatus(scale: result.rowCountScale)
         )
         if let patternCastOn = inputs.patternCastOn, let adjustedCastOn = result.adjustedCastOn {
-            castOn = "Cast on \(adjustedCastOn) stitches instead of \(plain(patternCastOn))"
+            castOn = "Cast on \(adjustedCastOn) stitches instead of \(plain(patternCastOn)). " +
+                "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
         }
 
         let rowsModel = ResultsExportRowsModel(inputs: inputs, result: result, unit: unit)

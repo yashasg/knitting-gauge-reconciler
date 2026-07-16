@@ -1270,3 +1270,24 @@ Preserve `b8f1930`, its local branch/worktree, all 32 stashes now present (31 at
   requiring UI tests.
 - Re-enable UI tests only after the issue queue is clear and the user explicitly approves re-enabling. Revert by
   changing the shared scheme value back to `skipped = "NO"`.
+
+---
+
+### 2026-07-16T10:52:38.873-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Execute the complete Knitting Gauge Reconciler Squad Work Loop autonomously through verified merge and cleanup; use `gpt-5.6-sol` for every agent including Ralph and Scribe; keep Ponytail full mode active; preserve ambiguous work; enforce exact-SHA green GitLab pipelines, the specified issue/MR contract, required reviews, tests, accessibility, and all five exit goals.
+**Why:** User request — captured for team memory. This canonical latest directive deduplicates the materially repeated 2026-07-16 10:02 directive.
+
+---
+
+### 2026-07-16T10:52:38.873-07:00: Work-loop reconciliation and queue gate
+**By:** Ralph
+**What:** Do not dispatch domain implementation. `main` and `origin/main` match at `68371960f65911ad94c3c6a1040568fec1086c6d`; exact pipeline `2682301311` and `Build & Test` passed, no merge request is open, and issues #93–#97/MRs !61–!65 are shipped. Open #1 is a tracker; #51, #52, #57, #60, #62, and #66 are all `follow-up`, with #66 dependent on #62, so none is runnable. Route Tesla to the final-review handoff; final approval is not recorded here.
+**Why:** Loop steps 1–3 found nothing resumable or mergeable. Preserve all 34 stashes, six issue-safety refs, two closed-unmerged local branches (`ci-smoke-test`/!28 and `fix/asc-numeric-app-id`/!40), legacy remote branches, and ignored Squad/scratch state because they remain unshipped or ambiguous. `.squad/identity/now.md` is stale: #82 and #83 are closed. This latest record supersedes and deduplicates the 08:43 and 10:02 Ralph reconciliation drops.
+
+---
+
+### 2026-07-16T10:02:39.212-07:00: Final review authorized after empty runnable queue
+**By:** Tesla
+**What:** Final review is authorized at frozen SHA `68371960f65911ad94c3c6a1040568fec1086c6d`; no implementation dispatch or GitLab issue mutation is warranted. Exact pipeline `2682301311` and `Build & Test` passed, no merge request is open, and the remaining non-tracker issues are follow-up or blocked.
+**Why:** All five goals have exact-SHA evidence, while no concrete goal gap requires issue creation or update. Ambiguous repository state remains preserved. This is a handoff authorization, not final approval.

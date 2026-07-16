@@ -17,6 +17,9 @@
 
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
+
 // ─── Pure math (extracted from prototype/index.html compute()) ──────────────
 
 /**
@@ -75,17 +78,15 @@ function fmtRows(x) { return Math.max(1, Math.round(x)); }
 /** fmtPct — whole-number percentage (mirrors HTML fmtPct). */
 function fmtPct(x) { return Math.round(x * 100); }
 
-function gaugeStatus(scale) {
-  if (scale > 0.97 && scale < 1.03) return 'Match';
-  if (scale > 0.90 && scale < 1.10) return scale > 1 ? 'Looser than pattern' : 'Tighter than pattern';
-  return scale > 1 ? 'Much looser' : 'Much tighter';
+function loadPrototypeHelper(name) {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const match = html.match(new RegExp(`function ${name}\\(scale\\)\\{([\\s\\S]*?)\\n  \\}`));
+  if (!match) throw new Error(`Missing prototype helper: ${name}`);
+  return new Function('scale', match[1]);
 }
 
-function rowStatus(scale) {
-  if (scale > 0.97 && scale < 1.03) return 'Match';
-  if (scale > 0.90 && scale < 1.10) return scale > 1 ? 'Denser than pattern' : 'Looser than pattern';
-  return scale > 1 ? 'Much denser' : 'Much looser';
-}
+const pillFor = loadPrototypeHelper('pillFor');
+const pillRowFor = loadPrototypeHelper('pillRowFor');
 
 /**
  * computeActStitches — adjusted cast-on stitch count.
@@ -261,16 +262,20 @@ describe('Edge: fmtRows rounding boundary cases', () => {
 });
 
 describe('Edge: status bands are symmetric at exact boundaries', () => {
-  assertSame(gaugeStatus(0.971), 'Match', 'stitch -2.9% is Match');
-  assertSame(gaugeStatus(1.029), 'Match', 'stitch +2.9% is Match');
-  assertSame(gaugeStatus(0.97), 'Tighter than pattern', 'stitch -3% enters middle band');
-  assertSame(gaugeStatus(1.03), 'Looser than pattern', 'stitch +3% enters middle band');
-  assertSame(gaugeStatus(0.90), 'Much tighter', 'stitch -10% enters Much band');
-  assertSame(gaugeStatus(1.10), 'Much looser', 'stitch +10% enters Much band');
-  assertSame(rowStatus(0.97), 'Looser than pattern', 'row -3% enters middle band');
-  assertSame(rowStatus(1.03), 'Denser than pattern', 'row +3% enters middle band');
-  assertSame(rowStatus(0.90), 'Much looser', 'row -10% enters Much band');
-  assertSame(rowStatus(1.10), 'Much denser', 'row +10% enters Much band');
+  assertSame(pillFor(0.971).label, 'Match', 'stitch -2.9% is Match');
+  assertSame(pillFor(1.029).label, 'Match', 'stitch +2.9% is Match');
+  assertSame(pillFor(0.97).label, 'Tighter than pattern', 'stitch -3% enters middle band');
+  assertSame(pillFor(1.03).label, 'Looser than pattern', 'stitch +3% enters middle band');
+  assertSame(pillFor(0.901).label, 'Tighter than pattern', 'stitch -9.9% stays in middle band');
+  assertSame(pillFor(1.099).label, 'Looser than pattern', 'stitch +9.9% stays in middle band');
+  assertSame(pillFor(0.90).label, 'Much tighter', 'stitch -10% enters Much band');
+  assertSame(pillFor(1.10).label, 'Much looser', 'stitch +10% enters Much band');
+  assertSame(pillRowFor(0.97).label, 'Looser than pattern', 'row -3% enters middle band');
+  assertSame(pillRowFor(1.03).label, 'Denser than pattern', 'row +3% enters middle band');
+  assertSame(pillRowFor(0.901).label, 'Looser than pattern', 'row -9.9% stays in middle band');
+  assertSame(pillRowFor(1.099).label, 'Denser than pattern', 'row +9.9% stays in middle band');
+  assertSame(pillRowFor(0.90).label, 'Much looser', 'row -10% enters Much band');
+  assertSame(pillRowFor(1.10).label, 'Much denser', 'row +10% enters Much band');
 });
 
 describe('Edge: floating-point precision — perfect match gives exact input values', () => {

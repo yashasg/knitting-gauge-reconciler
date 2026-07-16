@@ -1110,3 +1110,80 @@ Resume issue #82 in its existing worktree. Do not select or dispatch another dom
 All other open domain and final-review issues remain `follow-up`; #1 is the project brief and #9 is a metrics tracker. No fallback issue selection is authorized while #82 is resumable.
 
 Preserve the 41 surviving stashes, seven stray local branches, divergent local `main`, and all dirty worktree state. The prior record counted 71 stashes, so the contraction is ambiguous and is not cleanup authority.
+
+---
+
+### 2026-07-15T19:00:03.336-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** For issue #82, use gpt-5.6-sol for every Squad sub-agent, including Ralph and Scribe. Shannon is locked out completely: do not launch, consult, cite, pair with, or use Shannon for this revision. Keep one coherent existing MR !47, rewrite canonical issue/MR descriptions instead of posting status comments, and preserve unrelated or ambiguous state.
+**Why:** User request — captured for team memory
+
+---
+
+### 2026-07-15T19:20:37.221-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Run the complete Squad Work Loop end-to-end in PONYTAIL full mode; every launched Squad member, including Ralph and Scribe, must use gpt-5.6-sol; preserve ambiguous or unshipped work; only remove GitLab-confirmed shipped stale state; finish implementation, validation, reviews, GitLab lifecycle, cleanup, and five-goal evaluation.
+**Why:** User request — captured for team memory
+
+---
+
+### 2026-07-15T19:20:37.221-07:00: Issue #82 recovery design gate
+**Recorded:** 2026-07-15T19:20:37.221-07:00  
+**Facilitator:** Tesla  
+**Verdict:** APPROVE the constrained recovery plan; REJECT `79b7ec320d90623ff3b032cc0ffc52c9f2434e75` as a merge candidate.
+
+Edison is the eligible revision owner and is not Shannon. Shannon remains strictly locked out and may not contribute, advise, be cited, or be launched.
+
+## Authoritative base
+
+Start the revision in a fresh clean worktree at MR !47's remote head `79b7ec320d90623ff3b032cc0ffc52c9f2434e75`. That commit contains current `origin/main` `9e5882f85612b642960c7fba532f3a0ec4ecbcfe`, removes the prohibited process-restoration UI scenario, and keeps `GaugeMath.swift` at `cc8755825fa9f9475afb6d7820761f9962bbb0f2`.
+
+The trade-off is deliberate: the remote MR head preserves the coherent, current integration while the three divergent local drafts remain recovery evidence rather than being replayed wholesale. The MR head has no exact-SHA GitHub run, GitLab status, or GitLab pipeline and is not mergeable.
+
+## Preserve before mutation
+
+Anchor non-destructive, named local safety snapshots of all three complete dirty trees before any checkout, reset, rebase, merge, stash application, or file replacement.
+
+**Primary:** base `c87aecdc9469fa945123ba2641384ce2d49f84e3`; `ContentView.swift` `9fe561084e798a9bbb16685796b651491a2770b6`, `AccessibilityAuditTests.swift` `e10a049b43e340e1233b3893d49058103c5871ee`, `KnittingGaugeReconcilerUITests.swift` `c12ffa8f49c01526fa615a0e2af6f7d30c6c0dc2`.
+
+**Bell:** base `b22c775e26507b94d4c11ca382e71f2c24c057de`; dirty `ContentView.swift` `5fb39b4d785b89d60a3da4b506e1446a0eaaa789`.
+
+**Brunel:** base `c87aecdc9469fa945123ba2641384ce2d49f84e3`; dirty `ContentView.swift` `6e140bf64c6fc9f8d64ee3b38275c9214cc73f54`.
+
+All three dirty diffs pass whitespace checking. Do not delete the worktrees or safety snapshots during this revision.
+
+## Edison scope
+
+Edison may change only:
+1. `app/KnittingGaugeReconciler/ContentView.swift` for production persistence and the full opaque `gauge-lead` accessibility frame.
+2. `app/KnittingGaugeReconciler/ContentViewHelpers.swift` only if the existing `SceneDraftStore` serialization boundary must expose pure deterministic save/load validation; no new abstraction or hook.
+3. `app/KnittingGaugeReconcilerTests/GaugeMathTests.swift` only for deterministic nine-value, disclosure, malformed-serialization, scene-isolation, reset-handoff, and discard coverage.
+4. `app/KnittingGaugeReconcilerUITests/AccessibilityAuditTests.swift` only to retain the explicit full-width opaque-frame contrast contract.
+
+`KnittingGaugeReconcilerUITests.swift` is source-frozen at `c62133bd1c50e96a1246872781db597ed0a01da9`; its existing optional-output matrix is acceptance evidence, not an editing surface. `GaugeMath.swift`, formulas, ranges, rounding, copy, project/build configuration, prototypes, and all other paths are read-only.
+
+## Parallel Curie work and freeze sequence
+
+While Edison works, Curie may run read-only baselines from an isolated clean checkout of `79b7ec3`.
+
+Acceptance sequence:
+1. Preserve and verify all three safety snapshots.
+2. Edison produces one minimal commit from the authoritative base, runs focused lower-level, contrast, and optional-output checks plus whitespace checking, then pushes that exact SHA to MR !47 and declares source freeze.
+3. Ive, Mendel, and Jacquard review that exact frozen SHA in that order, read-only.
+4. Curie runs repository-root `./app/build.sh test` on the same exact SHA and requires zero failures, skips, exhausted retries, warnings, crashes, analyzer warnings, and SwiftLint violations.
+5. The exact SHA must also receive green canonical GitHub Build & Test and the matching successful GitLab external status.
+
+---
+
+### 2026-07-15T19:41:14.088-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Execute the complete Squad Work Loop autonomously: reconcile unfinished local and GitLab state first, then finish one coherent highest-priority runnable domain issue per branch/MR through warning-free tests, exact-commit green CI, merge, safe cleanup, five-goal re-evaluation, and continued looping. Use `gpt-5.6-sol` for every launched member or subagent, keep Ponytail full active, preserve ambiguous or unshipped state, do not add issue status comments, and defer final review until runnable domain work is empty.
+**Why:** User request — captured for team memory
+
+---
+
+### 2026-07-15T20:21:35.561-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Run the complete Knitting Gauge Reconciler iOS Squad Work Loop autonomously. Ponytail full is active: use the minimum correct implementation without dropping explicit validation, accessibility, error handling, warning-free builds, GitLab workflow, or signoffs. Resume and preserve unfinished or ambiguous state; clean only work GitLab proves shipped; finish ready MRs before selecting one highest-priority runnable domain issue; keep one coherent issue per MR; require `./app/build.sh test` with zero warnings; commit with the specified Copilot co-author trailer; gate merge on the exact pushed SHA pipeline; loop on drift by creating non-duplicate domain issues; and complete simultaneous ownership reviews only after domain issues and MRs are clear. Every spawned member, including Ralph and Scribe, must use `gpt-5.6-sol`. Do not modify unrelated user changes. Persist until all five stated exit goals pass or genuine unavailable human input blocks progress.
+**Why:** User request — captured for team memory
+

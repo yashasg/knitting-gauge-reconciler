@@ -156,3 +156,16 @@ This is optional follow-up work; current behavior is a11y-correct.
 📌 Team update (2026-07-15T14:58:16.016-07:00): Edison owns the independent issue #82 revision only after Hopper's #59 CI dependency is accepted; scope stays limited to the three candidate files, with `GaugeMath.swift` unchanged and all #65 behavior preserved — decided by Tesla.
 
 📌 Team update (2026-07-15T14:58:16.016-07:00): Issue #59 shipped through MR !48; evaluate open drift #83 / MR !49 first, then Edison revises #82 / MR !47. Neither open follow-up is complete — routed by Tesla.
+
+## 2026-07-15T21:23:13.217-07:00 — Issue #82 recovery
+
+- `gauge-lead` must place its identifier on the accessibility container that includes the opaque background; identifying only the text leaves the audited frame exposed to the textured surface.
+- The focused persistence/optional-output unit suite passed 26/26. The exact accessibility test passed after one local test-runner signal-kill retry, with the full-width lead frame rendering at 16.40:1 contrast.
+
+## 2026-07-15T21:35:50.978-07:00 — Issue #82 concurrent commit resolution
+
+- Edison completed implementation and validation scope on issue #82 revision targeting ContentView.swift accessibility surface.
+- Worktree left clean (uncommitted); ready for further revision or submission.
+- Concurrent commit `db7ac2c42730450b88f73279cdaa15487d1fb96b` (Tesla, 21:26:19) advanced the remote branch during execution. Coordinator verified HEAD, remote, and reflog consistency; no recovery action required.
+- MR !47 remains open at concurrent SHA. Next gate: Ive read-only review (exact-frozen-SHA), then sequential Jacquard, Mendel, Curie gates.
+- Session log and orchestration record preserved in `.squad/`.

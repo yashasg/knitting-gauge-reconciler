@@ -27,16 +27,39 @@ PROHIBITED_TEST_DIAGNOSTIC = /
 class TestDiagnosticsError < StandardError
 end
 
+def lstat_without_symlinks(path)
+  current = File::SEPARATOR
+  stat = File.lstat(current)
+  File.expand_path(path).split(File::SEPARATOR).drop(1).each do |component|
+    current = File.join(current, component)
+    stat = File.lstat(current)
+    raise TestDiagnosticsError, "Symlink path rejected: #{current}" if stat.symlink?
+  end
+  stat
+rescue Errno::ENOENT, Errno::ENOTDIR
+  nil
+rescue SystemCallError => error
+  raise TestDiagnosticsError, "Cannot inspect path #{current}: #{error.message}"
+end
+
 def verify_exported_test_diagnostics(raw_log_path, diagnostics_path)
-  raise TestDiagnosticsError, "Raw xcodebuild log not found at #{raw_log_path}" unless File.file?(raw_log_path) && !File.symlink?(raw_log_path)
+  raw_stat = lstat_without_symlinks(raw_log_path)
+  raise TestDiagnosticsError, "Raw xcodebuild log not found at #{raw_log_path}" unless raw_stat&.file?
 
   diagnostic_paths = []
-  Find.find(diagnostics_path) { |path| diagnostic_paths << path if File.file?(path) && !File.symlink?(path) } if File.directory?(diagnostics_path) && !File.symlink?(diagnostics_path)
+  if lstat_without_symlinks(diagnostics_path)&.directory?
+    Find.find(diagnostics_path) do |path|
+      stat = File.lstat(path)
+      raise TestDiagnosticsError, "Symlink path rejected: #{path}" if stat.symlink?
+      diagnostic_paths << path if stat.file?
+    end
+  end
   raise TestDiagnosticsError, "No exported diagnostics found in #{diagnostics_path}" if diagnostic_paths.empty?
 
   prohibited_lines = []
   ([raw_log_path] + diagnostic_paths.sort).each do |path|
-    contents = File.binread(path)
+    raise TestDiagnosticsError, "Diagnostic file is no longer regular: #{path}" unless lstat_without_symlinks(path)&.file?
+    contents = File.open(path, File::RDONLY | File::NOFOLLOW) { |file| file.binmode.read }
     $stdout.write(contents)
     $stdout.write("\n".b) unless contents.end_with?("\n".b)
     contents.each_line.with_index(1) do |line, line_number|
@@ -53,6 +76,8 @@ def verify_exported_test_diagnostics(raw_log_path, diagnostics_path)
     $stderr.write("\n".b) unless line.end_with?("\n".b)
   end
   raise TestDiagnosticsError, "Prohibited Xcode/test-runner diagnostics detected"
+rescue SystemCallError => error
+  raise TestDiagnosticsError, "Cannot read diagnostics: #{error.message}"
 end
 
 def diagnostics_verifier_self_check
@@ -77,8 +102,6 @@ def diagnostics_verifier_self_check
   File.binwrite(File.join(diagnostics_path, "StandardOutputAndStandardError.txt"), "runner clean\n")
   File.binwrite(hidden_path, "hidden nested clean \xFF\n")
   File.binwrite(testmanagerd_path, "fopen simulator service error\n")
-  File.binwrite(File.join(root, "symlink-target.log"), "warning: symlink target\n")
-  File.symlink(File.join(root, "symlink-target.log"), File.join(diagnostics_path, "linked.log"))
 
   stdout, stderr, status = run.call
   expected_rejection = "#{testmanagerd_path}:1:fopen simulator service error"
@@ -87,10 +110,21 @@ def diagnostics_verifier_self_check
   puts "ok: prohibited sibling exit #{status.exitstatus}, #{testmanagerd_path}:1"
 
   File.binwrite(testmanagerd_path, "testmanagerd clean\n")
+  outside_path = File.join(root, "outside.log")
+  linked_path = File.join(diagnostics_path, "linked.log")
+  File.binwrite(outside_path, "warning: outside content must not be scanned\n")
+  File.symlink(outside_path, linked_path)
+  stdout, stderr, status = run.call
+  raise "symlinked diagnostic was accepted" if status.success?
+  raise "symlink rejection omitted path" unless stderr.include?("Symlink path rejected: #{linked_path}")
+  raise "outside symlink content was scanned" if stdout.include?("outside content")
+  puts "ok: outside-file symlink rejected without scanning target, exit #{status.exitstatus}"
+  FileUtils.rm_f(linked_path)
+
   stdout, stderr, status = run.call
   raise "clean diagnostics were rejected: #{stderr}" unless status.success?
   raise "nested dot-path diagnostic was not emitted byte-for-byte" unless stdout.b.include?("hidden nested clean \xFF\n".b)
-  puts "ok: clean nested/dot and invalid UTF-8 diagnostics, symlink excluded, exit 0"
+  puts "ok: clean nested/dot and invalid UTF-8 diagnostics exit 0"
 
   FileUtils.rm_rf(diagnostics_path)
   FileUtils.mkdir_p(diagnostics_path)

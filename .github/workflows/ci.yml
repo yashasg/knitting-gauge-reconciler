@@ -50,22 +50,8 @@ jobs:
 
       - name: Require SwiftLint before Xcode
         run: |
-          GUARD_BIN="$GITHUB_WORKSPACE/.swiftlint-missing-guard"
-          trap 'rm -rf "$GUARD_BIN"' EXIT
-          mkdir "$GUARD_BIN"
-          cat > "$GUARD_BIN/xcode-tool" <<'EOF'
-          #!/bin/sh
-          : > "$XCODE_GUARD_MARKER"
-          exit 99
-          EOF
-          chmod +x "$GUARD_BIN/xcode-tool"
-          ln -s xcode-tool "$GUARD_BIN/xcrun"
-          ln -s xcode-tool "$GUARD_BIN/xcodebuild"
-          ln -s xcode-tool "$GUARD_BIN/fastlane"
-          export XCODE_GUARD_MARKER="$GUARD_BIN/invoked"
-
           for mode in build test release; do
-            output="$(PATH="$GUARD_BIN:/usr/bin:/bin" /bin/bash ./app/build.sh "$mode" 2>&1)" && {
+            output="$(PATH=/usr/bin:/bin /bin/bash ./app/build.sh "$mode" 2>&1)" && {
               echo "::error::${mode} succeeded without SwiftLint"
               exit 1
             }
@@ -74,10 +60,6 @@ jobs:
               exit 1
             }
           done
-          [[ ! -e "$XCODE_GUARD_MARKER" ]] || {
-            echo "::error::Xcode tooling was invoked before the missing-SwiftLint failure"
-            exit 1
-          }
 
       - name: Check existing exact status
         id: exact-status

@@ -1298,3 +1298,46 @@ Preserve `b8f1930`, its local branch/worktree, all 32 stashes now present (31 at
 **By:** Tesla, Ralph
 **What:** Issue #51 is open and runnable under the user's explicit complete-loop authorization. It supersedes the stale empty-runnable-queue and final-review-handoff conclusions. There is no open merge request. Issue #1 remains a tracker; #52, #57, #60, #62, and #66 remain follow-up or blocked. Hopper owns the independent #51 revision because Tesla is locked out. Work begins from `origin/main` in isolated worktree `/Users/yashasgujjar/dev/knitting-gauge-reconciler-51` on `squad/51-restore-canonical-serial-ui-test-gate`.
 **Why:** Issue #51 itself and the user's explicit instruction resolve Ralph's initial authority concern. Preserve local main commit `cd42034`, the pre-existing dirty Ada/Jacquard/Ralph histories, and all other ambiguous local state; do not reset, delete, overwrite, stage, or clean them.
+
+---
+
+### 2026-07-16T11:33:03.822-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Complete the autonomous Squad work loop end-to-end; preserve ambiguous or unrelated work; use Ponytail full mode; use gpt-5.6-sol for every nested Squad agent including Ralph and Scribe; require the five stated build, UX, scenario, math, and validation goals before exit; include the Copilot co-author trailer in every commit.
+**Why:** User request — captured for team memory
+
+---
+
+### 2026-07-16T11:52:52.060-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Run the autonomous work loop to all five green goals; reconcile and ship GitLab work before fresh work; use gpt-5.6-sol for every agent; enforce Ponytail full; preserve ambiguous state; require exact-SHA green pipelines, one coherent issue/MR, warning-free tests, named reviews, cleanup, and final handoff.
+**Why:** User request — captured for team memory
+
+---
+
+### 2026-07-16T11:52:52.060-07:00: Preserve and resume issue #51
+**By:** Ralph
+**What:** Treat GitLab #51 as the sole runnable domain issue and preserve its dirty worktree at `/Users/yashasgujjar/dev/knitting-gauge-reconciler-51`. It has four uncommitted, unshipped files, no branch commit, no remote issue branch, and no MR. Do not dispatch duplicate work or clean any local state. Goals #2 and #4 retain direct evidence; goals #1, #3, and #5 await #51's complete gate and canonical GitLab shipment.
+**Why:** GitLab keeps #51 open with explicit acceptance criteria and Hopper ownership. All other open items are the #1 tracker or follow-ups, while local main, histories, stashes, safety refs, closed-unmerged branches, ignored records, and legacy remotes remain ambiguous or unshipped.
+
+---
+
+### 2026-07-16T12:12:50.463-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Run the complete autonomous Squad Work Loop through all five green goals; resume and ship real GitLab work before fresh work; use gpt-5.6-sol for every agent including Ralph and Scribe; enforce Ponytail full; preserve ambiguous state; require exact-SHA green CI, one coherent issue/MR, warning-free simulator tests, named reviews, cleanup, and final handoff. Every commit must end with the specified Copilot co-author trailer.
+**Why:** User request — captured for team memory
+
+---
+
+### 2026-07-16T12:32:44.230-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Complete the entire Knitting Gauge Reconciler Squad Work Loop autonomously in the required order; use gpt-5.6-sol for every launched member including Ralph and Scribe; preserve ambiguous state; resume real unfinished GitLab issue work without duplication; require warning-free simulator tests, exact-SHA green pipelines, merge and attributable cleanup; re-evaluate all five goals and continue until every runnable domain issue is shipped and all final reviewers approve.
+**Why:** User request — captured for team memory
+
+---
+
+### 2026-07-16T12:32:44.230-07:00: Resume issue #51 without duplicating recovery state
+**By:** Tesla
+**What:** Select GitLab issue #51 as the sole runnable coherent domain issue. Hopper must resume `/Users/yashasgujjar/dev/knitting-gauge-reconciler-51` on `squad/51-restore-canonical-serial-ui-test-gate` from base `68371960f65911ad94c3c6a1040568fec1086c6d`. Preserve its four unstaged files: `AccessibilityAuditTests.swift`, `KnittingGaugeReconcilerUITests.swift`, `KnittingGaugeReconciler.xcscheme`, and `app/build.sh`. Do not create another issue, branch, worktree, or merge request until this state is gated and committed. Tesla is locked out by rejected commit `ae070e6`; Hopper owns revision and Curie remains reviewer-only.
+**Gate:** Keep the canonical issue contract unchanged: 68 unit plus 17 UI tests, serial UI execution, no skipped target/test or retry machinery, both canonical runs green with identical complete inventories, clean warning/crash/diagnostic scans, persisted evidence, and Curie's independent approval. There is currently no open merge request, remote #51 branch, or candidate pipeline; green main pipeline `2682301311` covers only the base.
+**Why:** The five current inbox records and newest open reconciliation log converge on #51. Git and GitLab confirm real unfinished work and no competing runnable issue. Preserving root `main` divergence and dirty Squad records, 34 stashes, six safety refs, and two closed-unmerged stray branches trades local clutter for avoiding irreversible loss where GitLab does not prove shipment.

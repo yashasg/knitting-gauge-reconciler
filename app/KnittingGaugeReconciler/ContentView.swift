@@ -54,11 +54,8 @@ struct ContentView: View {
     @State private var showFullMath = initialBool("KGR_SHOW_FULL_MATH")
     @State private var showVerdictHelp = initialBool("KGR_SHOW_VERDICT_HELP")
     @State private var showAboutHelp = initialBool("KGR_SHOW_ABOUT_HELP")
-    @State private var showAdjustmentSheet = false
     @State private var previousVerdictBucket: VerdictBucket?
     @State private var driftBandSignpostFired = false
-    /// Latest result presented from a "View Adjustments" tap.
-    @State private var cachedResult: GaugeMathResult?
     @State private var resetSnapshot: ResetSnapshot?
     @State private var focusedField: GaugeFormField?
     @State private var sceneSessionIdentifier: String?
@@ -99,18 +96,8 @@ struct ContentView: View {
 
     private var liveResult: GaugeMathResult? {
         guard let inputs else { return nil }
-        return cachedResult ?? GaugeMath.compute(inputs)
-    }
-
-    @discardableResult
-    private func recomputeResult() -> GaugeMathResult? {
-        guard let inputs else {
-            invalidateResults()
-            return nil
-        }
         os_signpost(.begin, log: MetricsSubscriber.log, name: SignpostNames.compute)
         let result = GaugeMath.compute(inputs)
-        cachedResult = result
         os_signpost(.end, log: MetricsSubscriber.log, name: SignpostNames.compute)
         return result
     }
@@ -169,13 +156,11 @@ struct ContentView: View {
                         onSubmit: finishEditing
                     )
                     RequiredAdjustmentsCard(
-                        cachedResult: cachedResult,
+                        result: liveResult,
                         inputs: inputs,
                         unit: measurementUnit,
                         showFullMath: $showFullMath,
-                        showAdjustmentSheet: $showAdjustmentSheet,
                         canUndoReset: resetSnapshot != nil,
-                        onRecalculate: recomputeResult,
                         onReset: resetToDefaults,
                         onUndoReset: undoReset,
                         onShare: { result in await shareItems(for: result) }
@@ -196,7 +181,7 @@ struct ContentView: View {
             // Modal sheets own accessibility focus while presented. Their roots
             // explicitly opt back in below so underlying controls are not audited
             // through the system dimming layer.
-            .accessibilityHidden(showVerdictHelp || showAboutHelp || showAdjustmentSheet)
+            .accessibilityHidden(showVerdictHelp || showAboutHelp)
             .navigationTitle("Stitchwise")
             .background(
                 ZStack {
@@ -230,8 +215,6 @@ struct ContentView: View {
                     os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.sheetAboutHelpOpened)
                 }
             }
-            // verdict.improved / verdict.degraded fire only when cachedResult changes (i.e. on
-            // View Adjustments tap), because verdictTitle returns "" while cachedResult is nil.
             .onChange(of: verdictTitle) { _, newValue in
                 guard !newValue.isEmpty else {
                     previousVerdictBucket = nil
@@ -252,7 +235,7 @@ struct ContentView: View {
                 previousVerdictBucket = current
             }
             .onChange(
-                of: cachedResult?.castOnRoundingDriftPercent.map { abs($0) >= 3 } ?? false
+                of: liveResult?.castOnRoundingDriftPercent.map { abs($0) >= 3 } ?? false
             ) { _, isVisible in
                 if isVisible, !driftBandSignpostFired {
                     os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.castOnDriftBandShown)
@@ -272,11 +255,10 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Verdict (signpost-only; derived from cachedResult so it changes only on sheet presentation)
+    // MARK: - Verdict
 
-    /// Returns "" when no result exists — prevents spurious signpost fires before first sheet presentation.
     private var verdictTitle: String {
-        guard inputs != nil, let result = cachedResult else { return "" }
+        guard inputs != nil, let result = liveResult else { return "" }
         return verdictTitleComputed(result: result)
     }
 
@@ -374,7 +356,7 @@ struct ContentView: View {
                 var values = rawTextValues
                 values[index] = newValue
                 binding.wrappedValue = newValue
-                invalidateResults()
+                resetResultMetrics()
                 updateSceneRestorationActivity(
                     values: values,
                     disclosure: patternDetailsExpanded
@@ -584,7 +566,7 @@ struct ContentView: View {
         patternSleeve = values[7]
         patternIncreases = values[8]
         patternDetailsExpanded = disclosure
-        invalidateResults()
+        resetResultMetrics()
         updateSceneRestorationActivity(
             values: values,
             disclosure: disclosure,
@@ -688,10 +670,8 @@ struct ContentView: View {
         showFullMath = false
     }
 
-    private func invalidateResults() {
+    private func resetResultMetrics() {
         previousVerdictBucket = nil
-        cachedResult = nil
-        showAdjustmentSheet = false
         driftBandSignpostFired = false
     }
 

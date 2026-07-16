@@ -15,12 +15,16 @@ struct HeroTilesView: View {
                 value: "\(GaugeMath.fmtPct(result.stitchWidthScale))%",
                 status: gaugeStatus(scale: result.stitchWidthScale)
             )
+            .accessibilityIdentifier("stitch-summary")
             HeroTile(
                 label: "Row-wise",
                 value: "\(GaugeMath.fmtPct(result.rowCountScale))%",
                 status: rowStatus(scale: result.rowCountScale)
             )
+            .accessibilityIdentifier("row-summary")
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("gauge-summary")
     }
 }
 

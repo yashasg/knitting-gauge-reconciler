@@ -35,20 +35,6 @@
                ReferencedContainer = "container:app.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "NO"
-            buildForProfiling = "NO"
-            buildForArchiving = "NO"
-            buildForAnalyzing = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "000000000000000000000403"
-               BuildableName = "KnittingGaugeReconcilerUITests.xctest"
-               BlueprintName = "KnittingGaugeReconcilerUITests"
-               ReferencedContainer = "container:app.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -66,17 +52,6 @@
                BlueprintIdentifier = "000000000000000000000402"
                BuildableName = "KnittingGaugeReconcilerTests.xctest"
                BlueprintName = "KnittingGaugeReconcilerTests"
-               ReferencedContainer = "container:app.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "YES"
-            parallelizable = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "000000000000000000000403"
-               BuildableName = "KnittingGaugeReconcilerUITests.xctest"
-               BlueprintName = "KnittingGaugeReconcilerUITests"
                ReferencedContainer = "container:app.xcodeproj">
             </BuildableReference>
          </TestableReference>

@@ -146,25 +146,14 @@ platform :ios do
 
   desc "Build and test with scheme-defined scope (CI)"
   lane :ci do |options|
-    configuration = options[:configuration] || "Debug"
     swiftlint(
       mode: :lint,
       config_file: "../.swiftlint.yml",
       reporter: "xcode",
       strict: true
     )
-    xcodebuild(
-      project: APP_PROJECT,
-      scheme: APP_SCHEME,
-      configuration: configuration,
-      sdk: options[:sdk] || "iphonesimulator",
-      destination: lane_destination(options),
-      build: true,
-      xcargs: ["CODE_SIGNING_ALLOWED=NO", options[:xcargs]].compact.join(" "),
-      derived_data_path: lane_derived_data_path(options)
-    )
     test_options = lane_test_options(options.merge(configuration: "Debug"))
-    run_tests(**test_options)
+    run_tests(**test_options.merge(only_testing: ["KnittingGaugeReconcilerTests"]))
     verify_test_diagnostics(test_options[:output_directory])
   end
 

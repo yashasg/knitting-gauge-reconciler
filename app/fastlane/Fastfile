@@ -94,7 +94,6 @@ def lane_test_options(options, extra_xcargs: nil)
   output_directory = options[:output_directory] || "../.build"
   result_bundle_path = File.join(output_directory, "#{APP_SCHEME}.xcresult")
   FileUtils.rm_rf(result_bundle_path)
-  FileUtils.rm_f(File.join(output_directory, "xcodebuild-test.log"))
 
   test_options = {
     project: APP_PROJECT,
@@ -108,7 +107,8 @@ def lane_test_options(options, extra_xcargs: nil)
       extra_xcargs,
       options[:xcargs]
     ].compact.join(" "),
-    output_types: "",
+    output_files: options[:output_files] || "xcodebuild-test.log",
+    output_types: options[:output_types] || "junit",
     output_directory: output_directory,
     buildlog_path: output_directory,
     xcodebuild_formatter: "xcpretty"

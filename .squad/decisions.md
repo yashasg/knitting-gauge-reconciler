@@ -106,38 +106,6 @@ Neither reviewer touches files. Jacquard first verifies formula direction, round
 
 ---
 
-### 2026-07-16T02:37:00.354-07:00: Final review gate — all five exit goals PASS
-
-**Recorded:** 2026-07-16T02:37:00.354-07:00
-**By:** Tesla (Sync final reviewer)
-**Status:** PASS on all five goals; overall PASS
-
-## Review target and scope
-
-- Exact SHA: `d891fab56d0f6c8fb3125bb7a1dcff86b810286d`
-- Scope: five explicit exit goals + shipped issues #70/#82/#85–#90; tracking issues #1/#9; review records #77–#80; metrics #9 excluded (absent user-visible failure)
-- Target checkout and GitLab remain read-only
-
-## Evidence summary
-
-- **Canonical app gate:** passed twice, 63/63 tests
-- **UI/UX approval:** hero results and accessibility stacking approved
-- **User scenarios:** six represented with prototype 91/91
-- **Formula parity:** symmetric boundaries passed
-- **Diagnostics:** four exported files scanned, final pipeline passed
-
-## Integrated shipped issues
-
-1. Issue #70: implemented
-2. Issue #82: revised and integrated
-3. Issues #85–#90: shipped and verified
-
-## Next: Issue #90 dependency
-
-Issue #90 (Hopper — Goal #5: scan every exported test diagnostic) is sole open owner, depends on shipped #89, and requires minimal synthetic false-green self-check plus canonical gate. Hopper must revise independently from current `origin/main`.
-
----
-
 ### 2026-07-16T01:53:30.891-07:00: Complete exported diagnostics is a real Goal #5 gap
 
 **Date:** 2026-07-16T01:53:30.891-07:00
@@ -271,3 +239,15 @@ Preserve `b8f1930`, its local branch/worktree, all 32 stashes now present (31 at
 **What:** Run the complete autonomous Squad Work Loop in exact reconciliation-to-merge order; use Ponytail full; use gpt-5.6-sol for every agent; preserve ambiguous or unshipped state; enforce exact-SHA pipelines, required approvals, tests, commit trailer, one GitLab MR per domain issue, cleanup, and all five final goals.
 **Why:** User request — captured for team memory
 
+### 2026-07-16T19:21:32.147-07:00: Canonical user directive — Test scope authority
+**By:** User (via Tesla)
+**What:**
+- Only a direct user directive may enable or disable a test suite or determine the mandatory test inventory.
+- Agent charters, reviewer verdicts or rejections, issue or merge-request rewrites, general authorization to run the loop, final-review goals, and inferred coverage requirements may never expand or override user-set test scope.
+- UI tests and XCUITests remain disabled. Clearing the implementation queue is necessary but is not approval; re-enabling them requires a newer explicit user approval even when the queue is empty.
+- Before assigning or running test work, read the active user-owned test-scope decision in full. If it is absent, unreadable, truncated, conflicting, or ambiguous, stop, fail closed, and ask the user. Never run tests outside the last explicit scope.
+- Reviewers may report an out-of-scope coverage gap as advisory, but may not activate or rewrite issues, alter labels, re-enable targets, reject an authorized artifact, or invoke reviewer lockout to expand test scope.
+- Curie executes and reviews only the test scope assigned by direct user decisions and `loop.md`; Curie's charter does not decide mandatory suites or test inventory. Curie cannot reject because an explicitly disabled or out-of-scope suite did not run, re-enable it, or rewrite issues, merge requests, or labels to expand scope. Curie may report the gap as advisory only.
+- Direct user test-scope decisions outrank reviewer rejection and lockout protocol.
+**Supersedes:** Every prior decision, review, issue, or merge-request claim that allowed Curie, Tesla, Ralph, Hopper, final review, or reviewer lockout to decide or expand test execution scope.
+**Why:** Test execution scope belongs only to direct user decisions and the active loop contract. This authority boundary preserves the existing Temporary UI Test Execution Prohibition unchanged.

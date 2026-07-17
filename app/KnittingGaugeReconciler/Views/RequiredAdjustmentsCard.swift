@@ -185,7 +185,11 @@ private struct LiveResultsView: View {
 
             if let patternCastOn = inputs.patternCastOn,
                let adjustedCastOn = result.adjustedCastOn {
-                sectionCard(title: "Cast-on", subtitle: "To preserve pattern width") {
+                let castOnSubtitle = gaugeStatus(scale: result.stitchWidthScale) == "Match" &&
+                    Double(adjustedCastOn) != patternCastOn
+                    ? "Optional exact-width refinement"
+                    : "To preserve pattern width"
+                sectionCard(title: "Cast-on", subtitle: castOnSubtitle) {
                     VStack(alignment: .leading, spacing: 8) {
                         AdjustmentRow(
                             name: "Cast-on stitches",

@@ -166,6 +166,8 @@ struct ContentView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 16)
+                .frame(maxWidth: 760)
+                .frame(maxWidth: .infinity)
                 .opacity(sceneRestorationReady ? 1 : 0)
                 .accessibilityHidden(!sceneRestorationReady)
             }

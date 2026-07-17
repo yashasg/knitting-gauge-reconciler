@@ -3,7 +3,10 @@ import SwiftUI
 import UIKit
 
 func fmtGaugeDelta(_ value: Double) -> String {
-    let formatted = plain(value)
+    let rounded = plain(value)
+    let formatted = value != 0 && Double(rounded) == 0
+        ? String(format: "%.6g", value)
+        : rounded
     return value >= 0 ? "+\(formatted)" : formatted
 }
 

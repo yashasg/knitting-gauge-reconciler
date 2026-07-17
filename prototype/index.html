@@ -46,7 +46,10 @@
   input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
   input[aria-invalid]{border-color:var(--alert);outline:2px solid rgba(155,63,108,.18)}
+  input[aria-invalid]:focus{border-color:var(--alert);outline:3px solid var(--accent);outline-offset:2px}
   .field-hint{font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono)}
+  .field-error{display:block;font-size:11px;color:var(--alert);margin-top:4px;font-family:var(--mono);font-weight:600}
+  .field-error:empty{margin-top:0}
   [hidden]{display:none!important}
 
   .heroes{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
@@ -123,13 +126,15 @@
   <div class="grid2">
     <div>
       <label for="ps">Pattern stitches</label>
-      <input id="ps" type="number" inputmode="decimal" min="1" max="99" step="0.5" value="32" required />
+      <input id="ps" type="number" inputmode="decimal" min="1" max="99" step="0.5" value="32" required aria-describedby="error-ps" />
       <div class="field-hint">stitches per 10 cm (horizontal)</div>
+      <div id="error-ps" class="field-error" aria-live="polite"></div>
     </div>
     <div>
       <label for="pr">Pattern rows</label>
-      <input id="pr" type="number" inputmode="decimal" min="1" max="99" step="0.5" value="24" required />
+      <input id="pr" type="number" inputmode="decimal" min="1" max="99" step="0.5" value="24" required aria-describedby="error-pr" />
       <div class="field-hint">rows per 10 cm (vertical)</div>
+      <div id="error-pr" class="field-error" aria-live="polite"></div>
     </div>
   </div>
 
@@ -137,13 +142,15 @@
   <div class="grid2">
     <div>
       <label for="ys">Your stitches</label>
-      <input id="ys" type="number" inputmode="decimal" min="1" max="99" step="0.5" value="32" required />
+      <input id="ys" type="number" inputmode="decimal" min="1" max="99" step="0.5" value="32" required aria-describedby="error-ys" />
       <div class="field-hint">stitches per 10 cm — measure on a blocked swatch</div>
+      <div id="error-ys" class="field-error" aria-live="polite"></div>
     </div>
     <div>
       <label for="yr">Your rows</label>
-      <input id="yr" type="number" inputmode="decimal" min="1" max="99" step="0.5" value="32" required />
+      <input id="yr" type="number" inputmode="decimal" min="1" max="99" step="0.5" value="32" required aria-describedby="error-yr" />
       <div class="field-hint">rows per 10 cm — same swatch, vertical count</div>
+      <div id="error-yr" class="field-error" aria-live="polite"></div>
     </div>
   </div>
 </section>
@@ -180,22 +187,22 @@
   <div class="sections" id="sections">
     <div class="section-row" data-section="yoke">
       <div class="name">Yoke depth</div>
-      <div class="pattern"><label for="pat-yoke">Pattern says</label><input id="pat-yoke" type="number" inputmode="decimal" min="5" max="100" step="0.5" value="20" required /> cm</div>
+      <div class="pattern"><label for="pat-yoke">Pattern says</label><input id="pat-yoke" type="number" inputmode="decimal" min="5" max="100" step="0.5" value="20" required aria-describedby="error-pat-yoke" /> cm<span id="error-pat-yoke" class="field-error" aria-live="polite"></span></div>
       <div class="actual result-value">Knit to <span id="act-yoke">26.7</span><small>cm</small></div>
     </div>
     <div class="section-row" data-section="body">
       <div class="name">Body length</div>
-      <div class="pattern"><label for="pat-body">Pattern says</label><input id="pat-body" type="number" inputmode="decimal" min="5" max="100" step="0.5" value="50" required /> cm</div>
+      <div class="pattern"><label for="pat-body">Pattern says</label><input id="pat-body" type="number" inputmode="decimal" min="5" max="100" step="0.5" value="50" required aria-describedby="error-pat-body" /> cm<span id="error-pat-body" class="field-error" aria-live="polite"></span></div>
       <div class="actual result-value">Knit to <span id="act-body">66.7</span><small>cm</small></div>
     </div>
     <div class="section-row" data-section="sleeve">
       <div class="name">Sleeve length</div>
-      <div class="pattern"><label for="pat-sleeve">Pattern says</label><input id="pat-sleeve" type="number" inputmode="decimal" min="5" max="100" step="0.5" value="45" required /> cm</div>
+      <div class="pattern"><label for="pat-sleeve">Pattern says</label><input id="pat-sleeve" type="number" inputmode="decimal" min="5" max="100" step="0.5" value="45" required aria-describedby="error-pat-sleeve" /> cm<span id="error-pat-sleeve" class="field-error" aria-live="polite"></span></div>
       <div class="actual result-value">Knit to <span id="act-sleeve">60.0</span><small>cm</small></div>
     </div>
     <div class="section-row" data-section="incs">
       <div class="name">Increase-row spacing</div>
-      <div class="pattern"><label for="pat-incs">Pattern says</label><input id="pat-incs" type="number" inputmode="numeric" min="1" max="30" step="1" value="6" required /> rows</div>
+      <div class="pattern"><label for="pat-incs">Pattern says</label><input id="pat-incs" type="number" inputmode="numeric" min="1" max="30" step="1" value="6" required aria-describedby="error-pat-incs" /> rows<span id="error-pat-incs" class="field-error" aria-live="polite"></span></div>
       <div class="actual result-value">Space every <span id="act-incs">8</span><small>rows</small></div>
     </div>
     <div class="section-row" data-section="cast-on">
@@ -204,8 +211,9 @@
         <label for="pat-cast-on">Pattern says</label>
         <input id="pat-cast-on" type="number" inputmode="numeric" min="40" max="400" step="1" value="128" required
                autocomplete="off"
-               aria-describedby="hint-cast-on" />
+               aria-describedby="hint-cast-on error-pat-cast-on" />
         <span id="hint-cast-on" class="field-hint">stitches to cast on</span>
+        <span id="error-pat-cast-on" class="field-error" aria-live="polite"></span>
       </div>
       <div class="actual result-value"><span id="cast-on-action">Cast on 128 stitches as written. Reconcile this stitch count with the pattern’s stitch-repeat multiple.</span><span id="cast-on-unusable" hidden>No usable whole-stitch result — re-swatch or change needle size.</span> <span class="pill pill-warn" id="pill-cast-on" hidden></span></div>
     </div>
@@ -254,12 +262,30 @@
     patSleeve: $('pat-sleeve'), patIncs: $('pat-incs'),
     patCastOn: $('pat-cast-on')
   };
+  const inputNames = {
+    ps:'Pattern stitches', pr:'Pattern rows',
+    ys:'Your stitches', yr:'Your rows',
+    patYoke:'Yoke depth', patBody:'Body length',
+    patSleeve:'Sleeve length', patIncs:'Increase-row spacing',
+    patCastOn:'Cast-on stitches'
+  };
 
   const DEFAULTS = { ps:32, pr:24, ys:32, yr:32, patYoke:20, patBody:50, patSleeve:45, patIncs:6, patCastOn:128 };
   const STORAGE_KEY = 'knitting-gauge-reconciler.v1';
 
   function readNum(el){
     return el.valueAsNumber;
+  }
+
+  function validationError(el, name){
+    const validity = el.validity;
+    if (validity.badInput) return `${name}: enter a number.`;
+    if (validity.valueMissing) return `${name} is required.`;
+    if (validity.rangeUnderflow) return `${name} must be at least ${el.min}.`;
+    if (validity.rangeOverflow) return `${name} must be at most ${el.max}.`;
+    if (validity.stepMismatch) return `${name} must use increments of ${el.step}.`;
+    if (!validity.valid || !Number.isFinite(el.valueAsNumber)) return `${name}: enter a valid number.`;
+    return '';
   }
 
   function fmtPct(x){ return Math.round(x * 100) + '%'; }
@@ -283,9 +309,12 @@
 
   function compute(){
     let hasInvalidInput = false;
-    Object.values(inputs).forEach(el => {
-      const invalid = !el.validity.valid || !Number.isFinite(el.valueAsNumber);
+    Object.entries(inputs).forEach(([key, el]) => {
+      const error = $('error-' + el.id);
+      const message = validationError(el, inputNames[key]);
+      const invalid = Boolean(message);
       el.toggleAttribute('aria-invalid', invalid);
+      error.textContent = message;
       hasInvalidInput ||= invalid;
     });
     $('result-error').hidden = !hasInvalidInput;

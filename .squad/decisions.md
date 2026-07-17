@@ -1270,3 +1270,18 @@ Preserve `b8f1930`, its local branch/worktree, all 32 stashes now present (31 at
   requiring UI tests.
 - Re-enable UI tests only after the issue queue is clear and the user explicitly approves re-enabling. Revert by
   changing the shared scheme value back to `skipped = "NO"`.
+
+---
+
+### 2026-07-16T19:21:32.147-07:00: Canonical user directive — Test scope authority
+**By:** User (via Tesla)
+**What:**
+- Only a direct user directive may enable or disable a test suite or determine the mandatory test inventory.
+- Agent charters, reviewer verdicts or rejections, issue or merge-request rewrites, general authorization to run the loop, final-review goals, and inferred coverage requirements may never expand or override user-set test scope.
+- UI tests and XCUITests remain disabled. Clearing the implementation queue is necessary but is not approval; re-enabling them requires a newer explicit user approval even when the queue is empty.
+- Before assigning or running test work, read the active user-owned test-scope decision in full. If it is absent, unreadable, truncated, conflicting, or ambiguous, stop, fail closed, and ask the user. Never run tests outside the last explicit scope.
+- Reviewers may report an out-of-scope coverage gap as advisory, but may not activate or rewrite issues, alter labels, re-enable targets, reject an authorized artifact, or invoke reviewer lockout to expand test scope.
+- Curie executes and reviews only the test scope assigned by direct user decisions and `loop.md`; Curie's charter does not decide mandatory suites or test inventory. Curie cannot reject because an explicitly disabled or out-of-scope suite did not run, re-enable it, or rewrite issues, merge requests, or labels to expand scope. Curie may report the gap as advisory only.
+- Direct user test-scope decisions outrank reviewer rejection and lockout protocol.
+**Supersedes:** Every prior decision, review, issue, or merge-request claim that allowed Curie, Tesla, Ralph, Hopper, final review, or reviewer lockout to decide or expand test execution scope.
+**Why:** Test execution scope belongs only to direct user decisions and the active loop contract. This authority boundary preserves the existing Temporary UI Test Execution Prohibition unchanged.

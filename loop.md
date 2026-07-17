@@ -7,6 +7,14 @@ description: "Knitting Gauge Reconciler — iOS app build loop"
 
 # Squad Work Loop — Knitting Gauge Reconciler iOS
 
+## Test scope authority (fail closed)
+
+- Only a direct user directive may enable or disable a test suite or determine the mandatory test inventory.
+- Agent charters, reviewer verdicts or rejections, issue or merge-request rewrites, general authorization to run the loop, final-review goals, and inferred coverage requirements may never expand or override user-set test scope.
+- UI tests and XCUITests remain disabled. Clearing the implementation queue is necessary but is not approval; re-enabling them requires a newer explicit user approval even when the queue is empty.
+- Before assigning or running test work, read the active user-owned test-scope decision in full. If it is absent, unreadable, truncated, conflicting, or ambiguous, stop, fail closed, and ask the user. Never run tests outside the last explicit scope.
+- Reviewers may report an out-of-scope coverage gap as advisory, but may not activate or rewrite issues, alter labels, re-enable targets, reject an authorized artifact, or invoke reviewer lockout to expand test scope.
+
 ## Model defaults
 
 Always use `gpt-5.6-sol` for every Squad agent launched by this loop, including Ralph and Scribe.

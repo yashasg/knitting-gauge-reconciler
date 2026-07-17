@@ -15,3 +15,5 @@ excalidraw.log
 app/.build/
 # Fastlane build artifacts
 app/fastlane/report.xml
+app/fastlane/asc_api_key.json
+*.p8

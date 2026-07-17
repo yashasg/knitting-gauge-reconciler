@@ -2,6 +2,7 @@
 # Triggered by GitLab push/MR events, builds and tests on macOS, posts status back.
 
 name: CI
+run-name: CI ${{ github.event.client_payload.sha }}
 
 on:
   repository_dispatch:
@@ -18,6 +19,8 @@ concurrency:
 env:
   XCODE_VERSION: "26"
   DERIVED_DATA_PATH: ${{ github.workspace }}/build/app/xcode-derived-data
+  GITLAB_PROJECT: yashasg/knitting-gauge-reconciler
+  GITLAB_PROJECT_ID: "82328092"
 
 jobs:
   build-and-test:
@@ -30,27 +33,67 @@ jobs:
 
     steps:
       - name: Checkout exact GitLab payload
+        id: source
         env:
+          GITLAB_EVENT: ${{ github.event.client_payload.event }}
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+          GITLAB_PAYLOAD_PROJECT_ID: ${{ github.event.client_payload.project_id }}
+          GITLAB_REF: ${{ github.event.client_payload.branch }}
           GITLAB_REPOSITORY: ${{ github.event.client_payload.project_name }}
           GITLAB_SHA: ${{ github.event.client_payload.sha }}
         run: |
+          set -euo pipefail
+          case "$GITLAB_EVENT" in
+            merge_request|push) ;;
+            *) echo "::error::Invalid GitLab event"; exit 1 ;;
+          esac
+          [[ "$GITLAB_REPOSITORY" == "$GITLAB_PROJECT" &&
+             "$GITLAB_PAYLOAD_PROJECT_ID" == "$GITLAB_PROJECT_ID" ]] || {
+            echo "::error::GitLab payload project does not match the trusted source"
+            exit 1
+          }
           [[ "$GITLAB_SHA" =~ ^[0-9a-f]{40}$ ]] || {
             echo "::error::Invalid GitLab payload SHA"
             exit 1
           }
+          git check-ref-format "refs/heads/$GITLAB_REF" > /dev/null || {
+            echo "::error::Invalid GitLab payload ref"
+            exit 1
+          }
+          cleanup_git_auth() {
+            unset auth_header GITLAB_PAT
+            git config --local --unset-all http.extraHeader > /dev/null 2>&1 || true
+          }
+          trap cleanup_git_auth EXIT
+
           git init .
-          git remote add origin \
-            "https://gitlab-token:${{ secrets.GITLAB_PAT }}@gitlab.com/${GITLAB_REPOSITORY}.git"
-          git fetch --depth 1 origin "$GITLAB_SHA"
+          git remote add origin "https://gitlab.com/${GITLAB_PROJECT}.git"
+          auth_header="$(printf 'oauth2:%s' "$GITLAB_PAT" | base64 | tr -d '\n')"
+          git -c "http.extraHeader=Authorization: Basic $auth_header" \
+            fetch --depth 1 --no-tags origin "$GITLAB_SHA"
+          cleanup_git_auth
           git checkout --detach FETCH_HEAD
           [[ "$(git rev-parse HEAD)" == "$GITLAB_SHA" ]] || {
             echo "::error::Checked-out HEAD does not match the GitLab payload SHA"
             exit 1
           }
+          if git config --local --get-regexp '^http\..*extraheader$' > /dev/null 2>&1; then
+            echo "::error::GitLab checkout credential persisted in local Git config"
+            exit 1
+          fi
+          [[ "$(git remote get-url origin)" == "https://gitlab.com/${GITLAB_PROJECT}.git" ]] || {
+            echo "::error::GitLab checkout credential persisted in the remote URL"
+            exit 1
+          }
+          printf 'event=%s\n' "$GITLAB_EVENT" >> "$GITHUB_OUTPUT"
+          printf 'ref=%s\n' "$GITLAB_REF" >> "$GITHUB_OUTPUT"
+          printf 'sha=%s\n' "$GITLAB_SHA" >> "$GITHUB_OUTPUT"
+          echo "validated=true" >> "$GITHUB_OUTPUT"
 
       - name: Require SwiftLint before Xcode
         run: |
           sentinel_dir="$(mktemp -d "${RUNNER_TEMP}/xcrun-sentinel.XXXXXX")"
+          # shellcheck disable=SC2016
           printf '%s\n' '#!/bin/bash' 'touch "${0%/*}/invoked"' > "$sentinel_dir/xcrun"
           chmod +x "$sentinel_dir/xcrun"
           for mode in build test release; do
@@ -68,21 +111,12 @@ jobs:
             }
           done
 
-      - name: Check existing exact status
-        id: exact-status
-        run: |
-          STATUSES="$(
-            curl -fsS \
-              -H "PRIVATE-TOKEN: ${{ secrets.GITLAB_PAT }}" \
-              "https://gitlab.com/api/v4/projects/${{ github.event.client_payload.project_id }}/repository/commits/${{ github.event.client_payload.sha }}/statuses?per_page=100"
-          )"
-          if jq -e 'any(.[]; .name == "Build & Test" and .status == "success")' <<< "$STATUSES" >/dev/null; then
-            echo "succeeded=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Resolve build profile
+        env:
+          GITLAB_EVENT: ${{ steps.source.outputs.event }}
+          GITLAB_REF: ${{ steps.source.outputs.ref }}
         run: |
-          if [[ "${{ github.event.client_payload.event }}" == "push" && "${{ github.event.client_payload.branch }}" == "main" ]]; then
+          if [[ "$GITLAB_EVENT" == "push" && "$GITLAB_REF" == "main" ]]; then
             echo "CONFIGURATION=Release" >> "$GITHUB_ENV"
           else
             echo "CONFIGURATION=Debug" >> "$GITHUB_ENV"
@@ -107,9 +141,9 @@ jobs:
           path: |
             ${{ env.DERIVED_DATA_PATH }}
             $HOME/Library/Developer/Xcode/DerivedData/ModuleCache.noindex
-          key: derived-data-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ github.event.client_payload.branch }}-${{ hashFiles('app/app.xcodeproj/**/*.pbxproj', 'app/app.xcodeproj/xcshareddata/xcschemes/*.xcscheme') }}
+          key: derived-data-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ steps.source.outputs.ref }}-${{ hashFiles('app/app.xcodeproj/**/*.pbxproj', 'app/app.xcodeproj/xcshareddata/xcschemes/*.xcscheme') }}
           restore-keys: |
-            derived-data-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ github.event.client_payload.branch }}-
+            derived-data-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-${{ steps.source.outputs.ref }}-
             derived-data-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ env.CONFIGURATION }}-main-
 
       - name: Restore Fastlane cache
@@ -153,7 +187,6 @@ jobs:
           key: swiftlint-brew-${{ runner.os }}
 
       - name: Build & Test
-        if: steps.exact-status.outputs.succeeded != 'true'
         run: ./app/build.sh test
 
       - name: Save DerivedData cache
@@ -166,12 +199,20 @@ jobs:
           key: ${{ steps.cache-derived-data.outputs.cache-primary-key }}
 
       - name: Post status to GitLab
-        if: always() && steps.exact-status.outputs.succeeded != 'true'
+        if: always() && steps.source.outputs.validated == 'true'
+        env:
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+          GITLAB_REF: ${{ steps.source.outputs.ref }}
+          GITLAB_SHA: ${{ steps.source.outputs.sha }}
+          JOB_STATUS: ${{ job.status }}
+          TARGET_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          STATE=$([[ "${{ job.status }}" == "success" ]] && echo "success" || echo "failed")
-          curl -fsSX POST \
-            -H "PRIVATE-TOKEN: ${{ secrets.GITLAB_PAT }}" \
-            "https://gitlab.com/api/v4/projects/${{ github.event.client_payload.project_id }}/statuses/${{ github.event.client_payload.sha }}" \
-            -d "state=${STATE}" \
+          set -euo pipefail
+          state=$([[ "$JOB_STATUS" == "success" ]] && echo "success" || echo "failed")
+          curl --fail --silent --show-error --request POST \
+            --header "PRIVATE-TOKEN: $GITLAB_PAT" \
+            "https://gitlab.com/api/v4/projects/${GITLAB_PROJECT_ID}/statuses/${GITLAB_SHA}" \
+            --data-urlencode "state=$state" \
             --data-urlencode "name=Build & Test" \
-            -d "target_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            --data-urlencode "ref=$GITLAB_REF" \
+            --data-urlencode "target_url=$TARGET_URL"

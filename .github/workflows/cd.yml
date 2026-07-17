@@ -28,7 +28,7 @@ on:
           - branch
           - tag
       ref:
-        description: Branch name or tag name to build (e.g. main, v1.2.3, feat/foo)
+        description: Main branch or tag name to build (e.g. main, v1.2.3)
         required: true
         default: main
         type: string
@@ -56,6 +56,7 @@ env:
   XCODE_VERSION: "26"
   DERIVED_DATA_PATH: ${{ github.workspace }}/app/.build/derived-data
   GITLAB_PROJECT: yashasg/knitting-gauge-reconciler
+  GITLAB_PROJECT_ID: "82328092"
 
 jobs:
   testflight:
@@ -66,53 +67,192 @@ jobs:
       group: cd-${{ inputs.lane }}-${{ inputs.ref }}
       cancel-in-progress: false
     env:
-      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       TESTFLIGHT_NOTES: ${{ inputs.notes }}
 
     steps:
       - name: Validate dispatch inputs
-        if: ${{ inputs.ref_type == 'tag' && inputs.version_bump != 'none' }}
-        run: |
-          echo "::error::version_bump must be 'none' when ref_type is 'tag' (tags are immutable refs)"
-          exit 1
-
-      - name: Checkout from GitLab
-        run: |
-          git clone --depth 1 \
-            --branch "${{ inputs.ref }}" \
-            "https://gitlab-token:${{ secrets.GITLAB_PAT }}@gitlab.com/${{ env.GITLAB_PROJECT }}" \
-            .
-
-      - name: Write App Store Connect API key
         env:
-          ASC_API_KEY_JSON: ${{ secrets.ASC_API_KEY_JSON }}
+          LANE: ${{ inputs.lane }}
+          REF: ${{ inputs.ref }}
+          REF_TYPE: ${{ inputs.ref_type }}
+          VERSION_BUMP: ${{ inputs.version_bump }}
         run: |
-          mkdir -p app/fastlane
-          printf '%s' "$ASC_API_KEY_JSON" > app/fastlane/asc_api_key.json
-          # Fail fast if the secret was malformed / mangled
-          if ! python3 -c "import json,sys; json.load(open('app/fastlane/asc_api_key.json'))" 2>/dev/null; then
-            echo "::error::ASC_API_KEY_JSON secret is not valid JSON after write. Check the secret value (must be raw JSON, no surrounding quotes)."
+          set -euo pipefail
+          case "$LANE" in
+            beta|release) ;;
+            *) echo "::error::Invalid lane: $LANE"; exit 1 ;;
+          esac
+          case "$REF_TYPE" in
+            branch|tag) ;;
+            *) echo "::error::Invalid ref_type: $REF_TYPE"; exit 1 ;;
+          esac
+          case "$VERSION_BUMP" in
+            none|patch|minor|major) ;;
+            *) echo "::error::Invalid version_bump: $VERSION_BUMP"; exit 1 ;;
+          esac
+          if [[ "$REF_TYPE" == "branch" && "$REF" != "main" ]]; then
+            echo "::error::Branch releases must use main"
             exit 1
           fi
-          {
-            echo 'ASC_API_KEY_JSON<<EOF'
-            printf '%s\n' "$ASC_API_KEY_JSON"
-            echo 'EOF'
-          } >> "$GITHUB_ENV"
-        shell: bash
+          if [[ "$REF_TYPE" == "tag" && "$VERSION_BUMP" != "none" ]]; then
+            echo "::error::version_bump must be 'none' when ref_type is 'tag'"
+            exit 1
+          fi
+          if [[ "$REF_TYPE" == "tag" ]] && ! git check-ref-format "refs/tags/$REF"; then
+            echo "::error::Invalid tag name: $REF"
+            exit 1
+          fi
 
-      - name: Verify ASC API key file written
-        working-directory: app
+      - name: Resolve exact GitLab source
+        id: source
+        env:
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+          REF: ${{ inputs.ref }}
+          REF_TYPE: ${{ inputs.ref_type }}
         run: |
-          if [ ! -s fastlane/asc_api_key.json ]; then
-            echo "::error::fastlane/asc_api_key.json is missing or empty. Check the ASC_API_KEY_JSON secret."
+          set -euo pipefail
+          api="https://gitlab.com/api/v4/projects/$GITLAB_PROJECT_ID"
+          encoded_ref="$(jq -rn --arg value "$REF" '$value | @uri')"
+          case "$REF_TYPE" in
+            branch) endpoint="$api/repository/branches/$encoded_ref" ;;
+            tag) endpoint="$api/repository/tags/$encoded_ref" ;;
+          esac
+          source="$(
+            curl --fail --silent --show-error \
+              --header "PRIVATE-TOKEN: $GITLAB_PAT" \
+              "$endpoint"
+          )"
+          [[ "$(jq -er '.name' <<< "$source")" == "$REF" ]] || {
+            echo "::error::Resolved GitLab ref does not match $REF"
+            exit 1
+          }
+          source_sha="$(jq -er '.commit.id | select(test("^[0-9a-f]{40}$"))' <<< "$source")"
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact GitLab source
+        env:
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          cleanup_git_auth() {
+            unset auth_header GITLAB_PAT
+            git config --local --unset-all http.extraHeader > /dev/null 2>&1 || true
+          }
+          trap cleanup_git_auth EXIT
+
+          git init .
+          git remote add origin "https://gitlab.com/${GITLAB_PROJECT}.git"
+          auth_header="$(printf 'oauth2:%s' "$GITLAB_PAT" | base64 | tr -d '\n')"
+          git -c "http.extraHeader=Authorization: Basic $auth_header" \
+            fetch --depth 1 --no-tags origin "$SOURCE_SHA"
+          cleanup_git_auth
+          fetched_sha="$(git rev-parse 'FETCH_HEAD^{commit}')"
+          if [[ "$fetched_sha" != "$SOURCE_SHA" ]]; then
+            echo "::error::Fetched commit does not match resolved GitLab SHA"
             exit 1
           fi
-          if ! jq -e 'type == "object" and has("key_id") and has("issuer_id") and has("key")' fastlane/asc_api_key.json > /dev/null; then
-            echo "::error::ASC_API_KEY_JSON secret is not valid JSON or is missing key_id/issuer_id/key. Update the secret with strict JSON (quoted keys/strings)."
+          git checkout --detach "$SOURCE_SHA"
+          if git config --local --get-regexp '^http\..*extraheader$' > /dev/null 2>&1; then
+            echo "::error::GitLab checkout credential persisted in local Git config"
             exit 1
           fi
-          echo "ASC API key file present ($(wc -c < fastlane/asc_api_key.json) bytes) and valid JSON"
+          [[ "$(git remote get-url origin)" == "https://gitlab.com/${GITLAB_PROJECT}.git" ]] || {
+            echo "::error::GitLab checkout credential persisted in the remote URL"
+            exit 1
+          }
+
+      - name: Require canonical green pipeline for exact source
+        env:
+          EXPECTED_RUN_URL_PREFIX: https://github.com/${{ github.repository }}/actions/runs/
+          GH_TOKEN: ${{ github.token }}
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          api="https://gitlab.com/api/v4/projects/$GITLAB_PROJECT_ID"
+          statuses="$(
+            curl --fail --silent --show-error --get \
+              --header "PRIVATE-TOKEN: $GITLAB_PAT" \
+              --data-urlencode "per_page=100" \
+              --data-urlencode "name=Build & Test" \
+              --data-urlencode "ref=main" \
+              --data-urlencode "order_by=id" \
+              --data-urlencode "sort=desc" \
+              "$api/repository/commits/$SOURCE_SHA/statuses"
+          )"
+          latest_status="$(
+            jq -er '[.[] | select(.name == "Build & Test")] | max_by(.id)' <<< "$statuses"
+          )"
+          if ! jq -e \
+            --arg sha "$SOURCE_SHA" \
+            --arg prefix "$EXPECTED_RUN_URL_PREFIX" \
+            '.sha == $sha and
+             .ref == "main" and
+             .status == "success" and
+             ((.target_url // "") | startswith($prefix)) and
+             (((.target_url // "") | ltrimstr($prefix)) | test("^[0-9]+$")) and
+             (.pipeline_id | type == "number")' \
+            <<< "$latest_status" > /dev/null; then
+            echo "::error::Latest canonical Build & Test status is not successful"
+            exit 1
+          fi
+          pipeline_id="$(jq -er '.pipeline_id' <<< "$latest_status")"
+          run_url="$(jq -er '.target_url' <<< "$latest_status")"
+          run_id="${run_url#"$EXPECTED_RUN_URL_PREFIX"}"
+
+          pipeline="$(
+            curl --fail --silent --show-error \
+              --header "PRIVATE-TOKEN: $GITLAB_PAT" \
+              "$api/pipelines/$pipeline_id"
+          )"
+          if ! jq -e \
+            --arg sha "$SOURCE_SHA" \
+            --argjson id "$pipeline_id" \
+            '.id == $id and
+             .sha == $sha and
+             .status == "success" and
+             .source == "external" and
+             .ref == "main"' \
+            <<< "$pipeline" > /dev/null; then
+            echo "::error::GitLab pipeline is not canonical for $SOURCE_SHA"
+            exit 1
+          fi
+
+          github_run="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id")"
+          jq -e \
+            --arg display_title "CI $SOURCE_SHA" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg run_url "$run_url" \
+            --argjson id "$run_id" \
+            '.id == $id and
+             .name == "CI" and
+             .display_title == $display_title and
+             .event == "repository_dispatch" and
+             .status == "completed" and
+             .conclusion == "success" and
+             .html_url == $run_url and
+             .repository.full_name == $repository and
+             (.path == ".github/workflows/ci.yml" or
+              (.path | startswith(".github/workflows/ci.yml@")))' \
+            <<< "$github_run" > /dev/null
+          github_jobs="$(
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?filter=latest&per_page=100"
+          )"
+          jq -e \
+            'any(
+              .jobs[];
+              .name == "Build & Test" and
+              .status == "completed" and
+              .conclusion == "success" and
+              any(
+                .steps[];
+                .name == "Build & Test" and
+                .status == "completed" and
+                .conclusion == "success"
+              )
+            )' \
+            <<< "$github_jobs" > /dev/null
 
       - name: Restore DerivedData cache
         id: cache-derived-data
@@ -127,43 +267,90 @@ jobs:
             derived-data-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-Release-main-
 
       - name: Setup Ruby for fastlane
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1
         with:
           ruby-version: '3.4'
           bundler-cache: true
           working-directory: app
 
-      - name: Prepare Match authentication
-        run: |
-          echo "MATCH_GIT_BASIC_AUTHORIZATION=$(printf '%s' "oauth2:${{ secrets.GITLAB_PAT }}" | base64 | tr -d '\n')" >> "$GITHUB_ENV"
-
-      - name: Generate temporary Match keychain password
-        run: |
-          echo "MATCH_KEYCHAIN_PASSWORD=$(openssl rand -base64 24)" >> "$GITHUB_ENV"
+      - name: Run canonical unit test gate
+        working-directory: app
+        run: bundle exec ./build.sh test
 
       - name: Install Apple WWDR intermediate certificate
         run: |
           curl -fsSL -o "$RUNNER_TEMP/AppleWWDRCAG6.cer" https://www.apple.com/certificateauthority/AppleWWDRCAG6.cer
           echo "WWDR_CERT_PATH=$RUNNER_TEMP/AppleWWDRCAG6.cer" >> "$GITHUB_ENV"
 
-      - name: Run canonical unit test gate
-        working-directory: app
-        run: bundle exec ./build.sh test
-
       - name: Upload via Fastlane lane
+        env:
+          ASC_API_KEY_JSON: ${{ secrets.ASC_API_KEY_JSON }}
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+          LANE: ${{ inputs.lane }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          VERSION_BUMP: ${{ inputs.version_bump }}
         working-directory: app
         run: |
+          set -euo pipefail
+          cleanup() {
+            set +e
+            unset \
+              ASC_API_KEY_JSON \
+              GITLAB_PAT \
+              MATCH_GIT_BASIC_AUTHORIZATION \
+              MATCH_KEYCHAIN_PASSWORD \
+              MATCH_PASSWORD
+            rm -f fastlane/asc_api_key.json fastlane/*.p8
+            rm -f "$RUNNER_TEMP/AppleWWDRCAG6.cer"
+            keychain_path="$HOME/Library/Keychains/fastlane_tmp_keychain-db"
+            if [[ -e "$keychain_path" ]]; then
+              security delete-keychain "$keychain_path"
+            fi
+          }
+          trap cleanup EXIT
+
+          umask 077
+          mkdir -p fastlane
+          printf '%s' "$ASC_API_KEY_JSON" > fastlane/asc_api_key.json
+          if ! jq -e 'type == "object" and
+            (.key_id | type == "string" and length > 0) and
+            (.issuer_id | type == "string" and length > 0) and
+            (.key | type == "string" and length > 0)' \
+            fastlane/asc_api_key.json > /dev/null; then
+            echo "::error::ASC_API_KEY_JSON is invalid or missing key_id/issuer_id/key"
+            exit 1
+          fi
+          unset ASC_API_KEY_JSON
+          MATCH_GIT_BASIC_AUTHORIZATION="$(
+            printf 'oauth2:%s' "$GITLAB_PAT" | base64 | tr -d '\n'
+          )"
+          export MATCH_GIT_BASIC_AUTHORIZATION
+          unset GITLAB_PAT
+          MATCH_KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          export MATCH_KEYCHAIN_PASSWORD
+
           fastlane_args=()
 
-          if [[ "${{ inputs.version_bump }}" != "none" ]]; then
-            fastlane_args+=("bump:${{ inputs.version_bump }}")
+          if [[ "$VERSION_BUMP" != "none" ]]; then
+            fastlane_args+=("bump:$VERSION_BUMP")
           fi
 
           if [[ -n "$TESTFLIGHT_NOTES" ]]; then
             fastlane_args+=("notes:$TESTFLIGHT_NOTES")
           fi
 
-          bundle exec fastlane "${{ inputs.lane }}" "${fastlane_args[@]}"
+          bundle exec fastlane "$LANE" "${fastlane_args[@]}"
+
+      - name: Clean release credentials
+        if: always()
+        working-directory: app
+        run: |
+          rm -f fastlane/asc_api_key.json fastlane/*.p8
+          rm -f "$RUNNER_TEMP/AppleWWDRCAG6.cer"
+          keychain_path="$HOME/Library/Keychains/fastlane_tmp_keychain-db"
+          if [[ -e "$keychain_path" ]]; then
+            security delete-keychain "$keychain_path"
+          fi
 
       - name: Save DerivedData cache
         if: always() && steps.cache-derived-data.outputs.cache-hit != 'true'

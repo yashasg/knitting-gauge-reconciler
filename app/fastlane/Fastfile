@@ -330,7 +330,11 @@ platform :ios do
       "CODE_SIGN_STYLE=Manual",
       "DEVELOPMENT_TEAM=#{signing_context[:team_id]}",
       "PROVISIONING_PROFILE_SPECIFIER=#{Shellwords.escape(signing_context[:profile_name])}",
-      "CODE_SIGN_IDENTITY=#{Shellwords.escape(signing_context[:certificate_name])}"
+      "CODE_SIGN_IDENTITY=#{Shellwords.escape(signing_context[:certificate_name])}",
+      "SWIFT_TREAT_WARNINGS_AS_ERRORS=YES",
+      "GCC_TREAT_WARNINGS_AS_ERRORS=YES",
+      "CLANG_TREAT_WARNINGS_AS_ERRORS=YES",
+      "OTHER_SWIFT_FLAGS=-warnings-as-errors"
     ]
     if ENV["CI"]
       xcargs << "OTHER_CODE_SIGN_FLAGS=#{Shellwords.escape("--keychain #{CI_KEYCHAIN_NAME}.keychain")}"

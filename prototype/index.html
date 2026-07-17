@@ -15,8 +15,8 @@
     --line:#E6DEEE;
     --accent:#6B4A85;
     --accent-soft:#EFE6F4;
-    --good:#5E8B6B;
-    --warn:#C68B2C;
+    --good:#3F6C4C;
+    --warn:#8A5D00;
     --alert:#9B3F6C;
     --shadow:0 1px 2px rgba(42,34,55,.06),0 4px 14px rgba(42,34,55,.06);
     --radius:14px;
@@ -45,7 +45,9 @@
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+  input[aria-invalid]{border-color:var(--alert);outline:2px solid rgba(155,63,108,.18)}
   .field-hint{font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono)}
+  [hidden]{display:none!important}
 
   .heroes{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
   @media (max-width:520px){.heroes{grid-template-columns:1fr}}
@@ -67,6 +69,7 @@
     padding:12px 14px;font-size:14px;color:var(--ink);line-height:1.5;
   }
   .verdict strong{color:var(--accent)}
+  .result-error{background:#F8EAF1;border:1px solid var(--alert);border-radius:10px;padding:12px 14px;color:var(--alert);font-size:14px;font-weight:600}
 
   .sections{margin-top:14px;display:flex;flex-direction:column;gap:10px}
   .section-row{
@@ -120,12 +123,12 @@
   <div class="grid2">
     <div>
       <label for="ps">Pattern stitches</label>
-      <input id="ps" type="number" inputmode="decimal" min="1" step="0.5" value="32" />
+      <input id="ps" type="number" inputmode="decimal" min="1" max="99" step="0.5" value="32" required />
       <div class="field-hint">stitches per 10 cm (horizontal)</div>
     </div>
     <div>
       <label for="pr">Pattern rows</label>
-      <input id="pr" type="number" inputmode="decimal" min="1" step="0.5" value="24" />
+      <input id="pr" type="number" inputmode="decimal" min="1" max="99" step="0.5" value="24" required />
       <div class="field-hint">rows per 10 cm (vertical)</div>
     </div>
   </div>
@@ -134,12 +137,12 @@
   <div class="grid2">
     <div>
       <label for="ys">Your stitches</label>
-      <input id="ys" type="number" inputmode="decimal" min="1" step="0.5" value="32" />
+      <input id="ys" type="number" inputmode="decimal" min="1" max="99" step="0.5" value="32" required />
       <div class="field-hint">stitches per 10 cm — measure on a blocked swatch</div>
     </div>
     <div>
       <label for="yr">Your rows</label>
-      <input id="yr" type="number" inputmode="decimal" min="1" step="0.5" value="32" />
+      <input id="yr" type="number" inputmode="decimal" min="1" max="99" step="0.5" value="32" required />
       <div class="field-hint">rows per 10 cm — same swatch, vertical count</div>
     </div>
   </div>
@@ -148,6 +151,8 @@
 <section class="card" aria-labelledby="result-label">
   <h2 id="result-label">Reconciliation — both axes</h2>
 
+  <div class="result-error" id="result-error" role="alert" hidden>Enter a valid value in every highlighted field to see results.</div>
+  <div id="normal-results">
   <div class="heroes">
     <div class="hero" id="hero-st">
       <div class="label">Stitch-wise (horizontal)</div>
@@ -169,43 +174,44 @@
     <strong>shorter</strong> than the pattern intends — unless you adjust the row counts using the
     multipliers below.
   </div>
+  </div>
 
   <div class="pair-label" style="margin-top:14px">Per-section adjustments — edit your pattern's target dimensions</div>
   <div class="sections" id="sections">
     <div class="section-row" data-section="yoke">
       <div class="name">Yoke depth</div>
-      <div class="pattern"><label for="pat-yoke">Pattern says</label><input id="pat-yoke" type="number" inputmode="decimal" min="0" step="0.5" value="20" /> cm</div>
-      <div class="actual">Knit to <span id="act-yoke">26.7</span><small>cm</small></div>
+      <div class="pattern"><label for="pat-yoke">Pattern says</label><input id="pat-yoke" type="number" inputmode="decimal" min="5" max="100" step="0.5" value="20" required /> cm</div>
+      <div class="actual result-value">Knit to <span id="act-yoke">26.7</span><small>cm</small></div>
     </div>
     <div class="section-row" data-section="body">
       <div class="name">Body length</div>
-      <div class="pattern"><label for="pat-body">Pattern says</label><input id="pat-body" type="number" inputmode="decimal" min="0" step="0.5" value="50" /> cm</div>
-      <div class="actual">Knit to <span id="act-body">66.7</span><small>cm</small></div>
+      <div class="pattern"><label for="pat-body">Pattern says</label><input id="pat-body" type="number" inputmode="decimal" min="5" max="100" step="0.5" value="50" required /> cm</div>
+      <div class="actual result-value">Knit to <span id="act-body">66.7</span><small>cm</small></div>
     </div>
     <div class="section-row" data-section="sleeve">
       <div class="name">Sleeve length</div>
-      <div class="pattern"><label for="pat-sleeve">Pattern says</label><input id="pat-sleeve" type="number" inputmode="decimal" min="0" step="0.5" value="45" /> cm</div>
-      <div class="actual">Knit to <span id="act-sleeve">60.0</span><small>cm</small></div>
+      <div class="pattern"><label for="pat-sleeve">Pattern says</label><input id="pat-sleeve" type="number" inputmode="decimal" min="5" max="100" step="0.5" value="45" required /> cm</div>
+      <div class="actual result-value">Knit to <span id="act-sleeve">60.0</span><small>cm</small></div>
     </div>
     <div class="section-row" data-section="incs">
       <div class="name">Increase-row spacing</div>
-      <div class="pattern"><label for="pat-incs">Pattern says</label><input id="pat-incs" type="number" inputmode="numeric" min="0" step="1" value="6" /> rows</div>
-      <div class="actual">Space every <span id="act-incs">8</span><small>rows</small></div>
+      <div class="pattern"><label for="pat-incs">Pattern says</label><input id="pat-incs" type="number" inputmode="numeric" min="1" max="30" step="1" value="6" required /> rows</div>
+      <div class="actual result-value">Space every <span id="act-incs">8</span><small>rows</small></div>
     </div>
     <div class="section-row" data-section="cast-on">
       <div class="name">Cast-on stitches</div>
       <div class="pattern">
         <label for="pat-cast-on">Pattern says</label>
-        <input id="pat-cast-on" type="number" inputmode="numeric" min="1" step="1" value="128"
+        <input id="pat-cast-on" type="number" inputmode="numeric" min="40" max="400" step="1" value="128" required
                autocomplete="off"
                aria-describedby="hint-cast-on" />
         <span id="hint-cast-on" class="field-hint">stitches to cast on</span>
       </div>
-      <div class="actual"><span id="cast-on-action">Cast on <span id="act-cast-on">128</span><small>stitches · reconcile with the pattern’s stitch-repeat multiple.</small></span><span id="cast-on-unusable" hidden>No usable whole-stitch result — re-swatch or change needle size.</span> <span class="pill pill-warn" id="pill-cast-on" hidden></span></div>
+      <div class="actual result-value"><span id="cast-on-action">Cast on 128 stitches as written. Reconcile this stitch count with the pattern’s stitch-repeat multiple.</span><span id="cast-on-unusable" hidden>No usable whole-stitch result — re-swatch or change needle size.</span> <span class="pill pill-warn" id="pill-cast-on" hidden></span></div>
     </div>
   </div>
 
-  <details>
+  <details id="math-details">
     <summary>Show full math</summary>
     <div class="breakdown" id="breakdown">—</div>
   </details>
@@ -252,39 +258,52 @@
   const DEFAULTS = { ps:32, pr:24, ys:32, yr:32, patYoke:20, patBody:50, patSleeve:45, patIncs:6, patCastOn:128 };
   const STORAGE_KEY = 'knitting-gauge-reconciler.v1';
 
-  function readNum(el, def){
-    const v = parseFloat(el.value);
-    return (isFinite(v) && v > 0) ? v : def;
+  function readNum(el){
+    return el.valueAsNumber;
   }
 
   function fmtPct(x){ return Math.round(x * 100) + '%'; }
   function fmtCm(x){ return (Math.round(x * 10) / 10).toFixed(1); }
   function fmtRows(x){ return Math.max(1, Math.round(x)); }
+  function isMatch(scale){ return scale > 0.97 && scale < 1.03; }
 
   function pillFor(scale){
     // scale = 1.0 means perfect match. <1 means your gauge produces a smaller dimension than pattern (you need MORE).
-    if (scale > 0.97 && scale < 1.03) return { cls:'pill-good', label:'Match' };
+    if (isMatch(scale)) return { cls:'pill-good', label:'Match' };
     if (scale > 0.90 && scale < 1.10) return { cls:'pill-warn', label: scale > 1 ? 'Looser than pattern' : 'Tighter than pattern' };
     return { cls:'pill-alert', label: scale > 1 ? 'Much looser' : 'Much tighter' };
   }
 
   function pillRowFor(scale){
     // scale = your_row / pattern_row. >1 means your fabric is denser (more rows per cm).
-    if (scale > 0.97 && scale < 1.03) return { cls:'pill-good', label:'Match' };
+    if (isMatch(scale)) return { cls:'pill-good', label:'Match' };
     if (scale > 0.90 && scale < 1.10) return { cls:'pill-warn', label: scale > 1 ? 'Denser than pattern' : 'Looser than pattern' };
     return { cls:'pill-alert', label: scale > 1 ? 'Much denser' : 'Much looser' };
   }
 
   function compute(){
-    const ps = readNum(inputs.ps, DEFAULTS.ps);
-    const pr = readNum(inputs.pr, DEFAULTS.pr);
-    const ys = readNum(inputs.ys, DEFAULTS.ys);
-    const yr = readNum(inputs.yr, DEFAULTS.yr);
-    const patYoke = readNum(inputs.patYoke, DEFAULTS.patYoke);
-    const patBody = readNum(inputs.patBody, DEFAULTS.patBody);
-    const patSleeve = readNum(inputs.patSleeve, DEFAULTS.patSleeve);
-    const patIncs = readNum(inputs.patIncs, DEFAULTS.patIncs);
-    const patCastOn = readNum(inputs.patCastOn, DEFAULTS.patCastOn);
+    let hasInvalidInput = false;
+    Object.values(inputs).forEach(el => {
+      const invalid = !el.validity.valid || !Number.isFinite(el.valueAsNumber);
+      el.toggleAttribute('aria-invalid', invalid);
+      hasInvalidInput ||= invalid;
+    });
+    $('result-error').hidden = !hasInvalidInput;
+    $('normal-results').hidden = hasInvalidInput;
+    document.querySelectorAll('.result-value').forEach(el => { el.hidden = hasInvalidInput; });
+    $('math-details').hidden = hasInvalidInput;
+    $('share').hidden = hasInvalidInput;
+    if (hasInvalidInput) return;
+
+    const ps = readNum(inputs.ps);
+    const pr = readNum(inputs.pr);
+    const ys = readNum(inputs.ys);
+    const yr = readNum(inputs.yr);
+    const patYoke = readNum(inputs.patYoke);
+    const patBody = readNum(inputs.patBody);
+    const patSleeve = readNum(inputs.patSleeve);
+    const patIncs = readNum(inputs.patIncs);
+    const patCastOn = readNum(inputs.patCastOn);
 
     // Horizontal scale: to hit pattern's intended width with your stitch gauge,
     // multiply the stitch count by (your_st / pattern_st).
@@ -334,7 +353,16 @@
     const roundedStitches = Math.round(exactStitches);
     const castOnUsable = roundedStitches > 0;
     const castOnDriftPct = ((roundedStitches - exactStitches) / exactStitches) * 100;
-    $('act-cast-on').textContent = roundedStitches;
+    const castOnDiffers = roundedStitches !== patCastOn;
+    const castOnGuidance = !castOnUsable
+      ? `<strong>No usable whole-stitch cast-on result.</strong> Re-swatch or change needle size before casting on.`
+      : !castOnDiffers
+        ? `<strong>Cast on ${roundedStitches} stitches as written.</strong> Reconcile this stitch count with your pattern’s stitch-repeat multiple.`
+        : isMatch(stitchWidthScale)
+          ? `<strong>Optionally cast on ${roundedStitches} stitches for a width refinement.</strong> Reconcile this rounded stitch count with your pattern’s stitch-repeat multiple.`
+          : `<strong>Cast on ${roundedStitches} stitches</strong> to preserve the pattern's intended width. Reconcile this rounded stitch count with your pattern’s stitch-repeat multiple.`;
+    $('cast-on-action').innerHTML = castOnGuidance;
+    $('cast-on-unusable').innerHTML = castOnGuidance;
     $('cast-on-action').hidden = !castOnUsable;
     $('cast-on-unusable').hidden = castOnUsable;
     const pillCastOn = $('pill-cast-on');
@@ -349,16 +377,16 @@
     // Verdict
     const stDrift = Math.round((stitchWidthScale - 1) * 100);
     const rwDrift = Math.round((rowCountScale - 1) * 100);
-    const castOnGuidance = castOnUsable
-      ? `<strong>Cast on ${roundedStitches} stitches</strong> to preserve the pattern's intended width. Reconcile this rounded stitch count with your pattern’s stitch-repeat multiple.`
-      : `<strong>No usable whole-stitch cast-on result.</strong> Re-swatch or change needle size before casting on.`;
     let v = '';
-    if (Math.abs(stDrift) < 3 && Math.abs(rwDrift) < 3) {
-      v = `<strong>Both gauges match.</strong> ${castOnGuidance} Knit straight from the pattern — no adjustments needed. Re-check after blocking.`;
-    } else if (Math.abs(stDrift) < 3) {
+    if (isMatch(stitchWidthScale) && isMatch(rowCountScale)) {
+      const matchedGuidance = castOnDiffers
+        ? 'Use the pattern’s other measurements as written. Re-check after blocking.'
+        : 'Knit straight from the pattern — no adjustments needed. Re-check after blocking.';
+      v = `<strong>Both gauges match.</strong> ${castOnGuidance} ${matchedGuidance}`;
+    } else if (isMatch(stitchWidthScale)) {
       const dir = rwDrift > 0 ? 'denser' : 'looser';
       v = `Your stitch gauge matches. ${castOnGuidance} Your row gauge is ${Math.abs(rwDrift)}% ${dir} than expected; use the adjusted cm values below for every vertical section.`;
-    } else if (Math.abs(rwDrift) < 3) {
+    } else if (isMatch(rowCountScale)) {
       const dir = stDrift > 0 ? 'wider' : 'narrower';
       v = `Your row gauge matches, but your <strong>stitch gauge is ${Math.abs(stDrift)}% ${dir}</strong>. ${castOnGuidance} Vertical sections need no adjustment.`;
     } else {
@@ -400,7 +428,7 @@
                       k === 'patSleeve' ? 'pl' : k === 'patIncs' ? 'pi' :
                       k === 'patCastOn' ? 'pc' : k;
         const v = params.get(short);
-        if (v !== null) fromHash[k] = parseFloat(v);
+        if (v !== null) fromHash[k] = v;
       });
       if (Object.keys(fromHash).length) return applyState({...DEFAULTS, ...fromHash});
     }

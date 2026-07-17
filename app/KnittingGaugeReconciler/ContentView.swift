@@ -158,6 +158,7 @@ struct ContentView: View {
                     RequiredAdjustmentsCard(
                         result: liveResult,
                         inputs: inputs,
+                        verdict: (title: verdictTitle, body: sheetVerdictBody),
                         unit: measurementUnit,
                         showFullMath: $showFullMath,
                         canUndoReset: resetSnapshot != nil,
@@ -294,30 +295,41 @@ struct ContentView: View {
         let rowOff    = rowPercent >= 3
         let stitchDir = result.stitchWidthScale > 1 ? "wider" : "narrower"
         let rowDir    = result.rowCountScale > 1 ? "denser" : "looser"
+        let sectionDir = result.rowCountScale > 1 ? "shorter" : "longer"
         let majorNote = (stitchDrift >= 0.15 || rowDrift >= 0.15)
             ? " Over 15% drift. Consider re-swatching or changing needle size before proceeding."
             : ""
         let castOnGuidance = castOnGuidance(result: result, inputs: inputs)
+        let stitchAction = inputs.patternCastOn == nil
+            ? "Open Pattern details and enter cast-on stitches for an adjusted cast-on count. "
+            : "Use the cast-on guidance below to preserve the intended width. "
+        let hasSectionTargets = inputs.patternYokeDepth != nil ||
+            inputs.patternBodyLength != nil ||
+            inputs.patternSleeveLength != nil
+        let rowAction = hasSectionTargets
+            ? "Use the row count guidance below for each supplied vertical section."
+            : "Open Pattern details and enter section targets for adjusted row counts."
         if !stitchOff && !rowOff {
             return "Both gauges match. \(castOnGuidance)" +
                 "No gauge adjustments are needed. Re-check after blocking."
         }
         if stitchOff && !rowOff {
             return (
-                "Your row gauge matches, but your stitch gauge is \(stitchPercent)% \(stitchDir). " +
-                "\(castOnGuidance)Vertical sections need no adjustment.\(majorNote)"
+                "Your row gauge matches. At the pattern stitch counts, the garment will be " +
+                "\(stitchPercent)% \(stitchDir). \(stitchAction)Vertical sections need no adjustment.\(majorNote)"
             )
         }
         if !stitchOff {
             return (
                 "Your stitch gauge matches. \(castOnGuidance)" +
-                "Your row gauge is \(rowPercent)% \(rowDir) than expected; use the row count guidance " +
-                "for each vertical section.\(majorNote)"
+                "Your row gauge is \(rowPercent)% \(rowDir) than expected. At the pattern row counts, " +
+                "vertical sections will be \(sectionDir). \(rowAction)\(majorNote)"
             )
         }
         return (
-            "Both axes are off: stitch gauge \(stitchPercent)% \(stitchDir), row gauge \(rowPercent)% \(rowDir). " +
-            "\(castOnGuidance)Use the row count guidance for any supplied vertical sections.\(majorNote)"
+            "Both axes are off. At the pattern stitch counts, the garment will be \(stitchPercent)% \(stitchDir). " +
+            "\(stitchAction)Your row gauge is \(rowPercent)% \(rowDir) than expected. At the pattern row counts, " +
+            "vertical sections will be \(sectionDir). \(rowAction)\(majorNote)"
         )
     }
 

@@ -620,6 +620,12 @@ struct GaugeMathTests {
         }
     }
 
+    @MainActor @Test func wheelSheetDetentsReflowForWarningAndAccessibilityText() {
+        #expect(GaugeStepperField.sheetDetents(for: .large, hasWarning: false) == [.height(280)])
+        #expect(GaugeStepperField.sheetDetents(for: .accessibility1, hasWarning: false) == [.large])
+        #expect(GaugeStepperField.sheetDetents(for: .large, hasWarning: true) == [.medium, .large])
+    }
+
     @Test func resultsActionTokensMeetTextContrastInLightAndDark() throws {
         let appDirectory = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

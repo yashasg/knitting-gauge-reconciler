@@ -654,3 +654,29 @@ head passes the required gates.
 
 **Trade-off:** Repeating a technically green revision costs time, but merging a
 locked-out author's artifact would invalidate the reviewer-independence rule.
+
+---
+
+### 2026-07-17T06:04:18.170-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** UI tests and XCUITests are disabled and must not be assigned, created, enabled, or run. Authorized checks are unit tests and `./app/build.sh test`. All child agents, including Ralph and Scribe, must use `gpt-5.6-sol`. Ponytail full mode applies.
+**Why:** User request — captured for team memory
+
+---
+
+# MR !88 ownership blocker
+
+**Date:** 2026-07-17T06:04:18.170-07:00
+**Owner:** Ralph
+
+- MR !88 is open, non-draft, conflict-free, discussion-free, and mergeable at
+  exact source SHA `720142cffc6ce58d4fce127bc5e7bd5715c6549c`.
+- Exact-SHA external pipeline `2684930924` and `Build & Test` status
+  `15400366937` passed.
+- The two-file diff and assertion satisfy the functional and test-scope
+  criteria, but issue #119 assigns the independent revision to Bell while the
+  sole implementation commit records Tesla as both author and committer.
+- Do not merge or clean the branch/worktree. Bell must independently revise the
+  existing branch and MR; no duplicate MR or fresh issue may be dispatched.
+- Preserve divergent local `main`, 39 ambiguous stashes, 11 safety refs, two
+  closed-unmerged stray branches, and both detached final-review worktrees.

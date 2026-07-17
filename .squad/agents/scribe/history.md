@@ -118,3 +118,12 @@ Merged four inbox decisions into `decisions.md`, wrote orchestration/session log
 - No decision was old enough for the applicable archive gate. Tesla's history
   crossed 15,360 bytes and was summarized.
 - No application code, test, GitLab state, or ambiguous saved state was changed.
+
+### 2026-07-17T06:04:18.170-07:00 — MR !88 reconciliation recorded
+
+- Merged two unique inbox records and cleared only the pre-snapshot inbox files.
+- Logged MR !88's green exact-SHA gates and the Bell/Tesla ownership blocker.
+- Preserved the existing MR, worktrees, divergent main, stashes, safety refs,
+  and closed-unmerged branches pending Lead adjudication.
+- The active decision ledger exceeded both archive thresholds, but no entry was
+  older than seven days; no history reached 15,360 bytes.

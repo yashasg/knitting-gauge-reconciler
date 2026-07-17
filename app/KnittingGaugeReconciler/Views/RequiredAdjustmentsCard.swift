@@ -144,7 +144,7 @@ private struct LiveResultsView: View {
                     AdjustmentRow(
                         name: "Yoke depth",
                         pattern: "\(unit.formatMeasurement(patternDepth)) / \(GaugeMath.fmtRows(patternRows)) rows",
-                        adjusted: "\(unit.formatMeasurement(adjustedDepth)) / " +
+                        adjusted: "\(unit.formatResultMeasurement(adjustedDepth)) / " +
                             "\(GaugeMath.fmtRows(adjustedRows)) rows",
                         adjustedIdentifier: "yoke-your-rows"
                     )
@@ -162,7 +162,7 @@ private struct LiveResultsView: View {
                                 name: "Body length",
                                 pattern: "\(unit.formatMeasurement(patternLength)) / " +
                                     "\(GaugeMath.fmtRows(patternRows)) rows",
-                                adjusted: "\(unit.formatMeasurement(adjustedLength)) / " +
+                                adjusted: "\(unit.formatResultMeasurement(adjustedLength)) / " +
                                     "\(GaugeMath.fmtRows(adjustedRows)) rows",
                                 adjustedIdentifier: "body-your-rows"
                             )
@@ -175,7 +175,7 @@ private struct LiveResultsView: View {
                                 name: "Sleeve length",
                                 pattern: "\(unit.formatMeasurement(patternLength)) / " +
                                     "\(GaugeMath.fmtRows(patternRows)) rows",
-                                adjusted: "\(unit.formatMeasurement(adjustedLength)) / " +
+                                adjusted: "\(unit.formatResultMeasurement(adjustedLength)) / " +
                                     "\(GaugeMath.fmtRows(adjustedRows)) rows",
                                 adjustedIdentifier: "sleeve-your-rows"
                             )
@@ -352,7 +352,7 @@ private struct LiveResultsView: View {
            let adjustedRows = result.adjustedYokeRows {
             lines.append(
                 "yoke: \(unit.formatMeasurement(patternDepth)) / \(GaugeMath.fmtRows(patternRows)) rows → " +
-                    "\(unit.formatMeasurement(adjustedDepth)) / \(GaugeMath.fmtRows(adjustedRows)) rows"
+                    "\(unit.formatResultMeasurement(adjustedDepth)) / \(GaugeMath.fmtRows(adjustedRows)) rows"
             )
         }
         if let patternLength = inputs.patternBodyLength,
@@ -361,7 +361,7 @@ private struct LiveResultsView: View {
            let adjustedRows = result.adjustedBodyRows {
             lines.append(
                 "body: \(unit.formatMeasurement(patternLength)) / \(GaugeMath.fmtRows(patternRows)) rows → " +
-                    "\(unit.formatMeasurement(adjustedLength)) / \(GaugeMath.fmtRows(adjustedRows)) rows"
+                    "\(unit.formatResultMeasurement(adjustedLength)) / \(GaugeMath.fmtRows(adjustedRows)) rows"
             )
         }
         if let patternLength = inputs.patternSleeveLength,
@@ -370,7 +370,7 @@ private struct LiveResultsView: View {
            let adjustedRows = result.adjustedSleeveRows {
             lines.append(
                 "sleeve: \(unit.formatMeasurement(patternLength)) / \(GaugeMath.fmtRows(patternRows)) rows → " +
-                    "\(unit.formatMeasurement(adjustedLength)) / \(GaugeMath.fmtRows(adjustedRows)) rows"
+                    "\(unit.formatResultMeasurement(adjustedLength)) / \(GaugeMath.fmtRows(adjustedRows)) rows"
             )
         }
         if let spacing = inputs.patternIncreaseSpacing, let adjusted = result.adjustedIncreaseSpacing {

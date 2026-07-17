@@ -722,7 +722,7 @@ struct ContentView: View {
                 )
                 let directory = caches.appendingPathComponent("ShareExports", isDirectory: true)
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                let fileURL = directory.appendingPathComponent("knitting-gauge-results.png")
+                let fileURL = directory.appendingPathComponent("knitting-gauge-results-\(UUID().uuidString).png")
                 try pngData.write(to: fileURL, options: [.atomic])
                 return fileURL
             } catch {
@@ -783,9 +783,9 @@ private struct AboutHelpSheet: View {
                     Text(
                         "This tool reconciles a two-axis gauge mismatch, " +
                         "the kind that single-number gauge calculators hide. " +
-                        "When your stitch gauge matches the pattern " +
-                        "but your row gauge is off (or vice versa), every vertical " +
-                        "section ends up the wrong length unless you adjust the row counts."
+                        "When row gauge differs, it adjusts each supplied depth or length " +
+                        "while preserving the pattern's intended row count. " +
+                        "Stitch-gauge differences are handled separately for width."
                     )
                         .font(.body)
                         .lineSpacing(4)

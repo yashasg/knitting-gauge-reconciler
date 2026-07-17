@@ -187,6 +187,7 @@ jobs:
           key: swiftlint-brew-${{ runner.os }}
 
       - name: Build & Test
+        id: build-test
         run: ./app/build.sh test
 
       - name: Save DerivedData cache
@@ -199,7 +200,11 @@ jobs:
           key: ${{ steps.cache-derived-data.outputs.cache-primary-key }}
 
       - name: Post status to GitLab
-        if: always() && steps.source.outputs.validated == 'true'
+        if: >-
+          always() &&
+          steps.source.outputs.validated == 'true' &&
+          (steps.build-test.outcome == 'success' ||
+           steps.build-test.outcome == 'failure')
         env:
           GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
           GITLAB_REF: ${{ steps.source.outputs.ref }}

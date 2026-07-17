@@ -619,3 +619,38 @@ approval, Curie may run only `./app/build.sh test`.
 **What:** Treat Tesla's later cleanup result as the final operational state: after rewriting and closing #51, Tesla removed only its closed-issue worktree and local branch and pruned worktree metadata; MR !66, its remote branch, and stashes remain preserved. Hopper independently verified exact main SHA `6292cdec1763f6a614e70a2e96315309e120147a`, matching live workflows, a successful exact-name Build & Test run and GitLab external pipeline, and a tamper-rejecting CD predicate before rewriting and closing #113.
 **Why:** This reconciles the earlier preservation snapshot with the manifested final cleanup and records the exact evidence supporting #113 closure.
 **Status:** No open domain MR or runnable domain issue remains. Tracker #1 and follow-up issues remain non-runnable.
+
+---
+
+### 2026-07-17T03:24:12.830-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Execute the complete autonomous Squad Work Loop through reconciliation, ready-MR completion, implementation, exact-SHA CI validation, merge, cleanup, goal reevaluation, and final review. The only authorized test command/suite is `./app/build.sh test` and its non-UI/unit tests. UI tests and XCUITests are explicitly disabled and must not be created, enabled, assigned, or run. No reviewer, issue rewrite, goal, work item wording, or inferred coverage requirement may expand that scope. Mendel may map the six Jacquard scenarios to existing/non-UI unit tests and report UI-level gaps only as advisory; those gaps cannot block or reject the artifact. Any additional ambiguity must fail closed by preserving state and reporting instead of expanding tests. Every Squad member or helper launched must use model `gpt-5.6-sol`. Apply Ponytail full: prefer deletion/native/standard-library solutions and smallest complete diffs without simplifying away correctness, accessibility, validation, error handling, explicit criteria, or the smallest authorized runnable unit check for nontrivial logic.
+**Why:** User request — captured for team memory
+
+---
+
+### 2026-07-17T04:50:29.193-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** For issue #117, review only the already-produced authorized unit-test artifacts from the successful `./app/build.sh test` rerun. Do not rerun tests. UI tests/XCUITests remain prohibited from inspection, assignment, creation, editing, enabling, building, running, inventory, or gate use. Confirm using `xcresulttool` and the existing gate log only. Approve only if the unit gate has zero warnings, failures, skips, expected failures, and retries. Do not edit issue artifacts, commit, push, or mutate GitLab.
+**Why:** User request — captured for team memory
+
+---
+
+# Issue #62 Ready-MR Gate
+
+**Date:** 2026-07-17T03:24:12.830-07:00  
+**Owner:** Tesla  
+**Decision:** Preserve MR !84 and route its next revision to Edison.
+
+MR !84 is mergeable and has a successful exact-head pipeline at
+`db711eeb597f510ee8fa3ff879b2de54ee7a4431`, with no unresolved discussion.
+It is nevertheless blocked by issue #62's strict revision contract: the commit
+records Tesla as both author and committer even though Tesla is locked out and
+Edison is the required independent revision owner.
+
+Edison must independently revise the existing issue-62 branch/MR. Do not merge,
+open a duplicate MR, or clean its worktree before a contract-compliant exact
+head passes the required gates.
+
+**Trade-off:** Repeating a technically green revision costs time, but merging a
+locked-out author's artifact would invalidate the reviewer-independence rule.

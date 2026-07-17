@@ -16,14 +16,14 @@ A static HTML page that takes the pattern's stitch+row gauge per 10 cm AND the k
 - a **per-section adjustment table** for the four vertical dimensions that bite hardest — yoke depth, body length, sleeve length, increase-row spacing — each editable so the knitter types in *their* pattern's number and reads off the actual cm they should knit to,
 - a plain-language **verdict** that names the drift in cm-and-% and tells them what to do about it.
 
-The whole point is the dual-axis: every other gauge calculator in the App Store and on the web treats gauge as a single number. None of them tells you that your yoke will be 6 cm too short because your row gauge is denser than the pattern expects.
+The whole point is the dual-axis: every other gauge calculator in the App Store and on the web treats gauge as a single number. None of them tells you that a denser row gauge means knitting a 20 cm yoke to 15 cm to preserve its row count.
 
 ---
 
 ## Run it (≤ 2 steps)
 
 1. `open prototypes/knitting-gauge-reconciler/index.html`
-2. (Already showing the default mismatch — pattern 32×24 vs your 32×32 → stitches match, row gauge 33% denser → "Knit to 26.7 cm for a 20 cm yoke depth.")
+2. (Already showing the default mismatch — pattern 32×24 vs your 32×32 → stitches match, row gauge 33% denser → "Knit to 15.0 cm for a 20 cm yoke depth.")
 
 That's it. No server. No `npm install`. No `python -m http.server`. No network.
 
@@ -32,9 +32,9 @@ That's it. No server. No `npm install`. No `python -m http.server`. No network.
 ## Click-through (what a reviewer should see in 60 seconds)
 
 - On load, four gauge inputs are pre-filled with the **Ghost Hunter Sweater** mismatch from r/knitting Signal 1: pattern asks **32 st × 24 rows** per 10 cm; the knitter's swatch hits **32 st × 32 rows** per 10 cm.
-- The two hero numbers above already say it: **"100%" Stitch-wise — Match** (green pill); **"133%" Row-wise — Much denser** (amber/alert pill). The verdict line reads: *"Your stitch gauge matches the pattern, but your row gauge is 33% denser than expected. Every vertical section (yoke, body length, sleeves, German short rows) needs the row-wise multiplier below — read the 'Knit to ___' column."*
-- The per-section table immediately below shows the pattern's defaults already adjusted: **Yoke 20 cm → knit to 26.7 cm · Body 50 cm → knit to 66.7 cm · Sleeve 45 cm → knit to 60.0 cm · Increase every 6 rows → space every 8 rows**.
-- Edit **Yoke depth** from `20` to `25` — the "Knit to" cell re-renders to **33.3 cm** as you type. No submit.
+- The two hero numbers above already say it: **"100%" Stitch-wise — Match** (green pill); **"133%" Row-wise — Much denser** (amber/alert pill). The verdict line reads: *"Your stitch gauge matches the pattern, but your row gauge is 33% denser than expected. Every vertical section (yoke, body length, sleeves, German short rows) needs the dimension correction below — read the 'Knit to ___' column."*
+- The per-section table immediately below shows the pattern's defaults already adjusted: **Yoke 20 cm → knit to 15.0 cm · Body 50 cm → knit to 37.5 cm · Sleeve 45 cm → knit to 33.8 cm · Increase every 6 rows → space every 8 rows**.
+- Edit **Yoke depth** from `20` to `25` — the "Knit to" cell re-renders to **18.8 cm** as you type. No submit.
 - Change **Your rows** from `32` to `24` — every number snaps back to 100% / 100% / pattern-as-written ("Both gauges match — knit straight from the pattern"). The verdict updates to that copy.
 - Change **Your stitches** from `32` to `28` and **Your rows** back to `32` — both axes are now off. The verdict surfaces both drifts in the same sentence and recommends picking a different pattern size to land at the right width.
 - Expand **Show the math** — exact arithmetic appears, including the aspect ratios on each axis and the row-count scale calculation.
@@ -59,19 +59,20 @@ That's the full app surface.
 
 ---
 
-## Math reference (for the iOS build's snapshot tests)
+## Math reference
 
 Let `ps` = pattern stitches per 10 cm, `pr` = pattern rows per 10 cm, `ys` = your stitches per 10 cm, `yr` = your rows per 10 cm.
 
 ```
 stitchWidthScale = ps / ys      // fraction of pattern's intended width your stitches occupy
-rowCountScale    = yr / pr      // cm multiplier on every vertical section
+rowCountScale    = yr / pr      // row-density display and shaping multiplier
+dimensionCorrection = pr / yr  // multiplier on every vertical dimension
 ```
 
 For any vertical dimension D the pattern names (yoke depth, body length, sleeve length, etc.) and any number of rows R it specifies between shaping rows:
 
 ```
-actual_cm   = D × rowCountScale
+actual_cm   = D × dimensionCorrection
 actual_rows = R × rowCountScale   // rounded to nearest integer for "increase every N rows"
 ```
 
@@ -150,32 +151,30 @@ No YELLOW flags survived to Stage 8. The cycle's cleanest GREEN-GREEN-GREEN idea
 
 ---
 
-## Sample test cases (for the iOS dev team)
+## Sample calculations
 
 | ps | pr | ys | yr | Stitch-wise | Row-wise | Verdict shape |
 |---|---|---|---|---|---|---|
 | 32 | 24 | 32 | 32 | 100% (Match) | 133% (Much denser) | "stitch matches, row gauge 33% denser" — DEFAULT |
 | 32 | 24 | 32 | 24 | 100% | 100% | "Both match — knit straight from the pattern" |
-| 32 | 24 | 32 | 20 | 100% | 83% (Much looser) | "stitch matches, row gauge 17% looser — verticals shorter" |
+| 32 | 24 | 32 | 20 | 100% | 83% (Much looser) | "stitch matches, row gauge 17% looser — verticals longer" |
 | 32 | 24 | 28 | 24 | 114% (Much looser) | 100% | "row matches, stitch gauge 14% looser — pick a smaller pattern size" |
 | 32 | 24 | 28 | 32 | 114% | 133% | "Both axes off — both shaping AND vertical adjustments needed" |
-| 22 | 30 | 24 | 30 | 92% (Much tighter) | 100% | "stitch 8% tighter — pick a larger pattern size" |
-| 22 | 30 | 22 | 28 | 100% | 93% (Looser) | "row gauge 7% looser — verticals slightly shorter" |
+| 22 | 30 | 24 | 30 | 92% (Tighter) | 100% | "stitch 8% tighter — pick a larger pattern size" |
+| 22 | 30 | 22 | 28 | 100% | 93% (Looser) | "row gauge 7% looser — verticals slightly longer" |
 | 22 | 30 | 22 | 30 | 100% | 100% | "match" (boundary at 0%) |
-| 22 | 30 | 23 | 31 | 96% (Match) | 103% (Match) | "match within tolerance" — drift < 3% on both axes |
+| 22 | 30 | 23 | 31 | 96% (Tighter) | 103% (Denser) | "both axes slightly off — stitch tighter, row gauge denser" |
 
-Boundary behaviour: pill colour switches at drift = 0.03 (3%) and drift = 0.10 (10%). Snapshot the iOS app at these boundaries — `drift = 0.029, 0.030, 0.031, 0.099, 0.100, 0.101` on each axis.
+Boundary behaviour: pill colour switches at drift = 0.03 (3%) and drift = 0.10 (10%). Reference values around these boundaries are `drift = 0.029, 0.030, 0.031, 0.099, 0.100, 0.101` on each axis.
 
-### Per-section maths (snapshot tests on the default 32/24 vs 32/32 case)
+### Per-section maths for the default 32/24 vs 32/32 case
 
 | Section | Pattern says | Knit to |
 |---|---|---|
-| Yoke depth | 20 cm | **26.7 cm** (= 20 × 32/24) |
-| Body length | 50 cm | **66.7 cm** (= 50 × 32/24) |
-| Sleeve length | 45 cm | **60.0 cm** (= 45 × 32/24) |
+| Yoke depth | 20 cm | **15.0 cm** (= 20 × 24/32) |
+| Body length | 50 cm | **37.5 cm** (= 50 × 24/32) |
+| Sleeve length | 45 cm | **33.8 cm** (= 45 × 24/32) |
 | Increase spacing | every 6 rows | **every 8 rows** (= round(6 × 32/24)) |
-
-The iOS dev team should snapshot-test each of these values plus the verdict text rendering for the 9 cases above.
 
 ---
 

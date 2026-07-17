@@ -119,7 +119,7 @@ enum GaugeMath {
         let patternBodyRows = inputs.patternBodyLength.map { $0 * patternRowsPerCm }
         let patternSleeveRows = inputs.patternSleeveLength.map { $0 * patternRowsPerCm }
         let exactCastOn = inputs.patternCastOn.map { $0 * stitchCountMultiplier }
-        let adjustedCastOn = exactCastOn.flatMap(roundedInt)
+        let adjustedCastOn = exactCastOn.flatMap(roundedInt).flatMap { $0 > 0 ? $0 : nil }
         let castOnRoundingDriftPercent = exactCastOn.flatMap { exact in
             adjustedCastOn.map { ((Double($0) - exact) / exact) * 100 }
         }
@@ -361,7 +361,7 @@ func rowStatus(scale: Double) -> String {
 // ponytail: the tolerance only absorbs binary rounding at the exact decimal boundary.
 func isMajorDrift(_ drift: Double) -> Bool { drift + 1e-12 >= 0.15 }
 
-/// Cast-on guidance text, or `nil` when cast-on was not entered.
+/// Cast-on guidance text, or `nil` when no usable adjusted cast-on is available.
 func castOnGuidanceText(inputs: GaugeInputs, result: GaugeMathResult) -> String? {
     guard let patternCastOn = inputs.patternCastOn, let adjustedCastOn = result.adjustedCastOn else {
         return nil

@@ -286,7 +286,7 @@ struct ContentView: View {
         return "Drift"
     }
 
-    private func verdictBodyComputed(result: GaugeMathResult, inputs: GaugeInputs) -> String {
+    func verdictBodyComputed(result: GaugeMathResult, inputs: GaugeInputs) -> String {
         let stitchDrift   = abs(result.stitchWidthScale - 1)
         let rowDrift      = abs(result.rowCountScale - 1)
         let stitchPercent = abs(GaugeMath.fmtPct(result.stitchWidthScale) - 100)
@@ -300,9 +300,14 @@ struct ContentView: View {
             ? " At least 15% drift. Consider re-swatching or changing needle size before proceeding."
             : ""
         let castOnGuidance = castOnGuidance(result: result, inputs: inputs)
-        let stitchAction = inputs.patternCastOn == nil
-            ? "If you want an adjusted cast-on count, add the pattern cast-on in Pattern details. "
-            : "Use the cast-on guidance below to preserve the intended width. "
+        let stitchAction = if inputs.patternCastOn == nil {
+            "If you want an adjusted cast-on count, add the pattern cast-on in Pattern details. "
+        } else if result.adjustedCastOn == nil {
+            "No usable whole-stitch cast-on can be calculated from these values. " +
+                "Re-swatch before proceeding. "
+        } else {
+            "Use the cast-on guidance below to preserve the intended width. "
+        }
         let hasSectionTargets = inputs.patternYokeDepth != nil ||
             inputs.patternBodyLength != nil ||
             inputs.patternSleeveLength != nil

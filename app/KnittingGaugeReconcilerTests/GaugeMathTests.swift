@@ -250,19 +250,26 @@ struct GaugeMathTests {
         #expect(result5.castOnRoundingDriftPercent?.isApproximately(0.0) == true)
     }
 
-    @Test func adjustedCastOnPreservesExtremeRatioParity() {
+    @MainActor
+    @Test func adjustedCastOnOmitsExtremeRatioGuidance() {
         let inputs = GaugeInputs(
             patternStitches: 99, patternRows: 24, yourStitches: 1, yourRows: 24,
             patternCastOn: 40
         )
         let result = GaugeMath.compute(inputs)
-        let exactCastOn = 40.0 / 99.0
+        let export = ResultsExportSummary(inputs: inputs, result: result)
+        let share = ResultsShareTextFormatter.string(inputs: inputs, result: result)
 
-        #expect(result.adjustedCastOn == 0)
+        #expect(result.adjustedCastOn == nil)
+        #expect(result.castOnRoundingDriftPercent == nil)
+        #expect(castOnGuidanceText(inputs: inputs, result: result) == nil)
+        #expect(export.castOn == nil)
+        #expect(!share.contains("Cast-on"))
+        #expect(!share.contains("Cast on 0"))
         #expect(
-            result.castOnRoundingDriftPercent?.isApproximately(
-                ((0 - exactCastOn) / exactCastOn) * 100
-            ) == true
+            ContentView().verdictBodyComputed(result: result, inputs: inputs).contains(
+                "No usable whole-stitch cast-on can be calculated from these values. Re-swatch before proceeding."
+            )
         )
     }
 

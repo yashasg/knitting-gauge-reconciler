@@ -301,7 +301,7 @@ struct ContentView: View {
             : ""
         let castOnGuidance = castOnGuidance(result: result, inputs: inputs)
         let stitchAction = inputs.patternCastOn == nil
-            ? "Open Pattern details and enter cast-on stitches for an adjusted cast-on count. "
+            ? "If you want an adjusted cast-on count, add the pattern cast-on in Pattern details. "
             : "Use the cast-on guidance below to preserve the intended width. "
         let hasSectionTargets = inputs.patternYokeDepth != nil ||
             inputs.patternBodyLength != nil ||
@@ -311,7 +311,7 @@ struct ContentView: View {
             : "Open Pattern details and enter section targets for adjusted row counts."
         if !stitchOff && !rowOff {
             return "Both gauges match. \(castOnGuidance)" +
-                "No further gauge adjustments are needed. Re-check after blocking."
+                "Re-check after blocking."
         }
         if stitchOff && !rowOff {
             return (

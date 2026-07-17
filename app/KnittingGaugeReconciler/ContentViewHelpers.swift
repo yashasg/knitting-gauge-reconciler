@@ -37,7 +37,7 @@ final class SceneSessionReaderView: UIView {
         super.didMoveToWindow()
         guard window != nil, !resolutionScheduled else { return }
         resolutionScheduled = true
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self else { return }
             resolutionScheduled = false
             guard let session = window?.windowScene?.session,

@@ -368,7 +368,7 @@ private struct GaugeKeyboardTextField: UIViewRepresentable {
         guard shouldFocus != textField.isFirstResponder,
               !coordinator.focusUpdateScheduled else { return }
         coordinator.focusUpdateScheduled = true
-        DispatchQueue.main.async {
+        Task { @MainActor in
             defer { coordinator.focusUpdateScheduled = false }
             let shouldFocus = coordinator.parent.focusedField.wrappedValue == coordinator.parent.field
             guard shouldFocus != textField.isFirstResponder else { return }

@@ -177,11 +177,19 @@ run_fastlane() {
 verify_fastlane_output() {
   local output_path="$1"
   local prohibited_pattern='IOHID|IOSurface|IOCreatePlugInInterfaceForService|(^|[^[:alnum:]_])plugin([^[:alnum:]_]|$).*(cannot|error|failed|failure)([^[:alnum:]_]|$)|(^|[^[:alnum:]_])(cannot|error|failed|failure)([^[:alnum:]_]|$).*plugin([^[:alnum:]_]|$)|fopen.*(cannot|error|failed|failure)([^[:alnum:]_]|$)|\[!\]|warning:|(^|[^[:alnum:]_])advisory([^[:alnum:]_]|$)|Found [1-9][0-9]* violations?|falling[[:space:]]+back|(^|[^[:alnum:]_])fallback([^[:alnum:]_]|$).*(failed|failure|error)([^[:alnum:]_]|$)|(^|[^[:alnum:]_])(failed|failure|error)([^[:alnum:]_]|$).*fallback([^[:alnum:]_]|$)|bootstrap.*(failed|failure|error|killed)([^[:alnum:]_]|$)|(^|[^[:alnum:]_])(failed|failure|error|killed)([^[:alnum:]_]|$).*bootstrap|((killed|terminated).*(signal|process))|signal[[:space:]]+(kill|term|[0-9]+)|SIG(KILL|TERM|ABRT|SEGV)|crashed|crash[[:space:]]+report[[:space:]]+found|unexpected(ly)?[[:space:]]+exit(ed)?|exit(ed)?[[:space:]]+unexpectedly'
+  local grep_status
 
-  if LC_ALL=C grep -aEiq "$prohibited_pattern" "$output_path"; then
-    LC_ALL=C grep -aEinH "$prohibited_pattern" "$output_path" >&2
-    fail "prohibited warning, advisory, fallback, bootstrap, signal, or crash output detected"
+  if LC_ALL=C grep -aEinH "$prohibited_pattern" "$output_path" >&2; then
+    grep_status=0
+  else
+    grep_status=$?
   fi
+
+  case "$grep_status" in
+    0) fail "prohibited warning, advisory, fallback, bootstrap, signal, or crash output detected" ;;
+    1) ;;
+    *) fail "could not scan Fastlane output for prohibited diagnostics" ;;
+  esac
 }
 
 case "$MODE" in
@@ -275,9 +283,12 @@ if [[ "$MODE" == "test" ]]; then
   FASTLANE_OUTPUT="$BUILD_DIR/fastlane-output.log"
   set +e
   run_fastlane "$LANE" "${fastlane_args[@]}" 2>&1 | tee "$FASTLANE_OUTPUT"
-  FASTLANE_STATUS=${PIPESTATUS[0]}
+  FASTLANE_PIPE_STATUSES=("${PIPESTATUS[@]}")
   set -e
+  FASTLANE_STATUS=${FASTLANE_PIPE_STATUSES[0]}
+  TEE_STATUS=${FASTLANE_PIPE_STATUSES[1]}
   (( FASTLANE_STATUS == 0 )) || exit "$FASTLANE_STATUS"
+  (( TEE_STATUS == 0 )) || exit "$TEE_STATUS"
   verify_fastlane_output "$FASTLANE_OUTPUT"
 else
   run_fastlane "$LANE" "${fastlane_args[@]}"

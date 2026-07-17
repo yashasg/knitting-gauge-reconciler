@@ -77,7 +77,7 @@ acquire_build_lock() {
 
 run_swiftlint() {
   echo "→ SwiftLint (HIG rules)..."
-  swiftlint lint --config "$REPO_ROOT/.swiftlint.yml" --reporter xcode
+  swiftlint lint --strict --config "$REPO_ROOT/.swiftlint.yml" --reporter xcode
 }
 
 telemetry_preflight() {
@@ -274,17 +274,13 @@ if [[ "$MODE" == "test" ]]; then
   )
 fi
 
-if [[ "$MODE" == "test" ]]; then
-  FASTLANE_OUTPUT="$BUILD_DIR/fastlane-output.log"
-  set +e
-  run_fastlane "$LANE" "${fastlane_args[@]}" 2>&1 | tee "$FASTLANE_OUTPUT"
-  FASTLANE_PIPE_STATUSES=("${PIPESTATUS[@]}")
-  set -e
-  FASTLANE_STATUS=${FASTLANE_PIPE_STATUSES[0]}
-  TEE_STATUS=${FASTLANE_PIPE_STATUSES[1]}
-  (( FASTLANE_STATUS == 0 )) || exit "$FASTLANE_STATUS"
-  (( TEE_STATUS == 0 )) || exit "$TEE_STATUS"
-  verify_fastlane_output "$FASTLANE_OUTPUT"
-else
-  run_fastlane "$LANE" "${fastlane_args[@]}"
-fi
+FASTLANE_OUTPUT="$BUILD_DIR/fastlane-output.log"
+set +e
+run_fastlane "$LANE" "${fastlane_args[@]}" 2>&1 | tee "$FASTLANE_OUTPUT"
+FASTLANE_PIPE_STATUSES=("${PIPESTATUS[@]}")
+set -e
+FASTLANE_STATUS=${FASTLANE_PIPE_STATUSES[0]}
+TEE_STATUS=${FASTLANE_PIPE_STATUSES[1]}
+(( FASTLANE_STATUS == 0 )) || exit "$FASTLANE_STATUS"
+(( TEE_STATUS == 0 )) || exit "$TEE_STATUS"
+verify_fastlane_output "$FASTLANE_OUTPUT"

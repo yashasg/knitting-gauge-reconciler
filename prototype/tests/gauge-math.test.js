@@ -46,7 +46,7 @@ function readNumPure(val, def) {
  */
 function computeGaugeMath({ ps, pr, ys, yr, patYoke, patBody, patSleeve, patIncs }) {
   // Horizontal: fraction of pattern width produced by same stitch count at your gauge.
-  // ps/ys < 1 → your stitches are larger → same count makes wider fabric.
+  // ps/ys < 1 → your gauge has more stitches/10cm (smaller stitches) → same count makes narrower fabric.
   const stitchWidthScale = ps / ys;
 
   // Row density ratio: your_row / pattern_row.

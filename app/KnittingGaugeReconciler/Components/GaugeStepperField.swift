@@ -152,7 +152,10 @@ struct GaugeStepperField: View {
         if hasWarning {
             return [.medium, .large]
         }
-        return dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(280)]
+        if dynamicTypeSize.isAccessibilitySize {
+            return [.large]
+        }
+        return [.height(280)]
     }
 
     private var mismatchDeltaText: String? {

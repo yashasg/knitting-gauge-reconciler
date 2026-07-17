@@ -21,3 +21,19 @@ This summary supersedes the verbose archive; current work remains in `history.md
 - Prototype-parity governance was retired; current issue contracts and canonical decisions own acceptance.
 - Issue #65 reinforced strict owner allowlists, independent revision after lockout, exact-result-bundle inspection, and preservation of unrelated dirty state.
 - Issue #82 static reconciliation proved the authorized three-file branch and MR !47 at `b22c775`; Curie's local gate then passed 77/77, while CI and reviewer gates remain separate prerequisites.
+
+## 2026-07-17T01:44:15.855-07:00 — Reconciliation and publication summary
+
+- Repeated issue/MR races reinforced that exact-head CI, canonical issue identity,
+  independent review, and clean ownership must all agree before merge.
+- The direct unit-only authority superseded stale test contracts. Build tooling
+  must make selection explicit, avoid retry masking, and produce attributable
+  evidence without broadening the issue diff.
+- Issues #103, #104, #106/#108, #109–#112 moved through reconciliation and
+  publication while ambiguous branches, worktrees, stashes, and safety refs
+  remained preserved.
+- At this snapshot, issue #114 and MR !82 at `ffdfa5d2` are the sole active
+  domain identity and await an exact-head green pipeline; Hopper owns resumption.
+- Dirty coordination records, the shipped-but-dirty #109 identity, blocked #51
+  state, 34 stashes, 11 safety refs, and closed-unmerged branches remain outside
+  cleanup authority.

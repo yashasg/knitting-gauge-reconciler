@@ -101,3 +101,20 @@ Merged four inbox decisions into `decisions.md`, wrote orchestration/session log
 - Logged Tesla's finding that MR !66 at `ea7ca64` has failed checks, lacks Curie approval, and has three later modified files preserved for Hopper.
 - The active ledger exceeded both archive thresholds, but no decision predates the seven-day cutoff; no history reached 15,360 bytes.
 - No fresh work, cleanup, or issue-worktree code change was performed.
+
+### 2026-07-16T21:04:14.155-07:00 — Unit-only authority restored
+
+- Restored the canonical formula and six-scenario sections from commit `93323af` without restoring unrelated historical content.
+- Consolidated three inbox records under the latest unit-only directive and cleared the inbox.
+- Recorded MR !66 as closed/unmerged/failed, issue #51 as user-blocked with obsolete UI scope, and Turing as eligible only for a real unit-only tooling drift issue.
+- No decision qualified for seven-day archival and no history crossed 15,360 bytes. No tests, product files, GitLab mutation, commit, or push occurred.
+
+### 2026-07-17T01:44:15.855-07:00 — Issue #114 reconciliation recorded
+
+- Consolidated two unique inbox records and cleared the inbox while preserving
+  the direct user directive as controlling authority.
+- Logged Tesla's local audit and Ralph's GitLab inventory for issue #114/MR !82
+  at `ffdfa5d2`, pending exact-head CI.
+- No decision was old enough for the applicable archive gate. Tesla's history
+  crossed 15,360 bytes and was summarized.
+- No application code, test, GitLab state, or ambiguous saved state was changed.

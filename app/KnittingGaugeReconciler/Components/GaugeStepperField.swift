@@ -2,6 +2,11 @@
 import SwiftUI
 import UIKit
 
+func fmtGaugeDelta(_ value: Double) -> String {
+    let formatted = plain(value)
+    return value >= 0 ? "+\(formatted)" : formatted
+}
+
 // MARK: - GaugeStepperField
 // Outlined rounded container: [ value · · · · | ⇅ ]
 // Tap the value/text area → numeric keyboard opens (direct entry).
@@ -45,7 +50,7 @@ struct GaugeStepperField: View {
     private let range: ClosedRange<Int>
     private let hasMismatch: Bool
     private let mismatchLabel: String?
-    private let mismatchDelta: Int?
+    private let mismatchDelta: Double?
 
     @State private var showWheelPicker = false
 
@@ -68,7 +73,7 @@ struct GaugeStepperField: View {
         range: ClosedRange<Int> = 1...99,
         hasMismatch: Bool = false,
         mismatchLabel: String? = nil,
-        mismatchDelta: Int? = nil
+        mismatchDelta: Double? = nil
     ) {
         self.title = title
         self._text = text
@@ -115,6 +120,9 @@ struct GaugeStepperField: View {
         if let spokenMismatchSentence {
             parts.append(spokenMismatchSentence)
         }
+        if let mismatchDeltaText {
+            parts.append(mismatchDeltaText)
+        }
         if let validationMessage {
             parts.append(validationMessage)
         }
@@ -160,7 +168,7 @@ struct GaugeStepperField: View {
 
     private var mismatchDeltaText: String? {
         guard hasMismatch, let mismatchDelta else { return nil }
-        return mismatchDelta >= 0 ? "+\(mismatchDelta)" : "\(mismatchDelta)"
+        return fmtGaugeDelta(mismatchDelta)
     }
 
     private func mismatchBadge(_ text: String) -> some View {

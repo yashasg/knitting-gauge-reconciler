@@ -153,10 +153,12 @@ struct GaugeMathTests {
         #expect(fmtGaugeDelta(0.5) == "+0.5")
         #expect(fmtGaugeDelta(1) == "+1")
         #expect(fmtGaugeDelta(-0.5) == "-0.5")
-        #expect(fmtGaugeDelta(0.001) == "+0.001")
-        #expect(fmtGaugeDelta(-0.001) == "-0.001")
-        #expect(fmtGaugeDelta(10.001 - 10) == "+0.001")
-        #expect(fmtGaugeDelta(10 - 10.001) == "-0.001")
+        #expect(fmtGaugeDelta(0.001) == "+<0.01")
+        #expect(fmtGaugeDelta(-0.001) == "-<0.01")
+        #expect(fmtGaugeDelta(10.001 - 10) == "+<0.01")
+        #expect(fmtGaugeDelta(10 - 10.001) == "-<0.01")
+        #expect(fmtGaugeDelta(Double.ulpOfOne) == "+<0.01")
+        #expect(fmtGaugeDelta(0) == "+0")
     }
 
     @Test func statusBandsAreSymmetricAtExactBoundaries() {

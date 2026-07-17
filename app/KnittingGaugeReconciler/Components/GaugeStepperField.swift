@@ -3,8 +3,11 @@ import SwiftUI
 import UIKit
 
 func fmtGaugeDelta(_ value: Double) -> String {
-    let formatted = plain(value)
-    return value >= 0 ? "+\(formatted)" : formatted
+    let rounded = plain(value)
+    if value != 0 && Double(rounded) == 0 {
+        return value > 0 ? "+<0.01" : "-<0.01"
+    }
+    return value >= 0 ? "+\(rounded)" : rounded
 }
 
 // MARK: - GaugeStepperField

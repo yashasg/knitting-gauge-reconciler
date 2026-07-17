@@ -348,21 +348,21 @@ private func fixed(_ value: Double, places: Int) -> String {
     String(format: "%.\(places)f", value)
 }
 
-// ponytail: two epsilons cover decimal parsing plus division rounding at an exact boundary.
-func isGaugeMatch(scale: Double) -> Bool {
-    let tolerance = Double.ulpOfOne * 2
-    return scale - 0.97 > tolerance && 1.03 - scale > tolerance
+private let bandTolerance = Double.ulpOfOne * 2
+private func isInsideBand(_ scale: Double, _ lower: Double, _ upper: Double) -> Bool {
+    scale - lower > bandTolerance && upper - scale > bandTolerance
 }
+func isGaugeMatch(scale: Double) -> Bool { isInsideBand(scale, 0.97, 1.03) }
 
 func gaugeStatus(scale: Double) -> String {
     if isGaugeMatch(scale: scale) { return "Match" }
-    if scale > 0.90, scale < 1.10 { return scale > 1 ? "Looser than pattern" : "Tighter than pattern" }
+    if isInsideBand(scale, 0.90, 1.10) { return scale > 1 ? "Looser than pattern" : "Tighter than pattern" }
     return scale > 1 ? "Much looser" : "Much tighter"
 }
 
 func rowStatus(scale: Double) -> String {
     if isGaugeMatch(scale: scale) { return "Match" }
-    if scale > 0.90, scale < 1.10 { return scale > 1 ? "Denser than pattern" : "Looser than pattern" }
+    if isInsideBand(scale, 0.90, 1.10) { return scale > 1 ? "Denser than pattern" : "Looser than pattern" }
     return scale > 1 ? "Much denser" : "Much looser"
 }
 

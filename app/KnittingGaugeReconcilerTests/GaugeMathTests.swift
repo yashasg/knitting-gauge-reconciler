@@ -153,6 +153,12 @@ struct GaugeMathTests {
         #expect(fmtGaugeDelta(0.5) == "+0.5")
         #expect(fmtGaugeDelta(1) == "+1")
         #expect(fmtGaugeDelta(-0.5) == "-0.5")
+        #expect(fmtGaugeDelta(0.001) == "+<0.01")
+        #expect(fmtGaugeDelta(-0.001) == "-<0.01")
+        #expect(fmtGaugeDelta(10.001 - 10) == "+<0.01")
+        #expect(fmtGaugeDelta(10 - 10.001) == "-<0.01")
+        #expect(fmtGaugeDelta(Double.ulpOfOne) == "+<0.01")
+        #expect(fmtGaugeDelta(0) == "+0")
     }
 
     @Test func statusBandsAreSymmetricAtExactBoundaries() {
@@ -175,6 +181,15 @@ struct GaugeMathTests {
         #expect(rowStatus(scale: 1.099) == "Denser than pattern")
         #expect(rowStatus(scale: 0.90) == "Much looser")
         #expect(rowStatus(scale: 1.10) == "Much denser")
+
+        for scale in [56.7 / 63, 1.017 / 1.13] {
+            #expect(gaugeStatus(scale: scale) == "Much tighter")
+            #expect(rowStatus(scale: scale) == "Much looser")
+        }
+        for scale in [69.3 / 63, 1.243 / 1.13] {
+            #expect(gaugeStatus(scale: scale) == "Much looser")
+            #expect(rowStatus(scale: scale) == "Much denser")
+        }
     }
 
     @MainActor

@@ -291,20 +291,23 @@
   function fmtPct(x){ return Math.round(x * 100) + '%'; }
   function fmtCm(x){ return (Math.round(x * 10) / 10).toFixed(1); }
   function fmtRows(x){ return Math.max(1, Math.round(x)); }
-  const matchBoundaryTolerance = Number.EPSILON * 2;
-  function isMatch(scale){ return scale - 0.97 > matchBoundaryTolerance && 1.03 - scale > matchBoundaryTolerance; }
+  const statusBoundaryTolerance = Number.EPSILON * 2;
+  function isInsideStatusBand(scale, lower, upper){
+    return scale - lower > statusBoundaryTolerance && upper - scale > statusBoundaryTolerance;
+  }
+  function isMatch(scale){ return isInsideStatusBand(scale, 0.97, 1.03); }
 
   function pillFor(scale){
     // scale = 1.0 means perfect match. <1 means your gauge produces a smaller dimension than pattern (you need MORE).
     if (isMatch(scale)) return { cls:'pill-good', label:'Match' };
-    if (scale > 0.90 && scale < 1.10) return { cls:'pill-warn', label: scale > 1 ? 'Looser than pattern' : 'Tighter than pattern' };
+    if (isInsideStatusBand(scale, 0.90, 1.10)) return { cls:'pill-warn', label: scale > 1 ? 'Looser than pattern' : 'Tighter than pattern' };
     return { cls:'pill-alert', label: scale > 1 ? 'Much looser' : 'Much tighter' };
   }
 
   function pillRowFor(scale){
     // scale = your_row / pattern_row. >1 means your fabric is denser (more rows per cm).
     if (isMatch(scale)) return { cls:'pill-good', label:'Match' };
-    if (scale > 0.90 && scale < 1.10) return { cls:'pill-warn', label: scale > 1 ? 'Denser than pattern' : 'Looser than pattern' };
+    if (isInsideStatusBand(scale, 0.90, 1.10)) return { cls:'pill-warn', label: scale > 1 ? 'Denser than pattern' : 'Looser than pattern' };
     return { cls:'pill-alert', label: scale > 1 ? 'Much denser' : 'Much looser' };
   }
 

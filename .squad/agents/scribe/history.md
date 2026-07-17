@@ -127,3 +127,10 @@ Merged four inbox decisions into `decisions.md`, wrote orchestration/session log
   and closed-unmerged branches pending Lead adjudication.
 - The active decision ledger exceeded both archive thresholds, but no entry was
   older than seven days; no history reached 15,360 bytes.
+
+### 2026-07-17T09:04:51.961-07:00 — Issue #122 evidence review recorded
+
+- Decision inbox was empty; `decisions.md` remained 71,625 bytes.
+- Logged Curie's evidence-only rejection for missing explicit clean exact-SHA provenance and the unrecorded outer build-script exit code.
+- No decision was old enough to archive and no history crossed 15,360 bytes.
+- No tests or builds were run; unrelated dirty histories were preserved.

@@ -47,3 +47,9 @@ Earlier detailed entries are retained in `history-archive.md`.
 - Could not verify SHA linkage, artifact paths, `app/.build/fastlane-output.log`, gate results, unit test counts, suite inventory, skipped/disabled status, warnings/advisories/crashes, unit-only target, or process exit status.
 - No substitute artifacts were used; no tests or builds were executed.
 - All required evidence for authorization is unavailable at the authorized path.
+
+## Issue #122 / MR !93 evidence review — 2026-07-17T09:04:51.961-07:00
+
+- **REJECT:** Existing artifacts reported 75/75 passing tests across 6 suites with zero failures, skips, warnings, advisories, or crashes, but did not explicitly prove clean exact-SHA provenance or record the outer `./app/build.sh test` exit code.
+- The reviewed SHA was `cb75ee577a96bfb541302d0d6f2bbf399ea04579`; its diff was limited to `prototype/index.html`, and the Fastfile/log selected only `KnittingGaugeReconcilerTests`.
+- No tests or builds were run. The review worktree was externally removed during the review.

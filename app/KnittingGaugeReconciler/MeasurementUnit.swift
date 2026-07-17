@@ -6,8 +6,8 @@ import Foundation
 /// INTERNAL MODEL IS ALWAYS CENTIMETRES — this type is a display/entry concern only.
 /// Conversion: 1 inch = 2.54 cm (exact).
 ///
-/// Entry conversions round to whole units for the integer-only picker. Adjusted
-/// result text preserves one decimal place when needed.
+/// Entries remain whole numbers in the selected unit. Adjusted result text
+/// preserves one decimal place when needed.
 enum MeasurementUnit: String, CaseIterable {
     case centimeters
     case inches
@@ -34,14 +34,14 @@ enum MeasurementUnit: String, CaseIterable {
         }
     }
 
-    // Converts a user-entered whole display-unit integer back to a centimetre
-    // integer string. The cm value is rounded to the nearest whole centimetre,
-    // which is the canonical storage format for length inputs.
+    // Converts a user-entered whole display-unit integer back to a centimetre string.
     func displayIntToCmString(_ displayInt: Int) -> String? {
         switch self {
         case .centimeters: return "\(displayInt)"
         case .inches:
-            return Int(exactly: (Double(displayInt) * 2.54).rounded()).map(String.init)
+            let (hundredths, overflow) = displayInt.multipliedReportingOverflow(by: 254)
+            guard !overflow else { return nil }
+            return NSDecimalNumber(decimal: Decimal(hundredths) / 100).stringValue
         }
     }
 

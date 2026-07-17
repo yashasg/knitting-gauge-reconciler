@@ -948,15 +948,36 @@ struct MeasurementUnitTests {
     }
 
     @Test func displayIntToCmStringInches() {
-        // 8 in × 2.54 = 20.32 → rounds to 20
-        #expect(MeasurementUnit.inches.displayIntToCmString(8) == "20")
-        // 20 in × 2.54 = 50.8 → rounds to 51
-        #expect(MeasurementUnit.inches.displayIntToCmString(20) == "51")
-        // 18 in × 2.54 = 45.72 → rounds to 46
-        #expect(MeasurementUnit.inches.displayIntToCmString(18) == "46")
-        // 1 in → 3 cm (2.54 → rounds to 3)
-        #expect(MeasurementUnit.inches.displayIntToCmString(1) == "3")
+        #expect(MeasurementUnit.inches.displayIntToCmString(8) == "20.32")
+        #expect(MeasurementUnit.inches.displayIntToCmString(20) == "50.8")
+        #expect(MeasurementUnit.inches.displayIntToCmString(18) == "45.72")
+        #expect(MeasurementUnit.inches.displayIntToCmString(1) == "2.54")
         #expect(MeasurementUnit.inches.displayIntToCmString(Int.max) == nil)
+    }
+
+    @Test func matchingGaugePreservesWholeInchLengthInResults() throws {
+        let storedDepthText = MeasurementUnit.inches.centimeterStorageText(
+            from: "8",
+            cmRange: 5...100
+        )
+        let storedDepth = try #require(Double(storedDepthText))
+        let inputs = GaugeInputs(
+            patternStitches: 32,
+            patternRows: 24,
+            yourStitches: 32,
+            yourRows: 24,
+            patternYokeDepth: storedDepth
+        )
+        let result = GaugeMath.compute(inputs)
+        let adjustedDepth = try #require(result.adjustedYokeDepth)
+        let section = try #require(
+            ResultsExportSummary(inputs: inputs, result: result, unit: .inches).sections.first
+        )
+
+        #expect(storedDepthText == "20.32")
+        #expect(adjustedDepth.isApproximately(storedDepth))
+        #expect(section.pattern == "8 in / 49 rows")
+        #expect(section.adjusted == "8 in / 49 rows")
     }
 
     @Test func invalidInchInputIsPreservedWithoutConversion() {

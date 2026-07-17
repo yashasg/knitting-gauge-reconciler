@@ -312,9 +312,9 @@ struct GaugeMathTests {
         #expect(summary.sections[0].pattern == "20 cm / 48 rows")
         #expect(summary.sections[0].adjusted == "15 cm / 48 rows")
         #expect(summary.sections[1].pattern == "50 cm / 120 rows")
-        #expect(summary.sections[1].adjusted == "38 cm / 120 rows")
+        #expect(summary.sections[1].adjusted == "37.5 cm / 120 rows")
         #expect(summary.sections[2].pattern == "45 cm / 108 rows")
-        #expect(summary.sections[2].adjusted == "34 cm / 108 rows")
+        #expect(summary.sections[2].adjusted == "33.8 cm / 108 rows")
     }
 
     @Test func shareTextFormatterIncludesCurrentGaugeAndGuidanceAsFallback() {
@@ -336,8 +336,8 @@ struct GaugeMathTests {
             )
         )
         #expect(summary.contains("• Yoke depth: 20 cm / 48 rows → 15 cm / 48 rows"))
-        #expect(summary.contains("• Body length: 50 cm / 120 rows → 38 cm / 120 rows"))
-        #expect(summary.contains("• Sleeve length: 45 cm / 108 rows → 34 cm / 108 rows"))
+        #expect(summary.contains("• Body length: 50 cm / 120 rows → 37.5 cm / 120 rows"))
+        #expect(summary.contains("• Sleeve length: 45 cm / 108 rows → 33.8 cm / 108 rows"))
         #expect(!summary.contains("64 rows"))
         #expect(summary.contains("• Increase-row spacing: space every 8 rows/rounds (pattern every 6 rows)"))
     }
@@ -353,7 +353,7 @@ struct GaugeMathTests {
         #expect(first == second)
         #expect(first.contains("Stitchwise"))
         #expect(first.contains("Section row/round guidance"))
-        #expect(first.contains("• Body length: 50 cm / 120 rows → 38 cm / 120 rows"))
+        #expect(first.contains("• Body length: 50 cm / 120 rows → 37.5 cm / 120 rows"))
         #expect(!first.contains("<table>"))
         #expect(!first.contains("| Section |"))
     }
@@ -376,7 +376,11 @@ struct GaugeMathTests {
         #expect(result.adjustedSleeveRows == result.patternSleeveRows)
         #expect(export.sections[0].pattern == "20 cm / 48 rows")
         #expect(export.sections[0].adjusted == "15 cm / 48 rows")
+        #expect(export.sections[1].adjusted == "37.5 cm / 120 rows")
+        #expect(export.sections[2].adjusted == "33.8 cm / 108 rows")
         #expect(share.contains("• Yoke depth: 20 cm / 48 rows → 15 cm / 48 rows"))
+        #expect(share.contains("• Body length: 50 cm / 120 rows → 37.5 cm / 120 rows"))
+        #expect(share.contains("• Sleeve length: 45 cm / 108 rows → 33.8 cm / 108 rows"))
         #expect(!share.contains("64 rows"))
     }
 
@@ -1007,11 +1011,17 @@ struct MeasurementUnitTests {
     @Test func formatMeasurementCentimetres() {
         #expect(MeasurementUnit.centimeters.formatMeasurement(20) == "20 cm")
         #expect(MeasurementUnit.centimeters.formatMeasurement(50) == "50 cm")
+        #expect(MeasurementUnit.centimeters.formatResultMeasurement(15) == "15 cm")
+        #expect(MeasurementUnit.centimeters.formatResultMeasurement(37.5) == "37.5 cm")
+        #expect(MeasurementUnit.centimeters.formatResultMeasurement(33.75) == "33.8 cm")
     }
 
     @Test func formatMeasurementInches() {
         #expect(MeasurementUnit.inches.formatMeasurement(20) == "8 in")
         #expect(MeasurementUnit.inches.formatMeasurement(50) == "20 in")
+        #expect(MeasurementUnit.inches.formatResultMeasurement(20) == "7.9 in")
+        #expect(MeasurementUnit.inches.formatResultMeasurement(50) == "19.7 in")
+        #expect(MeasurementUnit.inches.formatResultMeasurement(37.5) == "14.8 in")
     }
 
     // MARK: ResultsExportSummary respects unit
@@ -1023,14 +1033,15 @@ struct MeasurementUnitTests {
         )
         let result = GaugeMath.compute(inputs)
         let summary = ResultsExportSummary(inputs: inputs, result: result, unit: .inches)
-        // Yoke depth: 20 cm → 8 in
+        // Pattern values retain whole-unit input formatting.
         #expect(summary.sections[0].pattern == "8 in / 48 rows")
-        // Body length: 50 cm → 20 in
         #expect(summary.sections[1].pattern == "20 in / 120 rows")
-        // Sleeve length: 45 cm → 18 in
         #expect(summary.sections[2].pattern == "18 in / 108 rows")
+        #expect(summary.sections[0].adjusted == "7.9 in / 48 rows")
+        #expect(summary.sections[1].adjusted == "19.7 in / 120 rows")
+        #expect(summary.sections[2].adjusted == "17.7 in / 108 rows")
         // Yoke textLine uses in
-        #expect(summary.sections[0].textLine.contains("8 in"))
+        #expect(summary.sections[0].textLine.contains("8 in / 48 rows → 7.9 in"))
     }
 
     @Test func shareTextFormatterUsesInchesWhenRequested() {
@@ -1040,8 +1051,8 @@ struct MeasurementUnitTests {
         )
         let result = GaugeMath.compute(inputs)
         let text = ResultsShareTextFormatter.string(inputs: inputs, result: result, unit: .inches)
-        #expect(text.contains("• Yoke depth: 8 in / 48 rows → 8 in / 48 rows"))
-        #expect(text.contains("• Body length: 20 in / 120 rows → 20 in / 120 rows"))
+        #expect(text.contains("• Yoke depth: 8 in / 48 rows → 7.9 in / 48 rows"))
+        #expect(text.contains("• Body length: 20 in / 120 rows → 19.7 in / 120 rows"))
     }
 }
 

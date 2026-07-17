@@ -325,7 +325,7 @@ private struct ResultsExportRowsModel {
         adjustedRows: Double
     ) -> ResultsExportSummary.SectionGuidance {
         let pattern = "\(unit.formatMeasurement(patternCm)) / \(GaugeMath.fmtRows(patternRows)) rows"
-        let adjusted = "\(unit.formatMeasurement(adjustedCm)) / \(GaugeMath.fmtRows(adjustedRows)) rows"
+        let adjusted = "\(unit.formatResultMeasurement(adjustedCm)) / \(GaugeMath.fmtRows(adjustedRows)) rows"
         return ResultsExportSummary.SectionGuidance(
             name: name,
             pattern: pattern,

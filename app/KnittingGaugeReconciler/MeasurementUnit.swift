@@ -6,10 +6,8 @@ import Foundation
 /// INTERNAL MODEL IS ALWAYS CENTIMETRES — this type is a display/entry concern only.
 /// Conversion: 1 inch = 2.54 cm (exact).
 ///
-/// Rounding strategy (Phase 1): cm↔in conversions round to the nearest whole inch.
-/// This matches the integer-only wheel-picker UX and is consistent with how knitters
-/// communicate measurements. Precision loss on inch entry (~1%) is equivalent to
-/// entering whole centimetres, and is acceptable for knitting purposes.
+/// Entry conversions round to whole units for the integer-only picker. Adjusted
+/// result text preserves one decimal place when needed.
 enum MeasurementUnit: String, CaseIterable {
     case centimeters
     case inches
@@ -84,5 +82,14 @@ enum MeasurementUnit: String, CaseIterable {
     // swiftlint:disable:next identifier_name
     func formatMeasurement(_ cm: Double) -> String {
         "\(cmToDisplayInt(cm)) \(label)"
+    }
+
+    // Formats an adjusted result with at most one decimal place.
+    // swiftlint:disable:next identifier_name
+    func formatResultMeasurement(_ cm: Double) -> String {
+        let displayValue = self == .centimeters ? cm : cm / 2.54
+        let rounded = (displayValue * 10).rounded() / 10
+        let value = rounded.formatted(.number.precision(.fractionLength(0...1)))
+        return "\(value) \(label)"
     }
 }

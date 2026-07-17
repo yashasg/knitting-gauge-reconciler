@@ -212,6 +212,13 @@ struct ContentView: View {
                     os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.sheetAboutHelpOpened)
                 }
             }
+            .onChange(of: validationMessages) { previous, current in
+                guard UIAccessibility.isVoiceOverRunning,
+                      let message = newValidationAnnouncement(previous: previous, current: current) else {
+                    return
+                }
+                UIAccessibility.post(notification: .announcement, argument: message)
+            }
             .onChange(of: verdictTitle) { _, newValue in
                 guard !newValue.isEmpty else {
                     previousVerdictBucket = nil

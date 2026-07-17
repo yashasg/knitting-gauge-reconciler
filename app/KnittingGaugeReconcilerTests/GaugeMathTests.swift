@@ -135,6 +135,36 @@ struct GaugeMathTests {
         )
     }
 
+    @Test func liveValidationAnnouncementUsesChangedErrorsInFieldOrder() {
+        let stitchError = "Pattern stitches is required."
+        let rowError = "Your rows must be between 1 and 99 rows."
+
+        #expect(
+            newValidationAnnouncement(previous: [:], current: [.yourRows: rowError]) == rowError
+        )
+        #expect(
+            newValidationAnnouncement(
+                previous: [.yourRows: "Enter your rows as a number."],
+                current: [.yourRows: rowError]
+            ) == rowError
+        )
+        #expect(
+            newValidationAnnouncement(
+                previous: [.yourRows: rowError],
+                current: [.yourRows: rowError]
+            ) == nil
+        )
+        #expect(
+            newValidationAnnouncement(previous: [.yourRows: rowError], current: [:]) == nil
+        )
+        #expect(
+            newValidationAnnouncement(
+                previous: [:],
+                current: [.yourRows: rowError, .patternStitches: stitchError]
+            ) == stitchError
+        )
+    }
+
     @Test func rowFormattingUsesEstablishedRounding() {
         #expect(GaugeMath.fmtRows(6.5) == 7)
         #expect(GaugeMath.fmtRows(6.4) == 6)

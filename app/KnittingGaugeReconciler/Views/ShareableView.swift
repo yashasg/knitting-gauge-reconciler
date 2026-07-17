@@ -25,7 +25,7 @@ struct ShareableView: View {
             }
 
             if summary.castOn != nil || !summary.sections.isEmpty {
-                shareableSection(title: "Required Adjustments") {
+                shareableSection(title: "Gauge Guidance") {
                     VStack(spacing: 10) {
                         if let castOn = summary.castOn {
                             ShareableAdjustmentRow(

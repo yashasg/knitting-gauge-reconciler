@@ -119,7 +119,7 @@ enum GaugeMath {
         let patternBodyRows = inputs.patternBodyLength.map { $0 * patternRowsPerCm }
         let patternSleeveRows = inputs.patternSleeveLength.map { $0 * patternRowsPerCm }
         let exactCastOn = inputs.patternCastOn.map { $0 * stitchCountMultiplier }
-        let adjustedCastOn = exactCastOn.flatMap(roundedInt).map { max(1, $0) }
+        let adjustedCastOn = exactCastOn.flatMap(roundedInt)
         let castOnRoundingDriftPercent = exactCastOn.flatMap { exact in
             adjustedCastOn.map { ((Double($0) - exact) / exact) * 100 }
         }

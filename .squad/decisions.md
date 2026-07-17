@@ -596,3 +596,26 @@ approval, Curie may run only `./app/build.sh test`.
 - **Trade-off:** Waiting for exact-head hosted evidence costs latency; preserving
   ambiguous state costs clutter. Both costs are preferable to a false-green
   merge or destructive cleanup.
+
+---
+
+### 2026-07-17T02:24:16.755-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** The existing unit-test inventory required by `./app/build.sh test`, including Swift unit coverage of all six scenarios and edge cases, is authorized. UI tests and XCUITests are disabled and must not be assigned, created, enabled, or run. Scenario-to-UI mapping may be documentation/review only. This scope is fail closed and cannot be expanded by agents, reviewers, issues, or merge requests. Use `gpt-5.6-sol` for every helper. Apply Ponytail Full: prefer deletion, native/stdlib/already-installed tools, and the shortest correct diff without weakening requested validation, error handling, security, or accessibility.
+**Why:** User request — captured for team memory
+
+---
+
+### 2026-07-17T02:24:16.755-07:00: Close issue #51, preserve unshipped state
+**By:** Tesla (Lead / Architect)
+**What:** Close issue #51 after replacing its stale description with the direct boundary: the existing `./app/build.sh test` unit inventory, including all six scenarios and edge cases, is authorized; UI tests and XCUITests remain disabled. Keep MR !66 closed and unmerged. Preserve the divergent #51 branch, worktree, and its two dirty UI-test files.
+**Why:** The issue's sole implementation purpose was a UI-test gate, so no authorized work remains. Closing the issue is correct, but deleting dirty, divergent, unshipped work is not independently authorized.
+**Trade-off:** Historical local clutter remains, but this avoids irreversible loss while honoring the fail-closed scope.
+
+---
+
+### 2026-07-17T02:24:16.755-07:00: Final #51 cleanup and #113 verification reconciliation
+**By:** Scribe (Session Logger)
+**What:** Treat Tesla's later cleanup result as the final operational state: after rewriting and closing #51, Tesla removed only its closed-issue worktree and local branch and pruned worktree metadata; MR !66, its remote branch, and stashes remain preserved. Hopper independently verified exact main SHA `6292cdec1763f6a614e70a2e96315309e120147a`, matching live workflows, a successful exact-name Build & Test run and GitLab external pipeline, and a tamper-rejecting CD predicate before rewriting and closing #113.
+**Why:** This reconciles the earlier preservation snapshot with the manifested final cleanup and records the exact evidence supporting #113 closure.
+**Status:** No open domain MR or runnable domain issue remains. Tracker #1 and follow-up issues remain non-runnable.

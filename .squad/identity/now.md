@@ -1,19 +1,15 @@
 ---
-updated_at: 2026-07-16T16:32:43.998-07:00
-focus_area: Resume and ship issue #51 canonical serial UI test gate
-active_issues: [51]
+updated_at: 2026-07-17T02:24:16.755-07:00
+focus_area: Final review with no active domain issue
+active_issues: []
 ---
 
 # What We're Focused On
 
-Issue #51 remains the sole runnable domain issue. Resume Hopper's isolated
-worktree on `squad/51-restore-canonical-serial-ui-test-gate`; MR !66 exists at
-`ea7ca64`, but its exact-SHA Build & Test status is failed and three later files
-remain modified locally. The commit is Tesla-authored despite Tesla's lockout,
-so preserve it and require eligible Hopper revision plus Curie's independent
-gate.
+Final review only. Issues #51 and #113 are closed, and there is no open domain
+MR or runnable domain issue. Tracker #1 and follow-up issues do not authorize
+implementation.
 
-Fresh work is forbidden. Goals #1, #3, and #5 still require the exact-current
-85-test gate, Curie approval, green pipeline, merge, and safe cleanup. All other
-open items are the #1 tracker or `follow-up` issues; preserve ambiguous local
-state.
+The existing `./app/build.sh test` unit inventory is authorized. UI tests and
+XCUITests remain disabled and must not be assigned, created, enabled, or run.
+Preserve MR !66's remote branch, all stashes, and unrelated or ambiguous state.

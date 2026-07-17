@@ -44,3 +44,12 @@ MetricKit V1 implementation completed. Signpost #9 (`cast_on.driftBandShown`) ga
 - Approved the central finite/range validator, stitch-width and cast-on reciprocals, row/dimension scales,
   canonical-centimetre section math, established rounding, and omission of absent optional values.
 - All six scenario vectors match the formula authority in `.squad/decisions.md`.
+
+## 2026-07-16T10:52:38.873-07:00 — Goal #4 JS-to-Swift re-verification
+
+- Re-approved the current Swift port against the authorized prototype vectors and decision ledger after
+  whole-number validation was added for cast-on and shaping intervals.
+- Physically actionable outputs are discrete: cast-on and section guidance are whole stitches/rows;
+  shaping rounds half-up to at least one row, and copy warns knitters to reconcile cast-on with pattern repeats.
+- Canonical centimetres remain the arithmetic model; inch entry/display uses exact `2.54` conversion with
+  intentional whole-unit UI rounding. All six scenario vectors, status wording, and reciprocal directions agree.

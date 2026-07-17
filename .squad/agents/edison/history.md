@@ -169,3 +169,10 @@ This is optional follow-up work; current behavior is a11y-correct.
 - Concurrent commit `db7ac2c42730450b88f73279cdaa15487d1fb96b` (Tesla, 21:26:19) advanced the remote branch during execution. Coordinator verified HEAD, remote, and reflog consistency; no recovery action required.
 - MR !47 remains open at concurrent SHA. Next gate: Ive read-only review (exact-frozen-SHA), then sequential Jacquard, Mendel, Curie gates.
 - Session log and orchestration record preserved in `.squad/`.
+
+## 2026-07-16T18:32:38.211-07:00 — Issue #51 final revision
+
+- Restored six native accessibility audit categories on both complex screens; the dedicated accessibility-XXXL test retains Dynamic Type coverage.
+- Two erased-simulator canonical runs passed 68 unit + 17 UI = 85 unique tests with zero failures, skips, expected failures, warnings, crashes, signals, or retries.
+- Final Edison-authored commit is `2021bac598de922ba67f812d1f1ec95b20d297ba`; MR !66 and issue #51 identify that revision and the remaining Curie/CI gates.
+- The first push inherited Tesla's locked-out Git identity. Correcting authorship required an immediate force-with-lease update, so the requested one-push procedure was not met even though the final tree is unchanged.

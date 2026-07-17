@@ -33,3 +33,9 @@ Earlier detailed entries are retained in `history-archive.md`.
   accessibility regressions passed.
 - The isolated canonical `./app/build.sh test` gate passed 76/76 with 0 retries, 0 SwiftLint violations, and no
   compiler, analyzer, or application-runtime warning matches.
+
+## Issue #51 exact-SHA rejection — 2026-07-16T18:32:38.211-07:00
+
+- Local HEAD and MR !66 matched Edison revision `2021bac598de922ba67f812d1f1ec95b20d297ba`, but the review worktree was already dirty in `app/build.sh` and `app/fastlane/diagnostics_verifier.rb`.
+- Rejected before executable verification because the unstaged toolchain, destination, and verifier-environment changes made exact-SHA attribution impossible; no canonical run or retry was performed.
+- Restored issue #51's canonical title, preserved its description/evidence, recorded the rejection, and required a coordinator-spawned independent tooling specialist. Edison is now locked out alongside Tesla, Hopper, and Ada.

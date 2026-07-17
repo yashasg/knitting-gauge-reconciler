@@ -22,6 +22,14 @@
       ],
       "universe": "Famous Inventors",
       "kind": "expansion"
+    },
+    "expansion-2026-07-16T18:32:38.211-07:00": {
+      "created_at": "2026-07-16T18:32:38.211-07:00",
+      "agents": [
+        "turing"
+      ],
+      "universe": "Famous Inventors",
+      "kind": "reviewer-escalation"
     }
   },
   "universe_usage_history": [
@@ -33,6 +41,11 @@
       "universe": "Famous Inventors",
       "used_at": "2026-05-19T07:14:05Z",
       "note": "team expansion: added ui/ux designer, user researcher, knitting domain expert"
+    },
+    {
+      "universe": "Famous Inventors",
+      "used_at": "2026-07-16T18:32:38.211-07:00",
+      "note": "reviewer escalation: added iOS test tooling specialist"
     }
   ]
 }

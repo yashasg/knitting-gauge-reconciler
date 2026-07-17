@@ -20,6 +20,7 @@
 | Ive | UI/UX Designer | `.squad/agents/ive/charter.md` | ✅ Active |
 | Mendel | User Researcher | `.squad/agents/mendel/charter.md` | ✅ Active |
 | Jacquard | Knitting Domain Expert | `.squad/agents/jacquard/charter.md` | ✅ Active |
+| Turing | iOS Test Tooling Specialist | `.squad/agents/turing/charter.md` | ✅ Active |
 | Scribe | Session Logger | `.squad/agents/scribe/charter.md` | 📋 Silent |
 | Ralph | Work Monitor | `.squad/agents/ralph/charter.md` | 🔄 Monitor |
 

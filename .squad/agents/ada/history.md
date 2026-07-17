@@ -206,3 +206,15 @@ pattern for pure-math namespaces with caller-side instrumentation in Swift.
 ## 2026-05-20T19:26:30Z — MetricKit V1 shipped (Team session)
 
 MetricKit V1 implementation completed. User directives: (1) MetricKit pivot from swift-metrics (2026-05-20T18:50:53), (2) privacy card stays removed (2026-05-20T19:22:50), (3) 9-signpost roster locked (2026-05-20T19:26:30). Build: 49/49 tests pass (was 25). Session log: .squad/log/2026-05-20T19-26-30Z-metrickit-pivot-shipped.md. Orchestration logs: .squad/orchestration-log/2026-05-21T02-26-30Z-{agent-round}.md.
+
+### 2026-07-16T10:52:38.873-07:00 — Final JS-to-Swift algorithm boundary
+
+- Formula and formatter parity applies to validated positive values. In that domain,
+  Swift's default `rounded()` matches JavaScript `Math.round`, including positive
+  half values.
+- Invalid-input behavior intentionally differs: the prototype substitutes populated
+  defaults for zero, negative, blank, or nonnumeric values; Swift rejects invalid
+  required fields and preserves blank optional fields as absent. Its accepted ranges
+  keep zero and non-finite values out of division and integer conversion.
+- Cast-on and increase spacing are discrete instructions and therefore require whole
+  input values before arithmetic; gauge and length measurements may remain decimal.

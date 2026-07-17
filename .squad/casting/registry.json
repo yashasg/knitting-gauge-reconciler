@@ -62,6 +62,13 @@
       "universe": "Famous Inventors",
       "status": "active",
       "legacy_named": false
+    },
+    "turing": {
+      "created_at": "2026-07-16T18:32:38.211-07:00",
+      "persistent_name": "Turing",
+      "universe": "Famous Inventors",
+      "status": "active",
+      "legacy_named": false
     }
   }
 }

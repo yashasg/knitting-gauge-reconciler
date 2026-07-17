@@ -50,4 +50,4 @@ How to decide who handles what.
 | Knitting domain expertise, gauge terminology, real-world scenarios | Jacquard | Ada (math), Mendel (personas) |
 | Tests, precision, edge cases | Curie | Jacquard (test scenarios) |
 | Build, packaging, CLI | Hopper | — |
-
+| iOS test tooling, Xcode gates, diagnostics verification | Turing | Curie (review only) |

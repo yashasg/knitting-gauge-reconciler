@@ -163,3 +163,7 @@ All 70 tests' assertions passed in both attempts. No code defect. All merged wor
 📌 Team update (2026-07-15T14:58:16.016-07:00): Issue #59 is the top runnable dependency and Hopper owns its exact-SHA checkout/assertion plus canonical `./app/build.sh test` CI correction; preserve issue #82 and MR !47 unchanged until #59 passes — decided by Tesla.
 
 📌 Team update (2026-07-16T11:12:49.308-07:00): Issue #51 is the canonical runnable domain issue under explicit user authorization. Hopper owns its independent revision because Tesla is locked out; use only `/Users/yashasgujjar/dev/knitting-gauge-reconciler-51` on `squad/51-restore-canonical-serial-ui-test-gate` from `origin/main`, preserving all ambiguous state. — decided by Tesla and Ralph
+
+## Learnings
+
+- **2026-07-16T12:32:44.230-07:00 — Issue #51 blocked by contradictory runtime gate:** The preserved four-file candidate executes all 68 unit and 17 UI tests serially; the clean-simulator xcresult passed 85/85 with zero failures, skips, or expected failures. The canonical command still exits 1 because Xcode 26.6's mandatory arm64 UI-test runner on the sole iOS 26.5 runtime emits IOHID plug-in diagnostics before any UI test, and the existing fail-closed diagnostics verifier correctly rejects them. The supported simulator architecture is arm64; x86_64 is rejected by the destination and arm64e is not a valid simulator architecture. Hiding those messages would violate #51's no-suppression guardrail, so no second acceptance run, commit, push, MR, or pipeline was created.

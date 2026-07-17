@@ -77,11 +77,10 @@ enum MeasurementUnit: String, CaseIterable {
         }
     }
 
-    // Formats a cm measurement value as a display string with unit label,
-    // e.g. "20 cm" or "8 in". Used in text output (full-math breakdown, share).
+    // Formats an entered measurement with the same precision as adjusted results.
     // swiftlint:disable:next identifier_name
     func formatMeasurement(_ cm: Double) -> String {
-        "\(cmToDisplayInt(cm)) \(label)"
+        formatResultMeasurement(cm)
     }
 
     // Formats an adjusted result with at most one decimal place.

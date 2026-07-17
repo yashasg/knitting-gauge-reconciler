@@ -139,7 +139,20 @@ struct GaugeStepperField: View {
     }
 
     private var sheetDetents: Set<PresentationDetent> {
-        mismatchSentence == nil ? [.height(280)] : [.medium, .large]
+        Self.sheetDetents(
+            for: dynamicTypeSize,
+            hasWarning: mismatchSentence != nil
+        )
+    }
+
+    static func sheetDetents(
+        for dynamicTypeSize: DynamicTypeSize,
+        hasWarning: Bool
+    ) -> Set<PresentationDetent> {
+        if hasWarning {
+            return [.medium, .large]
+        }
+        return dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(280)]
     }
 
     private var mismatchDeltaText: String? {

@@ -116,6 +116,8 @@ struct GaugeMathTests {
         #expect(GaugeMath.fmtCm(33.75) == "33.8")
         #expect(GaugeMath.fmtCm(37.5) == "37.5")
         #expect(GaugeMath.fmtPct(32.0 / 36.0) == 89)
+        #expect(GaugeMath.fmtSignedPct(72.5) == "+73% width")
+        #expect(GaugeMath.fmtSignedPct(-72.5) == "-72% width")
     }
 
     @Test func statusBandsAreSymmetricAtExactBoundaries() {
@@ -173,7 +175,7 @@ struct GaugeMathTests {
         #expect(nearMatchResult.adjustedCastOn == 130)
         #expect(
             castOnGuidanceText(inputs: nearMatchInputs, result: nearMatchResult) ==
-                "Optionally cast on 130 stitches instead of 128 for an exact-width refinement. " +
+                "Optionally cast on 130 stitches instead of 128 for a width refinement. " +
                 "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
         )
         #expect(
@@ -248,6 +250,38 @@ struct GaugeMathTests {
         #expect(result5.castOnRoundingDriftPercent?.isApproximately(0.0) == true)
     }
 
+    @Test func adjustedCastOnClampsToOneStitch() {
+        let inputs = GaugeInputs(
+            patternStitches: 99, patternRows: 24, yourStitches: 1, yourRows: 24,
+            patternCastOn: 40
+        )
+        let result = GaugeMath.compute(inputs)
+        let exactCastOn = 40.0 / 99.0
+
+        #expect(result.adjustedCastOn == 1)
+        #expect(
+            result.castOnRoundingDriftPercent?.isApproximately(
+                ((1 - exactCastOn) / exactCastOn) * 100
+            ) == true
+        )
+    }
+
+    @Test func castOnHalfTieAndSignedRoundingDriftUseDeliveredCount() {
+        let positiveResult = GaugeMath.compute(GaugeInputs(
+            patternStitches: 50, patternRows: 24, yourStitches: 40.5, yourRows: 24,
+            patternCastOn: 50
+        ))
+        let negativeResult = GaugeMath.compute(GaugeInputs(
+            patternStitches: 50, patternRows: 24, yourStitches: 40.4, yourRows: 24,
+            patternCastOn: 50
+        ))
+
+        #expect(positiveResult.adjustedCastOn == 41)
+        #expect(positiveResult.castOnRoundingDriftPercent?.isApproximately((0.5 / 40.5) * 100) == true)
+        #expect(negativeResult.adjustedCastOn == 40)
+        #expect(negativeResult.castOnRoundingDriftPercent?.isApproximately((-0.4 / 40.4) * 100) == true)
+    }
+
     /// stitchWidthScale (ps/ys) × stitchCountMultiplier (ys/ps) must equal 1.0.
     @Test func stitchWidthScaleAndCountMultiplierAreReciprocals() {
         let result = GaugeMath.compute(withGauge(yourStitches: 36, yourRows: 24))
@@ -275,9 +309,12 @@ struct GaugeMathTests {
                 "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
         )
         #expect(summary.sections.map(\.name) == ["Yoke depth", "Body length", "Sleeve length", "Increase-row spacing"])
-        // body: (50/10)*32 = 160 rows at user gauge; default unit is cm so pattern shows "50 cm"
-        #expect(summary.sections[1].pattern == "50 cm")
-        #expect(summary.sections[1].adjusted == "Knit 160 rows")
+        #expect(summary.sections[0].pattern == "20 cm / 48 rows")
+        #expect(summary.sections[0].adjusted == "15 cm / 48 rows")
+        #expect(summary.sections[1].pattern == "50 cm / 120 rows")
+        #expect(summary.sections[1].adjusted == "38 cm / 120 rows")
+        #expect(summary.sections[2].pattern == "45 cm / 108 rows")
+        #expect(summary.sections[2].adjusted == "34 cm / 108 rows")
     }
 
     @Test func shareTextFormatterIncludesCurrentGaugeAndGuidanceAsFallback() {
@@ -298,10 +335,10 @@ struct GaugeMathTests {
                     "reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
             )
         )
-        // rows at your gauge: yoke (20/10)*32=64, body (50/10)*32=160, sleeve (45/10)*32=144
-        #expect(summary.contains("• Yoke depth: 20 cm → knit 64 rows"))
-        #expect(summary.contains("• Body length: 50 cm → knit 160 rows"))
-        #expect(summary.contains("• Sleeve length: 45 cm → knit 144 rows"))
+        #expect(summary.contains("• Yoke depth: 20 cm / 48 rows → 15 cm / 48 rows"))
+        #expect(summary.contains("• Body length: 50 cm / 120 rows → 38 cm / 120 rows"))
+        #expect(summary.contains("• Sleeve length: 45 cm / 108 rows → 34 cm / 108 rows"))
+        #expect(!summary.contains("64 rows"))
         #expect(summary.contains("• Increase-row spacing: space every 8 rows/rounds (pattern every 6 rows)"))
     }
 
@@ -316,24 +353,31 @@ struct GaugeMathTests {
         #expect(first == second)
         #expect(first.contains("Stitchwise"))
         #expect(first.contains("Section row/round guidance"))
-        // body: (50/10)*32 = 160 rows at user gauge
-        #expect(first.contains("• Body length: 50 cm → knit 160 rows"))
+        #expect(first.contains("• Body length: 50 cm / 120 rows → 38 cm / 120 rows"))
         #expect(!first.contains("<table>"))
         #expect(!first.contains("| Section |"))
     }
 
-    /// yashasg's formula: rowsNeeded = round((patternCm / 10) × yourRowsPer10cm)
-    /// Example: 20cm yoke at 22 ro/10cm → (20/10) × 22 = 44 rows.
-    @Test func sectionRowsAtYourGaugeMatchFormula() {
+    @Test func sectionGuidanceAdjustsDepthAndPreservesPatternRows() {
         let inputs = GaugeInputs(
-            patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 22,
+            patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 32,
             patternYokeDepth: 20, patternBodyLength: 50, patternSleeveLength: 45,
             patternIncreaseSpacing: 6, patternCastOn: 128
         )
         let result = GaugeMath.compute(inputs)
-        #expect(result.yokeRowsAtYourGauge == 44)    // (20/10) × 22 = 44
-        #expect(result.bodyRowsAtYourGauge == 110)   // (50/10) × 22 = 110
-        #expect(result.sleeveRowsAtYourGauge == 99)  // (45/10) × 22 = 99
+        let export = ResultsExportSummary(inputs: inputs, result: result)
+        let share = ResultsShareTextFormatter.string(inputs: inputs, result: result)
+
+        #expect(result.adjustedYokeDepth?.isApproximately(15) == true)
+        #expect(result.adjustedBodyLength?.isApproximately(37.5) == true)
+        #expect(result.adjustedSleeveLength?.isApproximately(33.75) == true)
+        #expect(result.adjustedYokeRows == result.patternYokeRows)
+        #expect(result.adjustedBodyRows == result.patternBodyRows)
+        #expect(result.adjustedSleeveRows == result.patternSleeveRows)
+        #expect(export.sections[0].pattern == "20 cm / 48 rows")
+        #expect(export.sections[0].adjusted == "15 cm / 48 rows")
+        #expect(share.contains("• Yoke depth: 20 cm / 48 rows → 15 cm / 48 rows"))
+        #expect(!share.contains("64 rows"))
     }
 
     @Test func optionalOutputMatrixOmitsIrrelevantExportAndShareSections() {
@@ -389,9 +433,9 @@ struct GaugeMathTests {
                 #expect(share.contains("• \(name):") == isRelevant, "\(scenario.name): \(name)")
             }
             #expect((result.adjustedCastOn != nil) == (scenario.inputs.patternCastOn != nil))
-            #expect((result.yokeRowsAtYourGauge != nil) == (scenario.inputs.patternYokeDepth != nil))
-            #expect((result.bodyRowsAtYourGauge != nil) == (scenario.inputs.patternBodyLength != nil))
-            #expect((result.sleeveRowsAtYourGauge != nil) == (scenario.inputs.patternSleeveLength != nil))
+            #expect((result.adjustedYokeRows != nil) == (scenario.inputs.patternYokeDepth != nil))
+            #expect((result.adjustedBodyRows != nil) == (scenario.inputs.patternBodyLength != nil))
+            #expect((result.adjustedSleeveRows != nil) == (scenario.inputs.patternSleeveLength != nil))
             #expect(
                 (result.adjustedIncreaseSpacing != nil) == (scenario.inputs.patternIncreaseSpacing != nil)
             )
@@ -980,11 +1024,11 @@ struct MeasurementUnitTests {
         let result = GaugeMath.compute(inputs)
         let summary = ResultsExportSummary(inputs: inputs, result: result, unit: .inches)
         // Yoke depth: 20 cm → 8 in
-        #expect(summary.sections[0].pattern == "8 in")
+        #expect(summary.sections[0].pattern == "8 in / 48 rows")
         // Body length: 50 cm → 20 in
-        #expect(summary.sections[1].pattern == "20 in")
+        #expect(summary.sections[1].pattern == "20 in / 120 rows")
         // Sleeve length: 45 cm → 18 in
-        #expect(summary.sections[2].pattern == "18 in")
+        #expect(summary.sections[2].pattern == "18 in / 108 rows")
         // Yoke textLine uses in
         #expect(summary.sections[0].textLine.contains("8 in"))
     }
@@ -996,8 +1040,8 @@ struct MeasurementUnitTests {
         )
         let result = GaugeMath.compute(inputs)
         let text = ResultsShareTextFormatter.string(inputs: inputs, result: result, unit: .inches)
-        #expect(text.contains("• Yoke depth: 8 in → knit"))
-        #expect(text.contains("• Body length: 20 in → knit"))
+        #expect(text.contains("• Yoke depth: 8 in / 48 rows → 8 in / 48 rows"))
+        #expect(text.contains("• Body length: 20 in / 120 rows → 20 in / 120 rows"))
     }
 }
 

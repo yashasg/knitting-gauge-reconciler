@@ -307,16 +307,17 @@ struct ContentView: View {
             inputs.patternBodyLength != nil ||
             inputs.patternSleeveLength != nil
         let rowAction = hasSectionTargets
-            ? "Use the row count guidance below for each supplied vertical section."
-            : "Open Pattern details and enter section targets for adjusted row counts."
+            ? "Use the adjusted depth guidance below; pattern row counts stay unchanged."
+            : "Open Pattern details and enter section targets for adjusted depth guidance."
         if !stitchOff && !rowOff {
-            return "Both gauges match. \(castOnGuidance)" +
+            return "Both gauges are within the match range. \(castOnGuidance)" +
                 "Re-check after blocking."
         }
         if stitchOff && !rowOff {
             return (
-                "Your row gauge matches. At the pattern stitch counts, the garment will be " +
-                "\(stitchPercent)% \(stitchDir). \(stitchAction)Vertical sections need no adjustment.\(majorNote)"
+                "Your row gauge is within the match range. At the pattern stitch counts, the garment will be " +
+                "\(stitchPercent)% \(stitchDir). \(stitchAction)" +
+                "Vertical sections remain within the match range.\(majorNote)"
             )
         }
         if !stitchOff {

@@ -201,7 +201,7 @@
                aria-describedby="hint-cast-on" />
         <span id="hint-cast-on" class="field-hint">stitches to cast on</span>
       </div>
-      <div class="actual">Cast on <span id="act-cast-on">128</span><small>stitches</small> <span class="pill pill-warn" id="pill-cast-on" hidden></span></div>
+      <div class="actual"><span id="cast-on-action">Cast on <span id="act-cast-on">128</span><small>stitches · reconcile with the pattern’s stitch-repeat multiple.</small></span><span id="cast-on-unusable" hidden>No usable whole-stitch result — re-swatch or change needle size.</span> <span class="pill pill-warn" id="pill-cast-on" hidden></span></div>
     </div>
   </div>
 
@@ -332,11 +332,13 @@
     // Cast-on stitch count adjustment (Jacquard Formula 1)
     const exactStitches = patCastOn * (ys / ps);
     const roundedStitches = Math.round(exactStitches);
+    const castOnUsable = roundedStitches > 0;
     const castOnDriftPct = ((roundedStitches - exactStitches) / exactStitches) * 100;
-    const actCastOn = roundedStitches;
-    $('act-cast-on').textContent = actCastOn;
+    $('act-cast-on').textContent = roundedStitches;
+    $('cast-on-action').hidden = !castOnUsable;
+    $('cast-on-unusable').hidden = castOnUsable;
     const pillCastOn = $('pill-cast-on');
-    if (Math.abs(castOnDriftPct) >= 3) {
+    if (castOnUsable && Math.abs(castOnDriftPct) >= 3) {
       pillCastOn.className = 'pill pill-warn';
       pillCastOn.textContent = `${castOnDriftPct > 0 ? '+' : ''}${castOnDriftPct.toFixed(0)}% width`;
       pillCastOn.removeAttribute('hidden');
@@ -347,19 +349,22 @@
     // Verdict
     const stDrift = Math.round((stitchWidthScale - 1) * 100);
     const rwDrift = Math.round((rowCountScale - 1) * 100);
+    const castOnGuidance = castOnUsable
+      ? `<strong>Cast on ${roundedStitches} stitches</strong> to preserve the pattern's intended width. Reconcile this rounded stitch count with your pattern’s stitch-repeat multiple.`
+      : `<strong>No usable whole-stitch cast-on result.</strong> Re-swatch or change needle size before casting on.`;
     let v = '';
     if (Math.abs(stDrift) < 3 && Math.abs(rwDrift) < 3) {
-      v = `<strong>Both gauges match.</strong> Cast on ${patCastOn} stitches as written. Knit straight from the pattern — no adjustments needed. Re-check after blocking.`;
+      v = `<strong>Both gauges match.</strong> ${castOnGuidance} Knit straight from the pattern — no adjustments needed. Re-check after blocking.`;
     } else if (Math.abs(stDrift) < 3) {
       const dir = rwDrift > 0 ? 'denser' : 'looser';
-      v = `Your stitch gauge matches — <strong>cast on ${actCastOn} stitches</strong> as written. Your row gauge is ${Math.abs(rwDrift)}% ${dir} than expected; use the adjusted cm values below for every vertical section.`;
+      v = `Your stitch gauge matches. ${castOnGuidance} Your row gauge is ${Math.abs(rwDrift)}% ${dir} than expected; use the adjusted cm values below for every vertical section.`;
     } else if (Math.abs(rwDrift) < 3) {
       const dir = stDrift > 0 ? 'wider' : 'narrower';
-      v = `Your row gauge matches, but your <strong>stitch gauge is ${Math.abs(stDrift)}% ${dir}</strong>. <strong>Cast on ${actCastOn} stitches</strong> instead of the pattern's ${patCastOn} to hit the same width. Vertical sections need no adjustment.`;
+      v = `Your row gauge matches, but your <strong>stitch gauge is ${Math.abs(stDrift)}% ${dir}</strong>. ${castOnGuidance} Vertical sections need no adjustment.`;
     } else {
       const dir1 = stDrift > 0 ? 'wider' : 'narrower';
       const dir2 = rwDrift > 0 ? 'denser' : 'looser';
-      v = `Both axes are off: stitch gauge <strong>${Math.abs(stDrift)}% ${dir1}</strong>, row gauge <strong>${Math.abs(rwDrift)}% ${dir2}</strong>. <strong>Cast on ${actCastOn} stitches</strong> (not ${patCastOn}) to preserve width, and use the adjusted cm values for vertical sections. If drift exceeds 15% on either axis, consider swapping yarn or needle size.`;
+      v = `Both axes are off: stitch gauge <strong>${Math.abs(stDrift)}% ${dir1}</strong>, row gauge <strong>${Math.abs(rwDrift)}% ${dir2}</strong>. ${castOnGuidance} Use the adjusted cm values for vertical sections. If drift exceeds 15% on either axis, consider swapping yarn or needle size.`;
     }
     $('verdict').innerHTML = v;
 
@@ -372,7 +377,9 @@
       `dim correction     = pattern_row / your_row = ${pr} / ${yr} = <b>${dimScale.toFixed(3)}</b><br>` +
       `→ for any vertical dim D the pattern names, knit to <b>D × ${dimScale.toFixed(3)} cm</b> (denser rows = fewer cm needed)<br>` +
       `→ for any horizontal dim, your stitch count produces <b>${(stitchWidthScale*100).toFixed(1)}%</b> of the pattern's intended width<br>` +
-      `cast-on adjust = your_st / pattern_st × patCastOn = ${ys}/${ps} × ${patCastOn} = <b>${roundedStitches}</b> stitches`;
+      (castOnUsable
+        ? `cast-on adjust = your_st / pattern_st × patCastOn = ${ys}/${ps} × ${patCastOn} = <b>${roundedStitches}</b> stitches`
+        : `cast-on adjust = your_st / pattern_st × patCastOn = ${ys}/${ps} × ${patCastOn}; <b>no usable whole-stitch result</b> — re-swatch or change needle size`);
 
     persist({ps, pr, ys, yr, patYoke, patBody, patSleeve, patIncs, patCastOn});
     updateHash({ps, pr, ys, yr, patYoke, patBody, patSleeve, patIncs, patCastOn});

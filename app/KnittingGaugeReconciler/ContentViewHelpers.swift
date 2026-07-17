@@ -1,6 +1,15 @@
 import SwiftUI
 import UIKit
 
+func newValidationAnnouncement(
+    previous: [GaugeFormField: String],
+    current: [GaugeFormField: String]
+) -> String? {
+    GaugeFormField.allCases.first(where: {
+        previous[$0] != current[$0] && current[$0] != nil
+    }).flatMap { current[$0] }
+}
+
 // MARK: - SceneSessionReader
 
 struct SceneSessionReader: UIViewRepresentable {

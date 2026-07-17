@@ -175,11 +175,6 @@ platform :ios do
     )
   end
 
-  desc "Run scheme-defined XCTest suite without distribution (CD gate: UI tests excluded; see issue #45)"
-  lane :test do |options|
-    run_tests(**lane_test_options(options).merge(skip_testing: ["KnittingGaugeReconcilerUITests"]))
-  end
-
   private_lane :ensure_release_configuration_matches do
     configured_bundle_identifier = release_bundle_identifier
     next if configured_bundle_identifier == fastlane_app_identifier

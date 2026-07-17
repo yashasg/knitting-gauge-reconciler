@@ -37,11 +37,6 @@ on:
         required: false
         default: ""
         type: string
-      skip_tests:
-        description: Skip the Release CI gate before uploading via Fastlane
-        required: false
-        default: false
-        type: boolean
       version_bump:
         description: Semantic version bump before TestFlight build-number increment (patch default; choose none for tag dispatches)
         required: false
@@ -151,10 +146,9 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/AppleWWDRCAG6.cer" https://www.apple.com/certificateauthority/AppleWWDRCAG6.cer
           echo "WWDR_CERT_PATH=$RUNNER_TEMP/AppleWWDRCAG6.cer" >> "$GITHUB_ENV"
 
-      - name: Run XCTest gate
-        if: ${{ !inputs.skip_tests }}
+      - name: Run canonical unit test gate
         working-directory: app
-        run: bundle exec fastlane test
+        run: bundle exec ./build.sh test
 
       - name: Upload via Fastlane lane
         working-directory: app

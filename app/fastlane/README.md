@@ -39,14 +39,6 @@ Build and test with scheme-defined scope (CI)
 
 Build without distribution
 
-### ios test
-
-```sh
-[bundle exec] fastlane ios test
-```
-
-Run scheme-defined XCTest suite without distribution (CD gate: UI tests excluded; see issue #45)
-
 ### ios beta
 
 ```sh

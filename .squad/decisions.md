@@ -251,3 +251,11 @@ Preserve `b8f1930`, its local branch/worktree, all 32 stashes now present (31 at
 - Direct user test-scope decisions outrank reviewer rejection and lockout protocol.
 **Supersedes:** Every prior decision, review, issue, or merge-request claim that allowed Curie, Tesla, Ralph, Hopper, final review, or reviewer lockout to decide or expand test execution scope.
 **Why:** Test execution scope belongs only to direct user decisions and the active loop contract. This authority boundary preserves the existing Temporary UI Test Execution Prohibition unchanged.
+
+---
+
+### 2026-07-16T19:33:54.178-07:00: Canonical user directive — Squad logs are untracked
+**By:** User (via Tesla)
+**What:** `.squad/log/**` and `.squad/orchestration-log/**` are generated runtime artifacts and must not be tracked in Git.
+**Guardrail:** Keep both directories ignored and remove all tracked copies from the index without deleting locally generated files.
+**Why:** Runtime logs do not belong in repository history.

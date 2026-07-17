@@ -267,9 +267,6 @@ if [[ "$LANE" == "build" || "$LANE" == "ci" ]]; then
     "sdk:${SDK}"
     "destination:${DESTINATION}"
   )
-  if [[ "$MODE" == "release" ]]; then
-    fastlane_args+=("allow_codesigning:true")
-  fi
 fi
 
 if [[ "$MODE" == "test" ]]; then

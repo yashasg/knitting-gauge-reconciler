@@ -176,3 +176,7 @@ This is optional follow-up work; current behavior is a11y-correct.
 - Two erased-simulator canonical runs passed 68 unit + 17 UI = 85 unique tests with zero failures, skips, expected failures, warnings, crashes, signals, or retries.
 - Final Edison-authored commit is `2021bac598de922ba67f812d1f1ec95b20d297ba`; MR !66 and issue #51 identify that revision and the remaining Curie/CI gates.
 - The first push inherited Tesla's locked-out Git identity. Correcting authorship required an immediate force-with-lease update, so the requested one-push procedure was not met even though the final tree is unchanged.
+
+## Learnings
+
+- **2026-07-17T03:24:12.830-07:00 — Issue #62:** Rebuilding from MR !84's `origin/main` target restored the canonical formula/scenario ledger without changing later decisions. Removing the cast-on minimum clamp preserves JavaScript half-up rounding: `40 × 1 / 99` delivers 0 stitches and computes drift from 0. The authorized unit-only gate passed 74 tests in 6 suites with zero warnings.

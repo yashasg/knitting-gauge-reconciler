@@ -250,7 +250,7 @@ struct GaugeMathTests {
         #expect(result5.castOnRoundingDriftPercent?.isApproximately(0.0) == true)
     }
 
-    @Test func adjustedCastOnClampsToOneStitch() {
+    @Test func adjustedCastOnPreservesExtremeRatioParity() {
         let inputs = GaugeInputs(
             patternStitches: 99, patternRows: 24, yourStitches: 1, yourRows: 24,
             patternCastOn: 40
@@ -258,10 +258,10 @@ struct GaugeMathTests {
         let result = GaugeMath.compute(inputs)
         let exactCastOn = 40.0 / 99.0
 
-        #expect(result.adjustedCastOn == 1)
+        #expect(result.adjustedCastOn == 0)
         #expect(
             result.castOnRoundingDriftPercent?.isApproximately(
-                ((1 - exactCastOn) / exactCastOn) * 100
+                ((0 - exactCastOn) / exactCastOn) * 100
             ) == true
         )
     }

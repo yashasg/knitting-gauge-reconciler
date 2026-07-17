@@ -181,6 +181,15 @@ struct GaugeMathTests {
         #expect(rowStatus(scale: 1.099) == "Denser than pattern")
         #expect(rowStatus(scale: 0.90) == "Much looser")
         #expect(rowStatus(scale: 1.10) == "Much denser")
+
+        for scale in [56.7 / 63, 1.017 / 1.13] {
+            #expect(gaugeStatus(scale: scale) == "Much tighter")
+            #expect(rowStatus(scale: scale) == "Much looser")
+        }
+        for scale in [69.3 / 63, 1.243 / 1.13] {
+            #expect(gaugeStatus(scale: scale) == "Much looser")
+            #expect(rowStatus(scale: scale) == "Much denser")
+        }
     }
 
     @MainActor

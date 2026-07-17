@@ -39,3 +39,21 @@ _Summarized at 2026-07-17T01:44:15.855-07:00 after crossing the 15,360-byte hist
 - No exact-head pipeline or commit status existed at this snapshot, so merge remained blocked.
 - Static inspection authorized the unit-only `./app/build.sh test` route; no test ran during reconciliation.
 - Preserve dirty root coordination records, shipped-but-dirty #109 identity state, blocked divergent #51 state, 34 stashes, 11 safety refs, and closed-unmerged stray branches.
+
+## 2026-07-17 MR !97 / !98 Reconciliation
+
+- GitLab shipped MR !97 at exact source `9c62a19175f4707f46aacfd4d1b214db2acfc71b`
+  with successful external pipeline `2685707775`, then MR !98 at exact source
+  `e5c336d4f8d24522ffc4c96afcd8cab99cf0a0f4` with successful external
+  pipeline `2685707268`. Both linked issues (#127 and #126) are closed.
+- Verified no open MR, no unresolved discussion, no GitLab CI jobs behind the
+  external `Build & Test` statuses, and no runnable issue beyond tracker #1
+  and follow-ups #52, #57, and #60.
+- Removed MR !98's lingering remote source branch; both issue worktrees and
+  local branches were already absent. Pruned worktree metadata.
+- Local `main` `da240807af01d2e268333887dc463532dbfe4c0d` safely merges remote
+  `fb53e3ab2f7cd0951444e7447efc38d1a165c3ef` with local-only Squad records
+  and is 16 ahead / 0 behind before this history entry.
+- Preserved both ignored decision inbox directives, 42 attributed but
+  ambiguous stashes, 11 non-ancestor safety refs, two closed-unmerged local
+  branches, and seven non-ancestor remote branches.

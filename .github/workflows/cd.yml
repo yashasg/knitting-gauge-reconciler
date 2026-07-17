@@ -127,11 +127,23 @@ jobs:
             exit 1
           }
           source_sha="$(jq -er '.commit.id | select(test("^[0-9a-f]{40}$"))' <<< "$source")"
+          main="$(
+            curl --fail --silent --show-error \
+              --header "PRIVATE-TOKEN: $GITLAB_PAT" \
+              "$api/repository/branches/main"
+          )"
+          [[ "$(jq -er '.name' <<< "$main")" == "main" ]] || {
+            echo "::error::Could not resolve GitLab main"
+            exit 1
+          }
+          main_sha="$(jq -er '.commit.id | select(test("^[0-9a-f]{40}$"))' <<< "$main")"
           echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "main_sha=$main_sha" >> "$GITHUB_OUTPUT"
 
       - name: Checkout exact GitLab source
         env:
           GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+          MAIN_SHA: ${{ steps.source.outputs.main_sha }}
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
         run: |
           set -euo pipefail
@@ -145,11 +157,15 @@ jobs:
           git remote add origin "https://gitlab.com/${GITLAB_PROJECT}.git"
           auth_header="$(printf 'oauth2:%s' "$GITLAB_PAT" | base64 | tr -d '\n')"
           git -c "http.extraHeader=Authorization: Basic $auth_header" \
-            fetch --depth 1 --no-tags origin "$SOURCE_SHA"
+            fetch --no-tags origin "+refs/heads/main:refs/remotes/origin/main"
           cleanup_git_auth
-          fetched_sha="$(git rev-parse 'FETCH_HEAD^{commit}')"
-          if [[ "$fetched_sha" != "$SOURCE_SHA" ]]; then
-            echo "::error::Fetched commit does not match resolved GitLab SHA"
+          fetched_main_sha="$(git rev-parse 'refs/remotes/origin/main^{commit}')"
+          if [[ "$fetched_main_sha" != "$MAIN_SHA" ]]; then
+            echo "::error::Fetched main does not match resolved GitLab main SHA"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$SOURCE_SHA" "$MAIN_SHA"; then
+            echo "::error::Release source is not reachable from GitLab main"
             exit 1
           fi
           git checkout --detach "$SOURCE_SHA"
@@ -176,25 +192,37 @@ jobs:
               --header "PRIVATE-TOKEN: $GITLAB_PAT" \
               --data-urlencode "per_page=100" \
               --data-urlencode "name=Build & Test" \
-              --data-urlencode "ref=main" \
               --data-urlencode "order_by=id" \
               --data-urlencode "sort=desc" \
               "$api/repository/commits/$SOURCE_SHA/statuses"
           )"
           latest_status="$(
-            jq -er '[.[] | select(.name == "Build & Test")] | max_by(.id)' <<< "$statuses"
+            jq -er \
+              'if type != "array" then error("statuses is not an array") else
+                [.[] | select(
+                  type == "object" and
+                  .name == "Build & Test"
+                )] |
+                if length == 0 then error("Build & Test status is missing")
+                else max_by(.id)
+                end
+              end' \
+              <<< "$statuses"
           )"
           if ! jq -e \
             --arg sha "$SOURCE_SHA" \
             --arg prefix "$EXPECTED_RUN_URL_PREFIX" \
-            '.sha == $sha and
+            '(.id | type == "number") and
              .ref == "main" and
+             .sha == $sha and
              .status == "success" and
              ((.target_url // "") | startswith($prefix)) and
-             (((.target_url // "") | ltrimstr($prefix)) | test("^[0-9]+$")) and
-             (.pipeline_id | type == "number")' \
+             (((.target_url // "") | ltrimstr($prefix)) | test("^[1-9][0-9]*$")) and
+             (.pipeline_id | type == "number") and
+             .pipeline_id > 0 and
+             (.pipeline_id | floor) == .pipeline_id' \
             <<< "$latest_status" > /dev/null; then
-            echo "::error::Latest canonical Build & Test status is not successful"
+            echo "::error::Latest Build & Test status is not canonical and successful"
             exit 1
           fi
           pipeline_id="$(jq -er '.pipeline_id' <<< "$latest_status")"
@@ -211,9 +239,9 @@ jobs:
             --argjson id "$pipeline_id" \
             '.id == $id and
              .sha == $sha and
+             .ref == "main" and
              .status == "success" and
-             .source == "external" and
-             .ref == "main"' \
+             .source == "external"' \
             <<< "$pipeline" > /dev/null; then
             echo "::error::GitLab pipeline is not canonical for $SOURCE_SHA"
             exit 1
@@ -267,7 +295,7 @@ jobs:
             derived-data-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-Release-main-
 
       - name: Setup Ruby for fastlane
-        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1
+        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1 head audited 2026-07-17
         with:
           ruby-version: '3.4'
           bundler-cache: true

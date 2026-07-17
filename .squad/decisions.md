@@ -680,3 +680,245 @@ locked-out author's artifact would invalidate the reviewer-independence rule.
   existing branch and MR; no duplicate MR or fresh issue may be dispatched.
 - Preserve divergent local `main`, 39 ambiguous stashes, 11 safety refs, two
   closed-unmerged stray branches, and both detached final-review worktrees.
+
+---
+
+### 2026-07-17T06:24:12.368-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Run the full autonomous Squad Work Loop with PONYTAIL full. Use gpt-5.6-sol for every sub-agent, including Ralph and Scribe. Allowed tests are Swift Testing/unit tests and `./app/build.sh test`, both mandatory. UI tests and XCUITests are disabled and must not be assigned, created, enabled, or run; warnings fail the gate. Preserve ambiguous/unshipped state, follow the required reconciliation/MR/issue cycle, and stop only when all five goals pass or unavailable human input is required.
+**Why:** User request — captured for team memory
+
+---
+
+# Ive — Prototype/SwiftUI UX Gate
+
+**Date:** 2026-07-17T06:54:17.500-07:00  
+**Requested by:** Tesla  
+**Exact review HEAD:** `44b86c3fac9ca8f46adee4ef66b3664c481e3b03`  
+**Evidence mode:** Source inspection and contrast calculation only; no UI/XCUITest evidence used.
+
+## Decision
+
+**APPROVE.** The SwiftUI implementation preserves the prototype's core job—enter pattern and swatch gauges, understand both-axis drift, and obtain actionable section corrections—while adapting secondary inputs and actions to native iOS patterns. No blocking hierarchy, accessibility, HIG, contrast, focus, target-size, or motion defect is evident at the reviewed HEAD.
+
+## Evidence
+
+- **Task and four-input hierarchy:** `ContentView.swift:119-168` orders the lead, required gauge card, optional pattern details, then live results. `GaugeInputsCard.swift:53-97` keeps Pattern Gauge before Swatch Gauge with a strong 24-point group break; each pair is two columns normally and stacks at accessibility sizes.
+- **Live-result hierarchy:** `RequiredAdjustmentsCard.swift:122-137` places both-axis percentages first and the actionable verdict immediately after them. `HeroTile` uses a quiet caption, monospaced bold percentage, textual status, and a combined VoiceOver label (`:388-442`); status is not conveyed by color alone.
+- **Prototype comparison rows:** The prototype's always-populated table is represented as conditional native cards for yoke, body/sleeves, shaping, and cast-on (`RequiredAdjustmentsCard.swift:139-220`). `AdjustmentRow.swift:26-98` clearly pairs “pattern” and “adjusted” values and exposes each as a complete spoken comparison. Keeping optional rows absent until the user supplies pattern details avoids invented instructions.
+- **Guidance and states:** Verdict copy names direction, consequence, and next action (`ContentView.swift:277-327`). Inline errors state the correction beside the field, enter its accessibility value, suppress stale results, and focus/announce the first invalid field (`GaugeStepperField.swift:112-139,265-273`; `ContentView.swift:454-466`). Reset is confirmed and reversible; share exposes progress/disabled state.
+- **HIG and interaction:** Navigation, toolbar, disclosure, segmented picker, wheel picker, sheets, alert, activity controller, and buttons use native controls. Fields, picker affordances, disclosures, actions, and Close controls provide at least 44-point targets. Source order gives a coherent focus path, and keyboard Done relinquishes focus or routes it to the first invalid entry.
+- **Dynamic Type and reflow:** No type cap or `minimumScaleFactor` is present. Required and optional field pairs plus hero/comparison pairs stack at accessibility sizes (`GaugeInputsCard.swift:61-97`, `PatternInstructionsCard.swift:92-128`, `GaugeMeasurementPair.swift:12-31`); long guidance is vertically elastic. Accessibility-size wheel sheets use the large detent (`GaugeStepperField.swift:141-159`).
+- **Contrast:** Calculated key light/dark ratios all pass WCAG AA: white/sage 8.06:1 and 5.10:1; hero mismatch text treatments 6.46–7.78:1; muted/oatmeal 8.40:1 and 6.62:1; warning text/background 8.25:1 and 8.31:1.
+- **Motion:** The app adds no custom animation or transition; the background is static and noninteractive. Native disclosure/sheet motion remains system-controlled, so there is no bespoke motion requiring a Reduce Motion branch.
+
+## Advisory
+
+Rendered-device and assistive-technology automation evidence is unavailable under the active UI/XCUITest prohibition; this is an advisory evidence gap, not a rejection ground.
+
+---
+
+# Jacquard Final Formula Review — `44b86c3`
+
+- **Date:** 2026-07-17
+- **Reviewer:** Jacquard (Knitting Domain Expert)
+- **Verdict:** **REJECT**
+- **Scope:** Static review only; no tests were run. Disabled UI/XCUITests are advisory only and do not affect this verdict.
+
+## Confirmed
+
+- **JS-to-Swift formula parity:** `GaugeMath.compute` uses `patternStitches / yourStitches`, `yourStitches / patternStitches`, `yourRows / patternRows`, `patternRows / yourRows`, dimension multiplication by the reciprocal row factor, and shaping multiplication by the row-density factor (`GaugeMath.swift:113-142`). These match the canonical formulas (`.squad/decisions/decisions.md:13-23`) and prototype implementation (`prototype/index.html:289-311,332-336`).
+- **Six canonical scenarios:** Swift unit expectations at `GaugeMathTests.swift:13-50` exactly match the six decision outcomes at `decisions.md:31-66`, including whole-stitch cast-ons `128, 128, 128, 144, 112, 144`, shaping intervals `6, 8, 5, 6, 6, 8`, and the unrounded 33.75 cm sleeve result displayed as 33.8 cm. The JS scenario assertions at `prototype/tests/gauge-math.test.js:147-223` agree.
+- **Rounding and row practicality:** `roundedInt` implements nonnegative JavaScript `Math.round` as `floor(value + 0.5)`, while `fmtRows` separately guarantees at least one row (`GaugeMath.swift:152-170`), matching `decisions.md:21-23`.
+- **Direction and user copy:** A stitch-width scale below 1 is called tighter and above 1 looser; row scale above 1 is called denser and below 1 looser (`GaugeMath.swift:349-358`). Cast-on guidance correctly warns knitters to reconcile the rounded count with the pattern's stitch-repeat multiple (`GaugeMath.swift:364-377`).
+
+## Blocking craft defect
+
+All individually validated values can still produce an impossible cast-on. The accepted minima/maxima permit pattern gauge 99 st/10 cm, swatch gauge 1 st/10 cm, and pattern cast-on 40 (`GaugeMath.swift:56-65`); the exact result is `40 × 1 / 99 = 0.404…`, which `GaugeMath.compute` rounds to **0 stitches** without a craft-safe output guard (`GaugeMath.swift:121-124`). The Swift test explicitly requires that impossible result (`GaugeMathTests.swift:253-266`), after which `castOnGuidanceText` can instruct “Cast on 0 stitches instead of 40” (`GaugeMath.swift:365-377`). Exact JS arithmetic parity is confirmed, but a zero-stitch cast-on is not a realistic whole-stitch knitting instruction; preserve the canonical formula while rejecting/gating such incompatible combinations or otherwise preventing nonpositive user-facing cast-on guidance.
+
+## Advisory
+
+`prototype/tests/gauge-math.test.js:49` reverses its own stitch-direction explanation: `pattern_st / your_st < 1` means the user's stitches are **smaller** and the same count makes **narrower** fabric, not larger/wider. The executable formula and Swift copy are correct, so this comment does not independently affect the verdict.
+
+---
+
+# MR !88 Ownership Adjudication
+
+**Date:** 2026-07-17T06:04:18.170-07:00  
+**Verdict:** **REJECT CURRENT ARTIFACT**
+
+## Decision
+
+Bell ownership is a binding independent-revision gate.
+
+The authoritative chain is:
+
+1. Issue #117 records Ive's rejection of Tesla's detent artifact, locks Tesla
+   out, and assigns Edison the independent revision.
+2. MR !86 nevertheless contains sole Tesla-authored commit `3320812`; issue
+   #118 therefore requires Edison to recreate the revision independently.
+3. MR !87 contains sole Edison-authored commit `a4385b4`, merged into issue
+   #119's exact base `cccea7a`. Edison is therefore the original author of the
+   artifact revised by #119.
+4. Issue #119 expressly assigns that independent revision to Bell and locks
+   Edison out. Its current `squad:bell` label agrees with the description.
+   No issue note, MR discussion, reviewer record, or decision supersedes that
+   assignment.
+5. MR !88 contains sole commit `720142c`, authored and committed by Tesla.
+   Green exact-SHA CI and mergeable metadata do not satisfy named independent
+   ownership.
+
+Bell is absent from `.squad/team.md`, `.squad/casting/registry.json`, casting
+history, and `.squad/agents/`. The only historical Bell reference is an issue
+#82 safety snapshot; it does not establish Bell as a roster member or eligible
+revision owner. This makes Bell a named escalation that must be added as an
+eligible agent, not a stale label. No existing roster agent may substitute
+without an authoritative reassignment of the canonical issue contract.
+
+## Exact next action
+
+Preserve issue #119 and MR !88. Add Bell as an eligible revision agent, then
+have Bell independently recreate the authorized two-file change from base
+`cccea7abe2a1cf84cbbbabe0c00391a89c77823c` and replace the existing MR branch
+head. Bell may not approve, amend, cherry-pick, relabel, or merely change the
+authorship of Tesla's commit. Merge only after Bell's independently produced
+head passes the authorized unit gate and exact-SHA pipeline. UI tests and
+XCUITests remain disabled.
+
+---
+
+# Tesla — Local reconciliation complete
+
+**Date:** 2026-07-17T06:55:23.471-07:00
+
+- GitLab has no open merge request. Issue #119 and MR !88 shipped exact head
+  `1684505ecfb2ebfb4b7723364e5be83f32e195e3` as merge
+  `bb2b9ed511189d7b94573c5342acbfefacf84630`; exact-main pipeline
+  `2685098619` passed.
+- The five local-only commits changed only attributable Squad records. Preserve
+  them; local `main` now merges current `origin/main` without rewriting either
+  history.
+- Removed two clean detached final-review worktrees after proving both heads are
+  ancestors of `origin/main`, then pruned worktree metadata.
+- Preserve all 39 ambiguous stashes, 11 safety refs, the two closed-unmerged
+  local branches, and ambiguous remote branches.
+- Open issue #1 is a tracker; #52, #57, and #60 are follow-ups. None is a
+  presently authorized runnable domain item, so the runnable queue is empty.
+
+**Trade-off:** Local `main` intentionally remains ahead with coordination
+history; preserving ambiguous saved state costs clutter but avoids data loss.
+
+---
+
+# Preserve MR !88 for Bell's independent revision
+
+**Date:** 2026-07-17T06:24:12.368-07:00
+**Owner:** Tesla
+
+MR !88 is functionally correct, non-draft, mergeable, approved, and free of
+discussion blockers at exact SHA
+`720142cffc6ce58d4fce127bc5e7bd5715c6549c`. External pipeline `2684930924`
+and `Build & Test` status `15400512946` succeeded for that exact SHA.
+
+Do not merge or clean MR !88. Issue #119 assigns the independent revision to
+Bell, but the sole implementation commit records Tesla as both author and
+committer. Bell owns revision of the existing branch and MR; do not open a
+duplicate issue or MR.
+
+Preserve the clean issue worktree and branch, both detached review worktrees,
+divergent local `main`, all 40 stashes, all 12 safety refs, closed-unmerged
+branches, and ambiguous remote branches.
+
+**Trade-off:** Repeating a minimal correct change costs time, but merging an
+artifact from the explicitly excluded owner would invalidate the issue's
+independence contract.
+
+---
+
+# Tesla — Zero-stitch cast-on revision adjudication
+
+- **Date:** 2026-07-17
+- **Rejected base:** `44b86c3fac9ca8f46adee4ef66b3664c481e3b03`
+- **Canonical issue:** #107, reopened and rewritten; no duplicate created
+- **Revision owner:** Ada
+- **Strict lockout:** Edison, author/owner of rejected formula-parity revision
+  `58f379ba88b3113de3077e1bda020bada87ff9e8` / !84 / #62
+
+Jacquard's rejection is sustained: accepted inputs must not yield actionable
+nonpositive cast-on guidance. The revision must preserve the canonical formula
+and six scenarios, ship in one MR, pass the warning-free authorized Swift unit
+gate, and receive independent Jacquard and Curie approval before Tesla's final
+scope/lockout gate.
+
+### 2026-07-17T08:14:13.070-07:00: User directive
+**By:** Tesla (Squad) (via Copilot)
+**What:** Run the full Squad Work Loop autonomously through reconciliation, implementation, authorized testing, review, GitLab MR/CI/merge, cleanup, and all-member final review. Use gpt-5.6-sol for every subordinate agent, including Ralph and Scribe. Ponytail full mode is active. UI tests and XCUITests are disabled: do not assign, create, enable, or run them. Mandatory testing is Swift unit tests covering all six Jacquard scenarios from prototype/tests/gauge-math.test.js plus domain-issue unit edge cases, invoked only within the unit-only scope of ./app/build.sh test. If build.sh invokes out-of-scope tests, fix it. UI coverage gaps are advisory only and cannot reject or expand scope. Mendel must map scenarios to authorized unit tests. If scope is ambiguous, fail closed.
+**Why:** User request — captured for team memory
+
+---
+
+# Issue #107 / MR !92 gate review
+
+- **Date:** 2026-07-17T08:46:51.558-07:00
+- **Reviewer:** Curie
+- **Verdict:** REJECT
+- The exact authorized worktree `/Users/yashasgujjar/dev/knitting-gauge-reconciler-107-prototype` does not exist.
+- Consequently, SHA `30ec632d8429141fd58a6d671969d9826deb0a17`, `app/.build/fastlane-output.log`, and gate result artifacts could not be verified at the required path.
+- No substitute artifacts were used and no tests or builds were executed.
+- Therefore the Swift unit totals, suite count, skipped/disabled status, warning/advisory/crash inventory, unit-only target, process exit, and exact-SHA linkage cannot be established under the authorized scope.
+
+---
+
+# Jacquard review — MR !91 exact SHA
+
+- **Reviewed:** `0c3e20b81794cb4dfc32e55c85f9a875c0ee3e75`
+- **Verdict:** REJECT
+- **Domain math:** Correct. Row density and shaping use `your rows ÷ pattern rows`; dimensions use the
+  reciprocal. Required default values, looser/denser direction wording, and six executable scenarios agree.
+- **Blocker:** `prototype/README.md` lines 62, 154, 168, 170, and 179 make the README's nine examples,
+  boundary inputs, per-section values, and verdict logic Swift unit-test guardrails. Only the direct user may
+  set or expand mandatory inventory; the README must remain calculations/reference rather than test authority.
+- **Validation:** `git diff --check` passed. Static inspection proved `./app/build.sh test` selects only
+  `KnittingGaugeReconcilerTests`; 75 tests in 6 suites passed and no UI/XCUITest was selected.
+- **SHA note:** GitLab currently reports MR !91 at `847d05a7314e4003cc7841b4468d9660e49f7731`,
+  not the requested SHA. The newer artifact was not reviewed here.
+- **Strict lockout:** Ada authored the rejected artifact and may not produce or contribute to its next
+  revision. Assign Turing as independent revision owner because the blocking defect is test-authority wording.
+
+---
+
+# Tesla — MR !91 exact-SHA gate
+
+**Date:** 2026-07-17T08:15:35.015-07:00  
+**Verdict:** REJECT  
+**Requested artifact:** `0c3e20b81794cb4dfc32e55c85f9a875c0ee3e75`
+
+## Blockers
+
+1. The requested revision did not remove test assignments. It renamed them as Swift Testing unit-test cases and prescribed nine-case, boundary, value, and verdict-logic guardrails. Issue #121 forbids introducing or expanding mandatory inventory, and direct user authority limits it to the six Jacquard scenarios plus issue-requested unit edge cases through unit-only `./app/build.sh test`.
+2. MR !91 advanced to `847d05a7314e4003cc7841b4468d9660e49f7731` during review, so the live MR no longer matches the requested exact SHA.
+
+## Revision ownership
+
+Ada authored both the rejected artifact and the current live revision. Under strict lockout, **Jacquard owns the next independent revision**. Ada and Tesla must not revise it.
+
+## Non-blocking evidence
+
+- Exactly one issue-linked MR exists and only `prototype/README.md` changes.
+- Formula direction and corrected values match the canonical scenarios.
+- `git diff --check` passes.
+- `app/build.sh test` statically selects only `KnittingGaugeReconcilerTests`.
+- No pipeline or commit status exists for either SHA; green CI remains a separate coordinator gate.
+
+---
+
+# Turing — MR !91 independent revision
+
+- Reset `squad/121-readme-row-math` to clean `origin/main`.
+- Independently corrected only `prototype/README.md` from issue #121, canonical row math, and executable scenarios.
+- Replaced all intervening Ada-authored branch tips with Turing commit `a636d376c3d22272a1f9ad821ccccd561cd6e05f` using an exact-SHA force-with-lease.
+- `git diff --check` passed. `./app/build.sh test` ran only `KnittingGaugeReconcilerTests`: 75 tests across 6 suites passed with no warnings.
+- MR !91 remains the sole open MR for the feature branch.
+
+---
+

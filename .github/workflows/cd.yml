@@ -386,5 +386,6 @@ jobs:
             app/.build/gym/**/*.log
             ${{ env.DERIVED_DATA_PATH }}/Logs/Test/*.xcresult
             ${{ env.DERIVED_DATA_PATH }}/Logs/Build/*.xcactivitylog
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14

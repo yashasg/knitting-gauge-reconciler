@@ -134,3 +134,10 @@ Merged four inbox decisions into `decisions.md`, wrote orchestration/session log
 - Logged Curie's evidence-only rejection for missing explicit clean exact-SHA provenance and the unrecorded outer build-script exit code.
 - No decision was old enough to archive and no history crossed 15,360 bytes.
 - No tests or builds were run; unrelated dirty histories were preserved.
+
+### 2026-07-17T11:20:55.636-07:00 — Tesla reconciliation recorded
+
+- Logged MR !101 merged, canonical issue #130 reopened, no open MR found, and Curie selected for the final authorized unit gate.
+- Preserved 11 pre-existing dirty `.squad/` paths, including `decisions.md` and `identity/now.md`.
+- Deferred decision archival and all four inbox merges because the active ledger was already dirty.
+- No history crossed 15,360 bytes; no cross-agent history was changed.

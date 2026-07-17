@@ -1,3 +1,72 @@
+# Canonical Gauge Math Direction and Craft-Truth Formulas
+
+**Source:** Restored from commit `93323af`
+**Status:** Canonical craft-truth reference
+
+Gauge values are stitches or rows per 10 cm. In the formulas below, `pattern`
+is the pattern gauge and `your` is the knitter's gauge.
+
+## Corrected Formula Direction
+
+| Output | Formula |
+|---|---|
+| Stitch width display | `pattern_st / your_st` |
+| Adjusted cast-on | `round(pattern_cast_on × your_st / pattern_st)` |
+| Row density display | `your_row / pattern_row` |
+| Dimension correction | `pattern_dimension × pattern_row / your_row` |
+| Shaping interval | `pattern_interval × your_row / pattern_row` |
+
+The stitch-count multiplier is `your_st / pattern_st`; the row-count
+multiplier is `your_row / pattern_row`. Section depths use the reciprocal row
+factor, `pattern_row / your_row`. Cast-on and displayed row counts use
+JavaScript `Math.round` semantics (`floor(value + 0.5)` for these nonnegative
+values). `fmtRows` separately enforces its presentation minimum of 1.
+
+## Canonical Test Scenarios
+
+Every scenario uses a pattern gauge of **32 st/10 cm × 24 rows/10 cm**, yoke
+**20 cm**, body **50 cm**, sleeve **45 cm**, shaping every **6 rows**, and
+cast-on **128 stitches**.
+
+### Scenario 1: Perfect Match (`scenario1PerfectMatch`)
+
+- **Your gauge:** 32 st/10 cm × 24 rows/10 cm.
+- **Expected:** stitch width 1, row density 1, dimension correction 1; yoke
+  20 cm, body 50 cm, sleeve 45 cm, shaping interval 6 rows, cast-on 128.
+
+### Scenario 2: Denser Row Gauge Only (`scenario2DenserRowsOnly`)
+
+- **Your gauge:** 32 st/10 cm × 32 rows/10 cm.
+- **Expected:** stitch width 1, row density 32/24, dimension correction 24/32;
+  yoke 15 cm, body 37.5 cm, sleeve 33.75 cm, shaping interval 8 rows, cast-on 128.
+
+### Scenario 3: Looser Row Gauge Only (`scenario3LooserRowsOnly`)
+
+- **Your gauge:** 32 st/10 cm × 20 rows/10 cm.
+- **Expected:** stitch width 1, row density 20/24, dimension correction 24/20;
+  yoke 24 cm, body 60 cm, sleeve 54 cm, shaping interval 5 rows, cast-on 128.
+
+### Scenario 4: Denser Stitch Gauge Only (`scenario4DenserStitchesOnly`)
+
+- **Your gauge:** 36 st/10 cm × 24 rows/10 cm.
+- **Expected:** stitch width 32/36, row density 1, dimension correction 1; yoke
+  20 cm, body 50 cm, sleeve 45 cm, shaping interval 6 rows, cast-on 144.
+
+### Scenario 5: Looser Stitch Gauge Only (`scenario5LooserStitchesHisahashisakaCase`)
+
+- **Your gauge:** 28 st/10 cm × 24 rows/10 cm.
+- **Expected:** stitch width 32/28, row density 1, dimension correction 1; yoke
+  20 cm, body 50 cm, sleeve 45 cm, shaping interval 6 rows, cast-on 112.
+
+### Scenario 6: Both Denser (`scenario6BothDenser`)
+
+- **Your gauge:** 36 st/10 cm × 32 rows/10 cm.
+- **Expected:** stitch width 32/36, row density 32/24, dimension correction
+  24/32; yoke 15 cm, body 37.5 cm, sleeve 33.75 cm, shaping interval 8 rows,
+  cast-on 144.
+
+---
+
 # Edison Decision — Main Screen App Name
 
 - **Date:** 2026-05-23

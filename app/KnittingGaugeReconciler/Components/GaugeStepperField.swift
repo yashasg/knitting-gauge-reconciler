@@ -139,7 +139,23 @@ struct GaugeStepperField: View {
     }
 
     private var sheetDetents: Set<PresentationDetent> {
-        mismatchSentence == nil ? [.height(280)] : [.medium, .large]
+        Self.sheetDetents(
+            for: dynamicTypeSize,
+            hasWarning: mismatchSentence != nil
+        )
+    }
+
+    static func sheetDetents(
+        for dynamicTypeSize: DynamicTypeSize,
+        hasWarning: Bool
+    ) -> Set<PresentationDetent> {
+        if dynamicTypeSize.isAccessibilitySize {
+            return [.large]
+        }
+        if hasWarning {
+            return [.medium, .large]
+        }
+        return [.height(280)]
     }
 
     private var mismatchDeltaText: String? {
@@ -368,7 +384,7 @@ private struct GaugeKeyboardTextField: UIViewRepresentable {
         guard shouldFocus != textField.isFirstResponder,
               !coordinator.focusUpdateScheduled else { return }
         coordinator.focusUpdateScheduled = true
-        DispatchQueue.main.async {
+        Task { @MainActor in
             defer { coordinator.focusUpdateScheduled = false }
             let shouldFocus = coordinator.parent.focusedField.wrappedValue == coordinator.parent.field
             guard shouldFocus != textField.isFirstResponder else { return }

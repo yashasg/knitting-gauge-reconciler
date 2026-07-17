@@ -149,11 +149,11 @@ struct GaugeStepperField: View {
         for dynamicTypeSize: DynamicTypeSize,
         hasWarning: Bool
     ) -> Set<PresentationDetent> {
-        if hasWarning {
-            return [.medium, .large]
-        }
         if dynamicTypeSize.isAccessibilitySize {
             return [.large]
+        }
+        if hasWarning {
+            return [.medium, .large]
         }
         return [.height(280)]
     }

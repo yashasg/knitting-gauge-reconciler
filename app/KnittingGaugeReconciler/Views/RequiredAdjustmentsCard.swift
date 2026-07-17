@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 // Issue #65 keeps conditional result, reset, and share UI in this existing authorized file.
 import SwiftUI
 
@@ -7,6 +8,7 @@ struct RequiredAdjustmentsCard: View {
 
     private let result: GaugeMathResult?
     private let inputs: GaugeInputs?
+    private let verdict: (title: String, body: String)
     private let unit: MeasurementUnit
     private let canUndoReset: Bool
     private let onReset: () -> Void
@@ -16,6 +18,7 @@ struct RequiredAdjustmentsCard: View {
     init(
         result: GaugeMathResult?,
         inputs: GaugeInputs?,
+        verdict: (title: String, body: String),
         unit: MeasurementUnit,
         showFullMath: Binding<Bool>,
         canUndoReset: Bool,
@@ -25,6 +28,7 @@ struct RequiredAdjustmentsCard: View {
     ) {
         self.result = result
         self.inputs = inputs
+        self.verdict = verdict
         self.unit = unit
         self._showFullMath = showFullMath
         self.canUndoReset = canUndoReset
@@ -39,6 +43,7 @@ struct RequiredAdjustmentsCard: View {
                 LiveResultsView(
                     result: result,
                     inputs: inputs,
+                    verdict: verdict,
                     unit: unit,
                     showFullMath: $showFullMath,
                     onShare: onShare
@@ -92,6 +97,7 @@ private struct LiveResultsView: View {
 
     private let result: GaugeMathResult
     private let inputs: GaugeInputs
+    private let verdict: (title: String, body: String)
     private let unit: MeasurementUnit
     @Binding private var showFullMath: Bool
     private let onShare: (GaugeMathResult) async -> [Any]
@@ -99,12 +105,14 @@ private struct LiveResultsView: View {
     init(
         result: GaugeMathResult,
         inputs: GaugeInputs,
+        verdict: (title: String, body: String),
         unit: MeasurementUnit,
         showFullMath: Binding<Bool>,
         onShare: @escaping (GaugeMathResult) async -> [Any]
     ) {
         self.result = result
         self.inputs = inputs
+        self.verdict = verdict
         self.unit = unit
         self._showFullMath = showFullMath
         self.onShare = onShare
@@ -113,6 +121,19 @@ private struct LiveResultsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HeroTilesView(result: result)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(verdict.title)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(AppTheme.ink)
+                    .accessibilityAddTraits(.isHeader)
+                Text(verdict.body)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardStyle()
 
             if let patternRows = result.patternYokeRows,
                let adjustedRows = result.yokeRowsAtYourGauge {

@@ -188,6 +188,8 @@ jobs:
 
       - name: Build & Test
         id: build-test
+        env:
+          FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: "120"
         run: ./app/build.sh test
 
       - name: Save DerivedData cache

@@ -291,8 +291,8 @@ struct ContentView: View {
         let rowDrift      = abs(result.rowCountScale - 1)
         let stitchPercent = abs(GaugeMath.fmtPct(result.stitchWidthScale) - 100)
         let rowPercent    = abs(GaugeMath.fmtPct(result.rowCountScale) - 100)
-        let stitchOff = stitchPercent >= 3
-        let rowOff    = rowPercent >= 3
+        let stitchOff = gaugeStatus(scale: result.stitchWidthScale) != "Match"
+        let rowOff    = rowStatus(scale: result.rowCountScale) != "Match"
         let stitchDir = result.stitchWidthScale > 1 ? "wider" : "narrower"
         let rowDir    = result.rowCountScale > 1 ? "denser" : "looser"
         let sectionDir = result.rowCountScale > 1 ? "shorter" : "longer"

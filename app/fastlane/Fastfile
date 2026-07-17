@@ -107,8 +107,7 @@ def lane_test_options(options, extra_xcargs: nil)
       extra_xcargs,
       options[:xcargs]
     ].compact.join(" "),
-    output_files: options[:output_files] || "xcodebuild-test.log",
-    output_types: options[:output_types] || "junit",
+    output_types: "",
     output_directory: output_directory,
     buildlog_path: output_directory,
     xcodebuild_formatter: "xcpretty"

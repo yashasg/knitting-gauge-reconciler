@@ -194,7 +194,8 @@ jobs:
         with:
           name: xcode-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            app/.build/xcodebuild-test.log
+            app/.build/fastlane-output.log
+            app/.build/KnittingGaugeReconciler.xcresult
             app/.build/gym/**/*.log
             ${{ env.DERIVED_DATA_PATH }}/Logs/Test/*.xcresult
             ${{ env.DERIVED_DATA_PATH }}/Logs/Build/*.xcactivitylog

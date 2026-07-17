@@ -624,6 +624,7 @@ struct GaugeMathTests {
         #expect(GaugeStepperField.sheetDetents(for: .large, hasWarning: false) == [.height(280)])
         #expect(GaugeStepperField.sheetDetents(for: .accessibility1, hasWarning: false) == [.large])
         #expect(GaugeStepperField.sheetDetents(for: .large, hasWarning: true) == [.medium, .large])
+        #expect(GaugeStepperField.sheetDetents(for: .accessibility1, hasWarning: true) == [.large])
     }
 
     @Test func resultsActionTokensMeetTextContrastInLightAndDark() throws {

@@ -34,9 +34,6 @@ struct GaugeMathResult: Equatable {
     var adjustedYokeRows: Double?
     var adjustedBodyRows: Double?
     var adjustedSleeveRows: Double?
-    var yokeRowsAtYourGauge: Int?
-    var bodyRowsAtYourGauge: Int?
-    var sleeveRowsAtYourGauge: Int?
     var adjustedIncreaseSpacing: Double?
     var adjustedCastOn: Int?
     var castOnRoundingDriftPercent: Double?
@@ -118,9 +115,11 @@ enum GaugeMath {
         let rowCountScale = inputs.yourRows / inputs.patternRows
         let dimensionScale = inputs.patternRows / inputs.yourRows
         let patternRowsPerCm = inputs.patternRows / 10
-        let yourRowsPerCm = inputs.yourRows / 10
+        let patternYokeRows = inputs.patternYokeDepth.map { $0 * patternRowsPerCm }
+        let patternBodyRows = inputs.patternBodyLength.map { $0 * patternRowsPerCm }
+        let patternSleeveRows = inputs.patternSleeveLength.map { $0 * patternRowsPerCm }
         let exactCastOn = inputs.patternCastOn.map { $0 * stitchCountMultiplier }
-        let adjustedCastOn = exactCastOn.flatMap(roundedInt)
+        let adjustedCastOn = exactCastOn.flatMap(roundedInt).map { max(1, $0) }
         let castOnRoundingDriftPercent = exactCastOn.flatMap { exact in
             adjustedCastOn.map { ((Double($0) - exact) / exact) * 100 }
         }
@@ -133,15 +132,12 @@ enum GaugeMath {
             adjustedYokeDepth: inputs.patternYokeDepth.map { $0 * dimensionScale },
             adjustedBodyLength: inputs.patternBodyLength.map { $0 * dimensionScale },
             adjustedSleeveLength: inputs.patternSleeveLength.map { $0 * dimensionScale },
-            patternYokeRows: inputs.patternYokeDepth.map { $0 * patternRowsPerCm },
-            patternBodyRows: inputs.patternBodyLength.map { $0 * patternRowsPerCm },
-            patternSleeveRows: inputs.patternSleeveLength.map { $0 * patternRowsPerCm },
-            adjustedYokeRows: inputs.patternYokeDepth.map { $0 * dimensionScale * yourRowsPerCm },
-            adjustedBodyRows: inputs.patternBodyLength.map { $0 * dimensionScale * yourRowsPerCm },
-            adjustedSleeveRows: inputs.patternSleeveLength.map { $0 * dimensionScale * yourRowsPerCm },
-            yokeRowsAtYourGauge: sectionRows(inputs.patternYokeDepth, yourRows: inputs.yourRows),
-            bodyRowsAtYourGauge: sectionRows(inputs.patternBodyLength, yourRows: inputs.yourRows),
-            sleeveRowsAtYourGauge: sectionRows(inputs.patternSleeveLength, yourRows: inputs.yourRows),
+            patternYokeRows: patternYokeRows,
+            patternBodyRows: patternBodyRows,
+            patternSleeveRows: patternSleeveRows,
+            adjustedYokeRows: patternYokeRows,
+            adjustedBodyRows: patternBodyRows,
+            adjustedSleeveRows: patternSleeveRows,
             adjustedIncreaseSpacing: inputs.patternIncreaseSpacing.map { $0 * rowCountScale },
             adjustedCastOn: adjustedCastOn,
             castOnRoundingDriftPercent: castOnRoundingDriftPercent
@@ -163,12 +159,14 @@ enum GaugeMath {
         roundedInt(value * 100) ?? 0
     }
 
-    private static func sectionRows(_ centimeters: Double?, yourRows: Double) -> Int? {
-        centimeters.flatMap { roundedInt(($0 / 10) * yourRows) }
+    /// Formats a signed percentage-point width difference using JavaScript `Math.round` semantics.
+    static func fmtSignedPct(_ value: Double) -> String {
+        let rounded = roundedInt(value) ?? 0
+        return "\(rounded >= 0 ? "+" : "")\(rounded)% width"
     }
 
     private static func roundedInt(_ value: Double) -> Int? {
-        Int(exactly: value.rounded())
+        Int(exactly: floor(value + 0.5))
     }
 }
 
@@ -258,25 +256,40 @@ enum ResultsShareTextFormatter {
 private struct ResultsExportRowsModel {
     var sections: [ResultsExportSummary.SectionGuidance] {
         var values: [ResultsExportSummary.SectionGuidance] = []
-        if let patternCm = inputs.patternYokeDepth, let rows = result.yokeRowsAtYourGauge {
+        if let patternCm = inputs.patternYokeDepth,
+           let adjustedCm = result.adjustedYokeDepth,
+           let patternRows = result.patternYokeRows,
+           let adjustedRows = result.adjustedYokeRows {
             values.append(section(
                 name: "Yoke depth",
                 patternCm: patternCm,
-                rowsAtYourGauge: rows
+                patternRows: patternRows,
+                adjustedCm: adjustedCm,
+                adjustedRows: adjustedRows
             ))
         }
-        if let patternCm = inputs.patternBodyLength, let rows = result.bodyRowsAtYourGauge {
+        if let patternCm = inputs.patternBodyLength,
+           let adjustedCm = result.adjustedBodyLength,
+           let patternRows = result.patternBodyRows,
+           let adjustedRows = result.adjustedBodyRows {
             values.append(section(
                 name: "Body length",
                 patternCm: patternCm,
-                rowsAtYourGauge: rows
+                patternRows: patternRows,
+                adjustedCm: adjustedCm,
+                adjustedRows: adjustedRows
             ))
         }
-        if let patternCm = inputs.patternSleeveLength, let rows = result.sleeveRowsAtYourGauge {
+        if let patternCm = inputs.patternSleeveLength,
+           let adjustedCm = result.adjustedSleeveLength,
+           let patternRows = result.patternSleeveRows,
+           let adjustedRows = result.adjustedSleeveRows {
             values.append(section(
                 name: "Sleeve length",
                 patternCm: patternCm,
-                rowsAtYourGauge: rows
+                patternRows: patternRows,
+                adjustedCm: adjustedCm,
+                adjustedRows: adjustedRows
             ))
         }
         if let patternSpacing = inputs.patternIncreaseSpacing,
@@ -305,15 +318,19 @@ private struct ResultsExportRowsModel {
     }
 
     private func section(
-        name: String, patternCm: Double, rowsAtYourGauge: Int
+        name: String,
+        patternCm: Double,
+        patternRows: Double,
+        adjustedCm: Double,
+        adjustedRows: Double
     ) -> ResultsExportSummary.SectionGuidance {
-        let pattern = unit.formatMeasurement(patternCm)
-        let adjusted = "Knit \(rowsAtYourGauge) rows"
+        let pattern = "\(unit.formatMeasurement(patternCm)) / \(GaugeMath.fmtRows(patternRows)) rows"
+        let adjusted = "\(unit.formatMeasurement(adjustedCm)) / \(GaugeMath.fmtRows(adjustedRows)) rows"
         return ResultsExportSummary.SectionGuidance(
             name: name,
             pattern: pattern,
             adjusted: adjusted,
-            textLine: "• \(name): \(unit.formatMeasurement(patternCm)) → knit \(rowsAtYourGauge) rows"
+            textLine: "• \(name): \(pattern) → \(adjusted)"
         )
     }
 }
@@ -355,7 +372,7 @@ func castOnGuidanceText(inputs: GaugeInputs, result: GaugeMathResult) -> String?
     }
     if gaugeStatus(scale: result.stitchWidthScale) == "Match" {
         return "Optionally cast on \(adjustedCastOn) stitches instead of \(plain(patternCastOn)) " +
-            "for an exact-width refinement. \(reconcile)"
+            "for a width refinement. \(reconcile)"
     }
     return "Cast on \(adjustedCastOn) stitches instead of \(plain(patternCastOn)). \(reconcile)"
 }

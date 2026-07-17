@@ -91,6 +91,7 @@ struct RequiredAdjustmentsCard: View {
     }
 }
 
+// swiftlint:disable:next type_body_length
 private struct LiveResultsView: View {
     @State private var sharePayload: ShareSheetPayload?
     @State private var isPreparingShare = false
@@ -135,13 +136,17 @@ private struct LiveResultsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .cardStyle()
 
-            if let patternRows = result.patternYokeRows,
-               let adjustedRows = result.yokeRowsAtYourGauge {
-                sectionCard(title: "Yoke Depth", subtitle: "To hit target measurement") {
-                    AdjustmentValuePair(
-                        patternValue: GaugeMath.fmtRows(patternRows),
-                        yourValue: adjustedRows,
-                        valueIdentifier: "yoke-your-rows"
+            if let patternDepth = inputs.patternYokeDepth,
+               let adjustedDepth = result.adjustedYokeDepth,
+               let patternRows = result.patternYokeRows,
+               let adjustedRows = result.adjustedYokeRows {
+                sectionCard(title: "Yoke Depth", subtitle: "To preserve pattern row count") {
+                    AdjustmentRow(
+                        name: "Yoke depth",
+                        pattern: "\(unit.formatMeasurement(patternDepth)) / \(GaugeMath.fmtRows(patternRows)) rows",
+                        adjusted: "\(unit.formatMeasurement(adjustedDepth)) / " +
+                            "\(GaugeMath.fmtRows(adjustedRows)) rows",
+                        adjustedIdentifier: "yoke-your-rows"
                     )
                 }
             }
@@ -149,22 +154,30 @@ private struct LiveResultsView: View {
             if hasBodyOrSleeveGuidance {
                 sectionCard(title: "Body & Sleeves", subtitle: "Length correction") {
                     VStack(spacing: 12) {
-                        if let patternRows = result.patternBodyRows,
-                           let adjustedRows = result.bodyRowsAtYourGauge {
-                            AdjustmentValuePair(
-                                patternValue: GaugeMath.fmtRows(patternRows),
-                                yourValue: adjustedRows,
-                                patternLabel: "Body Rows",
-                                valueIdentifier: "body-your-rows"
+                        if let patternLength = inputs.patternBodyLength,
+                           let adjustedLength = result.adjustedBodyLength,
+                           let patternRows = result.patternBodyRows,
+                           let adjustedRows = result.adjustedBodyRows {
+                            AdjustmentRow(
+                                name: "Body length",
+                                pattern: "\(unit.formatMeasurement(patternLength)) / " +
+                                    "\(GaugeMath.fmtRows(patternRows)) rows",
+                                adjusted: "\(unit.formatMeasurement(adjustedLength)) / " +
+                                    "\(GaugeMath.fmtRows(adjustedRows)) rows",
+                                adjustedIdentifier: "body-your-rows"
                             )
                         }
-                        if let patternRows = result.patternSleeveRows,
-                           let adjustedRows = result.sleeveRowsAtYourGauge {
-                            AdjustmentValuePair(
-                                patternValue: GaugeMath.fmtRows(patternRows),
-                                yourValue: adjustedRows,
-                                patternLabel: "Sleeve Rows",
-                                valueIdentifier: "sleeve-your-rows"
+                        if let patternLength = inputs.patternSleeveLength,
+                           let adjustedLength = result.adjustedSleeveLength,
+                           let patternRows = result.patternSleeveRows,
+                           let adjustedRows = result.adjustedSleeveRows {
+                            AdjustmentRow(
+                                name: "Sleeve length",
+                                pattern: "\(unit.formatMeasurement(patternLength)) / " +
+                                    "\(GaugeMath.fmtRows(patternRows)) rows",
+                                adjusted: "\(unit.formatMeasurement(adjustedLength)) / " +
+                                    "\(GaugeMath.fmtRows(adjustedRows)) rows",
+                                adjustedIdentifier: "sleeve-your-rows"
                             )
                         }
                     }
@@ -187,7 +200,7 @@ private struct LiveResultsView: View {
                let adjustedCastOn = result.adjustedCastOn {
                 let castOnSubtitle = gaugeStatus(scale: result.stitchWidthScale) == "Match" &&
                     Double(adjustedCastOn) != patternCastOn
-                    ? "Optional exact-width refinement"
+                    ? "Optional width refinement"
                     : "To preserve pattern width"
                 sectionCard(title: "Cast-on", subtitle: castOnSubtitle) {
                     VStack(alignment: .leading, spacing: 8) {
@@ -228,14 +241,14 @@ private struct LiveResultsView: View {
     }
 
     private var hasBodyOrSleeveGuidance: Bool {
-        result.bodyRowsAtYourGauge != nil || result.sleeveRowsAtYourGauge != nil
+        result.adjustedBodyRows != nil || result.adjustedSleeveRows != nil
     }
 
     private var castOnDriftPill: String? {
         guard let drift = result.castOnRoundingDriftPercent, abs(drift) >= 3 else {
             return nil
         }
-        return String(format: "%+.0f%% width", drift)
+        return GaugeMath.fmtSignedPct(drift)
     }
 
     private func sectionCard<Content: View>(
@@ -333,14 +346,32 @@ private struct LiveResultsView: View {
             "dim correction     = pattern_row / your_row = \(plain(inputs.patternRows)) / \(plain(inputs.yourRows)) = \(String(format: "%.3f", result.dimensionScale))",
             "for any horizontal dim, your stitch count produces \(String(format: "%.1f", result.stitchWidthScale * 100))% of the pattern's intended width"
         ]
-        if let value = inputs.patternYokeDepth, let rows = result.yokeRowsAtYourGauge {
-            lines.append("yoke: \(unit.formatMeasurement(value)) → knit \(rows) rows")
+        if let patternDepth = inputs.patternYokeDepth,
+           let adjustedDepth = result.adjustedYokeDepth,
+           let patternRows = result.patternYokeRows,
+           let adjustedRows = result.adjustedYokeRows {
+            lines.append(
+                "yoke: \(unit.formatMeasurement(patternDepth)) / \(GaugeMath.fmtRows(patternRows)) rows → " +
+                    "\(unit.formatMeasurement(adjustedDepth)) / \(GaugeMath.fmtRows(adjustedRows)) rows"
+            )
         }
-        if let value = inputs.patternBodyLength, let rows = result.bodyRowsAtYourGauge {
-            lines.append("body: \(unit.formatMeasurement(value)) → knit \(rows) rows")
+        if let patternLength = inputs.patternBodyLength,
+           let adjustedLength = result.adjustedBodyLength,
+           let patternRows = result.patternBodyRows,
+           let adjustedRows = result.adjustedBodyRows {
+            lines.append(
+                "body: \(unit.formatMeasurement(patternLength)) / \(GaugeMath.fmtRows(patternRows)) rows → " +
+                    "\(unit.formatMeasurement(adjustedLength)) / \(GaugeMath.fmtRows(adjustedRows)) rows"
+            )
         }
-        if let value = inputs.patternSleeveLength, let rows = result.sleeveRowsAtYourGauge {
-            lines.append("sleeve: \(unit.formatMeasurement(value)) → knit \(rows) rows")
+        if let patternLength = inputs.patternSleeveLength,
+           let adjustedLength = result.adjustedSleeveLength,
+           let patternRows = result.patternSleeveRows,
+           let adjustedRows = result.adjustedSleeveRows {
+            lines.append(
+                "sleeve: \(unit.formatMeasurement(patternLength)) / \(GaugeMath.fmtRows(patternRows)) rows → " +
+                    "\(unit.formatMeasurement(adjustedLength)) / \(GaugeMath.fmtRows(adjustedRows)) rows"
+            )
         }
         if let spacing = inputs.patternIncreaseSpacing, let adjusted = result.adjustedIncreaseSpacing {
             lines.append("increase spacing = \(plain(spacing)) x row density = \(GaugeMath.fmtRows(adjusted)) rows")

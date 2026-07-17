@@ -138,6 +138,52 @@ struct GaugeMathTests {
         #expect(rowStatus(scale: 1.10) == "Much denser")
     }
 
+    @Test func isMajorDriftIsSymmetricAtExact15Percent() {
+        let positiveBoundaryResult = GaugeMath.compute(GaugeInputs(
+            patternStitches: 23, patternRows: 24, yourStitches: 20, yourRows: 24
+        ))
+        let negativeBoundaryResult = GaugeMath.compute(GaugeInputs(
+            patternStitches: 17, patternRows: 24, yourStitches: 20, yourRows: 24
+        ))
+        let belowBoundaryResult = GaugeMath.compute(GaugeInputs(
+            patternStitches: 22, patternRows: 24, yourStitches: 20, yourRows: 24
+        ))
+
+        #expect(isMajorDrift(abs(positiveBoundaryResult.stitchWidthScale - 1)))
+        #expect(isMajorDrift(abs(negativeBoundaryResult.stitchWidthScale - 1)))
+        #expect(!isMajorDrift(abs(belowBoundaryResult.stitchWidthScale - 1)))
+    }
+
+    @Test func castOnGuidanceTextOptionalInsideMatchImperativeOutside() {
+        let nearMatchInputs = GaugeInputs(
+            patternStitches: 32, patternRows: 24, yourStitches: 32.5, yourRows: 24,
+            patternCastOn: 128
+        )
+        let nearMatchResult = GaugeMath.compute(nearMatchInputs)
+        let offGaugeInputs = GaugeInputs(
+            patternStitches: 32, patternRows: 24, yourStitches: 36, yourRows: 24,
+            patternCastOn: 128
+        )
+        let offGaugeResult = GaugeMath.compute(offGaugeInputs)
+        let absentInputs = GaugeInputs(
+            patternStitches: 32, patternRows: 24, yourStitches: 32.5, yourRows: 24
+        )
+        let absentResult = GaugeMath.compute(absentInputs)
+
+        #expect(nearMatchResult.adjustedCastOn == 130)
+        #expect(
+            castOnGuidanceText(inputs: nearMatchInputs, result: nearMatchResult) ==
+                "Optionally cast on 130 stitches instead of 128 for an exact-width refinement. " +
+                "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
+        )
+        #expect(
+            castOnGuidanceText(inputs: offGaugeInputs, result: offGaugeResult) ==
+                "Cast on 144 stitches instead of 128. " +
+                "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
+        )
+        #expect(castOnGuidanceText(inputs: absentInputs, result: absentResult) == nil)
+    }
+
     // MARK: - Formula guardrails from .squad/decisions.md
 
     /// yr = 2 × pr: cm dimensions halve; increase-row guidance doubles.

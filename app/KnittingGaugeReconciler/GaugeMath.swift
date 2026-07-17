@@ -218,10 +218,7 @@ struct ResultsExportSummary: Equatable {
             value: "\(GaugeMath.fmtPct(result.rowCountScale))%",
             status: rowStatus(scale: result.rowCountScale)
         )
-        if let patternCastOn = inputs.patternCastOn, let adjustedCastOn = result.adjustedCastOn {
-            castOn = "Cast on \(adjustedCastOn) stitches instead of \(plain(patternCastOn)). " +
-                "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
-        }
+        castOn = castOnGuidanceText(inputs: inputs, result: result)
 
         let rowsModel = ResultsExportRowsModel(inputs: inputs, result: result, unit: unit)
         sections = rowsModel.sections
@@ -342,6 +339,25 @@ func rowStatus(scale: Double) -> String {
     if scale > 0.97, scale < 1.03 { return "Match" }
     if scale > 0.90, scale < 1.10 { return scale > 1 ? "Denser than pattern" : "Looser than pattern" }
     return scale > 1 ? "Much denser" : "Much looser"
+}
+
+// ponytail: the tolerance only absorbs binary rounding at the exact decimal boundary.
+func isMajorDrift(_ drift: Double) -> Bool { drift + 1e-12 >= 0.15 }
+
+/// Cast-on guidance text, or `nil` when cast-on was not entered.
+func castOnGuidanceText(inputs: GaugeInputs, result: GaugeMathResult) -> String? {
+    guard let patternCastOn = inputs.patternCastOn, let adjustedCastOn = result.adjustedCastOn else {
+        return nil
+    }
+    let reconcile = "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
+    if Double(adjustedCastOn) == patternCastOn {
+        return "Cast on \(adjustedCastOn) stitches as written. \(reconcile)"
+    }
+    if gaugeStatus(scale: result.stitchWidthScale) == "Match" {
+        return "Optionally cast on \(adjustedCastOn) stitches instead of \(plain(patternCastOn)) " +
+            "for an exact-width refinement. \(reconcile)"
+    }
+    return "Cast on \(adjustedCastOn) stitches instead of \(plain(patternCastOn)). \(reconcile)"
 }
 
 private extension String {

@@ -279,7 +279,7 @@ struct ContentView: View {
         let stitchDrift = abs(result.stitchWidthScale - 1)
         let rowDrift = abs(result.rowCountScale - 1)
         if stitchDrift < 0.03, rowDrift < 0.03 { return "Gauge match" }
-        if stitchDrift >= 0.15 || rowDrift >= 0.15 { return "Major mismatch" }
+        if isMajorDrift(stitchDrift) || isMajorDrift(rowDrift) { return "Major mismatch" }
         let stitchOffRange = stitchDrift >= 0.03 && stitchDrift < 0.15
         let rowOffRange = rowDrift >= 0.03 && rowDrift < 0.15
         if stitchOffRange && rowOffRange { return "Significant drift" }
@@ -296,8 +296,8 @@ struct ContentView: View {
         let stitchDir = result.stitchWidthScale > 1 ? "wider" : "narrower"
         let rowDir    = result.rowCountScale > 1 ? "denser" : "looser"
         let sectionDir = result.rowCountScale > 1 ? "shorter" : "longer"
-        let majorNote = (stitchDrift >= 0.15 || rowDrift >= 0.15)
-            ? " Over 15% drift. Consider re-swatching or changing needle size before proceeding."
+        let majorNote = (isMajorDrift(stitchDrift) || isMajorDrift(rowDrift))
+            ? " At least 15% drift. Consider re-swatching or changing needle size before proceeding."
             : ""
         let castOnGuidance = castOnGuidance(result: result, inputs: inputs)
         let stitchAction = inputs.patternCastOn == nil
@@ -311,7 +311,7 @@ struct ContentView: View {
             : "Open Pattern details and enter section targets for adjusted row counts."
         if !stitchOff && !rowOff {
             return "Both gauges match. \(castOnGuidance)" +
-                "No gauge adjustments are needed. Re-check after blocking."
+                "No further gauge adjustments are needed. Re-check after blocking."
         }
         if stitchOff && !rowOff {
             return (
@@ -334,16 +334,7 @@ struct ContentView: View {
     }
 
     private func castOnGuidance(result: GaugeMathResult, inputs: GaugeInputs) -> String {
-        guard let patternCastOn = inputs.patternCastOn,
-              let adjustedCastOn = result.adjustedCastOn else {
-            return ""
-        }
-        if Double(adjustedCastOn) == patternCastOn {
-            return "Cast on \(adjustedCastOn) stitches as written. " +
-                "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple. "
-        }
-        return "Cast on \(adjustedCastOn) stitches instead of \(plain(patternCastOn)). " +
-            "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple. "
+        castOnGuidanceText(inputs: inputs, result: result).map { $0 + " " } ?? ""
     }
 
     // MARK: - Validation

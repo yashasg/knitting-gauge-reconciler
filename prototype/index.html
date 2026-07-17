@@ -291,7 +291,8 @@
   function fmtPct(x){ return Math.round(x * 100) + '%'; }
   function fmtCm(x){ return (Math.round(x * 10) / 10).toFixed(1); }
   function fmtRows(x){ return Math.max(1, Math.round(x)); }
-  function isMatch(scale){ return scale > 0.97 && scale < 1.03; }
+  const matchBoundaryTolerance = Number.EPSILON * 2;
+  function isMatch(scale){ return scale - 0.97 > matchBoundaryTolerance && 1.03 - scale > matchBoundaryTolerance; }
 
   function pillFor(scale){
     // scale = 1.0 means perfect match. <1 means your gauge produces a smaller dimension than pattern (you need MORE).

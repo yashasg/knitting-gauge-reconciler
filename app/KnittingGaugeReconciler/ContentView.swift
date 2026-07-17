@@ -133,12 +133,8 @@ struct ContentView: View {
                         yourRows: draftBinding($yourRows, at: 3),
                         stitchMismatch: inputs?.stitchMismatch ?? false,
                         rowMismatch: inputs?.rowMismatch ?? false,
-                        stitchDelta: roundedDelta(
-                            inputs.map { $0.yourStitches - $0.patternStitches }
-                        ),
-                        rowDelta: roundedDelta(
-                            inputs.map { $0.yourRows - $0.patternRows }
-                        ),
+                        stitchDelta: inputs.map { $0.yourStitches - $0.patternStitches },
+                        rowDelta: inputs.map { $0.yourRows - $0.patternRows },
                         validationMessages: validationMessages,
                         focusedField: $focusedField,
                         onSubmit: finishEditing
@@ -275,13 +271,15 @@ struct ContentView: View {
         return verdictBodyComputed(result: liveResult, inputs: inputs)
     }
 
-    private func verdictTitleComputed(result: GaugeMathResult) -> String {
+    func verdictTitleComputed(result: GaugeMathResult) -> String {
         let stitchDrift = abs(result.stitchWidthScale - 1)
         let rowDrift = abs(result.rowCountScale - 1)
-        if stitchDrift < 0.03, rowDrift < 0.03 { return "Gauge match" }
+        let stitchMatches = isGaugeMatch(scale: result.stitchWidthScale)
+        let rowMatches = isGaugeMatch(scale: result.rowCountScale)
+        if stitchMatches, rowMatches { return "Gauge match" }
         if isMajorDrift(stitchDrift) || isMajorDrift(rowDrift) { return "Major mismatch" }
-        let stitchOffRange = stitchDrift >= 0.03 && stitchDrift < 0.15
-        let rowOffRange = rowDrift >= 0.03 && rowDrift < 0.15
+        let stitchOffRange = !stitchMatches && stitchDrift < 0.15
+        let rowOffRange = !rowMatches && rowDrift < 0.15
         if stitchOffRange && rowOffRange { return "Significant drift" }
         return "Drift"
     }
@@ -291,8 +289,8 @@ struct ContentView: View {
         let rowDrift      = abs(result.rowCountScale - 1)
         let stitchPercent = abs(GaugeMath.fmtPct(result.stitchWidthScale) - 100)
         let rowPercent    = abs(GaugeMath.fmtPct(result.rowCountScale) - 100)
-        let stitchOff = gaugeStatus(scale: result.stitchWidthScale) != "Match"
-        let rowOff    = rowStatus(scale: result.rowCountScale) != "Match"
+        let stitchOff = !isGaugeMatch(scale: result.stitchWidthScale)
+        let rowOff    = !isGaugeMatch(scale: result.rowCountScale)
         let stitchDir = result.stitchWidthScale > 1 ? "wider" : "narrower"
         let rowDir    = result.rowCountScale > 1 ? "denser" : "looser"
         let sectionDir = result.rowCountScale > 1 ? "shorter" : "longer"
@@ -630,10 +628,6 @@ struct ContentView: View {
         if synchronizingDefaults {
             UserDefaults.standard.synchronize()
         }
-    }
-
-    private func roundedDelta(_ value: Double?) -> Int? {
-        value.flatMap { Int(exactly: $0.rounded()) }
     }
 
     // MARK: - Actions

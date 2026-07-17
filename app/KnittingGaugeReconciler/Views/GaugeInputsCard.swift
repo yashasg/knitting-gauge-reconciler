@@ -17,8 +17,8 @@ struct GaugeInputsCard: View {
 
     private let stitchMismatch: Bool
     private let rowMismatch: Bool
-    private let stitchDelta: Int?
-    private let rowDelta: Int?
+    private let stitchDelta: Double?
+    private let rowDelta: Double?
     private let validationMessages: [GaugeFormField: String]
     private let focusedField: Binding<GaugeFormField?>
     private let onSubmit: () -> Void
@@ -30,8 +30,8 @@ struct GaugeInputsCard: View {
         yourRows: Binding<String>,
         stitchMismatch: Bool,
         rowMismatch: Bool,
-        stitchDelta: Int?,
-        rowDelta: Int?,
+        stitchDelta: Double?,
+        rowDelta: Double?,
         validationMessages: [GaugeFormField: String],
         focusedField: Binding<GaugeFormField?>,
         onSubmit: @escaping () -> Void

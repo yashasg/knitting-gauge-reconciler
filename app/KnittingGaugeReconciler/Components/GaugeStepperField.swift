@@ -4,10 +4,10 @@ import UIKit
 
 func fmtGaugeDelta(_ value: Double) -> String {
     let rounded = plain(value)
-    let formatted = value != 0 && Double(rounded) == 0
-        ? String(format: "%.6g", value)
-        : rounded
-    return value >= 0 ? "+\(formatted)" : formatted
+    if value != 0 && Double(rounded) == 0 {
+        return value > 0 ? "+<0.01" : "-<0.01"
+    }
+    return value >= 0 ? "+\(rounded)" : rounded
 }
 
 // MARK: - GaugeStepperField

@@ -251,8 +251,6 @@ fi
 if [[ "$MODE" == "test" ]]; then
   xcargs+=(
     "-parallel-testing-enabled NO"
-    "-retry-tests-on-failure"
-    "-test-iterations 2"
   )
 fi
 

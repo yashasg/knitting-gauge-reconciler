@@ -86,12 +86,14 @@ enum GaugeMath {
 
     /// Validates raw text without clamping, rounding, or substituting defaults.
     /// A blank optional field succeeds with `nil`; a blank required field fails.
-    static func validate(_ text: String, for field: Field) -> Result<Double?, ValidationError> {
+    static func validate(_ text: String, for field: Field, locale: Locale = .current)
+        -> Result<Double?, ValidationError> {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             return field.isRequired ? .failure(.required) : .success(nil)
         }
-        guard let value = Double(trimmed), value.isFinite else {
+        let normalized = trimmed.replacingOccurrences(of: locale.decimalSeparator ?? ".", with: ".")
+        guard let value = Double(trimmed) ?? Double(normalized), value.isFinite else {
             return .failure(.invalidNumber)
         }
         switch field {
@@ -346,14 +348,20 @@ private func fixed(_ value: Double, places: Int) -> String {
     String(format: "%.\(places)f", value)
 }
 
+// ponytail: two epsilons cover decimal parsing plus division rounding at an exact boundary.
+func isGaugeMatch(scale: Double) -> Bool {
+    let tolerance = Double.ulpOfOne * 2
+    return scale - 0.97 > tolerance && 1.03 - scale > tolerance
+}
+
 func gaugeStatus(scale: Double) -> String {
-    if scale > 0.97, scale < 1.03 { return "Match" }
+    if isGaugeMatch(scale: scale) { return "Match" }
     if scale > 0.90, scale < 1.10 { return scale > 1 ? "Looser than pattern" : "Tighter than pattern" }
     return scale > 1 ? "Much looser" : "Much tighter"
 }
 
 func rowStatus(scale: Double) -> String {
-    if scale > 0.97, scale < 1.03 { return "Match" }
+    if isGaugeMatch(scale: scale) { return "Match" }
     if scale > 0.90, scale < 1.10 { return scale > 1 ? "Denser than pattern" : "Looser than pattern" }
     return scale > 1 ? "Much denser" : "Much looser"
 }
@@ -370,7 +378,7 @@ func castOnGuidanceText(inputs: GaugeInputs, result: GaugeMathResult) -> String?
     if Double(adjustedCastOn) == patternCastOn {
         return "Cast on \(adjustedCastOn) stitches as written. \(reconcile)"
     }
-    if gaugeStatus(scale: result.stitchWidthScale) == "Match" {
+    if isGaugeMatch(scale: result.stitchWidthScale) {
         return "Optionally cast on \(adjustedCastOn) stitches instead of \(plain(patternCastOn)) " +
             "for a width refinement. \(reconcile)"
     }

@@ -103,6 +103,38 @@ struct GaugeMathTests {
         }
     }
 
+    @Test func validatorAcceptsExplicitLocaleAndInvariantDecimalSeparators() {
+        let german = Locale(identifier: "de_DE")
+        let localizedDecimals: [(GaugeMath.Field, String, Double)] = [
+            (.patternStitches, "32,5", 32.5),
+            (.patternRows, "24,5", 24.5),
+            (.yourStitches, "31,5", 31.5),
+            (.yourRows, "30,5", 30.5),
+            (.patternYokeDepth, "20,5", 20.5),
+            (.patternBodyLength, "50,5", 50.5),
+            (.patternSleeveLength, "45,5", 45.5),
+        ]
+
+        for (field, text, value) in localizedDecimals {
+            #expect(GaugeMath.validate(text, for: field, locale: german) == .success(value))
+        }
+        #expect(
+            GaugeMath.validate("32.5", for: .yourStitches, locale: german) == .success(32.5)
+        )
+        #expect(
+            GaugeMath.validate("32,5,1", for: .yourStitches, locale: german) ==
+                .failure(.invalidNumber)
+        )
+        #expect(
+            GaugeMath.validate("6,5", for: .patternIncreaseSpacing, locale: german) ==
+                .failure(.wholeNumberRequired)
+        )
+        #expect(
+            GaugeMath.validate("128,5", for: .patternCastOn, locale: german) ==
+                .failure(.wholeNumberRequired)
+        )
+    }
+
     @Test func rowFormattingUsesEstablishedRounding() {
         #expect(GaugeMath.fmtRows(6.5) == 7)
         #expect(GaugeMath.fmtRows(6.4) == 6)
@@ -118,9 +150,14 @@ struct GaugeMathTests {
         #expect(GaugeMath.fmtPct(32.0 / 36.0) == 89)
         #expect(GaugeMath.fmtSignedPct(72.5) == "+73% width")
         #expect(GaugeMath.fmtSignedPct(-72.5) == "-72% width")
+        #expect(fmtGaugeDelta(0.5) == "+0.5")
+        #expect(fmtGaugeDelta(1) == "+1")
+        #expect(fmtGaugeDelta(-0.5) == "-0.5")
     }
 
     @Test func statusBandsAreSymmetricAtExactBoundaries() {
+        #expect(isGaugeMatch(scale: 0.971))
+        #expect(isGaugeMatch(scale: 1.029))
         #expect(gaugeStatus(scale: 0.971) == "Match")
         #expect(gaugeStatus(scale: 1.029) == "Match")
         #expect(gaugeStatus(scale: 0.97) == "Tighter than pattern")
@@ -138,6 +175,76 @@ struct GaugeMathTests {
         #expect(rowStatus(scale: 1.099) == "Denser than pattern")
         #expect(rowStatus(scale: 0.90) == "Much looser")
         #expect(rowStatus(scale: 1.10) == "Much denser")
+    }
+
+    @MainActor
+    @Test func computedExactThreePercentBoundariesAreNotMatches() {
+        let lowerInputs = GaugeInputs(
+            patternStitches: 29.1, patternRows: 30, yourStitches: 30, yourRows: 29.1,
+            patternCastOn: 100
+        )
+        let upperInputs = GaugeInputs(
+            patternStitches: 71.07, patternRows: 69, yourStitches: 69, yourRows: 71.07,
+            patternCastOn: 100
+        )
+        let fineLowerInputs = GaugeInputs(
+            patternStitches: 1.0961, patternRows: 1.13, yourStitches: 1.13, yourRows: 1.0961,
+            patternCastOn: 100
+        )
+        let fineUpperInputs = GaugeInputs(
+            patternStitches: 1.1639, patternRows: 1.13, yourStitches: 1.13, yourRows: 1.1639,
+            patternCastOn: 100
+        )
+        let lowerInsideInputs = GaugeInputs(
+            patternStitches: 29.13, patternRows: 30, yourStitches: 30, yourRows: 29.13,
+            patternCastOn: 100
+        )
+        let upperInsideInputs = GaugeInputs(
+            patternStitches: 30.87, patternRows: 30, yourStitches: 30, yourRows: 30.87,
+            patternCastOn: 100
+        )
+        let lower = GaugeMath.compute(lowerInputs)
+        let upper = GaugeMath.compute(upperInputs)
+        let fineLower = GaugeMath.compute(fineLowerInputs)
+        let fineUpper = GaugeMath.compute(fineUpperInputs)
+        let lowerInside = GaugeMath.compute(lowerInsideInputs)
+        let upperInside = GaugeMath.compute(upperInsideInputs)
+        let view = ContentView()
+
+        #expect(lower.stitchWidthScale == 0.97.nextUp)
+        #expect(lower.rowCountScale == 0.97.nextUp)
+        #expect(upper.stitchWidthScale == 1.03.nextDown)
+        #expect(upper.rowCountScale == 1.03.nextDown)
+
+        let boundaries = [
+            (lowerInputs, lower, "Tighter than pattern", "Looser than pattern"),
+            (fineLowerInputs, fineLower, "Tighter than pattern", "Looser than pattern"),
+            (upperInputs, upper, "Looser than pattern", "Denser than pattern"),
+            (fineUpperInputs, fineUpper, "Looser than pattern", "Denser than pattern"),
+        ]
+        for (inputs, result, stitchStatus, rowStatusValue) in boundaries {
+            #expect(!isGaugeMatch(scale: result.stitchWidthScale))
+            #expect(!isGaugeMatch(scale: result.rowCountScale))
+            #expect(gaugeStatus(scale: result.stitchWidthScale) == stitchStatus)
+            #expect(rowStatus(scale: result.rowCountScale) == rowStatusValue)
+            #expect(view.verdictTitleComputed(result: result) == "Significant drift")
+            #expect(view.verdictBodyComputed(result: result, inputs: inputs).hasPrefix("Both axes are off."))
+            #expect(castOnGuidanceText(inputs: inputs, result: result)?.hasPrefix("Cast on") == true)
+        }
+
+        for (inputs, result) in [(lowerInsideInputs, lowerInside), (upperInsideInputs, upperInside)] {
+            #expect(isGaugeMatch(scale: result.stitchWidthScale))
+            #expect(isGaugeMatch(scale: result.rowCountScale))
+            #expect(gaugeStatus(scale: result.stitchWidthScale) == "Match")
+            #expect(rowStatus(scale: result.rowCountScale) == "Match")
+            #expect(view.verdictTitleComputed(result: result) == "Gauge match")
+            #expect(
+                view.verdictBodyComputed(result: result, inputs: inputs).hasPrefix(
+                    "Both gauges are within the match range."
+                )
+            )
+            #expect(castOnGuidanceText(inputs: inputs, result: result)?.hasPrefix("Optionally cast on") == true)
+        }
     }
 
     @Test func isMajorDriftIsSymmetricAtExact15Percent() {

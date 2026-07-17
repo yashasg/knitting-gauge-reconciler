@@ -980,6 +980,23 @@ struct MeasurementUnitTests {
         #expect(section.adjusted == "8 in / 49 rows")
     }
 
+    @Test func matchingGaugePreservesDecimalCentimeterLengthInResults() throws {
+        let inputs = GaugeInputs(
+            patternStitches: 32,
+            patternRows: 24,
+            yourStitches: 32,
+            yourRows: 24,
+            patternYokeDepth: 18.5
+        )
+        let result = GaugeMath.compute(inputs)
+        let section = try #require(
+            ResultsExportSummary(inputs: inputs, result: result, unit: .centimeters).sections.first
+        )
+
+        #expect(section.pattern == "18.5 cm / 44 rows")
+        #expect(section.adjusted == "18.5 cm / 44 rows")
+    }
+
     @Test func invalidInchInputIsPreservedWithoutConversion() {
         let decimal = MeasurementUnit.inches.centimeterStorageText(from: "8.5", cmRange: 5...100)
         let oversized = MeasurementUnit.inches.centimeterStorageText(
@@ -1032,14 +1049,16 @@ struct MeasurementUnitTests {
     @Test func formatMeasurementCentimetres() {
         #expect(MeasurementUnit.centimeters.formatMeasurement(20) == "20 cm")
         #expect(MeasurementUnit.centimeters.formatMeasurement(50) == "50 cm")
+        #expect(MeasurementUnit.centimeters.formatMeasurement(18.5) == "18.5 cm")
         #expect(MeasurementUnit.centimeters.formatResultMeasurement(15) == "15 cm")
         #expect(MeasurementUnit.centimeters.formatResultMeasurement(37.5) == "37.5 cm")
         #expect(MeasurementUnit.centimeters.formatResultMeasurement(33.75) == "33.8 cm")
     }
 
     @Test func formatMeasurementInches() {
-        #expect(MeasurementUnit.inches.formatMeasurement(20) == "8 in")
-        #expect(MeasurementUnit.inches.formatMeasurement(50) == "20 in")
+        #expect(MeasurementUnit.inches.formatMeasurement(20) == "7.9 in")
+        #expect(MeasurementUnit.inches.formatMeasurement(50) == "19.7 in")
+        #expect(MeasurementUnit.inches.formatMeasurement(20.32) == "8 in")
         #expect(MeasurementUnit.inches.formatResultMeasurement(20) == "7.9 in")
         #expect(MeasurementUnit.inches.formatResultMeasurement(50) == "19.7 in")
         #expect(MeasurementUnit.inches.formatResultMeasurement(37.5) == "14.8 in")
@@ -1054,15 +1073,14 @@ struct MeasurementUnitTests {
         )
         let result = GaugeMath.compute(inputs)
         let summary = ResultsExportSummary(inputs: inputs, result: result, unit: .inches)
-        // Pattern values retain whole-unit input formatting.
-        #expect(summary.sections[0].pattern == "8 in / 48 rows")
-        #expect(summary.sections[1].pattern == "20 in / 120 rows")
-        #expect(summary.sections[2].pattern == "18 in / 108 rows")
+        #expect(summary.sections[0].pattern == "7.9 in / 48 rows")
+        #expect(summary.sections[1].pattern == "19.7 in / 120 rows")
+        #expect(summary.sections[2].pattern == "17.7 in / 108 rows")
         #expect(summary.sections[0].adjusted == "7.9 in / 48 rows")
         #expect(summary.sections[1].adjusted == "19.7 in / 120 rows")
         #expect(summary.sections[2].adjusted == "17.7 in / 108 rows")
         // Yoke textLine uses in
-        #expect(summary.sections[0].textLine.contains("8 in / 48 rows → 7.9 in"))
+        #expect(summary.sections[0].textLine.contains("7.9 in / 48 rows → 7.9 in"))
     }
 
     @Test func shareTextFormatterUsesInchesWhenRequested() {
@@ -1072,8 +1090,8 @@ struct MeasurementUnitTests {
         )
         let result = GaugeMath.compute(inputs)
         let text = ResultsShareTextFormatter.string(inputs: inputs, result: result, unit: .inches)
-        #expect(text.contains("• Yoke depth: 8 in / 48 rows → 7.9 in / 48 rows"))
-        #expect(text.contains("• Body length: 20 in / 120 rows → 19.7 in / 120 rows"))
+        #expect(text.contains("• Yoke depth: 7.9 in / 48 rows → 7.9 in / 48 rows"))
+        #expect(text.contains("• Body length: 19.7 in / 120 rows → 19.7 in / 120 rows"))
     }
 }
 

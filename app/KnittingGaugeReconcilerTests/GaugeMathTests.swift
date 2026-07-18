@@ -763,10 +763,10 @@ struct GaugeMathTests {
     @MainActor
     @Test func requiredGaugeAccessibilityLabelsIncludeMeasurementBasis() {
         let expectedLabels: [(GaugeFormField, String)] = [
-            (.patternStitches, "Pattern stitch gauge, per 10 centimeters / 4 inches"),
-            (.patternRows, "Pattern row gauge, per 10 centimeters / 4 inches"),
-            (.yourStitches, "Swatch stitch gauge, per 10 centimeters / 4 inches"),
-            (.yourRows, "Swatch row gauge, per 10 centimeters / 4 inches"),
+            (.patternStitches, "Pattern stitch gauge, per 10 centimeters"),
+            (.patternRows, "Pattern row gauge, per 10 centimeters"),
+            (.yourStitches, "Swatch stitch gauge, per 10 centimeters"),
+            (.yourRows, "Swatch row gauge, per 10 centimeters"),
         ]
 
         for (field, expectedLabel) in expectedLabels {

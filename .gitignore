@@ -13,7 +13,8 @@
 excalidraw.log
 # Squad: SubSquad activation file (local to this machine)
 .squad-workstream
-# Xcode local derived data
+# Local build output
+/.build/
 app/.build/
 # Fastlane build artifacts
 app/fastlane/report.xml

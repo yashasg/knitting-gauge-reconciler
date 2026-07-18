@@ -222,7 +222,7 @@ struct GaugeStepperField: View {
                     showsCorrection: hasMismatch || validationMessage != nil,
                     onSubmit: onSubmit
                 )
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: 44)
                     .padding(.horizontal, 12)
 
                 Rectangle()

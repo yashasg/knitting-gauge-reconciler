@@ -102,6 +102,12 @@ struct ContentView: View {
         return result
     }
 
+    private var liveResultSummary: String? {
+        guard let liveResult else { return nil }
+        return "Stitch adjustment \(GaugeMath.fmtPct(liveResult.stitchWidthScale))%. " +
+            "Row adjustment \(GaugeMath.fmtPct(liveResult.rowCountScale))%."
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -220,6 +226,10 @@ struct ContentView: View {
                     return
                 }
                 UIAccessibility.post(notification: .announcement, argument: message)
+            }
+            .onChange(of: liveResultSummary) { _, summary in
+                guard UIAccessibility.isVoiceOverRunning, let summary else { return }
+                UIAccessibility.post(notification: .announcement, argument: summary)
             }
             .onChange(of: verdictTitle) { _, newValue in
                 guard !newValue.isEmpty else {
@@ -804,7 +814,9 @@ private struct AboutHelpSheet: View {
                         "A denser swatch means fewer " +
                         "centimetres are needed to reach the pattern's intended row count; " +
                         "stitch_scale = pattern_st / your_st " +
-                        "describes horizontal width."
+                        "describes horizontal width. " +
+                        "Increase-row spacing is rescaled by your_row / pattern_row so the physical gap " +
+                        "between increases stays correct."
                     )
                         .font(.body)
                         .lineSpacing(4)

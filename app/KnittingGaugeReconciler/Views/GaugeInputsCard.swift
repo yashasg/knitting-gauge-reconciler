@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct GaugeInputsCard: View {
-    private static let spokenGaugeBasis = "per 10 centimeters / 4 inches"
+    private static let spokenGaugeBasis = "per 10 centimeters"
 
     static func accessibilityLabel(for field: GaugeFormField) -> String {
         guard !field.isPatternDetail else { return field.correctionName }
@@ -197,7 +197,7 @@ struct GaugeInputsCard: View {
     }
 
     private var perTag: some View {
-        Text("PER 10CM / 4\"")
+        Text("PER 10CM")
             .font(.caption2.weight(.bold))
             .tracking(0.5)
             .foregroundStyle(AppTheme.muted)

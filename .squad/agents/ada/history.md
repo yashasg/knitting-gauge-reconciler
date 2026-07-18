@@ -218,3 +218,24 @@ MetricKit V1 implementation completed. User directives: (1) MetricKit pivot from
   keep zero and non-finite values out of division and integer conversion.
 - Cast-on and increase spacing are discrete instructions and therefore require whole
   input values before arithmetic; gauge and length measurements may remain decimal.
+
+### 2026-07-17T16:44:38.371-07:00 — Fresh final math review
+
+- **State:** local `main` HEAD `f7c305ca22f6d9178e99fe2f07a2f031c19fe746`;
+  `origin/main` `8d883d2b15fdfe224b3b2fef6ad20acb9e6412f9`. Local is 25
+  commits ahead, but both have app tree `b279edcff4e264303646723570ac025709bccfc1`;
+  app/prototype working files are clean.
+- **Verdict:** **APPROVE.** `GaugeMath.compute`, `fmtCm`, `fmtRows`, `fmtPct`,
+  and cast-on rounding match the validated-positive prototype domain and canonical
+  formulas. Percent signs/directions, per-10-cm units, half-up rounding, optional
+  validation, and the nonpositive cast-on guard are coherent.
+- **Method:** Read-only static review; no build or test command run. No issue candidate.
+
+### 2026-07-17T17:14:23.945-07:00 — Final math parity recheck
+
+- **APPROVE:** The five requested JS behaviors and Swift port agree for validated
+  positive inputs: formula direction, positive half-up rounding, one-decimal cm,
+  whole rows/percentages, and cast-on counts.
+- Swift's no-fallback validation, absent optionals, whole-number discrete inputs,
+  and `nil` for a rounded nonpositive cast-on are explicit current contracts, not
+  parity defects. Static review only; no tests run and no issue proposal needed.

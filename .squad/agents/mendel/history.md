@@ -133,3 +133,36 @@ MetricKit V1 implementation completed. User directives: (1) MetricKit pivot from
 
 - Approved exact Swift unit mappings and visible stitch/row summary assertions for all six Jacquard scenarios.
 - Approved the deterministic production-path test that saves, restores, and discards distinct scene-keyed drafts.
+
+## 2026-07-17T15:05:00.467-07:00 — Final six-scenario gate
+
+- **CONFIRMED:** The exactly six JS gauge-math scenarios map one-to-one to six named tests in `app/KnittingGaugeReconcilerTests/GaugeMathTests.swift`.
+- `./app/build.sh test` selected only `KnittingGaugeReconcilerTests`; all six mapped tests passed within 78 passing tests across 6 suites.
+- No UI/XCUITest evidence was assigned, required, or used.
+
+## 2026-07-17T15:24:25.888-07:00 — Goal 3 evidence recheck
+
+- **CONFIRMED by static review:** All six Jacquard scenarios still map one-to-one to named Swift unit tests at `GaugeMathTests.swift:13-50`, including shared assertions for every canonical result field.
+- Prototype math edges are covered by authorized unit tests for validation, row-drift extremes, row rounding, status boundaries, and floating-point exactness. Prototype fallback behavior is intentionally superseded by the app's no-fallback validator contract.
+- UI/XCUITest files were not reviewed as evidence, changed, enabled, assigned, or run. No tests were run.
+
+## 2026-07-17T16:44:38.371-07:00 — Fresh final six-scenario review
+
+- **APPROVE:** Static source inspection confirms exactly six prototype scenarios map one-to-one, in order, to `scenario1PerfectMatch` through `scenario6BothDenser` in the authorized Swift unit suite; every mapping is PASS.
+- Reviewed local HEAD `f7c305ca22f6d9178e99fe2f07a2f031c19fe746` against local `origin/main` `8d883d2b15fdfe224b3b2fef6ad20acb9e6412f9`. The app tree and both mapped artifact blobs are identical at those revisions; `app/` is clean.
+- No test or build command ran. No UI/XCUITest source or evidence was used. No missing mapping or issue candidate exists.
+
+## 2026-07-17T16:55:05.482-07:00 — Final user-scenario acceptance
+
+- **PASS:** The five loop goals remain acceptable from the user-scenario lens.
+- Required pattern/swatch gauge entry, optional pattern details, live actionable guidance, inline correction, reset/Undo, relevant-only output, sharing, and scene-keyed draft continuity form a coherent real workflow.
+- Beginner comprehension is supported by plain labels and consequence/action copy; expert inspection is available through optional full math. Dynamic Type reflow, semantic labels, spoken errors, 44-point controls, and cm/in entry support the intended accessible contexts.
+- The six canonical scenarios remain meaningful as the match, row-only denser/looser, stitch-only denser/looser, and combined-denser branches, and map one-to-one to authorized Swift unit tests.
+- **Assumption boundary:** Source semantics support comprehension and accessible use; no empirical novice, one-handed, or assistive-technology success claim is made.
+- No in-scope gap found. No test/build ran, and no product, Git, GitLab, decision, or UI-test artifact was mutated.
+
+## 2026-07-17T17:14:23.945-07:00 — Goal #3 final evidence map
+
+- **CONFIRMED:** Static review maps all six Jacquard JS scenarios one-to-one to authorized Swift unit tests at `GaugeMathTests.swift:13-50`.
+- Shared assertions cover both scales, dimension correction, yoke/body/sleeve adjustments, increase spacing, and cast-on; scenario-specific assertions cover required formatting and rounded rows.
+- No test ran and no UI/XCUITest evidence was required or used.

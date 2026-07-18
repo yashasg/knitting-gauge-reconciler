@@ -180,3 +180,16 @@ This is optional follow-up work; current behavior is a11y-correct.
 ## Learnings
 
 - **2026-07-17T03:24:12.830-07:00 — Issue #62:** Rebuilding from MR !84's `origin/main` target restored the canonical formula/scenario ledger without changing later decisions. Removing the cast-on minimum clamp preserves JavaScript half-up rounding: `40 × 1 / 99` delivers 0 stitches and computes drift from 0. The authorized unit-only gate passed 74 tests in 6 suites with zero warnings.
+
+## 2026-07-17T16:44:38.371-07:00 — Fresh final static UI review
+
+- **APPROVE** at local HEAD `f7c305ca22f6d9178e99fe2f07a2f031c19fe746`; `origin/main` is `8d883d2b15fdfe224b3b2fef6ad20acb9e6412f9`, and both resolve the identical app tree `6637d9767f3a20517999adc0a7bfc58b7767fb2b`.
+- Four scene-local required raw inputs feed the single validator and immediate `liveResult`; invalid or absent required input removes results without fallback or stale output.
+- The live result leads with stitch-width and row-density hero percentages, followed by conditional pattern-versus-adjusted rows for supplied optional details. Blank optionals invent no guidance.
+- Inline field errors, invalid summary, VoiceOver announcement, first-invalid focus on Done, native controls, 44-point targets, semantic type, accessibility reflow, and the 760-point iPad width cap satisfy current UI decisions.
+- Prototype-only defaults, always-populated rows, hash/local-storage, and link-sharing behavior remain intentionally archival. Static review only; no build or test command ran, and no issue candidate was found.
+
+## 2026-07-17T17:14:23.945-07:00 — Final contract review
+
+- **APPROVE:** Current SwiftUI still satisfies the four-input live-result contract, hero percentages, conditional adjustment comparisons, validation/stale-result suppression, and accessibility basics.
+- Prototype comparison remains limited by binding decisions: optional defaults and always-populated rows are intentionally not copied. Read-only source review; no tests run.

@@ -1,12 +1,14 @@
 # macOS system file
 .DS_Store
-# Squad: ignore runtime state (logs, inbox, sessions, health reports)
-.squad/orchestration-log/
+# Squad runtime state
 .squad/log/
-.squad/decisions/inbox/
+.squad/orchestration-log/
+.squad/session-logs/
 .squad/sessions/
+.squad/decisions/inbox/
+.squad/config.json
 .squad/.scratch/
-.squad/health-report.txt
+.squad/health-*.txt
 # Excalidraw MCP server runtime log (regenerated on every server start)
 excalidraw.log
 # Squad: SubSquad activation file (local to this machine)

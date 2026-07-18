@@ -90,6 +90,12 @@ telemetry_preflight() {
   fi
 }
 
+squad_runtime_state_preflight() {
+  local tracked
+  tracked="$(git -C "$REPO_ROOT" ls-files | grep -E '^\.squad/(log/|orchestration-log/|session-logs/|sessions/|decisions/inbox/|health-[^/]*\.txt$|config\.json$)' || true)"
+  [[ -z "$tracked" ]] || fail "Git tracks mutable Squad runtime state:"$'\n'"$tracked"
+}
+
 resolve_simulator_context() {
   local destination_udid=""
   local destination_name=""
@@ -220,6 +226,7 @@ case "$MODE" in
     ;;
 esac
 
+squad_runtime_state_preflight
 command -v swiftlint >/dev/null 2>&1 || fail "swiftlint not found; install via: brew install swiftlint"
 acquire_build_lock
 telemetry_preflight

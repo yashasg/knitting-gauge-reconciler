@@ -53,3 +53,35 @@ MetricKit V1 implementation completed. Signpost #9 (`cast_on.driftBandShown`) ga
   shaping rounds half-up to at least one row, and copy warns knitters to reconcile cast-on with pattern repeats.
 - Canonical centimetres remain the arithmetic model; inch entry/display uses exact `2.54` conversion with
   intentional whole-unit UI rounding. All six scenario vectors, status wording, and reciprocal directions agree.
+
+## 2026-07-17T15:24:25.888-07:00 — Goal #4 final domain signoff
+
+- Approved HEAD `57ce2b2050399df7bb3513251ec4cfd960192662` by static review.
+- All six canonical outcomes, reciprocal gauge directions, half-up whole-stitch/row presentation, exact
+  `2.54` inch storage, optional absence, and the nonpositive cast-on guard remain contract-correct.
+
+## 2026-07-17T16:44:38.371-07:00 — Fresh final formula/craft signoff
+
+- **APPROVE** local HEAD `f7c305ca22f6d9178e99fe2f07a2f031c19fe746`; `origin/main`
+  is `8d883d2b15fdfe224b3b2fef6ad20acb9e6412f9`, and their app/prototype trees are identical.
+- Static review reconfirmed canonical reciprocal directions, percentage meaning, half-up whole
+  stitch/row outcomes, pattern-repeat reconciliation, exact `2.54` conversion, and canonical-cm arithmetic.
+- Exactly six prototype scenarios map one-to-one to the six named authorized Swift unit scenarios.
+  No build or test command was run; no current craft/formula gap was found.
+
+## 2026-07-17T16:55:05.482-07:00 — Simultaneous final knitting-domain review
+
+- **PASS / APPROVE** at local HEAD `f7c305ca22f6d9178e99fe2f07a2f031c19fe746`; the reviewed
+  `app/` and canonical scenario artifacts are unchanged from shipped `origin/main`.
+- Formula direction, half-up whole-stitch/row rounding, canonical-centimetre arithmetic, exact
+  `2.54` inch conversion, unit terminology, optional absence, and practical pattern-repeat guidance pass.
+- All six canonical vectors and their displayed whole outcomes map directly to the six named Swift unit cases.
+  Goals 1–5 retain PASS evidence; no test or build command was run and no craft gap was found.
+
+## 2026-07-17T17:14:23.945-07:00 — Final independent JS-to-Swift domain review
+
+- **APPROVE** local HEAD `f7c305ca22f6d9178e99fe2f07a2f031c19fe746` by static review.
+- Stitch/cast-on reciprocals, row/dimension reciprocals, shaping, section-row preservation, percentages,
+  half-up whole-stitch/row presentation, validation/absence, zero-cast-on omission, and exact `2.54` units agree.
+- All six realistic scenarios produce the canonical lengths, intervals, percentages, and cast-ons; no test or
+  build command was run and no high-confidence knitting-domain blocker was found.

@@ -16,6 +16,7 @@
 
 ## Current Learnings
 
+- 2026-07-17T15:24:25.888-07:00: **Final Goal 2 APPROVED.** Static review of the current SwiftUI app tree against `prototype/index.html` and active decisions found no blocking hierarchy, HIG, accessibility, Dynamic Type, contrast, hit-target, focus-order, or copy drift. The app preserves the useful single-surface Pattern/Swatch grouping and actionable two-axis results while intentionally using native disclosure, sheets, alert, and share controls. Changes since the prior approval improve VoiceOver validation announcements and exact mismatch-delta communication, and cap readable iPad width without changing the approved flow. UI/XCUITest evidence was neither used nor requested.
 - 2026-06-03T01:47:58Z: **Research validated elastic-layout decision with Apple WWDC citations.** Ive researched Dynamic Type solutions per Yashas's accessibility gate. Findings confirm the elastic-layout principle is WWDC-sanctioned: WWDC 2020:10020 ("avoid truncating text... wrap labels and use full width"), WWDC 2022:10056 (ViewThatFits/AnyLayout), WWDC 2019:261 (Large Content Viewer only for non-scalable chrome, not content badges). Solution ranking: 1) ViewThatFits (primary), 2) AnyLayout+dynamicTypeSize, 3) Large Content Viewer (chrome/accessibility chrome only), 4) FlowLayout, 5) structural relocation. No code changes. Research-backed decision ready for implementation when Yashas approves.
 
 - 2026-06-02T18:32:46-07:00: **IMPLEMENTED — Elastic Layout shipped in MR !43.** Edison successfully implemented the ViewThatFits elastic-layout pattern per Ive's specification. All `.dynamicTypeSize(...accessibility1)` caps removed; ViewThatFits reflow added to GaugeInputGroup header and GaugeStepperField title row. Delta-pill fallback added (needed the VStack backup as Ive anticipated); drift-pill has no fallback (ZStack overlay absorbs sizes gracefully per SKILL.md Value Tile with Badge Overlay pattern). Build exit 0, unit tests 49/49 pass. Four UI-test pre-existing failures flagged (iOS 26 infra flake, contrast audit, unit-toggle regression) — pending Yashas confirmation. Spec decision archived: `.squad/decisions.md` § `ive/dynamic-type-elastic-layout`.
@@ -71,3 +72,24 @@ All decisions from this session merged to `.squad/decisions.md` (inbox cleared).
 - Approved the single required-gauge surface, 24-point pattern/swatch separation, collapsed blank optional details,
   inline correction/focus flow, Reset/Undo discoverability, Dynamic Type reflow, semantic text colors, and VoiceOver
   behavior against the issue contract and the session-authorized prototype comparison.
+
+## 2026-07-17T16:44:38.371-07:00 — Fresh static final review
+
+- **APPROVE.** Reviewed local HEAD `f7c305ca22f6d9178e99fe2f07a2f031c19fe746`; the app tree and
+  `ContentView.swift` blobs exactly match `origin/main` `8d883d2b15fdfe224b3b2fef6ad20acb9e6412f9`.
+- No blocking Goal #2 gap: hierarchy, native controls, semantic labels/states, inline validation and first-invalid
+  focus, color-independent status, elastic Dynamic Type layout, hero interpretation, and conditional
+  pattern-versus-adjusted guidance remain coherent. The prototype was used only as archival context.
+- Advisory only: “Stitch-wise” and “Row-wise” are mildly jargon-like, but percentages, textual statuses, verdict
+  guidance, and complete spoken labels provide sufficient current-context clarity. Static review only; no command
+  or automated interaction evidence was invoked.
+
+## 2026-07-17T17:14:23.945-07:00 — Goal #2 final static review
+
+- **APPROVE.** Current SwiftUI source remains a coherent native adaptation of `prototype/index.html`: required
+  pattern/swatch gauges lead, optional pattern details disclose progressively, and valid inputs produce textual,
+  color-independent two-axis guidance plus only the relevant adjustment rows.
+- Inline field errors, first-invalid focus and announcements, complete VoiceOver values, 44-point controls, native
+  pickers/disclosures/sheets/alerts/share, and accessibility-size stacking show no high-confidence blocker.
+- Prototype-only defaults, persistence, share-link behavior, and always-populated rows were correctly not treated as
+  authority. Static source review only; UI/XCUITests were not inspected or run.

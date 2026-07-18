@@ -74,14 +74,7 @@ No team exists yet. Propose one — but **DO NOT create any files until the user
 
 **Team.md structure:** `team.md` MUST contain a section titled exactly `## Members` (not "## Team Roster" or other variations) containing the roster table. This header is hard-coded in GitHub workflows (`squad-heartbeat.yml`, `squad-issue-assign.yml`, `squad-triage.yml`, `sync-squad-labels.yml`) for label automation. If the header is missing or titled differently, label routing breaks.
 
-**Merge driver for append-only files:** Create or update `.gitattributes` at the repo root to enable conflict-free merging of `.squad/` state across branches:
-```
-.squad/decisions.md merge=union
-.squad/agents/*/history.md merge=union
-.squad/log/** merge=union
-.squad/orchestration-log/** merge=union
-```
-The `union` merge driver keeps all lines from both sides, which is correct for append-only files. This makes worktree-local strategy work seamlessly when branches merge — decisions, memories, and logs from all branches combine automatically.
+**Runtime state:** Pass the configured `STATE_BACKEND` to stateful agent prompts. Mutable decisions, histories, logs, sessions, and health reports are persisted through Squad state tools, never merge drivers or normal Git commits.
 
 7. Say: *"✅ Team hired. Try: '{FirstCastName}, set up the project structure'"*
 
@@ -642,16 +635,10 @@ Squad and all spawned agents may be running inside a **git worktree** rather tha
 - Agents resolve ALL `.squad/` paths from the provided team root — charter, history, decisions inbox, logs.
 - Agents never discover the team root themselves. They trust the value from the Coordinator.
 
-**Cross-worktree considerations (worktree-local strategy — recommended for concurrent work):**
-- `.squad/` files are **branch-local**. Each worktree works independently — no locking, no shared-state races.
-- When branches merge into main, `.squad/` state merges with them. The **append-only** pattern ensures both sides only added content, making merges clean.
-- A `merge=union` driver in `.gitattributes` (see Init Mode) auto-resolves append-only files by keeping all lines from both sides — no manual conflict resolution needed.
-- The Scribe commits `.squad/` changes to the worktree's branch. State flows to other branches through normal git merge / PR workflow.
-
-**Cross-worktree considerations (main-checkout strategy):**
-- All worktrees share the same `.squad/` state on disk via the main checkout — changes are immediately visible without merging.
-- **Not safe for concurrent sessions.** If two worktrees run sessions simultaneously, Scribe merge-and-commit steps will race on `decisions.md` and git index. Use only when a single session is active at a time.
-- Best suited for solo use when you want a single source of truth without waiting for branch merges.
+**Runtime state across worktrees:**
+- Pass `STATE_BACKEND` to Scribe and use `squad_state_*` tools plus `squad_decide` for mutable state.
+- Never stage, commit, merge, reset, or push mutable Squad state by hand.
+- If state tools are unavailable, stop without mutating files or Git state.
 
 ### Worktree Lifecycle Management
 
@@ -690,7 +677,7 @@ When worktree mode is enabled, the coordinator creates dedicated worktrees for i
 
 Orchestration log entries are written by **Scribe**, not the coordinator. This keeps the coordinator's post-work turn lean and avoids context window pressure after collecting multi-agent results.
 
-The coordinator passes a **spawn manifest** (who ran, why, what mode, outcome) to Scribe via the spawn prompt. Scribe writes one entry per agent at `.squad/orchestration-log/{timestamp}-{agent-name}.md`.
+The coordinator passes a **spawn manifest** (who ran, why, what mode, outcome) to Scribe via the spawn prompt. Scribe writes one entry per agent at `orchestration-log/{timestamp}-{agent-name}.md` with `squad_state_write`.
 
 Each entry records: agent routed, why chosen, mode (background/sync), files authorized to read, files produced, and outcome. See `.squad/templates/orchestration-log.md` for the field format.
 
@@ -877,20 +864,28 @@ description: "📋 Scribe: Log session & merge decisions"
 prompt: |
   You are the Scribe. Read .squad/agents/scribe/charter.md.
   TEAM ROOT: {team_root}
-  CURRENT_DATETIME: {current_datetime}
+  CURRENT_DATETIME: <resolved CURRENT_DATETIME literal>
+  STATE_BACKEND: {state_backend}
 
   SPAWN MANIFEST: {spawn_manifest}
 
   Tasks (in order):
-  0. PRE-CHECK: Stat decisions.md size and count inbox/ files. Record measurements.
+  0. PRE-CHECK: Run `squad_state_health` when available. If state tools are unavailable,
+     stop without mutating files or git state.
+  0b. PRE-CHECK: Read `decisions.md` and list `decisions/inbox` with state tools.
+     Record measurements.
   1. DECISIONS ARCHIVE [HARD GATE]: If decisions.md >= 20480 bytes, archive entries older than 30 days NOW. If >= 51200 bytes, archive entries older than 7 days. Do not skip this step.
-  2. DECISION INBOX: Merge .squad/decisions/inbox/ → decisions.md, delete inbox files. Deduplicate.
-  3. ORCHESTRATION LOG: Write .squad/orchestration-log/{timestamp}-{agent}.md per agent. Use ISO 8601 UTC timestamp.
-  4. SESSION LOG: Write .squad/log/{timestamp}-{topic}.md. Brief. Use ISO 8601 UTC timestamp.
-  5. CROSS-AGENT: Append team updates to affected agents' history.md.
+  2. DECISION INBOX: Use `squad_state_list` and `squad_state_read` on `decisions/inbox`,
+     merge entries into `decisions.md` with `squad_state_write`, delete processed inbox
+     entries with `squad_state_delete`, and deduplicate.
+  3. ORCHESTRATION LOG: Write `orchestration-log/{timestamp}-{agent}.md` with `squad_state_write` per agent. Use ISO 8601 UTC timestamp. Replace `:` with `-` in `{timestamp}` so filenames are valid on all platforms (e.g. `2026-06-02T21-15-30Z`).
+  4. SESSION LOG: Write `log/{timestamp}-{topic}.md` with `squad_state_write`. Brief. Use ISO 8601 UTC timestamp. Replace `:` with `-` in `{timestamp}` so filenames are valid on all platforms.
+  5. CROSS-AGENT: Append team updates to affected agents' `agents/{agent}/history.md` with `squad_state_append`.
   6. HISTORY SUMMARIZATION [HARD GATE]: If any history.md >= 15360 bytes (15KB), summarize now.
-  7. GIT COMMIT: Stage only the exact `.squad/` files Scribe wrote in this session. Use `git status --porcelain` filtered to allowed paths (decisions.md, decisions-archive.md, agents/{name}/history.md, agents/{name}/history-archive.md, log/*, orchestration-log/*). Stage each file individually with `git add -- <path>`. Handle renames by extracting destination path (`-replace '^.* -> ',''`). Commit with -F (write msg to temp file). Skip if nothing staged. ⚠️ NEVER use `git add .squad/` or broad globs.
-  8. HEALTH REPORT: Log decisions.md before/after size, inbox count processed, history files summarized.
+  7. HEALTH REPORT: Log decisions.md before/after size, inbox count processed, history files summarized with `squad_state_write` or `squad_state_append`.
+
+  Runtime state tools own persistence. Never switch branches, push note refs, reset
+  `.squad/`, or commit mutable squad state from this prompt.
 
   Never speak to user. ⚠️ End with plain text summary after all tool calls.
 ```
@@ -950,7 +945,7 @@ If the user wants to remove someone:
 | File | Status | Who May Write | Who May Read |
 |------|--------|---------------|--------------|
 | `.github/agents/squad.agent.md` | **Authoritative governance.** All roles, handoffs, gates, and enforcement rules. | Repo maintainer (human) | Squad (Coordinator) |
-| `.squad/decisions.md` | **Authoritative decision ledger.** Single canonical location for scope, architecture, and process decisions. | Squad (Coordinator) — append only | All agents |
+| `.squad/decisions.md` | **Authoritative decision ledger.** Single canonical location for scope, architecture, and process decisions. | Runtime state tools (`squad_decide`, Scribe) | All agents |
 | `.squad/team.md` | **Authoritative roster.** Current team composition. | Squad (Coordinator) | All agents |
 | `.squad/routing.md` | **Authoritative routing.** Work assignment rules. | Squad (Coordinator) | Squad (Coordinator) |
 | `.squad/ceremonies.md` | **Authoritative ceremony config.** Definitions, triggers, and participants for team ceremonies. | Squad (Coordinator) | Squad (Coordinator), Facilitator agent (read-only at ceremony time) |
@@ -958,10 +953,10 @@ If the user wants to remove someone:
 | `.squad/casting/registry.json` | **Authoritative name registry.** Persistent agent-to-name mappings. | Squad (Coordinator) | Squad (Coordinator) |
 | `.squad/casting/history.json` | **Derived / append-only.** Universe usage history and assignment snapshots. | Squad (Coordinator) — append only | Squad (Coordinator) |
 | `.squad/agents/{name}/charter.md` | **Authoritative agent identity.** Per-agent role and boundaries. | Squad (Coordinator) at creation; agent may not self-modify | Squad (Coordinator) reads to inline at spawn; owning agent receives via prompt |
-| `.squad/agents/{name}/history.md` | **Derived / append-only.** Personal learnings. Never authoritative for enforcement. | Owning agent (append only), Scribe (cross-agent updates, summarization) | Owning agent only |
-| `.squad/agents/{name}/history-archive.md` | **Derived / append-only.** Archived history entries. Preserved for reference. | Scribe | Owning agent (read-only) |
-| `.squad/orchestration-log/` | **Derived / append-only.** Agent routing evidence. Never edited after write. | Scribe | All agents (read-only) |
-| `.squad/log/` | **Derived / append-only.** Session logs. Diagnostic archive. Never edited after write. | Scribe | All agents (read-only) |
+| `.squad/agents/{name}/history.md` | **Derived / append-only runtime state.** Personal learnings. Never authoritative for enforcement. | Owning agent and Scribe via state tools | Owning agent only |
+| `.squad/agents/{name}/history-archive.md` | **Derived / append-only runtime state.** Archived history entries. Preserved for reference. | Scribe via state tools | Owning agent (read-only) |
+| `.squad/orchestration-log/` | **Derived / append-only runtime state.** Agent routing evidence. Never edited after write. | Scribe via state tools | All agents (read-only) |
+| `.squad/log/` | **Derived / append-only runtime state.** Session logs. Diagnostic archive. Never edited after write. | Scribe via state tools | All agents (read-only) |
 | `.squad/templates/` | **Reference.** Format guides for runtime files. Not authoritative for enforcement. | Squad (Coordinator) at init | Squad (Coordinator) |
 | `.squad/plugins/marketplaces.json` | **Authoritative plugin config.** Registered marketplace sources. | Squad CLI (`squad plugin marketplace`) | Squad (Coordinator) |
 

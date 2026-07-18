@@ -98,3 +98,22 @@ Correction to earlier path note: the project bundle must remain `app/KnittingGau
 - MR !66 is open at exact head `2021bac598de922ba67f812d1f1ec95b20d297ba`, non-draft, conflict-free, discussion-unblocked, and metadata-mergeable.
 - Thirty minutes of polling found no pipeline, commit status, or job for that exact SHA. MR `head_pipeline` `2683421261` is superseded evidence: it failed on `1a2327f98bf9df19456255d6856c1c69a81d9ddf` and must be ignored.
 - Issue #51's Curie independent-approval checkbox remains unchecked. MR !66 is not ready: exact-SHA CI is absent and Curie approval is outstanding.
+
+### 2026-07-17T16:14:12.202-07:00 — Complete reconciliation gate
+
+- GitLab has no open MR. Open issues are #1 (tracker) and follow-ups #52, #57, and #60, so the runnable domain queue is empty and final review is authorized.
+- `origin/main` is `8d883d2b15fdfe224b3b2fef6ad20acb9e6412f9`; exact external pipeline `2686304827` is successful, with successful `Build & Test` status `15409415903` and no native pipeline jobs.
+- The sole worktree is local `main` at `f7c305ca22f6d9178e99fe2f07a2f031c19fe746`, 25 Squad-only commits ahead; `app/` and `prototype/` match `origin/main`. Recent session evidence exposes no unfinished product work.
+- Preserve 43 stashes, 11 safety refs, closed-unmerged local branches `ci-smoke-test`/!28 and `fix/asc-numeric-app-id`/!40, MR !66's closed-unmerged remote branch, legacy remotes, the current directive inbox item, and dirty Squad/runtime records. No cleanup is safely attributable and authorized.
+
+### 2026-07-17T16:55:05.482-07:00 — Independent final-review reconciliation
+
+- Fresh fetch confirms one worktree: local `main` at `f7c305ca22f6d9178e99fe2f07a2f031c19fe746`, 25 ahead/0 behind `origin/main` `8d883d2b15fdfe224b3b2fef6ad20acb9e6412f9`.
+- GitLab has no open merge request. Open #1 is the tracker and #52, #57, and #60 are labeled follow-ups, leaving no runnable domain issue.
+- Exact-main external pipeline `2686304827` and commit status `15409415903` (`Build & Test`) are successful; the external pipeline exposes zero native jobs.
+- Preserve 43 stashes, 11 `refs/safety` refs, two closed-unmerged local branch tips, seven unmerged remote tips including MR !66's branch, 11 modified coordination files, one untracked health record, and the single directive inbox entry. Latest all-roster logs approve with no blocker. No test ran during this reconciliation.
+
+### 2026-07-17T18:37:55.167-07:00 — Final GitLab board scan
+
+- Fresh paginated GitLab API results contain no open MR and exactly four open issues: tracker #1 plus `follow-up` issues #52, #57, and #60. Per the active directive, none is runnable; the three follow-ups have distinct StoreKit/settings, repository-hygiene, and telemetry scopes, so no duplicate runnable work exists.
+- Issue #51 is closed, and MR !66 is closed without a merge commit or squash commit. Both records explicitly attribute closure to the prohibition on UI tests/XCUITests and require preserving the divergent branch as unshipped history.

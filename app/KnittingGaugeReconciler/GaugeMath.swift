@@ -96,6 +96,9 @@ enum GaugeMath {
         guard let value = Double(trimmed) ?? Double(normalized), value.isFinite else {
             return .failure(.invalidNumber)
         }
+        guard field.range.contains(value) else {
+            return .failure(.outOfRange(field.range))
+        }
         switch field {
         case .patternCastOn, .patternIncreaseSpacing:
             guard value.rounded(.towardZero) == value else {
@@ -103,9 +106,6 @@ enum GaugeMath {
             }
         default:
             break
-        }
-        guard field.range.contains(value) else {
-            return .failure(.outOfRange(field.range))
         }
         return .success(value)
     }

@@ -78,6 +78,11 @@ struct GaugeMathTests {
                 ValidationCase(name: "zero", text: "0", expectation: .error(.outOfRange(range))),
                 ValidationCase(name: "negative", text: "-1", expectation: .error(.outOfRange(range))),
                 ValidationCase(
+                    name: "decimal below lower bound",
+                    text: plain(row.lower - 0.5),
+                    expectation: .error(.outOfRange(range))
+                ),
+                ValidationCase(
                     name: "decimal",
                     text: plain(row.decimal),
                     expectation: row.requiresWholeNumber ? .error(.wholeNumberRequired) : .value(row.decimal)

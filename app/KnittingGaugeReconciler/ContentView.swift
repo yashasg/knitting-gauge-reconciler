@@ -151,7 +151,7 @@ struct ContentView: View {
                         patternBody: draftBinding($patternBody, at: 6),
                         patternSleeve: draftBinding($patternSleeve, at: 7),
                         patternIncreases: draftBinding($patternIncreases, at: 8),
-                        unit: $measurementUnit,
+                        unit: measurementUnitBinding,
                         isExpanded: patternDetailsBinding,
                         validationMessages: validationMessages,
                         focusedField: $focusedField,
@@ -402,6 +402,29 @@ struct ContentView: View {
                 updateSceneRestorationActivity(
                     values: rawTextValues,
                     disclosure: newValue
+                )
+            }
+        )
+    }
+
+    private var measurementUnitBinding: Binding<MeasurementUnit> {
+        Binding(
+            get: { measurementUnit },
+            set: { newUnit in
+                guard newUnit != measurementUnit else { return }
+                let yoke = measurementUnit.storageText(patternYoke, transitioningTo: newUnit)
+                let body = measurementUnit.storageText(patternBody, transitioningTo: newUnit)
+                let sleeve = measurementUnit.storageText(patternSleeve, transitioningTo: newUnit)
+                let textChanged = yoke != patternYoke || body != patternBody || sleeve != patternSleeve
+                measurementUnit = newUnit
+                guard textChanged else { return }
+                patternYoke = yoke
+                patternBody = body
+                patternSleeve = sleeve
+                resetResultMetrics()
+                updateSceneRestorationActivity(
+                    values: rawTextValues,
+                    disclosure: patternDetailsExpanded
                 )
             }
         )

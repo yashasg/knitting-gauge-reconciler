@@ -2,20 +2,6 @@ import Foundation
 import MetricKit
 import os
 
-// MARK: - MetricPayloadProtocol
-
-/// Minimal protocol surface for the testable receive seam.
-/// Only add fields as the subscriber actually consumes them.
-/// `jsonRepresentation()` is intentionally excluded — logging
-/// uses the concrete `MXMetricPayload` in `didReceive`, keeping
-/// the mock (Curie's MockMetricPayload) as a simple struct.
-protocol MetricPayloadProtocol {
-    var timeStampBegin: Date { get }
-    var timeStampEnd: Date { get }
-}
-
-extension MXMetricPayload: MetricPayloadProtocol {}
-
 // MARK: - SignpostNames
 
 /// Static-string name table for all MXSignpost call sites.
@@ -50,13 +36,8 @@ final class MetricsSubscriber: NSObject, MXMetricManagerSubscriber {
             print(String(data: payload.jsonRepresentation(), encoding: .utf8) ?? "<non-utf8 payload>")
         }
         #endif
-        receive(payloads)
-        // V1: rely on Apple's auto-flow to App Store Connect Analytics.
-        // V2 (deferred): POST jsonRepresentation() to developer endpoint via receive().
     }
 
-    // V2 (deferred): diagnostic payloads bypass the receive() seam — V2 should route them through a
-    // parallel receive(diagnostics:) overload so the developer-endpoint path covers both payload types.
     func didReceive(_ payloads: [MXDiagnosticPayload]) {
         #if DEBUG
         for payload in payloads {
@@ -64,18 +45,5 @@ final class MetricsSubscriber: NSObject, MXMetricManagerSubscriber {
             print(String(data: payload.jsonRepresentation(), encoding: .utf8) ?? "<non-utf8 payload>")
         }
         #endif
-        // V1: rely on Apple's auto-flow to App Store Connect Analytics.
-        // V2 (deferred): POST jsonRepresentation() to developer endpoint.
-    }
-
-    // MARK: Internal seam (testable via Curie's MockMetricPayload)
-
-    /// Routes payloads through the protocol seam so unit tests can inject
-    /// mock payloads without constructing a real MXMetricPayload.
-    /// V2: add developer-endpoint POST here.
-    func receive(_ payloads: [any MetricPayloadProtocol]) {
-        // V1: no-op. Apple's MetricKit pipeline handles delivery to App Store Connect.
-        // V2 (deferred): POST to developer endpoint using jsonRepresentation()
-        // (available on concrete MXMetricPayload, cast or re-receive as needed).
     }
 }

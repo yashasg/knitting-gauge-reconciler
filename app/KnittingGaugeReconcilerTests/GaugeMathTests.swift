@@ -1181,6 +1181,75 @@ struct MeasurementUnitTests {
         #expect(GaugeMath.validate(oversized, for: .patternYokeDepth) == .failure(.invalidNumber))
     }
 
+    @Test func invalidInchTextIsRevalidatedUnderCentimeterRulesForEveryLength() {
+        let fields: [GaugeMath.Field] = [
+            .patternYokeDepth,
+            .patternBodyLength,
+            .patternSleeveLength,
+        ]
+        let cases: [
+            (
+                name: String,
+                text: String,
+                expected: Result<Double?, GaugeMath.ValidationError>,
+                hasInvalidInchesSuffix: Bool
+            )
+        ] = [
+            ("decimal valid in cm", "8.5", .success(8.5), true),
+            ("inch upper overflow valid in cm", "40", .success(40), true),
+            ("spelling and whitespace", " 8.50 ", .success(8.5), true),
+            ("malformed", "8..5", .failure(.invalidNumber), true),
+            ("below cm range", "4.9", .failure(.outOfRange(5...100)), true),
+            ("above cm range", "100.1", .failure(.outOfRange(5...100)), true),
+            ("blank", "", .success(nil), false),
+            ("whitespace blank", " \n\t ", .success(nil), false),
+        ]
+
+        for field in fields {
+            for testCase in cases {
+                let stored = MeasurementUnit.inches.centimeterStorageText(
+                    from: testCase.text,
+                    cmRange: 5...100
+                )
+                let transitioned = MeasurementUnit.inches.storageText(
+                    stored,
+                    transitioningTo: .centimeters
+                )
+
+                #expect(
+                    (MeasurementUnit.invalidInchesText(from: stored) != nil)
+                        == testCase.hasInvalidInchesSuffix,
+                    "\(field) \(testCase.name): invalid-inch suffix"
+                )
+                #expect(transitioned == testCase.text, "\(field) \(testCase.name): visible text")
+                #expect(
+                    GaugeMath.validate(transitioned, for: field) == testCase.expected,
+                    "\(field) \(testCase.name): centimeter validation"
+                )
+            }
+        }
+    }
+
+    @Test func acceptedWholeInchesKeepExactCanonicalStorageAcrossToggles() {
+        let cases = [
+            (inches: 2, centimeters: "5.08"),
+            (inches: 8, centimeters: "20.32"),
+            (inches: 39, centimeters: "99.06"),
+        ]
+
+        for testCase in cases {
+            let stored = MeasurementUnit.inches.centimeterStorageText(
+                from: "\(testCase.inches)",
+                cmRange: 5...100
+            )
+
+            #expect(stored == testCase.centimeters)
+            #expect(MeasurementUnit.invalidInchesText(from: stored) == nil)
+            #expect(MeasurementUnit.inches.storageText(stored, transitioningTo: .centimeters) == stored)
+            #expect(MeasurementUnit.centimeters.storageText(stored, transitioningTo: .inches) == stored)
+        }
+    }
+
     // MARK: Round-trip: toggle cm → in → cm must not corrupt the cm model
 
     /// Toggling the unit does NOT alter the stored cm value — only the display

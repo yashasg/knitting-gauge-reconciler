@@ -66,6 +66,11 @@ enum MeasurementUnit: String, CaseIterable {
         return String(storedText.dropFirst(invalidInchesPrefix.count))
     }
 
+    func storageText(_ storedText: String, transitioningTo newUnit: MeasurementUnit) -> String {
+        guard self == .inches, newUnit == .centimeters else { return storedText }
+        return Self.invalidInchesText(from: storedText) ?? storedText
+    }
+
     // Returns the equivalent display-unit range for a cm-calibrated closed range.
     func displayRange(from cmRange: ClosedRange<Int>) -> ClosedRange<Int> {
         switch self {

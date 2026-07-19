@@ -88,7 +88,8 @@ enum MeasurementUnit: String, CaseIterable {
     func formatResultMeasurement(_ cm: Double) -> String {
         let displayValue = self == .centimeters ? cm : cm / 2.54
         let rounded = (displayValue * 10).rounded() / 10
-        let value = rounded.formatted(.number.precision(.fractionLength(0...1)))
+        let format = rounded == rounded.rounded() ? "%.0f" : "%.1f"
+        let value = String(format: format, locale: Locale(identifier: "en_US_POSIX"), rounded)
         return "\(value) \(label)"
     }
 }

@@ -1235,6 +1235,35 @@ struct MeasurementUnitTests {
         #expect(MeasurementUnit.inches.formatResultMeasurement(37.5) == "14.8 in")
     }
 
+    @Test func measurementExportAndShareUseStableASCIIFormatting() throws {
+        let inputs = GaugeInputs(
+            patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 24,
+            patternYokeDepth: 20.32
+        )
+        let result = GaugeMath.compute(inputs)
+        let centimeterSection = try #require(
+            ResultsExportSummary(inputs: inputs, result: result, unit: .centimeters).sections.first
+        )
+        let inchSection = try #require(
+            ResultsExportSummary(inputs: inputs, result: result, unit: .inches).sections.first
+        )
+
+        #expect(MeasurementUnit.centimeters.formatResultMeasurement(33.75) == "33.8 cm")
+        #expect(MeasurementUnit.inches.formatResultMeasurement(20.32) == "8 in")
+        #expect(centimeterSection.pattern == "20.3 cm / 49 rows")
+        #expect(centimeterSection.adjusted == "20.3 cm / 49 rows")
+        #expect(inchSection.pattern == "8 in / 49 rows")
+        #expect(inchSection.adjusted == "8 in / 49 rows")
+        #expect(
+            ResultsShareTextFormatter.string(inputs: inputs, result: result, unit: .centimeters)
+                .contains("• Yoke depth: 20.3 cm / 49 rows → 20.3 cm / 49 rows")
+        )
+        #expect(
+            ResultsShareTextFormatter.string(inputs: inputs, result: result, unit: .inches)
+                .contains("• Yoke depth: 8 in / 49 rows → 8 in / 49 rows")
+        )
+    }
+
     // MARK: ResultsExportSummary respects unit
 
     @Test func exportSummaryUsesInchesWhenRequested() {

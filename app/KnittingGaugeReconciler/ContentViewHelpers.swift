@@ -86,6 +86,21 @@ enum SceneDraftStore {
         return (values, disclosure)
     }
 
+    static func reconcileInvalidInchProvenance(
+        in values: [String],
+        for unit: MeasurementUnit
+    ) -> [String] {
+        guard unit == .centimeters, values.count == rawValueCount else { return values }
+        var reconciled = values
+        for index in 5...7 {
+            reconciled[index] = MeasurementUnit.inches.storageText(
+                values[index],
+                transitioningTo: unit
+            )
+        }
+        return reconciled
+    }
+
     static func load(sceneID: String, defaults: UserDefaults = .standard) -> [String: Any]? {
         defaults.dictionary(forKey: keyPrefix + sceneID)
     }

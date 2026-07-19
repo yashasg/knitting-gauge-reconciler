@@ -827,7 +827,7 @@ private struct AboutHelpSheet: View {
                         "Always test a full-size gauge " +
                         "swatch (washed and blocked the way you'll wash and block the finished garment) " +
                         "before starting your " +
-                        "project. Numbers here are a starting point; your finished piece is the final word."
+                        "project. Numbers here are a starting point — your finished piece is the final word."
                     )
                         .font(.body.weight(.semibold))
                         .lineSpacing(4)
@@ -853,6 +853,20 @@ private struct AboutHelpSheet: View {
                         .foregroundStyle(AppTheme.muted)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("about-non-affiliation")
+                    Text("Privacy")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(AppTheme.sage)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(
+                        "Your gauge values stay on this device. No account, ads, or third-party tracking. " +
+                        "The app includes no analytics SDK and makes no app-initiated network requests. " +
+                        "Apple may receive crash and performance diagnostics according to your device settings."
+                    )
+                        .font(.body)
+                        .lineSpacing(4)
+                        .foregroundStyle(AppTheme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)

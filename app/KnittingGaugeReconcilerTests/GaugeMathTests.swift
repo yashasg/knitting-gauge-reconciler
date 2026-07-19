@@ -694,6 +694,65 @@ struct GaugeMathTests {
         #expect(!secondRestored.disclosure)
     }
 
+    @Test func twoSceneDraftsAndRestorationReconcileInvalidInchesUnderCentimeters() throws {
+        let suiteName = "SceneDraftReconciliationTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let firstValues = [
+            "32", "24", "32", "24", "",
+            MeasurementUnit.inches.centimeterStorageText(from: " 8.50 ", cmRange: 5...100),
+            MeasurementUnit.inches.centimeterStorageText(from: "40", cmRange: 5...100),
+            MeasurementUnit.inches.centimeterStorageText(from: "8..5", cmRange: 5...100),
+            "",
+        ]
+        let secondValues = [
+            "28", "22", "30", "26", "144", "20.32",
+            MeasurementUnit.inches.centimeterStorageText(from: "\t40\n", cmRange: 5...100),
+            MeasurementUnit.inches.centimeterStorageText(from: "100.1", cmRange: 5...100),
+            "7",
+        ]
+        let firstDraft = try #require(SceneDraftStore.serialize(values: firstValues, disclosure: true))
+        let secondDraft = try #require(SceneDraftStore.serialize(values: secondValues, disclosure: false))
+        SceneDraftStore.save(firstDraft, sceneID: "scene-a", defaults: defaults)
+        SceneDraftStore.save(secondDraft, sceneID: "scene-b", defaults: defaults)
+
+        for sceneID in ["scene-a", "scene-b"] {
+            let stored = try #require(SceneDraftStore.load(sceneID: sceneID, defaults: defaults))
+            let restored = try #require(SceneDraftStore.deserialize(stored))
+            let reconciled = SceneDraftStore.reconcileInvalidInchProvenance(
+                in: restored.values,
+                for: .centimeters
+            )
+            let normalized = try #require(
+                SceneDraftStore.serialize(values: reconciled, disclosure: restored.disclosure)
+            )
+            SceneDraftStore.save(normalized, sceneID: sceneID, defaults: defaults)
+        }
+
+        let firstRestored = try #require(
+            SceneDraftStore.load(sceneID: "scene-a", defaults: defaults)
+                .flatMap(SceneDraftStore.deserialize)
+        )
+        let secondRestored = try #require(
+            SceneDraftStore.load(sceneID: "scene-b", defaults: defaults)
+                .flatMap(SceneDraftStore.deserialize)
+        )
+
+        #expect(firstRestored.values == ["32", "24", "32", "24", "", " 8.50 ", "40", "8..5", ""])
+        #expect(firstRestored.disclosure)
+        #expect(secondRestored.values == ["28", "22", "30", "26", "144", "20.32", "\t40\n", "100.1", "7"])
+        #expect(!secondRestored.disclosure)
+        #expect(GaugeMath.validate(firstRestored.values[5], for: .patternYokeDepth) == .success(8.5))
+        #expect(GaugeMath.validate(firstRestored.values[6], for: .patternBodyLength) == .success(40))
+        #expect(GaugeMath.validate(firstRestored.values[7], for: .patternSleeveLength) == .failure(.invalidNumber))
+        #expect(GaugeMath.validate(secondRestored.values[5], for: .patternYokeDepth) == .success(20.32))
+        #expect(GaugeMath.validate(secondRestored.values[6], for: .patternBodyLength) == .success(40))
+        #expect(
+            GaugeMath.validate(secondRestored.values[7], for: .patternSleeveLength)
+                == .failure(.outOfRange(5...100))
+        )
+    }
+
     @Test func resetDraftPersistsThroughHandoffAndDiscardRemovesOnlyItsScene() throws {
         let suiteName = "SceneDraftStoreResetTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))

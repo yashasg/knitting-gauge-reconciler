@@ -220,6 +220,9 @@ struct ContentView: View {
                     os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.sheetAboutHelpOpened)
                 }
             }
+            .onChange(of: measurementUnit) { previousUnit, newUnit in
+                reconcileSceneDraft(from: previousUnit, to: newUnit)
+            }
             .onChange(of: validationMessages) { previous, current in
                 guard UIAccessibility.isVoiceOverRunning,
                       let message = newValidationAnnouncement(previous: previous, current: current) else {
@@ -412,22 +415,21 @@ struct ContentView: View {
             get: { measurementUnit },
             set: { newUnit in
                 guard newUnit != measurementUnit else { return }
-                let yoke = measurementUnit.storageText(patternYoke, transitioningTo: newUnit)
-                let body = measurementUnit.storageText(patternBody, transitioningTo: newUnit)
-                let sleeve = measurementUnit.storageText(patternSleeve, transitioningTo: newUnit)
-                let textChanged = yoke != patternYoke || body != patternBody || sleeve != patternSleeve
+                let previousUnit = measurementUnit
                 measurementUnit = newUnit
-                guard textChanged else { return }
-                patternYoke = yoke
-                patternBody = body
-                patternSleeve = sleeve
-                resetResultMetrics()
-                updateSceneRestorationActivity(
-                    values: rawTextValues,
-                    disclosure: patternDetailsExpanded
-                )
+                reconcileSceneDraft(from: previousUnit, to: newUnit)
             }
         )
+    }
+
+    private func reconcileSceneDraft(
+        from previousUnit: MeasurementUnit,
+        to newUnit: MeasurementUnit
+    ) {
+        guard previousUnit == .inches, newUnit == .centimeters else { return }
+        let values = SceneDraftStore.reconcileInvalidInchProvenance(in: rawTextValues, for: newUnit)
+        guard values != rawTextValues else { return }
+        applySceneDraft(values: values, disclosure: patternDetailsExpanded)
     }
 
     private var validationMessages: [GaugeFormField: String] {
@@ -609,6 +611,10 @@ struct ContentView: View {
         for session: UISceneSession? = nil,
         synchronizingDefaults: Bool = false
     ) {
+        let values = SceneDraftStore.reconcileInvalidInchProvenance(
+            in: values,
+            for: measurementUnit
+        )
         patternStitches = values[0]
         patternRows = values[1]
         yourStitches = values[2]

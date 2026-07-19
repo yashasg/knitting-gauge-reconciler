@@ -9,11 +9,14 @@ description: "Knitting Gauge Reconciler — iOS app build loop"
 
 ## Test scope authority (fail closed)
 
-- Only a direct user directive may enable or disable a test suite or determine the mandatory test inventory.
-- Agent charters, reviewer verdicts or rejections, issue or merge-request rewrites, general authorization to run the loop, final-review goals, and inferred coverage requirements may never expand or override user-set test scope.
-- UI tests and XCUITests remain disabled. Clearing the implementation queue is necessary but is not approval; re-enabling them requires a newer explicit user approval even when the queue is empty.
-- Before assigning or running test work, read the active user-owned test-scope decision in full. If it is absent, unreadable, truncated, conflicting, or ambiguous, stop, fail closed, and ask the user. Never run tests outside the last explicit scope.
-- Reviewers may report an out-of-scope coverage gap as advisory, but may not activate or rewrite issues, alter labels, re-enable targets, reject an authorized artifact, or invoke reviewer lockout to expand test scope.
+- Only the latest direct user directive may enable or disable test execution or determine mandatory test inventory. It supersedes older “existing non-UI inventory only,” “keep dormant UI-test source/target metadata intact,” and issue-closure interpretations.
+- XCUITest/UI-test **execution remains disabled**. Never build, select, or run the `KnittingGaugeReconcilerUITests` target.
+- Disabled XCUITest execution is not a non-UI inventory freeze. Ordinary XCTest coverage over direct SwiftUI view/state/action objects and a small native hosted-view probe is authorized; use `UIHostingController`, `sizeThatFits`, public accessibility elements/actions, and narrowly scoped app-owned `ImageRenderer` output. Do not add ViewInspector, snapshot infrastructure, or another dependency.
+- Issue #134 is active and runnable first. Replace all 17 dormant XCUITests with deterministic ordinary XCTest coverage, prove the replacements green without running XCUITests, then remove the XCUITest source, target, and project metadata.
+- Issue #135 is active but depends on merged/closed #134. Only afterward may it add meaningful ordinary tests or deletions needed for **100.00% production line coverage** and the native fail-closed `xccov` gate; it must not race or duplicate #134.
+- Issues cannot independently expand user-set scope, but #134 and #135 are direct-user-authored scope carriers under this explicit directive. Agent charters, reviewer verdicts, merge-request rewrites, final-review goals, and inferred requirements may not override it.
+- Before assigning or running test work, read the latest direct user directive and the applicable canonical issue in full. If a future direct directive genuinely conflicts or is ambiguous, stop and ask; never rewrite or close authorized work as “superseded” without asking.
+- Reviewers may report out-of-scope gaps as advisory, but may not alter test authority, activate unrelated work, re-enable XCUITest execution, or reject an artifact for work outside the latest direct scope.
 
 ## Model defaults
 

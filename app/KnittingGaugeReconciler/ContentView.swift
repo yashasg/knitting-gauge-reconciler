@@ -102,12 +102,6 @@ struct ContentView: View {
         return result
     }
 
-    private var liveResultSummary: String? {
-        guard let liveResult else { return nil }
-        return "Stitch adjustment \(GaugeMath.fmtPct(liveResult.stitchWidthScale))%. " +
-            "Row adjustment \(GaugeMath.fmtPct(liveResult.rowCountScale))%."
-    }
-
     // MARK: - Body
 
     var body: some View {
@@ -229,10 +223,6 @@ struct ContentView: View {
                     return
                 }
                 UIAccessibility.post(notification: .announcement, argument: message)
-            }
-            .onChange(of: liveResultSummary) { _, summary in
-                guard UIAccessibility.isVoiceOverRunning, let summary else { return }
-                UIAccessibility.post(notification: .announcement, argument: summary)
             }
             .onChange(of: verdictTitle) { _, newValue in
                 guard !newValue.isEmpty else {

@@ -225,21 +225,12 @@ struct ContentView: View {
                 UIAccessibility.post(notification: .announcement, argument: message)
             }
             .onChange(of: verdictTitle) { _, newValue in
-                guard !newValue.isEmpty else {
-                    previousVerdictBucket = nil
-                    return
-                }
-                let current = VerdictBucket(verdictTitle: newValue)
-                if let decision = GaugeMathMetrics.classifyVerdictDelta(
+                let current = newValue.isEmpty ? nil : VerdictBucket(verdictTitle: newValue)
+                if let name = VerdictBucket.signpostName(
                     previous: previousVerdictBucket,
                     current: current
                 ) {
-                    switch decision {
-                    case .improved:
-                        os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.verdictImproved)
-                    case .degraded:
-                        os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.verdictDegraded)
-                    }
+                    os_signpost(.event, log: MetricsSubscriber.log, name: name)
                 }
                 previousVerdictBucket = current
             }

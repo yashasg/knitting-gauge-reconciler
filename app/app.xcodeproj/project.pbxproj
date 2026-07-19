@@ -377,6 +377,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = "";
+				"ENABLE_DEBUG_DYLIB[sdk=iphonesimulator*]" = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Stitchwise;
@@ -393,6 +394,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yashasg.knitting-guage-reconciler;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				"SWIFT_OPTIMIZATION_LEVEL[sdk=iphonesimulator*]" = "-Onone";
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -418,16 +420,20 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				"BUNDLE_LOADER[sdk=iphonesimulator*]" = "";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks @loader_path/../KnittingGaugeReconciler.app";
+				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = "$(inherited) $(BUILT_PRODUCTS_DIR)/KnittingGaugeReconciler.app/KnittingGaugeReconciler.debug.dylib";
 				PRODUCT_BUNDLE_IDENTIFIER = com.yashasg.knitting-guage-reconcilerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/KnittingGaugeReconciler.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/KnittingGaugeReconciler";
+				"TEST_HOST[sdk=iphonesimulator*]" = "";
 			};
 			name = Release;
 		};

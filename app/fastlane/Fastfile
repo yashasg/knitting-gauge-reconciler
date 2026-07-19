@@ -103,7 +103,7 @@ def lane_test_options(options, extra_xcargs: nil)
     code_coverage: true,
     result_bundle_path: result_bundle_path,
     xcargs: [
-      "CODE_SIGNING_ALLOWED=NO -test-timeouts-enabled YES -default-test-execution-time-allowance 30",
+      "CODE_SIGNING_ALLOWED=NO ENABLE_TESTABILITY=YES -test-timeouts-enabled YES -default-test-execution-time-allowance 30",
       extra_xcargs,
       options[:xcargs]
     ].compact.join(" "),
@@ -151,7 +151,7 @@ platform :ios do
       reporter: "xcode",
       strict: true
     )
-    test_options = lane_test_options(options.merge(configuration: "Debug"))
+    test_options = lane_test_options(options)
     run_tests(**test_options.merge(only_testing: ["KnittingGaugeReconcilerTests"]))
     verify_test_diagnostics(test_options[:output_directory])
   end

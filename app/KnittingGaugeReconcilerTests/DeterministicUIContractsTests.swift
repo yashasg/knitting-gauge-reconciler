@@ -174,6 +174,11 @@ struct DeterministicUIContractsTests {
                 kinds: [.gaugeSummary, .castOn, .actions]
             ),
             OptionalScenario(
+                name: "extreme cast-on warning",
+                inputs: GaugeInputs(patternStitches: 99, yourStitches: 1, patternCastOn: 40),
+                kinds: [.gaugeSummary, .castOn, .actions]
+            ),
+            OptionalScenario(
                 name: "one length only",
                 inputs: GaugeInputs(patternYokeDepth: 20),
                 kinds: [.gaugeSummary, .yokeDepth, .actions]
@@ -763,6 +768,27 @@ struct DeterministicUIContractsTests {
             )
         )
         #expect(invalidResult.size.height > 0)
+
+        let unusableCastOnInputs = GaugeInputs(
+            patternStitches: 99, patternRows: 24, yourStitches: 1, yourRows: 24,
+            patternCastOn: 40
+        )
+        let unusableCastOnResult = GaugeMath.compute(unusableCastOnInputs)
+        #expect(
+            ResultCardSemantics(inputs: unusableCastOnInputs, result: unusableCastOnResult).castOnGuidance ==
+                "No usable whole-stitch cast-on result. Re-swatch or change needle size before casting on."
+        )
+        let unusableCastOn = RequiredAdjustmentsCard(
+            result: unusableCastOnResult,
+            inputs: unusableCastOnInputs,
+            unit: .centimeters,
+            showFullMath: ValueBox(false).binding,
+            canUndoReset: false,
+            onReset: {},
+            onUndoReset: {},
+            onShare: { _ in [] }
+        )
+        #expect(HostedViewProbe(unusableCastOn).size.height > 0)
 
         let noDriftInputs = GaugeInputs(patternCastOn: 128)
         let noDriftResult = GaugeMath.compute(noDriftInputs)

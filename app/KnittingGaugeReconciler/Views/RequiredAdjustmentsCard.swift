@@ -29,6 +29,7 @@ struct ResultCardSemantics: Equatable {
     let sectionKinds: [ResultSectionKind]
     let stitchSummary: String
     let rowSummary: String
+    let castOnGuidance: String?
 
     init(inputs: GaugeInputs, result: GaugeMathResult) {
         var kinds: [ResultSectionKind] = [.gaugeSummary]
@@ -41,13 +42,14 @@ struct ResultCardSemantics: Equatable {
         if inputs.patternIncreaseSpacing != nil, result.adjustedIncreaseSpacing != nil {
             kinds.append(.shapingRates)
         }
-        if inputs.patternCastOn != nil, result.adjustedCastOn != nil {
+        if inputs.patternCastOn != nil {
             kinds.append(.castOn)
         }
         kinds.append(.actions)
         sectionKinds = kinds
         stitchSummary = "Stitch-wise width adjusted: \(GaugeMath.fmtPct(result.stitchWidthScale))%"
         rowSummary = "Row-wise density adjusted: \(GaugeMath.fmtPct(result.rowCountScale))%"
+        castOnGuidance = castOnGuidanceText(inputs: inputs, result: result)
     }
 }
 
@@ -252,23 +254,30 @@ struct LiveResultsView: View {
             }
 
             if semantics.sectionKinds.contains(.castOn),
-               let patternCastOn = inputs.patternCastOn,
-               let adjustedCastOn = result.adjustedCastOn {
+               let patternCastOn = inputs.patternCastOn {
+                let adjustedCastOn = result.adjustedCastOn
                 let castOnSubtitle = gaugeStatus(scale: result.stitchWidthScale) == "Match" &&
-                    Double(adjustedCastOn) != patternCastOn
+                    adjustedCastOn.map { Double($0) != patternCastOn } == true
                     ? "Optional width refinement"
                     : "To preserve pattern width"
                 sectionCard(title: "Cast-on", subtitle: castOnSubtitle) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        AdjustmentRow(
-                            name: "Cast-on stitches",
-                            pattern: "\(plain(patternCastOn)) stitches",
-                            adjusted: "\(adjustedCastOn) stitches",
-                            driftPill: castOnDriftPill
-                        )
-                        Text("Reconcile this rounded stitch count with your pattern's stitch-repeat multiple.")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.muted)
+                    if let adjustedCastOn {
+                        VStack(alignment: .leading, spacing: 8) {
+                            AdjustmentRow(
+                                name: "Cast-on stitches",
+                                pattern: "\(plain(patternCastOn)) stitches",
+                                adjusted: "\(adjustedCastOn) stitches",
+                                driftPill: castOnDriftPill
+                            )
+                            Text("Reconcile this rounded stitch count with your pattern's stitch-repeat multiple.")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.muted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    } else if let guidance = semantics.castOnGuidance {
+                        Text(guidance)
+                            .font(.callout)
+                            .foregroundStyle(AppTheme.warningText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

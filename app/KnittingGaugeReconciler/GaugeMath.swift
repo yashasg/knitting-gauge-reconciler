@@ -366,10 +366,13 @@ func rowStatus(scale: Double) -> String {
     return scale > 1 ? "Much denser" : "Much looser"
 }
 
-/// Cast-on guidance text, or `nil` when no usable adjusted cast-on is available.
+/// Cast-on guidance text, or `nil` when no cast-on was provided.
 func castOnGuidanceText(inputs: GaugeInputs, result: GaugeMathResult) -> String? {
-    guard let patternCastOn = inputs.patternCastOn, let adjustedCastOn = result.adjustedCastOn else {
+    guard let patternCastOn = inputs.patternCastOn else {
         return nil
+    }
+    guard let adjustedCastOn = result.adjustedCastOn else {
+        return "No usable whole-stitch cast-on result. Re-swatch or change needle size before casting on."
     }
     let reconcile = "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
     if Double(adjustedCastOn) == patternCastOn {

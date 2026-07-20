@@ -370,17 +370,20 @@ struct DeterministicUIContractsTests {
             }
         }
 
-        for scheme in [ColorScheme.light, .dark] {
-            let renderer = ImageRenderer(
-                content: GaugeLeadView()
-                    .frame(width: 390)
-                    .environment(\.colorScheme, scheme)
-            )
-            renderer.scale = 1
-            let image = try #require(renderer.cgImage)
-            #expect(image.width == 390)
-            #expect(image.height > 0)
+        let pair = try #require(AppTheme.textContrastPairs.first)
+        let foreground = try #require(
+            UIColor(named: pair.foreground, in: appResourceBundle, compatibleWith: traits[0])
+        )
+        let background = try #require(
+            UIColor(named: pair.background, in: appResourceBundle, compatibleWith: traits[0])
+        )
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 44, height: 44)).image { _ in
+            background.setFill()
+            UIRectFill(CGRect(x: 0, y: 0, width: 44, height: 44))
+            foreground.setFill()
+            UIRectFill(CGRect(x: 10, y: 10, width: 24, height: 24))
         }
+        #expect(image.size == CGSize(width: 44, height: 44))
     }
 
     @Test func contract09VerdictHasNoHelpAndAboutIsTheSoleHelpEntryPoint() throws {

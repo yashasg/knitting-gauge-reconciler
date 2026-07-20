@@ -12,24 +12,6 @@ struct GaugeInputPresentation {
     let rowDelta: Double?
 }
 
-struct GaugeLeadView: View {
-    var body: some View {
-        ZStack(alignment: .leading) {
-            AppTheme.background
-            Text(GaugeFormContract.leadCopy)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(AppTheme.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isStaticText)
-    }
-}
-
 private final class ResetSnapshot {
     var draft: GaugeFormDraft?
 }
@@ -159,7 +141,19 @@ struct ContentView: View {
         return NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: cardSpacing) {
-                    GaugeLeadView()
+                    ZStack(alignment: .leading) {
+                        AppTheme.background
+                        Text(GaugeFormContract.leadCopy)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(AppTheme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                            .padding(.bottom, 8)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAddTraits(.isStaticText)
 
                     GaugeInputsCard(
                         patternStitches: draftBinding($patternStitches, at: 0),

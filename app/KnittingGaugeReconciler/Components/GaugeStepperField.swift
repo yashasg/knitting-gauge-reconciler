@@ -36,6 +36,18 @@ struct DeltaPillBadge: View {
     }
 }
 
+struct GaugeStepperAccessibilityContract: Equatable {
+    let fieldValue: String
+    let fieldHint: String
+    let pickerLabel: String
+    let pickerValue: String
+    let pickerHint: String
+    let actions: [String]
+    let warningSummary: String?
+}
+
+// Issue #134 keeps the pure stepper semantics on the view instead of adding an adapter.
+// swiftlint:disable:next type_body_length
 struct GaugeStepperField: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -59,6 +71,105 @@ struct GaugeStepperField: View {
 
     static func pickerAccessibilityLabel(for fieldLabel: String) -> String {
         "Open picker for \(fieldLabel)"
+    }
+
+    static func accessibilityContract(
+        text: String,
+        unit: String,
+        fieldLabel: String,
+        validationMessage: String? = nil,
+        mismatchLabel: String? = nil,
+        mismatchDelta: Double? = nil
+    ) -> GaugeStepperAccessibilityContract {
+        let spokenUnit: String
+        switch unit {
+        case "st":
+            spokenUnit = "stitches"
+        case "ro":
+            spokenUnit = "rows"
+        default:
+            spokenUnit = unit
+        }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var valueParts = [trimmed.isEmpty ? "Empty" : "\(trimmed) \(spokenUnit)"]
+        if let mismatchLabel, let firstCharacter = mismatchLabel.first {
+            valueParts.append(firstCharacter.lowercased() + String(mismatchLabel.dropFirst()))
+        }
+        if let mismatchDelta {
+            valueParts.append(fmtGaugeDelta(mismatchDelta))
+        }
+        if let validationMessage {
+            valueParts.append(validationMessage)
+        }
+        let fieldHint: String
+        if validationMessage != nil {
+            fieldHint = "Correct this value before viewing results."
+        } else if mismatchLabel == nil {
+            fieldHint = "Double-tap to edit."
+        } else {
+            fieldHint = "Double-tap to edit. Use the picker button for wheel selection and warning details."
+        }
+        let pickerHint = mismatchLabel.map {
+            "\($0). Opens the wheel picker and warning details."
+        } ?? "Double-tap to open wheel picker."
+        return GaugeStepperAccessibilityContract(
+            fieldValue: valueParts.joined(separator: ", "),
+            fieldHint: fieldHint,
+            pickerLabel: pickerAccessibilityLabel(for: fieldLabel),
+            pickerValue: mismatchLabel == nil ? "" : "Warning",
+            pickerHint: pickerHint,
+            actions: ["Increment", "Decrement"],
+            warningSummary: mismatchLabel
+        )
+    }
+
+    static func pickerSelection(
+        validationText: String,
+        field: GaugeFormField,
+        displayUnit: MeasurementUnit?,
+        range: ClosedRange<Int>
+    ) -> Int {
+        let rounded: Int?
+        switch GaugeMath.validate(validationText, for: field.mathField) {
+        case .success(let value?):
+            rounded = displayUnit?.cmToDisplayInt(value) ?? Int(value.rounded())
+        case .success(nil), .failure:
+            rounded = nil
+        }
+        return rounded.flatMap { range.contains($0) ? $0 : nil } ?? range.lowerBound
+    }
+
+    static func committedText(
+        selection: Int,
+        field: GaugeFormField,
+        displayUnit: MeasurementUnit?
+    ) -> String {
+        switch field {
+        case .patternYoke, .patternBody, .patternSleeve:
+            return (displayUnit ?? .centimeters).centimeterStorageText(
+                from: "\(selection)",
+                cmRange: 5...100
+            )
+        default:
+            return "\(selection)"
+        }
+    }
+
+    static func adjustedText(
+        _ text: String,
+        by adjustment: Int,
+        field: GaugeFormField,
+        displayUnit: MeasurementUnit?,
+        range: ClosedRange<Int>
+    ) -> String {
+        let current = pickerSelection(
+            validationText: text,
+            field: field,
+            displayUnit: displayUnit,
+            range: range
+        )
+        let adjusted = min(max(current + adjustment, range.lowerBound), range.upperBound)
+        return committedText(selection: adjusted, field: field, displayUnit: displayUnit)
     }
 
     init(
@@ -95,58 +206,36 @@ struct GaugeStepperField: View {
         self.mismatchDelta = mismatchDelta
     }
 
-    private var spokenUnit: String {
-        switch unit {
-        case "st":
-            return "stitches"
-        case "ro":
-            return "rows"
-        default:
-            return unit
-        }
-    }
-
     private var mismatchSentence: String? {
         guard hasMismatch, let mismatchLabel else { return nil }
         return mismatchLabel
     }
 
-    private var spokenMismatchSentence: String? {
-        guard let mismatchSentence else { return nil }
-        guard let firstCharacter = mismatchSentence.first else { return mismatchSentence }
-        return firstCharacter.lowercased() + String(mismatchSentence.dropFirst())
-    }
-
     private var fieldAccessibilityValue: String {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        var parts = [trimmed.isEmpty ? "Empty" : "\(trimmed) \(spokenUnit)"]
-        if let spokenMismatchSentence {
-            parts.append(spokenMismatchSentence)
-        }
-        if let mismatchDeltaText {
-            parts.append(mismatchDeltaText)
-        }
-        if let validationMessage {
-            parts.append(validationMessage)
-        }
-        return parts.joined(separator: ", ")
+        accessibilityContract.fieldValue
     }
 
     private var fieldAccessibilityHint: String {
-        if validationMessage != nil {
-            return "Correct this value before viewing results."
-        }
-        guard mismatchSentence != nil else { return "Double-tap to edit." }
-        return "Double-tap to edit. Use the picker button for wheel selection and warning details."
+        accessibilityContract.fieldHint
     }
 
     private var pickerAccessibilityValue: String {
-        mismatchSentence == nil ? "" : "Warning"
+        accessibilityContract.pickerValue
     }
 
     private var pickerAccessibilityHint: String {
-        guard let mismatchSentence else { return "Double-tap to open wheel picker." }
-        return "\(mismatchSentence). Opens the wheel picker and warning details."
+        accessibilityContract.pickerHint
+    }
+
+    private var accessibilityContract: GaugeStepperAccessibilityContract {
+        Self.accessibilityContract(
+            text: text,
+            unit: unit,
+            fieldLabel: accessibilityLabel,
+            validationMessage: validationMessage,
+            mismatchLabel: mismatchSentence,
+            mismatchDelta: mismatchDelta
+        )
     }
 
     private var sheetDetents: Set<PresentationDetent> {
@@ -253,6 +342,24 @@ struct GaugeStepperField: View {
                 .accessibilityValue(pickerAccessibilityValue)
                 .accessibilityHint(pickerAccessibilityHint)
                 .accessibilityIdentifier("\(identifier)-chevron")
+                .accessibilityAction(named: "Increment") {
+                    text = Self.adjustedText(
+                        validationText,
+                        by: 1,
+                        field: field,
+                        displayUnit: displayUnit,
+                        range: range
+                    )
+                }
+                .accessibilityAction(named: "Decrement") {
+                    text = Self.adjustedText(
+                        validationText,
+                        by: -1,
+                        field: field,
+                        displayUnit: displayUnit,
+                        range: range
+                    )
+                }
             }
             .frame(minHeight: 44)
             .background(AppTheme.card)
@@ -478,14 +585,12 @@ private struct GaugeStepperWheelSheet: View {
         self.mismatchLabel = mismatchLabel
         self.mismatchDeltaText = mismatchDeltaText
         self._isPresented = isPresented
-        let rounded: Int?
-        switch GaugeMath.validate(validationText, for: field.mathField) {
-        case .success(let value?):
-            rounded = displayUnit?.cmToDisplayInt(value) ?? Int(value.rounded())
-        case .success(nil), .failure:
-            rounded = nil
-        }
-        let initial = rounded.flatMap { range.contains($0) ? $0 : nil } ?? range.lowerBound
+        let initial = GaugeStepperField.pickerSelection(
+            validationText: validationText,
+            field: field,
+            displayUnit: displayUnit,
+            range: range
+        )
         self._selectedValue = State(initialValue: initial)
     }
 
@@ -530,7 +635,11 @@ private struct GaugeStepperWheelSheet: View {
             .accessibilityIdentifier("\(identifier)-wheel")
 
             Button("Done") {
-                text = "\(selectedValue)"
+                text = GaugeStepperField.committedText(
+                    selection: selectedValue,
+                    field: field,
+                    displayUnit: displayUnit
+                )
                 isPresented = false
             }
             .font(.body.weight(.semibold))

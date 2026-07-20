@@ -2,6 +2,43 @@
 // Issue #65 keeps conditional result, reset, and share UI in this existing authorized file.
 import SwiftUI
 
+enum ResultSectionKind: String, CaseIterable {
+    case gaugeSummary
+    case yokeDepth
+    case bodyAndSleeves
+    case shapingRates
+    case castOn
+    case actions
+}
+
+struct ResultCardSemantics: Equatable {
+    let sectionKinds: [ResultSectionKind]
+    let stitchSummary: String
+    let rowSummary: String
+    let actionLabels: [String]
+
+    init(inputs: GaugeInputs, result: GaugeMathResult) {
+        var kinds: [ResultSectionKind] = [.gaugeSummary]
+        if inputs.patternYokeDepth != nil, result.adjustedYokeDepth != nil {
+            kinds.append(.yokeDepth)
+        }
+        if inputs.patternBodyLength != nil || inputs.patternSleeveLength != nil {
+            kinds.append(.bodyAndSleeves)
+        }
+        if inputs.patternIncreaseSpacing != nil, result.adjustedIncreaseSpacing != nil {
+            kinds.append(.shapingRates)
+        }
+        if inputs.patternCastOn != nil, result.adjustedCastOn != nil {
+            kinds.append(.castOn)
+        }
+        kinds.append(.actions)
+        sectionKinds = kinds
+        stitchSummary = "Stitch-wise width adjusted: \(GaugeMath.fmtPct(result.stitchWidthScale))%"
+        rowSummary = "Row-wise density adjusted: \(GaugeMath.fmtPct(result.rowCountScale))%"
+        actionLabels = ["Share results", "Show full math"]
+    }
+}
+
 struct RequiredAdjustmentsCard: View {
     @Binding private var showFullMath: Bool
     @State private var showResetConfirmation = false
@@ -92,7 +129,7 @@ struct RequiredAdjustmentsCard: View {
 }
 
 // swiftlint:disable:next type_body_length
-private struct LiveResultsView: View {
+struct LiveResultsView: View {
     @State private var sharePayload: ShareSheetPayload?
     @State private var isPreparingShare = false
 
@@ -136,7 +173,8 @@ private struct LiveResultsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .cardStyle()
 
-            if let patternDepth = inputs.patternYokeDepth,
+            if semantics.sectionKinds.contains(.yokeDepth),
+               let patternDepth = inputs.patternYokeDepth,
                let adjustedDepth = result.adjustedYokeDepth,
                let patternRows = result.patternYokeRows,
                let adjustedRows = result.adjustedYokeRows {
@@ -151,7 +189,7 @@ private struct LiveResultsView: View {
                 }
             }
 
-            if hasBodyOrSleeveGuidance {
+            if semantics.sectionKinds.contains(.bodyAndSleeves) {
                 sectionCard(title: "Body & Sleeves", subtitle: "Length correction") {
                     VStack(spacing: 12) {
                         if let patternLength = inputs.patternBodyLength,
@@ -184,7 +222,8 @@ private struct LiveResultsView: View {
                 }
             }
 
-            if let patternSpacing = inputs.patternIncreaseSpacing,
+            if semantics.sectionKinds.contains(.shapingRates),
+               let patternSpacing = inputs.patternIncreaseSpacing,
                let adjustedSpacing = result.adjustedIncreaseSpacing {
                 sectionCard(title: "Shaping Rates", subtitle: "Increases / decreases") {
                     AdjustmentRow(
@@ -196,7 +235,8 @@ private struct LiveResultsView: View {
                 }
             }
 
-            if let patternCastOn = inputs.patternCastOn,
+            if semantics.sectionKinds.contains(.castOn),
+               let patternCastOn = inputs.patternCastOn,
                let adjustedCastOn = result.adjustedCastOn {
                 let castOnSubtitle = gaugeStatus(scale: result.stitchWidthScale) == "Match" &&
                     Double(adjustedCastOn) != patternCastOn
@@ -240,8 +280,8 @@ private struct LiveResultsView: View {
         .accessibilityHidden(false)
     }
 
-    private var hasBodyOrSleeveGuidance: Bool {
-        result.adjustedBodyRows != nil || result.adjustedSleeveRows != nil
+    private var semantics: ResultCardSemantics {
+        ResultCardSemantics(inputs: inputs, result: result)
     }
 
     private var castOnDriftPill: String? {

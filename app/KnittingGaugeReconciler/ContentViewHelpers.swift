@@ -304,15 +304,14 @@ enum AboutHelpContract {
     static let explanation =
         "This tool reconciles a two-axis gauge mismatch, " +
         "the kind that single-number gauge calculators hide. " +
-        "When row gauge differs, it adjusts each supplied depth or length " +
-        "while preserving the pattern's intended row count. " +
+        "When row gauge differs, section centimetres remain unchanged; " +
+        "it calculates the row count you need to knit at your gauge for each section. " +
         "Stitch-gauge differences are handled separately for width."
     static let math =
-        "The math is deterministic: dimension correction = pattern_row / your_row. " +
-        "A denser swatch means fewer " +
-        "centimetres are needed to reach the pattern's intended row count; " +
-        "stitch_scale = pattern_st / your_st " +
-        "describes horizontal width. " +
+        "The math is deterministic: adjusted rows = cm × your_row / 10. " +
+        "Section centimetres stay fixed; a denser row gauge produces more rows per cm — " +
+        "the row count adapts, not the dimension; " +
+        "stitch_scale = pattern_st / your_st describes horizontal width. " +
         "Increase-row spacing is rescaled by your_row / pattern_row so the physical gap " +
         "between increases stays correct."
     static let scope =

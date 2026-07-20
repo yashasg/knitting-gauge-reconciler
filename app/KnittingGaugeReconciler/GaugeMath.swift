@@ -24,7 +24,6 @@ struct GaugeMathResult: Equatable {
     var stitchWidthScale: Double
     var stitchCountMultiplier: Double
     var rowCountScale: Double
-    var dimensionScale: Double
     var adjustedYokeDepth: Double?
     var adjustedBodyLength: Double?
     var adjustedSleeveLength: Double?
@@ -115,8 +114,8 @@ enum GaugeMath {
         let stitchWidthScale = inputs.patternStitches / inputs.yourStitches
         let stitchCountMultiplier = inputs.yourStitches / inputs.patternStitches
         let rowCountScale = inputs.yourRows / inputs.patternRows
-        let dimensionScale = inputs.patternRows / inputs.yourRows
         let patternRowsPerCm = inputs.patternRows / 10
+        let yourRowsPerCm = inputs.yourRows / 10
         let patternYokeRows = inputs.patternYokeDepth.map { $0 * patternRowsPerCm }
         let patternBodyRows = inputs.patternBodyLength.map { $0 * patternRowsPerCm }
         let patternSleeveRows = inputs.patternSleeveLength.map { $0 * patternRowsPerCm }
@@ -130,16 +129,15 @@ enum GaugeMath {
             stitchWidthScale: stitchWidthScale,
             stitchCountMultiplier: stitchCountMultiplier,
             rowCountScale: rowCountScale,
-            dimensionScale: dimensionScale,
-            adjustedYokeDepth: inputs.patternYokeDepth.map { $0 * dimensionScale },
-            adjustedBodyLength: inputs.patternBodyLength.map { $0 * dimensionScale },
-            adjustedSleeveLength: inputs.patternSleeveLength.map { $0 * dimensionScale },
+            adjustedYokeDepth: inputs.patternYokeDepth,
+            adjustedBodyLength: inputs.patternBodyLength,
+            adjustedSleeveLength: inputs.patternSleeveLength,
             patternYokeRows: patternYokeRows,
             patternBodyRows: patternBodyRows,
             patternSleeveRows: patternSleeveRows,
-            adjustedYokeRows: patternYokeRows,
-            adjustedBodyRows: patternBodyRows,
-            adjustedSleeveRows: patternSleeveRows,
+            adjustedYokeRows: inputs.patternYokeDepth.map { $0 * yourRowsPerCm },
+            adjustedBodyRows: inputs.patternBodyLength.map { $0 * yourRowsPerCm },
+            adjustedSleeveRows: inputs.patternSleeveLength.map { $0 * yourRowsPerCm },
             adjustedIncreaseSpacing: inputs.patternIncreaseSpacing.map { $0 * rowCountScale },
             adjustedCastOn: adjustedCastOn,
             castOnRoundingDriftPercent: castOnRoundingDriftPercent

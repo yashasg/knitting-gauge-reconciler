@@ -13,10 +13,10 @@
 A single static HTML page. The user types four numbers — the pattern's stitch and row gauge per 10 cm, and their own swatch's stitch and row gauge per 10 cm — and instantly sees:
 
 - **Stitch-wise %** — the fraction of pattern width their stitches produce (horizontal scaling).
-- **Row-wise %** — the cm multiplier they must apply to every vertical section (yoke, body, sleeves, increase spacing).
-- A **per-section adjustment table** for the four vertical dimensions that bite hardest when row gauge is off: yoke depth, body length, sleeve length, and increase-row spacing. Each row is editable — the knitter types in their pattern's number and reads off the actual cm they should knit to.
+- **Row-wise %** — the row-density comparison used to adapt row counts and shaping spacing while physical section measurements stay unchanged.
+- A **per-section adjustment table** for the four vertical dimensions that bite hardest when row gauge is off: yoke depth, body length, sleeve length, and increase-row spacing. Each row is editable — the knitter types in their pattern's measurement and reads the row count to knit at their gauge.
 
-The whole point is the **two-axis reconciliation**: every existing gauge calculator (Knitting Stitch Calculator $1.99, Ravit $4.99, the free web tools at knittingfool.com and gauge-calculator.com) treats gauge as a single number. None of them tells you that your yoke will be 6 cm too short because your row gauge is denser than the pattern's.
+The whole point is the **two-axis reconciliation**: every existing gauge calculator (Knitting Stitch Calculator $1.99, Ravit $4.99, the free web tools at knittingfool.com and gauge-calculator.com) treats gauge as a single number. None of them tells you how many rows your stated yoke measurement requires at a different row gauge.
 
 ---
 

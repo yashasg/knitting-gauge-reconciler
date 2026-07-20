@@ -218,7 +218,7 @@ struct LiveResultsView: View {
                let adjustedDepth = result.adjustedYokeDepth,
                let patternRows = result.patternYokeRows,
                let adjustedRows = result.adjustedYokeRows {
-                sectionCard(title: "Yoke Depth", subtitle: "To preserve pattern row count") {
+                sectionCard(title: "Yoke Depth", subtitle: "Keep the requested length") {
                     AdjustmentRow(
                         name: "Yoke depth",
                         pattern: "\(unit.formatMeasurement(patternDepth)) / \(GaugeMath.fmtRows(patternRows)) rows",
@@ -229,7 +229,7 @@ struct LiveResultsView: View {
             }
 
             if semantics.sectionKinds.contains(.bodyAndSleeves) {
-                sectionCard(title: "Body & Sleeves", subtitle: "Length correction") {
+                sectionCard(title: "Body & Sleeves", subtitle: "Rows at your gauge") {
                     VStack(spacing: 12) {
                         if let patternLength = inputs.patternBodyLength,
                            let adjustedLength = result.adjustedBodyLength,
@@ -432,7 +432,7 @@ struct LiveResultsView: View {
             "you:     \(plain(inputs.yourStitches)) st x \(plain(inputs.yourRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.yourStitches / inputs.yourRows)))",
             "stitch width scale = pattern_st / your_st = \(plain(inputs.patternStitches)) / \(plain(inputs.yourStitches)) = \(String(format: "%.3f", result.stitchWidthScale))",
             "row density ratio  = your_row / pattern_row = \(plain(inputs.yourRows)) / \(plain(inputs.patternRows)) = \(String(format: "%.3f", result.rowCountScale))",
-            "dim correction     = pattern_row / your_row = \(plain(inputs.patternRows)) / \(plain(inputs.yourRows)) = \(String(format: "%.3f", result.dimensionScale))",
+            "section rows       = section cm x your_row / 10",
             "for any horizontal dim, your stitch count produces \(String(format: "%.1f", result.stitchWidthScale * 100))% of the pattern's intended width"
         ]
         if let patternDepth = inputs.patternYokeDepth,

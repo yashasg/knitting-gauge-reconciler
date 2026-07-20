@@ -21,22 +21,13 @@ struct AdjustmentRow: View {
     var name: String
     var pattern: String
     var adjusted: String
-    var adjustedIdentifier: String?
     var driftPill: String?
-
-    static func defaultAdjustedIdentifier(name: String) -> String {
-        "adjustment-\(name.lowercased().replacingOccurrences(of: " ", with: "-"))-value"
-    }
 
     static func adjustedAccessibilityLabel(name: String, adjusted: String, driftPill: String?) -> String {
         if let driftPill {
             return "\(name) adjusted: \(adjusted), \(driftPill) drift"
         }
         return "\(name) adjusted: \(adjusted)"
-    }
-
-    private var defaultAdjustedID: String {
-        Self.defaultAdjustedIdentifier(name: name)
     }
 
     var body: some View {
@@ -98,12 +89,10 @@ struct AdjustmentRow: View {
                     // Decorative drift indicator — adjacent adjusted tile
                     // carries the semantic information.
                     .accessibilityHidden(true)
-                    .accessibilityIdentifier("drift-pill")
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(adjustedTileAccessibilityLabel)
-        .accessibilityIdentifier(adjustedIdentifier ?? defaultAdjustedID)
     }
 
     private var adjustedTileAccessibilityLabel: String {

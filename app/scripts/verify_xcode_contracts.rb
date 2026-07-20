@@ -1,3 +1,4 @@
+require "fileutils"
 require "json"
 require "open3"
 require "pathname"
@@ -399,13 +400,8 @@ def assert_coverage_regression_fixtures
   end
 end
 
-def assert_regression_fixtures
-  unless missing_memberships(["app/Product/New.swift"], []).any?
-    raise ContractError, "missing-membership regression fixture was accepted"
-  end
-  unless ui_recurrences(["app/FixtureUITests/Test.swift"], {}).any?
-    raise ContractError, "UI-test recurrence regression fixture was accepted"
-  end
+def assert_regression_fixtures(root)
+  assert_metadata_regression_fixtures(root)
   assert_coverage_regression_fixtures
 end
 
@@ -437,6 +433,66 @@ def verify_scheme(root)
   end
 end
 
+def verify_target_membership(target, root, tracked)
+  members = target_source_paths(target, root).grep(/\.swift\z/)
+  missing = missing_memberships(tracked, members)
+  extra = members - tracked
+  raise ContractError, "#{target.name} misses tracked Swift files: #{missing.join(", ")}" if missing.any?
+  raise ContractError, "#{target.name} contains untracked Swift files: #{extra.join(", ")}" if extra.any?
+end
+
+def assert_metadata_regression_fixtures(root)
+  fixture_root = File.join(root, "app", ".xcode-contract-fixture-#{Process.pid}")
+  FileUtils.rm_rf(fixture_root)
+  begin
+    fixture_app = File.join(fixture_root, "app")
+    FileUtils.mkdir_p(fixture_app)
+    fixture_project_path = File.join(fixture_app, "app.xcodeproj")
+    FileUtils.cp_r(File.join(root, "app/app.xcodeproj"), fixture_project_path)
+
+    project = Xcodeproj::Project.open(fixture_project_path)
+    target = project.targets.find { |candidate| candidate.name == "KnittingGaugeReconciler" }
+    raise ContractError, "fixture source target is missing" unless target
+
+    source = target.source_build_phase.files.first
+    raise ContractError, "fixture source phase is empty" unless source
+
+    source.remove_from_project
+    project.save
+    mutated_project = Xcodeproj::Project.open(fixture_project_path)
+    mutated_target = mutated_project.targets.find { |candidate| candidate.name == target.name }
+    tracked = tracked_files(root, "app/KnittingGaugeReconciler/*.swift", "app/KnittingGaugeReconciler/**/*.swift").sort
+    expect_contract_rejection("copied project missing membership", /misses tracked Swift files/) do
+      verify_target_membership(mutated_target, fixture_root, tracked)
+    end
+
+    scheme_path = Dir.glob(File.join(fixture_project_path, "xcshareddata/xcschemes/*.xcscheme")).first
+    raise ContractError, "fixture shared scheme is missing" unless scheme_path
+
+    document = REXML::Document.new(File.read(scheme_path))
+    testables = REXML::XPath.first(document, "//Testables")
+    raise ContractError, "fixture scheme Testables is missing" unless testables
+
+    ui_testable = testables.add_element("TestableReference", { "skipped" => "NO" })
+    ui_testable.add_element(
+      "BuildableReference",
+      {
+        "BuildableIdentifier" => "primary",
+        "BlueprintIdentifier" => "UI_TEST_FIXTURE",
+        "BuildableName" => "KnittingGaugeReconcilerUITests.xctest",
+        "BlueprintName" => "KnittingGaugeReconcilerUITests",
+        "ReferencedContainer" => "container:app.xcodeproj",
+      }
+    )
+    File.open(scheme_path, "w") { |file| document.write(file, 2) }
+    expect_contract_rejection("copied scheme UI-test recurrence", /unexpected targets.*UITests/) do
+      verify_scheme(fixture_root)
+    end
+  ensure
+    FileUtils.rm_rf(fixture_root)
+  end
+end
+
 def verify_fastlane_selection(root)
   fastfile = File.read(File.join(root, "app/fastlane/Fastfile"))
   expected = 'only_testing: ["KnittingGaugeReconcilerTests"]'
@@ -444,7 +500,7 @@ def verify_fastlane_selection(root)
 end
 
 def verify_repository(root)
-  assert_regression_fixtures
+  assert_regression_fixtures(root)
   project = Xcodeproj::Project.open(File.join(root, "app/app.xcodeproj"))
   expected_targets = {
     "KnittingGaugeReconciler" => "app/KnittingGaugeReconciler",
@@ -461,11 +517,7 @@ def verify_repository(root)
     raise ContractError, "missing target #{target_name}" unless target
 
     tracked = tracked_files(root, "#{directory}/*.swift", "#{directory}/**/*.swift").sort
-    members = target_source_paths(target, root).grep(/\.swift\z/)
-    missing = missing_memberships(tracked, members)
-    extra = members - tracked
-    raise ContractError, "#{target_name} misses tracked Swift files: #{missing.join(", ")}" if missing.any?
-    raise ContractError, "#{target_name} contains untracked Swift files: #{extra.join(", ")}" if extra.any?
+    verify_target_membership(target, root, tracked)
 
     inventory[target_name] = tracked
   end

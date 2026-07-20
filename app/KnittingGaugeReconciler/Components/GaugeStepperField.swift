@@ -32,7 +32,6 @@ struct DeltaPillBadge: View {
             // Pill is purely decorative — adjacent value tile carries the
             // semantic value (e.g. "Knit 64 rows, +16 from pattern").
             .accessibilityHidden(true)
-            .accessibilityIdentifier("delta-pill")
     }
 }
 
@@ -75,7 +74,6 @@ struct GaugeStepperField: View {
     private let title: String
     @Binding private var text: String
     private let unit: String
-    private let identifier: String
     private let field: GaugeFormField
     private let validationMessage: String?
     private let validationText: String
@@ -197,7 +195,6 @@ struct GaugeStepperField: View {
         title: String,
         text: Binding<String>,
         unit: String,
-        identifier: String,
         field: GaugeFormField,
         validationMessage: String?,
         validationText: String? = nil,
@@ -213,7 +210,6 @@ struct GaugeStepperField: View {
         self.title = title
         self._text = text
         self.unit = unit
-        self.identifier = identifier
         self.field = field
         self.validationMessage = validationMessage
         self.validationText = validationText ?? text.wrappedValue
@@ -309,7 +305,6 @@ struct GaugeStepperField: View {
             title: title,
             text: $text,
             range: range,
-            identifier: identifier,
             validationText: validationText,
             field: field,
             accessibilityLabel: accessibilityLabel,
@@ -377,7 +372,6 @@ struct GaugeStepperField: View {
                     label: accessibilityLabel,
                     value: fieldAccessibilityValue,
                     hint: fieldAccessibilityHint,
-                    identifier: "\(identifier)-field",
                     showsCorrection: hasMismatch || validationMessage != nil,
                     onSubmit: onSubmit
                 )
@@ -402,7 +396,6 @@ struct GaugeStepperField: View {
                 .accessibilityLabel(Self.pickerAccessibilityLabel(for: accessibilityLabel))
                 .accessibilityValue(pickerAccessibilityValue)
                 .accessibilityHint(pickerAccessibilityHint)
-                .accessibilityIdentifier("\(identifier)-chevron")
                 .accessibilityAction(named: "Increment", increment)
                 .accessibilityAction(named: "Decrement", decrement)
             }
@@ -418,12 +411,7 @@ struct GaugeStepperField: View {
                         lineWidth: 1.5
                     )
             )
-            // Expose the entire field container as a single accessibility node
-            // so UI tests can locate the field by its bare identifier
-            // (`app.otherElements[identifier]`). The visible TextField + chevron
-            // retain their own child identifiers for tap-targeted interaction.
             .accessibilityElement(children: .contain)
-            .accessibilityIdentifier(identifier)
 
             if let validationMessage {
                 Text(validationMessage)
@@ -432,7 +420,6 @@ struct GaugeStepperField: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier("\(identifier)-error")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -450,7 +437,6 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
     private let label: String
     private let value: String
     private let hint: String
-    private let identifier: String
     private let showsCorrection: Bool
     private let onSubmit: () -> Void
 
@@ -461,7 +447,6 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         label: String,
         value: String,
         hint: String,
-        identifier: String,
         showsCorrection: Bool,
         onSubmit: @escaping () -> Void
     ) {
@@ -471,7 +456,6 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         self.label = label
         self.value = value
         self.hint = hint
-        self.identifier = identifier
         self.showsCorrection = showsCorrection
         self.onSubmit = onSubmit
     }
@@ -508,7 +492,6 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
             target: context.coordinator,
             action: #selector(Coordinator.didTapDone)
         )
-        done.accessibilityIdentifier = "keyboard-done"
         toolbar.items = [done]
         toolbar.sizeToFit()
         textField.inputAccessoryView = toolbar
@@ -524,7 +507,6 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         textField.accessibilityLabel = label
         textField.accessibilityValue = value
         textField.accessibilityHint = hint
-        textField.accessibilityIdentifier = identifier
 
         let coordinator = context.coordinator
         let shouldFocus = focusedField.wrappedValue == field
@@ -591,7 +573,6 @@ struct GaugeStepperWheelSheet: View {
     let title: String
     @Binding private var text: String
     let range: ClosedRange<Int>
-    let identifier: String
     let validationText: String
     let field: GaugeFormField
     let accessibilityLabel: String
@@ -606,7 +587,6 @@ struct GaugeStepperWheelSheet: View {
         title: String,
         text: Binding<String>,
         range: ClosedRange<Int>,
-        identifier: String,
         validationText: String,
         field: GaugeFormField,
         accessibilityLabel: String,
@@ -618,7 +598,6 @@ struct GaugeStepperWheelSheet: View {
         self.title = title
         self._text = text
         self.range = range
-        self.identifier = identifier
         self.validationText = validationText
         self.field = field
         self.accessibilityLabel = accessibilityLabel
@@ -671,7 +650,6 @@ struct GaugeStepperWheelSheet: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
                     .padding(.bottom, 8)
-                    .accessibilityIdentifier("\(identifier)-warning-summary")
             }
 
             Picker(title, selection: $selectedValue) {
@@ -682,7 +660,6 @@ struct GaugeStepperWheelSheet: View {
             .pickerStyle(.wheel)
             .labelsHidden()
             .accessibilityLabel(accessibilityLabel)
-            .accessibilityIdentifier("\(identifier)-wheel")
 
             Button("Done", action: commit)
             .font(.body.weight(.semibold))
@@ -690,7 +667,6 @@ struct GaugeStepperWheelSheet: View {
             .frame(maxWidth: .infinity, alignment: .trailing)
             .padding(.horizontal)
             .padding(.vertical)
-            .accessibilityIdentifier("\(identifier)-wheel-done")
         }
         .background(AppTheme.card)
     }

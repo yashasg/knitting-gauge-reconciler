@@ -722,8 +722,15 @@ struct GaugeMathTests {
         let sourceURL = appDirectory
             .appendingPathComponent("KnittingGaugeReconciler/Views/RequiredAdjustmentsCard.swift")
         let source = try String(contentsOf: sourceURL, encoding: .utf8)
-        let shareStart = try #require(source.range(of: "Text(\"Share results\")")?.lowerBound)
-        let mathStart = try #require(source.range(of: "Text(showFullMath ?")?.lowerBound)
+        let actionsStart = try #require(
+            source.range(of: "private func actionView(_ action: ResultActionKind)")?.lowerBound
+        )
+        let shareStart = try #require(
+            source.range(of: "case .share:", range: actionsStart..<source.endIndex)?.lowerBound
+        )
+        let mathStart = try #require(
+            source.range(of: "case .fullMath:", range: shareStart..<source.endIndex)?.lowerBound
+        )
         let mathEnd = try #require(
             source.range(of: "if showFullMath {", range: mathStart..<source.endIndex)?.lowerBound
         )
@@ -785,7 +792,7 @@ struct GaugeMathTests {
         let boundary = try sourceSection(
             "KnittingGaugeReconciler/Components/GaugeStepperField.swift",
             from: ".background(AppTheme.card)",
-            to: "// Expose the entire field container",
+            to: ".accessibilityElement(children: .contain)",
             appDirectory: appDirectory
         )
         #expect(boundary.contains("? AppTheme.mismatchText"))

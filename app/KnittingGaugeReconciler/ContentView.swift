@@ -41,7 +41,6 @@ struct SceneDraftLifecycleModifier: ViewModifier {
 
 // swiftlint:disable:next type_body_length
 struct ContentView: View {
-    private static let defaults = GaugeTextDefaults()
     private static let sceneDraftActivityType = "com.stitchwise.scene-draft"
     private let sceneLifecycleEnabled: Bool
 
@@ -51,21 +50,19 @@ struct ContentView: View {
 
     // MARK: - State
 
-    @State private var patternStitches = initialText("KGR_PS", defaultValue: "32")
-    @State private var patternRows = initialText("KGR_PR", defaultValue: "24")
-    @State private var yourStitches = initialText("KGR_YS", defaultValue: "32")
-    @State private var yourRows = initialText("KGR_YR", defaultValue: "32")
-    @State private var patternCastOn = initialText("KGR_CAST_ON", defaultValue: "")
-    @State private var patternYoke = initialText("KGR_YOKE", defaultValue: "")
-    @State private var patternBody = initialText("KGR_BODY", defaultValue: "")
-    @State private var patternSleeve = initialText("KGR_SLEEVE", defaultValue: "")
-    @State private var patternIncreases = initialText("KGR_INCREASES", defaultValue: "")
-    @State private var patternDetailsExpanded = initialBool("KGR_SHOW_PATTERN_DETAILS")
+    @State private var patternStitches = GaugeTextDefaults().patternStitches
+    @State private var patternRows = GaugeTextDefaults().patternRows
+    @State private var yourStitches = GaugeTextDefaults().yourStitches
+    @State private var yourRows = GaugeTextDefaults().yourRows
+    @State private var patternCastOn = ""
+    @State private var patternYoke = ""
+    @State private var patternBody = ""
+    @State private var patternSleeve = ""
+    @State private var patternIncreases = ""
+    @State private var patternDetailsExpanded = false
 
-    @State private var showFullMath = initialBool("KGR_SHOW_FULL_MATH")
-    @State private var aboutHelp = AboutHelpState(
-        isPresented: initialBool("KGR_SHOW_ABOUT_HELP")
-    )
+    @State private var showFullMath = false
+    @State private var aboutHelp = AboutHelpState()
     @State private var resetSnapshot = ResetSnapshot()
     @State private var canUndoReset = false
     @State private var focusedField: GaugeFormField?
@@ -147,17 +144,16 @@ struct ContentView: View {
                     ZStack(alignment: .leading) {
                         AppTheme.background
                         Text(GaugeFormContract.leadCopy)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(AppTheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                        .padding(.bottom, 8)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(AppTheme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                            .padding(.bottom, 8)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .combine)
                     .accessibilityAddTraits(.isStaticText)
-                    .accessibilityIdentifier("gauge-lead")
 
                     GaugeInputsCard(
                         patternStitches: draftBinding($patternStitches, at: 0),
@@ -652,63 +648,66 @@ struct AboutHelpSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HelpSheetHeader(closeIdentifier: AboutHelpContract.closeIdentifier, onClose: close)
+            HelpSheetHeader(onClose: close)
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text(AboutHelpContract.openLabel)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(AppTheme.sage)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                    Text(AboutHelpContract.explanation)
-                        .font(.body)
-                        .lineSpacing(4)
-                        .foregroundStyle(AppTheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(AboutHelpContract.math)
-                        .font(.body)
-                        .lineSpacing(4)
-                        .foregroundStyle(AppTheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(AboutHelpContract.scope)
-                        .font(.body.weight(.semibold))
-                        .lineSpacing(4)
-                        .foregroundStyle(AppTheme.warningText)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(AppTheme.warningBackground)
-                        .overlay(alignment: .leading) {
-                            Rectangle()
-                                .frame(width: 3)
-                                .foregroundStyle(AppTheme.warningAccent)
-                                .accessibilityHidden(true)
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                        .accessibilityIdentifier("about-scope")
-                    Text(AboutHelpContract.nonAffiliation)
-                        .font(.footnote.italic())
-                        .lineSpacing(3)
-                        .foregroundStyle(AppTheme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("about-non-affiliation")
-                    Text("Privacy")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(AppTheme.sage)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                    Text(AboutHelpContract.privacy)
-                        .font(.body)
-                        .lineSpacing(4)
-                        .foregroundStyle(AppTheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
+                AboutHelpContent()
             }
-            .accessibilityIdentifier(AboutHelpContract.sheetIdentifier)
         }
         .background(AppTheme.background.ignoresSafeArea())
+    }
+}
+
+struct AboutHelpContent: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text(AboutHelpContract.openLabel)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(AppTheme.sage)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            Text(AboutHelpContract.explanation)
+                .font(.body)
+                .lineSpacing(4)
+                .foregroundStyle(AppTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(AboutHelpContract.math)
+                .font(.body)
+                .lineSpacing(4)
+                .foregroundStyle(AppTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(AboutHelpContract.scope)
+                .font(.body.weight(.semibold))
+                .lineSpacing(4)
+                .foregroundStyle(AppTheme.warningText)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AppTheme.warningBackground)
+                .overlay(alignment: .leading) {
+                    Rectangle()
+                        .frame(width: 3)
+                        .foregroundStyle(AppTheme.warningAccent)
+                        .accessibilityHidden(true)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            Text(AboutHelpContract.nonAffiliation)
+                .font(.footnote.italic())
+                .lineSpacing(3)
+                .foregroundStyle(AppTheme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(AboutHelpContract.privacyHeading)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(AppTheme.sage)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            Text(AboutHelpContract.privacy)
+                .font(.body)
+                .lineSpacing(4)
+                .foregroundStyle(AppTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -719,7 +718,6 @@ struct AboutHelpSheet: View {
 /// trailing Close button (#25) so VoiceOver users can dismiss the sheet
 /// without relying on the drag indicator.
 struct HelpSheetHeader: View {
-    let closeIdentifier: String
     let onClose: () -> Void
 
     var body: some View {
@@ -734,7 +732,6 @@ struct HelpSheetHeader: View {
                     .contentShape(Rectangle())
             }
             .accessibilityLabel(AboutHelpContract.closeLabel)
-            .accessibilityIdentifier(closeIdentifier)
         }
         .padding(.horizontal, 8)
         .padding(.top, 4)

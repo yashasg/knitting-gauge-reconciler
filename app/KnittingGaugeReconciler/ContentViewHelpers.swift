@@ -1,6 +1,5 @@
 // Issue #134 keeps the small form/help contracts beside the state helpers they exercise.
 import SwiftUI
-import UIKit
 
 func newValidationAnnouncement(
     previous: [GaugeFormField: String],
@@ -291,10 +290,6 @@ struct AboutHelpState: Equatable {
     }
 }
 
-enum HelpDestination: CaseIterable, Equatable {
-    case about
-}
-
 enum GaugeFormContract {
     static let leadCopy =
         "Compare your pattern gauge with your swatch to see how stitch and row differences affect the garment."
@@ -305,8 +300,7 @@ enum AboutHelpContract {
     static let openHint = "Opens an explanation of how this calculator works"
     static let closeLabel = "Close"
     static let closeHitTarget: CGFloat = 44
-    static let sheetIdentifier = "about-help-sheet"
-    static let closeIdentifier = "about-help-close"
+    static let privacyHeading = "Privacy"
     static let explanation =
         "This tool reconciles a two-axis gauge mismatch, " +
         "the kind that single-number gauge calculators hide. " +
@@ -335,22 +329,4 @@ enum AboutHelpContract {
         "The app includes no analytics SDK and makes no app-initiated network requests. " +
         "Apple may receive crash and performance diagnostics according to your device settings."
 
-    static var accessibilityText: [String] {
-        [openLabel, explanation, math, scope, nonAffiliation, "Privacy", privacy, closeLabel]
-    }
-
-    @MainActor
-    static func closeAction(_ handler: @escaping () -> Bool) -> UIAccessibilityCustomAction {
-        UIAccessibilityCustomAction(name: closeLabel) { _ in handler() }
-    }
-}
-
-// MARK: - Helpers
-
-func initialText(_ environmentKey: String, defaultValue: String) -> String {
-    ProcessInfo.processInfo.environment[environmentKey] ?? defaultValue
-}
-
-func initialBool(_ environmentKey: String) -> Bool {
-    ProcessInfo.processInfo.environment[environmentKey] == "1"
 }

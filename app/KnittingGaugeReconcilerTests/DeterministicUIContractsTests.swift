@@ -6,7 +6,7 @@ import UIKit
 
 @MainActor
 struct DeterministicUIContractsTests {
-    @Test func formDraftActionsPreserveRawValuesValidationUnitsResetAndUndo() throws {
+    @Test func contracts15And16FormDraftPreservesValidationRawValuesResetAndUndo() throws {
         let original = ["31", "23", "29", "21", "141", "19", "49", "44", "7"]
         var draft = GaugeFormDraft(
             values: original,
@@ -56,7 +56,7 @@ struct DeterministicUIContractsTests {
         #expect(draft.focusedField == nil)
     }
 
-    @Test func stepperPickerAndAccessibilitySemanticsAreDeterministic() {
+    @Test func contracts07And13PickerAccessibilityAndMismatchAreDeterministic() {
         let contract = GaugeStepperField.accessibilityContract(
             text: "32",
             unit: "ro",
@@ -112,7 +112,7 @@ struct DeterministicUIContractsTests {
         )
     }
 
-    @Test func sixJacquardScenariosAndOptionalResultSectionsRemainExplicit() {
+    @Test func contracts01Through06JacquardAnd14OptionalSectionsRemainExplicit() {
         let scenarios = [
             Scenario(
                 name: "perfect match", yourStitches: 32, yourRows: 24,
@@ -204,13 +204,15 @@ struct DeterministicUIContractsTests {
         }
     }
 
-    @Test func hostedResultsExposeExactlyOneShareResultsAffordance() throws {
+    @Test func contract10HostedResultsExposeExactlyOneShareResultsAffordance() throws {
         let inputs = GaugeInputs()
         let result = GaugeMath.compute(inputs)
-        let semantics = ResultCardSemantics(inputs: inputs, result: result)
-        #expect(semantics.actionLabels.filter { $0 == "Share results" }.count == 1)
-        #expect(semantics.actionLabels.allSatisfy { !$0.localizedCaseInsensitiveContains("copy") })
-        #expect(semantics.actionLabels.allSatisfy { !$0.localizedCaseInsensitiveContains("export") })
+        let actions = ResultActionKind.allCases.map {
+            $0.label(isExpanded: false)
+        }
+        #expect(actions.filter { $0 == "Share results" }.count == 1)
+        #expect(actions.allSatisfy { !$0.localizedCaseInsensitiveContains("copy") })
+        #expect(actions.allSatisfy { !$0.localizedCaseInsensitiveContains("export") })
 
         let fullMath = ValueBox(false)
         let probe = HostedViewProbe(
@@ -227,39 +229,59 @@ struct DeterministicUIContractsTests {
         #expect(probe.size.height > 0)
     }
 
-    @Test func hostedAboutHelpHasExactCopyAndAccessibleCloseAction() {
-        var state = AboutHelpState()
-        state.open()
-        #expect(state.isPresented)
-        #expect(AboutHelpContract.openLabel == "About this calculator")
-        #expect(AboutHelpContract.explanation.contains("two-axis gauge mismatch"))
+    @Test func contract08HostedAboutHelpHasExactCopyAndAccessibleCloseAction() throws {
+        let state = ValueBox(AboutHelpState())
+        let button = AboutHelpToolbarButton(state: state.binding)
+        #expect(HostedViewProbe(button).size.width > 0)
+        button.open()
+        #expect(state.value.isPresented)
+
+        let expectedCopy = [
+            "About this calculator",
+            "This tool reconciles a two-axis gauge mismatch, the kind that single-number " +
+                "gauge calculators hide. When row gauge differs, it adjusts each supplied depth or length " +
+                "while preserving the pattern's intended row count. Stitch-gauge differences are handled separately for width.",
+            "The math is deterministic: dimension correction = pattern_row / your_row. A denser swatch means fewer " +
+                "centimetres are needed to reach the pattern's intended row count; stitch_scale = pattern_st / your_st " +
+                "describes horizontal width. Increase-row spacing is rescaled by your_row / pattern_row so the physical gap " +
+                "between increases stays correct.",
+            "Scope: This tool provides estimates based on your swatch measurements. Always test a full-size gauge swatch " +
+                "(washed and blocked the way you'll wash and block the finished garment) before starting your project. " +
+                "Numbers here are a starting point — your finished piece is the final word.",
+            "Not affiliated with Ravelry, Knit Companion, or any pattern designer. Gauge math is conventional knitting " +
+                "arithmetic from open craft literature.",
+            "Privacy",
+            "Your gauge values stay on this device. No account, ads, or third-party tracking. The app includes no analytics " +
+                "SDK and makes no app-initiated network requests. Apple may receive crash and performance diagnostics " +
+                "according to your device settings.",
+        ]
+        let actualCopy = [
+            AboutHelpContract.openLabel,
+            AboutHelpContract.explanation,
+            AboutHelpContract.math,
+            AboutHelpContract.scope,
+            AboutHelpContract.nonAffiliation,
+            AboutHelpContract.privacyHeading,
+            AboutHelpContract.privacy,
+        ]
+        #expect(actualCopy == expectedCopy)
         #expect(AboutHelpContract.closeLabel == "Close")
         #expect(AboutHelpContract.closeHitTarget == 44)
-        #expect(AboutHelpContract.accessibilityText.count == 8)
-        #expect(AboutHelpContract.accessibilityText.filter { $0 == "Close" }.count == 1)
-
-        let stateBox = ValueBox(state)
-        let sheet = AboutHelpSheet(state: stateBox.binding)
-        let probe = HostedViewProbe(sheet)
-        #expect(probe.size.width > 0)
-        #expect(probe.size.height > 0)
+        #expect(HostedViewProbe(AboutHelpContent()).size.height > 0)
+        let sheet = AboutHelpSheet(state: state.binding)
+        #expect(HostedViewProbe(sheet).size.height > 0)
+        #expect(
+            HostedViewProbe(
+                HelpSheetHeader(
+                    onClose: sheet.close
+                )
+            ).size.height >= AboutHelpContract.closeHitTarget
+        )
         sheet.close()
-        #expect(!stateBox.value.isPresented)
-
-        let closeRecorder = CloseRecorder()
-        let closeAction = AboutHelpContract.closeAction {
-            closeRecorder.close()
-            return true
-        }
-        #expect(closeAction.name == AboutHelpContract.closeLabel)
-        #expect(closeAction.actionHandler?(closeAction) == true)
-        #expect(closeRecorder.didClose)
-
-        state.close()
-        #expect(!state.isPresented)
+        #expect(!state.value.isPresented)
     }
 
-    @Test func hostedDynamicTypeAndDisclosureLayoutsRetainSemanticContent() {
+    @Test func contracts11And12DynamicTypePairGeometryAndUnitLabelsRemainVisible() throws {
         #expect(GaugeInputsCard.usesStackedLayout(at: .accessibility5))
         #expect(!GaugeInputsCard.usesStackedLayout(at: .large))
         #expect(
@@ -272,46 +294,75 @@ struct DeterministicUIContractsTests {
         let compact = HostedViewProbe(
             gaugeValues.gaugeCard.environment(\.dynamicTypeSize, .large)
         )
-        let accessible = HostedViewProbe(
+        let accessibleCard = HostedViewProbe(
             gaugeValues.gaugeCard.environment(\.dynamicTypeSize, .accessibility5)
         )
+        #expect(accessibleCard.size.height > compact.size.height)
+        let fieldLabels = GaugeInputsCard.accessibilityFieldOrder.map(
+            GaugeInputsCard.accessibilityLabel
+        )
+        #expect(
+            fieldLabels == [
+                "Pattern stitch gauge, per 10 centimeters",
+                "Pattern row gauge, per 10 centimeters",
+                "Swatch stitch gauge, per 10 centimeters",
+                "Swatch row gauge, per 10 centimeters",
+            ]
+        )
+        let pairContent = VStack(alignment: .leading, spacing: 24) {
+            GaugeMeasurementPair {
+                Color.clear.frame(width: 100, height: 40)
+            } trailing: {
+                Color.clear.frame(width: 100, height: 40)
+            }
+            GaugeMeasurementPair {
+                Color.clear.frame(width: 100, height: 40)
+            } trailing: {
+                Color.clear.frame(width: 100, height: 40)
+            }
+        }
+        let compactPairs = HostedViewProbe(
+            pairContent.environment(\.dynamicTypeSize, .large)
+        )
+        let accessible = HostedViewProbe(
+            pairContent.environment(\.dynamicTypeSize, .accessibility5)
+        )
+        #expect(compact.size.width > 0)
         #expect(accessible.size.width > 0)
-        #expect(accessible.size.height > compact.size.height)
+        #expect(compactPairs.size.height == 104)
+        #expect(accessible.size.height == 208)
 
-        let collapsedSemantics = PatternDetailsSemantics(isExpanded: false, unit: .centimeters)
-        let expandedSemantics = PatternDetailsSemantics(isExpanded: true, unit: .centimeters)
-        #expect(collapsedSemantics.visibleFields.isEmpty)
-        #expect(
-            expandedSemantics.visibleFields ==
-                [.patternCastOn, .patternYoke, .patternBody, .patternSleeve, .patternIncreases]
+        let collapsed = HostedViewProbe(
+            gaugeValues.patternCard(expanded: false)
         )
-        #expect(expandedSemantics.lengthLabels == ["Yoke depth (cm)", "Body length (cm)", "Sleeve length (cm)"])
-        #expect(
-            PatternDetailsSemantics(isExpanded: true, unit: .inches).lengthLabels ==
-                ["Yoke depth (in)", "Body length (in)", "Sleeve length (in)"]
+        let expanded = HostedViewProbe(
+            gaugeValues.patternCard(expanded: true)
         )
-
-        let collapsed = HostedViewProbe(gaugeValues.patternCard(expanded: false))
-        let expanded = HostedViewProbe(gaugeValues.patternCard(expanded: true))
         #expect(expanded.size.height > collapsed.size.height)
-        #expect(expandedSemantics.disclosureLabel == "Pattern details (optional)")
+        #expect(PatternInstructionsCard.disclosureLabel == "Pattern details (optional)")
         #expect(
-            expandedSemantics.disclosureHint ==
+            PatternInstructionsCard.disclosureHint ==
                 "Expands optional unit, cast-on, length, and shaping fields"
         )
+        #expect(PatternInstructionsCard.disclosureValue(isExpanded: false) == "Collapsed")
+        #expect(PatternInstructionsCard.disclosureValue(isExpanded: true) == "Expanded")
     }
 
-    @Test func adaptiveTextTokensMeetContrastAndRepresentativeViewRenders() throws {
+    @Test func contract17AssetColorsMeetContrastAndAppViewRenders() throws {
         let traits = [
             UITraitCollection(userInterfaceStyle: .light),
             UITraitCollection(userInterfaceStyle: .dark),
         ]
         for pair in AppTheme.textContrastPairs {
-            let foregroundColors = try assetColors(named: pair.foreground)
-            let backgroundColors = try assetColors(named: pair.background)
-            for (index, trait) in traits.enumerated() {
-                let foreground = foregroundColors[index]
-                let background = backgroundColors[index]
+            for trait in traits {
+                let foreground = try #require(
+                    UIColor(named: pair.foreground, in: appResourceBundle, compatibleWith: trait)?
+                        .resolvedColor(with: trait)
+                )
+                let background = try #require(
+                    UIColor(named: pair.background, in: appResourceBundle, compatibleWith: trait)?
+                        .resolvedColor(with: trait)
+                )
                 #expect(
                     contrastRatio(foreground, background) >= pair.minimumRatio,
                     "\(pair.foreground) on \(pair.background), \(trait.userInterfaceStyle)"
@@ -319,22 +370,51 @@ struct DeterministicUIContractsTests {
             }
         }
 
-        let ink = try #require(assetColors(named: "app-theme-ink").first)
-        let background = try #require(assetColors(named: "app-theme-background").first)
+        let pair = try #require(AppTheme.textContrastPairs.first)
+        let foreground = try #require(
+            UIColor(named: pair.foreground, in: appResourceBundle, compatibleWith: traits[0])
+        )
+        let background = try #require(
+            UIColor(named: pair.background, in: appResourceBundle, compatibleWith: traits[0])
+        )
         let image = UIGraphicsImageRenderer(size: CGSize(width: 44, height: 44)).image { _ in
             background.setFill()
             UIRectFill(CGRect(x: 0, y: 0, width: 44, height: 44))
-            ink.setFill()
+            foreground.setFill()
             UIRectFill(CGRect(x: 10, y: 10, width: 24, height: 24))
         }
         #expect(image.size == CGSize(width: 44, height: 44))
     }
 
-    @Test func verdictHelpHasNoProductDestination() {
-        #expect(HelpDestination.allCases == [.about])
+    @Test func contract09VerdictHasNoHelpAndAboutIsTheSoleHelpEntryPoint() throws {
+        let appDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("KnittingGaugeReconciler")
+        let resultSource = try String(
+            contentsOf: appDirectory.appendingPathComponent("Views/RequiredAdjustmentsCard.swift"),
+            encoding: .utf8
+        )
+        for forbidden in ["AboutHelp", "HelpDestination", "NavigationLink", "questionmark.circle"] {
+            #expect(!resultSource.contains(forbidden), "Verdict/results UI must not contain \(forbidden)")
+        }
+
+        let sourceURLs = try FileManager.default.subpathsOfDirectory(atPath: appDirectory.path)
+            .filter { $0.hasSuffix(".swift") }
+            .map { appDirectory.appendingPathComponent($0) }
+        let sources = try sourceURLs.map { url in
+            (url, try String(contentsOf: url, encoding: .utf8))
+        }
+        let helpEntryPoints = sources.filter { $0.1.contains("AboutHelpToolbarButton(state:") }
+        #expect(helpEntryPoints.count == 1)
+        #expect(helpEntryPoints.first?.0.lastPathComponent == "ContentView.swift")
+
+        let helpIcons = sources.filter { $0.1.contains("Image(systemName: \"questionmark.circle\")") }
+        #expect(helpIcons.count == 1)
+        #expect(helpIcons.first?.0.lastPathComponent == "HomeHeaderView.swift")
     }
 
-    @Test func everyFormFieldMapsValidatesFocusesAndCommits() {
+    @Test func contract15EveryFormFieldMapsValidatesFocusesAndCommits() {
         let mappings: [(GaugeFormField, GaugeMath.Field, String, Bool)] = [
             (.patternStitches, .patternStitches, "Pattern stitch gauge", false),
             (.patternRows, .patternRows, "Pattern row gauge", false),
@@ -540,7 +620,6 @@ struct DeterministicUIContractsTests {
             label: "Rows",
             value: "24 rows",
             hint: "Double-tap to edit.",
-            identifier: "rows-field",
             showsCorrection: false,
             onSubmit: recorder.record
         )
@@ -577,15 +656,11 @@ struct DeterministicUIContractsTests {
         #expect(textField.becameFirstResponder)
     }
 
-    @Test func adjustmentRowsExposeStableIdentifiersLabelsAndAdaptiveLayouts() {
+    @Test func adjustmentRowsExposeLabelsAndAdaptiveLayouts() {
         let plainRow = AdjustmentRow(
             name: "Body length",
             pattern: "50 cm",
             adjusted: "37.5 cm"
-        )
-        #expect(
-            AdjustmentRow.defaultAdjustedIdentifier(name: "Body length") ==
-                "adjustment-body-length-value"
         )
         #expect(
             AdjustmentRow.adjustedAccessibilityLabel(
@@ -599,7 +674,6 @@ struct DeterministicUIContractsTests {
             name: "Cast-on stitches",
             pattern: "40 stitches",
             adjusted: "99 stitches",
-            adjustedIdentifier: "cast-on-result",
             driftPill: "+4% width"
         )
         #expect(
@@ -802,7 +876,6 @@ struct DeterministicUIContractsTests {
             title: "Rows",
             text: text.binding,
             range: 1...99,
-            identifier: "rows",
             validationText: "32",
             field: .yourRows,
             accessibilityLabel: "Swatch rows",
@@ -819,7 +892,6 @@ struct DeterministicUIContractsTests {
             title: "Yoke",
             text: text.binding,
             range: 2...39,
-            identifier: "yoke",
             validationText: "",
             field: .patternYoke,
             accessibilityLabel: "Yoke depth",
@@ -838,7 +910,6 @@ struct DeterministicUIContractsTests {
             label: "Rows",
             value: "32 rows",
             hint: "Edit",
-            identifier: "rows-field",
             showsCorrection: true,
             onSubmit: {}
         )
@@ -848,7 +919,6 @@ struct DeterministicUIContractsTests {
             title: "Rows",
             text: text.binding,
             unit: "ro",
-            identifier: "rows",
             field: .yourRows,
             validationMessage: nil,
             focusedField: focus.binding,
@@ -1294,15 +1364,6 @@ private final class NilTextField: UITextField {
 }
 
 @MainActor
-private final class CloseRecorder {
-    private(set) var didClose = false
-
-    func close() {
-        didClose = true
-    }
-}
-
-@MainActor
 private final class ActionRecorder {
     private(set) var count = 0
 
@@ -1367,57 +1428,26 @@ private final class GaugeValueBindings {
 @MainActor
 private final class HostedViewProbe<Content: View> {
     private let controller: UIHostingController<Content>
-    private let window: UIWindow?
     let size: CGSize
 
     init(
         _ content: Content,
-        width: CGFloat = 390,
-        windowScene: UIWindowScene? = nil
+        width: CGFloat = 390
     ) {
         controller = UIHostingController(rootView: content)
-        if let windowScene {
-            let window = UIWindow(windowScene: windowScene)
-            window.rootViewController = controller
-            window.frame = CGRect(x: 0, y: 0, width: width, height: 844)
-            window.isHidden = false
-            self.window = window
-        } else {
-            window = nil
-        }
         controller.loadViewIfNeeded()
         size = controller.view.sizeThatFits(
             CGSize(width: width, height: CGFloat.greatestFiniteMagnitude)
         )
-        controller.view.frame = CGRect(origin: .zero, size: CGSize(width: width, height: size.height))
+        let frame = CGRect(
+            x: 0,
+            y: 0,
+            width: width,
+            height: max(100, size.height)
+        )
+        controller.view.frame = frame
         controller.view.setNeedsLayout()
         controller.view.layoutIfNeeded()
-    }
-
-}
-
-private func assetColors(named name: String) throws -> [UIColor] {
-    let appDirectory = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-    let url = appDirectory
-        .appendingPathComponent("KnittingGaugeReconciler/Assets.xcassets")
-        .appendingPathComponent("\(name).colorset/Contents.json")
-    let data = try Data(contentsOf: url)
-    let json = try JSONSerialization.jsonObject(with: data)
-    guard let dictionary = json as? [String: Any],
-          let colors = dictionary["colors"] as? [[String: Any]] else {
-        return []
-    }
-    return colors.compactMap { entry in
-        guard let color = entry["color"] as? [String: Any],
-              let components = color["components"] as? [String: String],
-              let red = components["red"].flatMap(Double.init),
-              let green = components["green"].flatMap(Double.init),
-              let blue = components["blue"].flatMap(Double.init) else {
-            return nil
-        }
-        return UIColor(red: red, green: green, blue: blue, alpha: 1)
     }
 }
 

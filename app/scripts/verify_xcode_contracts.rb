@@ -70,6 +70,49 @@ def checked_coverage_sum(values, label)
   end
 end
 
+def validate_coverage_target(target, index, root)
+  context = "coverage target #{index}"
+  raise ContractError, "#{context} must be a hash" unless target.instance_of?(Hash)
+
+  name = target["name"]
+  unless name.instance_of?(String) && !name.empty?
+    raise ContractError, "#{context} name must be a nonempty string"
+  end
+  raise ContractError, "#{context} files must be an array" unless target["files"].instance_of?(Array)
+
+  target_covered = coverage_count(target, "coveredLines", context)
+  target_executable = coverage_count(target, "executableLines", context)
+  raise ContractError, "#{context} coveredLines exceeds executableLines" if target_covered > target_executable
+
+  records = {}
+  target["files"].each_with_index do |file, file_index|
+    file_context = "#{context} file #{file_index}"
+    raise ContractError, "#{file_context} must be a hash" unless file.instance_of?(Hash)
+
+    path = normalized_coverage_path(file["path"], root)
+    raise ContractError, "#{context} has duplicate coverage file: #{path}" if records.key?(path)
+
+    covered = coverage_count(file, "coveredLines", file_context)
+    executable = coverage_count(file, "executableLines", file_context)
+    raise ContractError, "#{file_context} coveredLines exceeds executableLines" if covered > executable
+
+    records[path] = [covered, executable]
+  end
+
+  covered_sum = checked_coverage_sum(records.values.map(&:first), "#{context} coveredLines")
+  executable_sum = checked_coverage_sum(records.values.map(&:last), "#{context} executableLines")
+  unless target_covered == covered_sum && target_executable == executable_sum
+    raise ContractError, "#{context} counts do not match its file sums"
+  end
+
+  {
+    name: name,
+    covered: target_covered,
+    executable: target_executable,
+    files: records,
+  }
+end
+
 def validate_coverage_report(report, root, expected_paths)
   unless report.instance_of?(Hash) && report["targets"].instance_of?(Array)
     raise ContractError, "coverage report root must contain a targets array"
@@ -83,54 +126,25 @@ def validate_coverage_report(report, root, expected_paths)
     raise ContractError, "expected production source inventory must be sorted and unique"
   end
 
-  report["targets"].each_with_index do |target, index|
-    unless target.instance_of?(Hash) &&
-           target["name"].instance_of?(String) &&
-           !target["name"].empty?
-      raise ContractError, "coverage target #{index} has an unexpected schema"
-    end
+  validated_targets = report["targets"].each_with_index.map do |target, index|
+    validate_coverage_target(target, index, root)
   end
-  targets = report["targets"].select { |target| target["name"] == PRODUCTION_COVERAGE_TARGET }
+  targets = validated_targets.select { |target| target[:name] == PRODUCTION_COVERAGE_TARGET }
   unless targets.length == 1
     raise ContractError, "expected exactly one #{PRODUCTION_COVERAGE_TARGET} coverage target, found #{targets.length}"
   end
 
   target = targets.first
-  unless target["files"].instance_of?(Array)
-    raise ContractError, "#{PRODUCTION_COVERAGE_TARGET} files must be an array"
-  end
-
-  target_covered = coverage_count(target, "coveredLines", PRODUCTION_COVERAGE_TARGET)
-  target_executable = coverage_count(target, "executableLines", PRODUCTION_COVERAGE_TARGET)
-  if target_covered > target_executable
-    raise ContractError, "#{PRODUCTION_COVERAGE_TARGET} coveredLines exceeds executableLines"
-  end
-
-  records = {}
-  target["files"].each_with_index do |file, index|
-    raise ContractError, "coverage file #{index} has an unexpected schema" unless file.instance_of?(Hash)
-
-    path = normalized_coverage_path(file["path"], root)
-    raise ContractError, "duplicate coverage file: #{path}" if records.key?(path)
-
-    covered = coverage_count(file, "coveredLines", path)
-    executable = coverage_count(file, "executableLines", path)
-    raise ContractError, "#{path} coveredLines exceeds executableLines" if covered > executable
-
-    records[path] = [covered, executable]
-  end
+  target_covered = target[:covered]
+  target_executable = target[:executable]
+  records = target[:files]
 
   missing = expected - records.keys
   extra = records.keys - expected
   raise ContractError, "missing coverage files: #{missing.join(", ")}" if missing.any?
   raise ContractError, "unexpected coverage files: #{extra.join(", ")}" if extra.any?
 
-  covered_sum = checked_coverage_sum(expected.map { |path| records.fetch(path)[0] }, "coveredLines")
-  executable_sum = checked_coverage_sum(expected.map { |path| records.fetch(path)[1] }, "executableLines")
   failures = []
-  unless target_covered == covered_sum && target_executable == executable_sum
-    failures << "#{PRODUCTION_COVERAGE_TARGET} counts do not match production file sums"
-  end
   if target_covered != target_executable
     failures << "target #{PRODUCTION_COVERAGE_TARGET} has #{target_executable - target_covered} uncovered production lines"
   end
@@ -186,23 +200,35 @@ def assert_coverage_regression_fixtures
     "app/KnittingGaugeReconciler/B.swift",
   ]
   valid = {
-    "targets" => [{
-      "name" => PRODUCTION_COVERAGE_TARGET,
-      "coveredLines" => 3,
-      "executableLines" => 3,
-      "files" => [
-        {
-          "path" => File.join(root, expected[0]),
+    "targets" => [
+      {
+        "name" => PRODUCTION_COVERAGE_TARGET,
+        "coveredLines" => 3,
+        "executableLines" => 3,
+        "files" => [
+          {
+            "path" => File.join(root, expected[0]),
+            "coveredLines" => 1,
+            "executableLines" => 1,
+          },
+          {
+            "path" => File.join(root, expected[1]),
+            "coveredLines" => 2,
+            "executableLines" => 2,
+          },
+        ],
+      },
+      {
+        "name" => "KnittingGaugeReconcilerTests.xctest",
+        "coveredLines" => 1,
+        "executableLines" => 2,
+        "files" => [{
+          "path" => File.join(root, "app/KnittingGaugeReconcilerTests/GateTests.swift"),
           "coveredLines" => 1,
-          "executableLines" => 1,
-        },
-        {
-          "path" => File.join(root, expected[1]),
-          "coveredLines" => 2,
           "executableLines" => 2,
-        },
-      ],
-    }],
+        }],
+      },
+    ],
   }
   valid_json = JSON.generate(valid)
   validate_coverage_json(valid_json, root, expected)
@@ -214,6 +240,8 @@ def assert_coverage_regression_fixtures
   end
   target = lambda { |report| report["targets"][0] }
   file = lambda { |report| target.call(report)["files"][0] }
+  nonproduction_target = lambda { |report| report["targets"][1] }
+  nonproduction_file = lambda { |report| nonproduction_target.call(report)["files"][0] }
 
   reports = [
     ["blank report", /blank report/, " \n"],
@@ -222,14 +250,18 @@ def assert_coverage_regression_fixtures
     ["infinite JSON", /not valid JSON/, valid_json.sub('"coveredLines":3', '"coveredLines":Infinity')],
     ["root schema", /root must contain a targets array/, JSON.generate([])],
     ["missing targets", /root must contain a targets array/, JSON.generate({})],
-    ["target schema", /coverage target 0 has an unexpected schema/, JSON.generate("targets" => [nil])],
+    ["target schema", /coverage target 0 must be a hash/, JSON.generate("targets" => [nil])],
     ["missing target", /exactly one/, changed.call { |report| target.call(report)["name"] = "Other.app" }],
     ["duplicate target", /exactly one/, changed.call { |report| report["targets"] << target.call(report).dup }],
     ["missing files array", /files must be an array/, changed.call { |report| target.call(report).delete("files") }],
-    ["file schema", /coverage file 0 has an unexpected schema/, changed.call { |report| target.call(report)["files"][0] = nil }],
+    ["file schema", /file 0 must be a hash/, changed.call { |report| target.call(report)["files"][0] = nil }],
     ["missing file path", /path must be a nonempty string/, changed.call { |report| file.call(report).delete("path") }],
     ["escaping file path", /escapes repository/, changed.call { |report| file.call(report)["path"] = "/outside/A.swift" }],
-    ["missing file", /missing coverage files/, changed.call { |report| target.call(report)["files"].pop }],
+    ["missing file", /missing coverage files/, changed.call do |report|
+      target.call(report)["files"].pop
+      target.call(report)["coveredLines"] = 1
+      target.call(report)["executableLines"] = 1
+    end],
     ["duplicate file", /duplicate coverage file/, changed.call { |report| target.call(report)["files"] << file.call(report).dup }],
     ["extra file", /unexpected coverage files/, changed.call do |report|
       target.call(report)["files"] << {
@@ -262,21 +294,68 @@ def assert_coverage_regression_fixtures
         record["executableLines"] = MAX_COVERAGE_COUNT
       end
     end],
-    ["covered aggregate mismatch", /counts do not match production file sums/, changed.call do |report|
+    ["covered aggregate mismatch", /counts do not match its file sums/, changed.call do |report|
       target.call(report)["coveredLines"] = 2
     end],
-    ["executable aggregate mismatch", /counts do not match production file sums/, changed.call do |report|
+    ["executable aggregate mismatch", /counts do not match its file sums/, changed.call do |report|
       target.call(report)["executableLines"] = 4
-    end],
-    ["target uncovered", /target .* has 1 uncovered production lines/, changed.call do |report|
-      target.call(report)["coveredLines"] = 2
-    end],
-    ["file uncovered", /A\.swift has 1 uncovered production lines/, changed.call do |report|
-      file.call(report)["coveredLines"] = 0
     end],
     ["consistent uncovered", /target .*A\.swift has 1 uncovered production lines/, changed.call do |report|
       target.call(report)["coveredLines"] = 2
       file.call(report)["coveredLines"] = 0
+    end],
+    ["nonproduction target record", /coverage target 1 must be a hash/, changed.call do |report|
+      report["targets"][1] = nil
+    end],
+    ["nonproduction target name", /coverage target 1 name must be a nonempty string/, changed.call do |report|
+      nonproduction_target.call(report)["name"] = 1
+    end],
+    ["nonproduction files array", /coverage target 1 files must be an array/, changed.call do |report|
+      nonproduction_target.call(report)["files"] = {}
+    end],
+    ["nonproduction missing target count", /coverage target 1 is missing coveredLines/, changed.call do |report|
+      nonproduction_target.call(report).delete("coveredLines")
+    end],
+    ["nonproduction invalid target count", /coverage target 1 executableLines must be an integer/, changed.call do |report|
+      nonproduction_target.call(report)["executableLines"] = 2.0
+    end],
+    ["nonproduction target covered overflow", /coverage target 1 coveredLines exceeds executableLines/, changed.call do |report|
+      nonproduction_target.call(report)["coveredLines"] = 3
+    end],
+    ["nonproduction file record", /coverage target 1 file 0 must be a hash/, changed.call do |report|
+      nonproduction_target.call(report)["files"][0] = nil
+    end],
+    ["nonproduction file path", /path must be a nonempty string/, changed.call do |report|
+      nonproduction_file.call(report)["path"] = nil
+    end],
+    ["nonproduction missing file count", /coverage target 1 file 0 is missing executableLines/, changed.call do |report|
+      nonproduction_file.call(report).delete("executableLines")
+    end],
+    ["nonproduction invalid file count", /coverage target 1 file 0 coveredLines must be an integer/, changed.call do |report|
+      nonproduction_file.call(report)["coveredLines"] = "1"
+    end],
+    ["nonproduction file covered overflow", /coverage target 1 file 0 coveredLines exceeds executableLines/, changed.call do |report|
+      nonproduction_file.call(report)["coveredLines"] = 3
+    end],
+    ["nonproduction normalized duplicate file", /coverage target 1 has duplicate coverage file/, changed.call do |report|
+      duplicate = nonproduction_file.call(report).dup
+      duplicate["path"] = File.join(root, "app/KnittingGaugeReconcilerTests/./GateTests.swift")
+      nonproduction_target.call(report)["files"] << duplicate
+    end],
+    ["nonproduction sum overflow", /coverage target 1 coveredLines sum exceeds signed 64-bit range/, changed.call do |report|
+      test_target = nonproduction_target.call(report)
+      test_target["coveredLines"] = MAX_COVERAGE_COUNT
+      test_target["executableLines"] = MAX_COVERAGE_COUNT
+      test_target["files"][0]["coveredLines"] = MAX_COVERAGE_COUNT
+      test_target["files"][0]["executableLines"] = MAX_COVERAGE_COUNT
+      test_target["files"] << {
+        "path" => File.join(root, "app/KnittingGaugeReconcilerTests/OtherTests.swift"),
+        "coveredLines" => MAX_COVERAGE_COUNT,
+        "executableLines" => MAX_COVERAGE_COUNT,
+      }
+    end],
+    ["nonproduction aggregate mismatch", /coverage target 1 counts do not match its file sums/, changed.call do |report|
+      nonproduction_target.call(report)["coveredLines"] = 0
     end],
   ]
   success_status = Struct.new(:success?).new(true)

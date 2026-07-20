@@ -14,6 +14,7 @@
 		000000000000000000000109 /* GaugeMathMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000009 /* GaugeMathMetrics.swift */; };
 		000000000000000000000104 /* GaugeMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000004 /* GaugeMathTests.swift */; };
 		000000000000000000000107 /* MetricKitSubscriberTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000007 /* MetricKitSubscriberTests.swift */; };
+		000000000000000000000137 /* ReplacementCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000037 /* ReplacementCoverageTests.swift */; };
 		000000000000000000000105 /* KnittingGaugeReconcilerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000005 /* KnittingGaugeReconcilerUITests.swift */; };
 		000000000000000000000115 /* AccessibilityAuditTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000015 /* AccessibilityAuditTests.swift */; };
 		000000000000000000000106 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000006 /* PrivacyInfo.xcprivacy */; };
@@ -61,6 +62,7 @@
 		000000000000000000000009 /* GaugeMathMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeMathMetrics.swift; sourceTree = "<group>"; };
 		000000000000000000000004 /* GaugeMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeMathTests.swift; sourceTree = "<group>"; };
 		000000000000000000000007 /* MetricKitSubscriberTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricKitSubscriberTests.swift; sourceTree = "<group>"; };
+		000000000000000000000037 /* ReplacementCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplacementCoverageTests.swift; sourceTree = "<group>"; };
 		000000000000000000000005 /* KnittingGaugeReconcilerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingGaugeReconcilerUITests.swift; sourceTree = "<group>"; };
 		000000000000000000000015 /* AccessibilityAuditTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuditTests.swift; sourceTree = "<group>"; };
 		000000000000000000000006 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml.plist; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -154,6 +156,7 @@
 			children = (
 				000000000000000000000004 /* GaugeMathTests.swift */,
 				000000000000000000000007 /* MetricKitSubscriberTests.swift */,
+				000000000000000000000037 /* ReplacementCoverageTests.swift */,
 			);
 			path = KnittingGaugeReconcilerTests;
 			sourceTree = "<group>";
@@ -270,7 +273,7 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000108, 000000000000000000000109, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000127, 000000000000000000000128, 000000000000000000000129, 000000000000000000000130, 000000000000000000000131, 000000000000000000000132, 000000000000000000000134, 000000000000000000000135, 000000000000000000000136); runOnlyForDeploymentPostprocessing = 0; };
-		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107); runOnlyForDeploymentPostprocessing = 0; };
+		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107, 000000000000000000000137); runOnlyForDeploymentPostprocessing = 0; };
 		000000000000000000000903 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000105, 000000000000000000000115); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

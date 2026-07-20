@@ -1,5 +1,9 @@
 import SwiftUI
 
+func gaugeMeasurementPairsStack(at size: DynamicTypeSize) -> Bool {
+    size.isAccessibilitySize
+}
+
 // MARK: - GaugeMeasurementPair
 
 struct GaugeMeasurementPair<Leading: View, Trailing: View>: View {
@@ -10,7 +14,7 @@ struct GaugeMeasurementPair<Leading: View, Trailing: View>: View {
     @ViewBuilder var trailing: () -> Trailing
 
     var body: some View {
-        if dynamicTypeSize.isAccessibilitySize {
+        if gaugeMeasurementPairsStack(at: dynamicTypeSize) {
             VStack(alignment: .leading, spacing: spacing) {
                 leading()
                     .frame(maxWidth: .infinity, alignment: .topLeading)

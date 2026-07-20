@@ -152,7 +152,12 @@ platform :ios do
       strict: true
     )
     test_options = lane_test_options(options)
-    run_tests(**test_options.merge(only_testing: ["KnittingGaugeReconcilerTests"]))
+    begin
+      run_tests(**test_options.merge(only_testing: ["KnittingGaugeReconcilerTests"]))
+    rescue
+      sh("xcrun xcresulttool get test-results tests --path #{Shellwords.escape(test_options[:result_bundle_path])} --compact")
+      raise
+    end
     verify_test_diagnostics(test_options[:output_directory])
   end
 

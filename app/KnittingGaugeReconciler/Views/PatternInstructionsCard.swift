@@ -17,6 +17,15 @@ struct PatternInstructionsCard: View {
 
     private static let lengthCmRange: ClosedRange<Int> = 5...100
 
+    static func title(for field: GaugeFormField, unit: MeasurementUnit) -> String {
+        switch field {
+        case .patternYoke: return "Yoke depth (\(unit.label))"
+        case .patternBody: return "Body length (\(unit.label))"
+        case .patternSleeve: return "Sleeve length (\(unit.label))"
+        default: return field.correctionName
+        }
+    }
+
     init(
         patternCastOn: Binding<String>,
         patternYoke: Binding<String>,
@@ -51,21 +60,7 @@ struct PatternInstructionsCard: View {
             }
             .padding(.top, 14)
         } label: {
-            HStack(alignment: .center, spacing: 8) {
-                Image(systemName: "list.bullet.clipboard.fill")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(AppTheme.secondary)
-                    .accessibilityHidden(true)
-                Text("Pattern details (optional)")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(AppTheme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
-            }
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .contentShape(Rectangle())
-            .accessibilityIdentifier("pattern-details-disclosure")
-            .accessibilityHint("Expands optional unit, cast-on, length, and shaping fields")
+            PatternInstructionsLabel(isExpanded: isExpanded)
         }
         .tint(AppTheme.sage)
         .cardStyle()
@@ -125,7 +120,7 @@ struct PatternInstructionsCard: View {
 
     private var yokeField: some View {
         GaugeStepperField(
-            title: "Yoke depth (\(unit.label))",
+            title: Self.title(for: .patternYoke, unit: unit),
             text: displayBinding(for: $patternYoke, field: .patternYoke),
             unit: unit.label,
             identifier: "pattern-yoke",
@@ -141,7 +136,7 @@ struct PatternInstructionsCard: View {
 
     private var bodyField: some View {
         GaugeStepperField(
-            title: "Body length (\(unit.label))",
+            title: Self.title(for: .patternBody, unit: unit),
             text: displayBinding(for: $patternBody, field: .patternBody),
             unit: unit.label,
             identifier: "pattern-body",
@@ -157,7 +152,7 @@ struct PatternInstructionsCard: View {
 
     private var sleeveField: some View {
         GaugeStepperField(
-            title: "Sleeve length (\(unit.label))",
+            title: Self.title(for: .patternSleeve, unit: unit),
             text: displayBinding(for: $patternSleeve, field: .patternSleeve),
             unit: unit.label,
             identifier: "pattern-sleeve",
@@ -212,6 +207,31 @@ struct PatternInstructionsCard: View {
                 )
             }
         )
+    }
+}
+
+struct PatternInstructionsLabel: View {
+    let isExpanded: Bool
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Image(systemName: "list.bullet.clipboard.fill")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(AppTheme.secondary)
+                .accessibilityHidden(true)
+            Text("Pattern details (optional)")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(AppTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+        .accessibilityIdentifier("pattern-details-disclosure")
+        .accessibilityHint("Expands optional unit, cast-on, length, and shaping fields")
     }
 }
 

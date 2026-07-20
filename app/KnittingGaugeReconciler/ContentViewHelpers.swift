@@ -172,6 +172,172 @@ struct GaugeTextDefaults {
     }
 }
 
+// MARK: - GaugeFormDraft
+
+struct GaugeFormDraft: Equatable {
+    var patternStitches: String
+    var patternRows: String
+    var yourStitches: String
+    var yourRows: String
+    var patternCastOn: String
+    var patternYoke: String
+    var patternBody: String
+    var patternSleeve: String
+    var patternIncreases: String
+    var patternDetailsExpanded: Bool
+    var unit: MeasurementUnit
+
+    var rawValues: [String] {
+        [
+            patternStitches,
+            patternRows,
+            yourStitches,
+            yourRows,
+            patternCastOn,
+            patternYoke,
+            patternBody,
+            patternSleeve,
+            patternIncreases,
+        ]
+    }
+
+    var inputs: GaugeInputs? {
+        guard case let .success(patternStitches?) = validationResult(for: .patternStitches),
+              case let .success(patternRows?) = validationResult(for: .patternRows),
+              case let .success(yourStitches?) = validationResult(for: .yourStitches),
+              case let .success(yourRows?) = validationResult(for: .yourRows),
+              case let .success(patternCastOn) = validationResult(for: .patternCastOn),
+              case let .success(patternYoke) = validationResult(for: .patternYoke),
+              case let .success(patternBody) = validationResult(for: .patternBody),
+              case let .success(patternSleeve) = validationResult(for: .patternSleeve),
+              case let .success(patternIncreases) = validationResult(for: .patternIncreases) else {
+            return nil
+        }
+        return GaugeInputs(
+            patternStitches: patternStitches,
+            patternRows: patternRows,
+            yourStitches: yourStitches,
+            yourRows: yourRows,
+            patternYokeDepth: patternYoke,
+            patternBodyLength: patternBody,
+            patternSleeveLength: patternSleeve,
+            patternIncreaseSpacing: patternIncreases,
+            patternCastOn: patternCastOn
+        )
+    }
+
+    var validationMessages: [GaugeFormField: String] {
+        Dictionary(
+            uniqueKeysWithValues: GaugeFormField.allCases.compactMap { field in
+                validationMessage(for: field).map { (field, $0) }
+            }
+        )
+    }
+
+    var firstInvalidField: GaugeFormField? {
+        GaugeFormField.allCases.first(where: { validationMessage(for: $0) != nil })
+    }
+
+    static func defaults(unit: MeasurementUnit = .centimeters) -> Self {
+        let defaults = GaugeTextDefaults()
+        return Self(
+            patternStitches: defaults.patternStitches,
+            patternRows: defaults.patternRows,
+            yourStitches: defaults.yourStitches,
+            yourRows: defaults.yourRows,
+            patternCastOn: "",
+            patternYoke: "",
+            patternBody: "",
+            patternSleeve: "",
+            patternIncreases: "",
+            patternDetailsExpanded: false,
+            unit: unit
+        )
+    }
+
+    mutating func setRawText(_ text: String, for field: GaugeFormField) {
+        switch field {
+        case .patternStitches: patternStitches = text
+        case .patternRows: patternRows = text
+        case .yourStitches: yourStitches = text
+        case .yourRows: yourRows = text
+        case .patternCastOn: patternCastOn = text
+        case .patternYoke: patternYoke = text
+        case .patternBody: patternBody = text
+        case .patternSleeve: patternSleeve = text
+        case .patternIncreases: patternIncreases = text
+        }
+    }
+
+    mutating func reset() -> Self {
+        let snapshot = self
+        self = .defaults(unit: unit)
+        return snapshot
+    }
+
+    mutating func undoReset(to snapshot: Self) {
+        self = snapshot
+    }
+
+    func rawText(for field: GaugeFormField) -> String {
+        switch field {
+        case .patternStitches: return patternStitches
+        case .patternRows: return patternRows
+        case .yourStitches: return yourStitches
+        case .yourRows: return yourRows
+        case .patternCastOn: return patternCastOn
+        case .patternYoke: return patternYoke
+        case .patternBody: return patternBody
+        case .patternSleeve: return patternSleeve
+        case .patternIncreases: return patternIncreases
+        }
+    }
+
+    func validationMessage(for field: GaugeFormField) -> String? {
+        if let invalidInches = MeasurementUnit.invalidInchesText(from: rawText(for: field)) {
+            let range = MeasurementUnit.inches.displayRange(from: 5...100)
+            return "\(field.correctionName) must be a whole number between \(range.lowerBound) and " +
+                "\(range.upperBound) in. Entered: \(invalidInches)."
+        }
+        guard case let .failure(error) = validationResult(for: field) else {
+            return nil
+        }
+        switch error {
+        case .required:
+            return "\(field.correctionName) is required."
+        case .invalidNumber:
+            return "Enter \(field.correctionName.lowercased()) as a number."
+        case .wholeNumberRequired:
+            return "Enter \(field.correctionName.lowercased()) as a whole number."
+        case .outOfRange:
+            let bounds = displayedBounds(for: field)
+            return "\(field.correctionName) must be between \(bounds.range.lowerBound) and " +
+                "\(bounds.range.upperBound) \(bounds.unit)."
+        }
+    }
+
+    private func validationResult(
+        for field: GaugeFormField
+    ) -> Result<Double?, GaugeMath.ValidationError> {
+        GaugeMath.validate(rawText(for: field), for: field.mathField)
+    }
+
+    private func displayedBounds(for field: GaugeFormField) -> (range: ClosedRange<Int>, unit: String) {
+        switch field {
+        case .patternStitches, .yourStitches:
+            return (1...99, "stitches")
+        case .patternRows, .yourRows:
+            return (1...99, "rows")
+        case .patternCastOn:
+            return (40...400, "stitches")
+        case .patternYoke, .patternBody, .patternSleeve:
+            return (unit.displayRange(from: 5...100), unit.label)
+        case .patternIncreases:
+            return (1...30, "rows")
+        }
+    }
+}
+
 // MARK: - GaugeFormField
 
 enum GaugeFormField: CaseIterable, Hashable {

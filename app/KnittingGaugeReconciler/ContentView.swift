@@ -10,19 +10,6 @@ struct ContentView: View {
     private static let defaults = GaugeTextDefaults()
     private static let sceneDraftActivityType = "com.stitchwise.scene-draft"
 
-    private struct ResetSnapshot {
-        let patternStitches: String
-        let patternRows: String
-        let yourStitches: String
-        let yourRows: String
-        let patternCastOn: String
-        let patternYoke: String
-        let patternBody: String
-        let patternSleeve: String
-        let patternIncreases: String
-        let patternDetailsExpanded: Bool
-    }
-
     // MARK: - Adaptive layout
 
     @Environment(\.scenePhase) private var scenePhase
@@ -56,7 +43,7 @@ struct ContentView: View {
     @State private var showAboutHelp = initialBool("KGR_SHOW_ABOUT_HELP")
     @State private var previousVerdictBucket: VerdictBucket?
     @State private var driftBandSignpostFired = false
-    @State private var resetSnapshot: ResetSnapshot?
+    @State private var resetSnapshot: GaugeFormDraft?
     @State private var focusedField: GaugeFormField?
     @State private var sceneSessionIdentifier: String?
     @State private var sceneRestorationReady = false
@@ -69,29 +56,24 @@ struct ContentView: View {
 
     // MARK: - Derived
 
-    private var inputs: GaugeInputs? {
-        guard case let .success(patternStitches?) = validationResult(for: .patternStitches),
-              case let .success(patternRows?) = validationResult(for: .patternRows),
-              case let .success(yourStitches?) = validationResult(for: .yourStitches),
-              case let .success(yourRows?) = validationResult(for: .yourRows),
-              case let .success(patternCastOn) = validationResult(for: .patternCastOn),
-              case let .success(patternYoke) = validationResult(for: .patternYoke),
-              case let .success(patternBody) = validationResult(for: .patternBody),
-              case let .success(patternSleeve) = validationResult(for: .patternSleeve),
-              case let .success(patternIncreases) = validationResult(for: .patternIncreases) else {
-            return nil
-        }
-        return GaugeInputs(
+    private var formDraft: GaugeFormDraft {
+        GaugeFormDraft(
             patternStitches: patternStitches,
             patternRows: patternRows,
             yourStitches: yourStitches,
             yourRows: yourRows,
-            patternYokeDepth: patternYoke,
-            patternBodyLength: patternBody,
-            patternSleeveLength: patternSleeve,
-            patternIncreaseSpacing: patternIncreases,
-            patternCastOn: patternCastOn
+            patternCastOn: patternCastOn,
+            patternYoke: patternYoke,
+            patternBody: patternBody,
+            patternSleeve: patternSleeve,
+            patternIncreases: patternIncreases,
+            patternDetailsExpanded: patternDetailsExpanded,
+            unit: measurementUnit
         )
+    }
+
+    private var inputs: GaugeInputs? {
+        formDraft.inputs
     }
 
     private var liveResult: GaugeMathResult? {
@@ -108,23 +90,7 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: cardSpacing) {
-                    ZStack(alignment: .leading) {
-                        AppTheme.background
-                        Text(
-                            "Compare your pattern gauge with your swatch to see how stitch and row differences " +
-                                "affect the garment."
-                        )
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(AppTheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                        .padding(.bottom, 8)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityAddTraits(.isStaticText)
-                    .accessibilityIdentifier("gauge-lead")
+                    GaugeLeadView()
 
                     GaugeInputsCard(
                         patternStitches: draftBinding($patternStitches, at: 0),
@@ -414,75 +380,15 @@ struct ContentView: View {
     }
 
     private var validationMessages: [GaugeFormField: String] {
-        Dictionary(
-            uniqueKeysWithValues: GaugeFormField.allCases.compactMap { field in
-                validationMessage(for: field).map { (field, $0) }
-            }
-        )
-    }
-
-    private func validationResult(
-        for field: GaugeFormField
-    ) -> Result<Double?, GaugeMath.ValidationError> {
-        GaugeMath.validate(rawText(for: field), for: field.mathField)
-    }
-
-    private func rawText(for field: GaugeFormField) -> String {
-        switch field {
-        case .patternStitches: return patternStitches
-        case .patternRows: return patternRows
-        case .yourStitches: return yourStitches
-        case .yourRows: return yourRows
-        case .patternCastOn: return patternCastOn
-        case .patternYoke: return patternYoke
-        case .patternBody: return patternBody
-        case .patternSleeve: return patternSleeve
-        case .patternIncreases: return patternIncreases
-        }
+        formDraft.validationMessages
     }
 
     private func validationMessage(for field: GaugeFormField) -> String? {
-        if let invalidInches = MeasurementUnit.invalidInchesText(from: rawText(for: field)) {
-            let range = MeasurementUnit.inches.displayRange(from: 5...100)
-            return "\(field.correctionName) must be a whole number between \(range.lowerBound) and " +
-                "\(range.upperBound) in. Entered: \(invalidInches)."
-        }
-        guard case let .failure(error) = validationResult(for: field) else {
-            return nil
-        }
-        switch error {
-        case .required:
-            return "\(field.correctionName) is required."
-        case .invalidNumber:
-            return "Enter \(field.correctionName.lowercased()) as a number."
-        case .wholeNumberRequired:
-            return "Enter \(field.correctionName.lowercased()) as a whole number."
-        case .outOfRange:
-            let bounds = displayedBounds(for: field)
-            return "\(field.correctionName) must be between \(bounds.range.lowerBound) and " +
-                "\(bounds.range.upperBound) \(bounds.unit)."
-        }
-    }
-
-    private func displayedBounds(for field: GaugeFormField) -> (range: ClosedRange<Int>, unit: String) {
-        switch field {
-        case .patternStitches, .yourStitches:
-            return (1...99, "stitches")
-        case .patternRows, .yourRows:
-            return (1...99, "rows")
-        case .patternCastOn:
-            return (40...400, "stitches")
-        case .patternYoke, .patternBody, .patternSleeve:
-            return (measurementUnit.displayRange(from: 5...100), measurementUnit.label)
-        case .patternIncreases:
-            return (1...30, "rows")
-        }
+        formDraft.validationMessage(for: field)
     }
 
     private func finishEditing() {
-        let firstInvalidField = GaugeFormField.allCases.first(where: {
-            validationMessage(for: $0) != nil
-        })
+        let firstInvalidField = formDraft.firstInvalidField
         if firstInvalidField?.isPatternDetail == true {
             patternDetailsBinding.wrappedValue = true
         }
@@ -662,22 +568,12 @@ struct ContentView: View {
     // MARK: - Actions
 
     private func resetToDefaults() {
-        resetSnapshot = ResetSnapshot(
-            patternStitches: patternStitches,
-            patternRows: patternRows,
-            yourStitches: yourStitches,
-            yourRows: yourRows,
-            patternCastOn: patternCastOn,
-            patternYoke: patternYoke,
-            patternBody: patternBody,
-            patternSleeve: patternSleeve,
-            patternIncreases: patternIncreases,
-            patternDetailsExpanded: patternDetailsExpanded
-        )
+        var resetDraft = formDraft
+        resetSnapshot = resetDraft.reset()
         os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.resetTapped)
         applySceneDraft(
-            values: Self.defaults.resetSceneDraftValues,
-            disclosure: false,
+            values: resetDraft.rawValues,
+            disclosure: resetDraft.patternDetailsExpanded,
             synchronizingDefaults: true
         )
         focusedField = nil
@@ -687,19 +583,11 @@ struct ContentView: View {
     private func undoReset() {
         guard let snapshot = resetSnapshot else { return }
         resetSnapshot = nil
+        var restoredDraft = formDraft
+        restoredDraft.undoReset(to: snapshot)
         applySceneDraft(
-            values: [
-                snapshot.patternStitches,
-                snapshot.patternRows,
-                snapshot.yourStitches,
-                snapshot.yourRows,
-                snapshot.patternCastOn,
-                snapshot.patternYoke,
-                snapshot.patternBody,
-                snapshot.patternSleeve,
-                snapshot.patternIncreases,
-            ],
-            disclosure: snapshot.patternDetailsExpanded,
+            values: restoredDraft.rawValues,
+            disclosure: restoredDraft.patternDetailsExpanded,
             synchronizingDefaults: true
         )
         focusedField = nil
@@ -760,9 +648,30 @@ struct ContentView: View {
     }
 }
 
+struct GaugeLeadView: View {
+    static let text = "Compare your pattern gauge with your swatch to see how stitch and row differences " +
+        "affect the garment."
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            AppTheme.background
+            Text(Self.text)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(AppTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 12)
+                .padding(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isStaticText)
+        .accessibilityIdentifier("gauge-lead")
+    }
+}
+
 // MARK: - VerdictHelpSheet
 
-private struct VerdictHelpSheet: View {
+struct VerdictHelpSheet: View {
     var title: String
     var explanation: String
 
@@ -795,95 +704,125 @@ private struct VerdictHelpSheet: View {
 
 // MARK: - AboutHelpSheet
 
-private struct AboutHelpSheet: View {
+struct AboutHelpSheet: View {
     @Environment(\.dismiss) private var dismiss
+    let onClose: (() -> Void)?
+
+    init(onClose: (() -> Void)? = nil) {
+        self.onClose = onClose
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            HelpSheetHeader(closeIdentifier: "about-help-close") { dismiss() }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("About this calculator")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(AppTheme.sage)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                    Text(
-                        "This tool reconciles a two-axis gauge mismatch, " +
-                        "the kind that single-number gauge calculators hide. " +
-                        "When row gauge differs, it adjusts each supplied depth or length " +
-                        "while preserving the pattern's intended row count. " +
-                        "Stitch-gauge differences are handled separately for width."
-                    )
-                        .font(.body)
-                        .lineSpacing(4)
-                        .foregroundStyle(AppTheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(
-                        "The math is deterministic: dimension correction = pattern_row / your_row. " +
-                        "A denser swatch means fewer " +
-                        "centimetres are needed to reach the pattern's intended row count; " +
-                        "stitch_scale = pattern_st / your_st " +
-                        "describes horizontal width. " +
-                        "Increase-row spacing is rescaled by your_row / pattern_row so the physical gap " +
-                        "between increases stays correct."
-                    )
-                        .font(.body)
-                        .lineSpacing(4)
-                        .foregroundStyle(AppTheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(
-                        "Scope: This tool provides estimates based on your swatch measurements. " +
-                        "Always test a full-size gauge " +
-                        "swatch (washed and blocked the way you'll wash and block the finished garment) " +
-                        "before starting your " +
-                        "project. Numbers here are a starting point — your finished piece is the final word."
-                    )
-                        .font(.body.weight(.semibold))
-                        .lineSpacing(4)
-                        .foregroundStyle(AppTheme.warningText)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(AppTheme.warningBackground)
-                        .overlay(alignment: .leading) {
-                            Rectangle()
-                                .frame(width: 3)
-                                .foregroundStyle(AppTheme.warningAccent)
-                                .accessibilityHidden(true)
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                        .accessibilityIdentifier("about-scope")
-                    Text(
-                        "Not affiliated with Ravelry, Knit Companion, or any pattern designer." +
-                        " Gauge math is conventional knitting arithmetic from open craft literature."
-                    )
-                        .font(.footnote.italic())
-                        .lineSpacing(3)
-                        .foregroundStyle(AppTheme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("about-non-affiliation")
-                    Text("Privacy")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(AppTheme.sage)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                    Text(
-                        "Your gauge values stay on this device. No account, ads, or third-party tracking. " +
-                        "The app includes no analytics SDK and makes no app-initiated network requests. " +
-                        "Apple may receive crash and performance diagnostics according to your device settings."
-                    )
-                        .font(.body)
-                        .lineSpacing(4)
-                        .foregroundStyle(AppTheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
+            HelpSheetHeader(closeIdentifier: "about-help-close") {
+                if let onClose {
+                    onClose()
+                } else {
+                    dismiss()
                 }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            ScrollView {
+                AboutHelpContent()
             }
             .accessibilityIdentifier("about-help-sheet")
         }
         .background(AppTheme.background.ignoresSafeArea())
+    }
+}
+
+struct AboutHelpContent: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("About this calculator")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(AppTheme.sage)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilitySortPriority(7)
+                .accessibilityIdentifier("about-heading")
+            Text(
+                "This tool reconciles a two-axis gauge mismatch, " +
+                    "the kind that single-number gauge calculators hide. " +
+                    "When row gauge differs, it adjusts each supplied depth or length " +
+                    "while preserving the pattern's intended row count. " +
+                    "Stitch-gauge differences are handled separately for width."
+            )
+            .font(.body)
+            .lineSpacing(4)
+            .foregroundStyle(AppTheme.ink)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilitySortPriority(6)
+            .accessibilityIdentifier("about-explanation")
+            Text(
+                "The math is deterministic: dimension correction = pattern_row / your_row. " +
+                    "A denser swatch means fewer " +
+                    "centimetres are needed to reach the pattern's intended row count; " +
+                    "stitch_scale = pattern_st / your_st " +
+                    "describes horizontal width. " +
+                    "Increase-row spacing is rescaled by your_row / pattern_row so the physical gap " +
+                    "between increases stays correct."
+            )
+            .font(.body)
+            .lineSpacing(4)
+            .foregroundStyle(AppTheme.ink)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilitySortPriority(5)
+            .accessibilityIdentifier("about-math")
+            Text(
+                "Scope: This tool provides estimates based on your swatch measurements. " +
+                    "Always test a full-size gauge " +
+                    "swatch (washed and blocked the way you'll wash and block the finished garment) " +
+                    "before starting your " +
+                    "project. Numbers here are a starting point — your finished piece is the final word."
+            )
+            .font(.body.weight(.semibold))
+            .lineSpacing(4)
+            .foregroundStyle(AppTheme.warningText)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AppTheme.warningBackground)
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .frame(width: 3)
+                    .foregroundStyle(AppTheme.warningAccent)
+                    .accessibilityHidden(true)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .accessibilityElement(children: .combine)
+            .accessibilitySortPriority(4)
+            .accessibilityIdentifier("about-scope")
+            Text(
+                "Not affiliated with Ravelry, Knit Companion, or any pattern designer." +
+                    " Gauge math is conventional knitting arithmetic from open craft literature."
+            )
+            .font(.footnote.italic())
+            .lineSpacing(3)
+            .foregroundStyle(AppTheme.muted)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilitySortPriority(3)
+            .accessibilityIdentifier("about-affiliation")
+            Text("Privacy")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(AppTheme.sage)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilitySortPriority(2)
+                .accessibilityIdentifier("privacy-heading")
+            Text(
+                "Your gauge values stay on this device. No account, ads, or third-party tracking. " +
+                    "The app includes no analytics SDK and makes no app-initiated network requests. " +
+                    "Apple may receive crash and performance diagnostics according to your device settings."
+            )
+            .font(.body)
+            .lineSpacing(4)
+            .foregroundStyle(AppTheme.ink)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilitySortPriority(1)
+            .accessibilityIdentifier("privacy-copy")
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -893,7 +832,9 @@ private struct AboutHelpSheet: View {
 /// NavigationStack-in-sheet anti-pattern (#24) while providing a 44×44pt
 /// trailing Close button (#25) so VoiceOver users can dismiss the sheet
 /// without relying on the drag indicator.
-private struct HelpSheetHeader: View {
+struct HelpSheetHeader: View {
+    static let hitTargetSize: CGFloat = 44
+
     let closeIdentifier: String
     let onClose: () -> Void
 
@@ -905,7 +846,7 @@ private struct HelpSheetHeader: View {
                     .imageScale(.medium)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(AppTheme.sage)
-                    .frame(width: 44, height: 44)
+                    .frame(width: Self.hitTargetSize, height: Self.hitTargetSize)
                     .contentShape(Rectangle())
             }
             .accessibilityLabel("Close")

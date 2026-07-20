@@ -111,25 +111,14 @@ struct GaugeStepperField: View {
         return mismatchLabel
     }
 
-    private var spokenMismatchSentence: String? {
-        guard let mismatchSentence else { return nil }
-        guard let firstCharacter = mismatchSentence.first else { return mismatchSentence }
-        return firstCharacter.lowercased() + String(mismatchSentence.dropFirst())
-    }
-
     private var fieldAccessibilityValue: String {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        var parts = [trimmed.isEmpty ? "Empty" : "\(trimmed) \(spokenUnit)"]
-        if let spokenMismatchSentence {
-            parts.append(spokenMismatchSentence)
-        }
-        if let mismatchDeltaText {
-            parts.append(mismatchDeltaText)
-        }
-        if let validationMessage {
-            parts.append(validationMessage)
-        }
-        return parts.joined(separator: ", ")
+        Self.accessibilityValue(
+            text: text,
+            spokenUnit: spokenUnit,
+            mismatchLabel: mismatchSentence,
+            mismatchDelta: hasMismatch ? mismatchDelta : nil,
+            validationMessage: validationMessage
+        )
     }
 
     private var fieldAccessibilityHint: String {
@@ -178,6 +167,17 @@ struct GaugeStepperField: View {
         DeltaPillBadge(text: text)
     }
 
+    private func adjust(_ direction: AccessibilityAdjustmentDirection) {
+        switch direction {
+        case .increment:
+            text = Self.adjustedText(text, in: range, offset: 1)
+        case .decrement:
+            text = Self.adjustedText(text, in: range, offset: -1)
+        @unknown default:
+            break
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Group {
@@ -220,6 +220,7 @@ struct GaugeStepperField: View {
                     hint: fieldAccessibilityHint,
                     identifier: "\(identifier)-field",
                     showsCorrection: hasMismatch || validationMessage != nil,
+                    range: range,
                     onSubmit: onSubmit
                 )
                     .frame(maxWidth: .infinity, minHeight: 44)
@@ -271,7 +272,10 @@ struct GaugeStepperField: View {
             // (`app.otherElements[identifier]`). The visible TextField + chevron
             // retain their own child identifiers for tap-targeted interaction.
             .accessibilityElement(children: .contain)
+            .accessibilityLabel(accessibilityLabel)
             .accessibilityIdentifier(identifier)
+            .accessibilityValue(fieldAccessibilityValue)
+            .accessibilityAdjustableAction(adjust)
 
             if let validationMessage {
                 Text(validationMessage)
@@ -304,9 +308,41 @@ struct GaugeStepperField: View {
     }
 }
 
+extension GaugeStepperField {
+    static func adjustedText(_ text: String, in range: ClosedRange<Int>, offset: Int) -> String {
+        let current = Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? range.lowerBound
+        return "\(min(range.upperBound, max(range.lowerBound, current + offset)))"
+    }
+
+    static func committedPickerText(_ selectedValue: Int) -> String {
+        "\(selectedValue)"
+    }
+
+    static func accessibilityValue(
+        text: String,
+        spokenUnit: String,
+        mismatchLabel: String?,
+        mismatchDelta: Double?,
+        validationMessage: String?
+    ) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var parts = [trimmed.isEmpty ? "Empty" : "\(trimmed) \(spokenUnit)"]
+        if let mismatchLabel, let firstCharacter = mismatchLabel.first {
+            parts.append(firstCharacter.lowercased() + String(mismatchLabel.dropFirst()))
+        }
+        if let mismatchDelta {
+            parts.append(fmtGaugeDelta(mismatchDelta))
+        }
+        if let validationMessage {
+            parts.append(validationMessage)
+        }
+        return parts.joined(separator: ", ")
+    }
+}
+
 // MARK: - GaugeKeyboardTextField
 
-private struct GaugeKeyboardTextField: UIViewRepresentable {
+struct GaugeKeyboardTextField: UIViewRepresentable {
     @Binding private var text: String
 
     private let field: GaugeFormField
@@ -316,6 +352,7 @@ private struct GaugeKeyboardTextField: UIViewRepresentable {
     private let hint: String
     private let identifier: String
     private let showsCorrection: Bool
+    private let range: ClosedRange<Int>
     private let onSubmit: () -> Void
 
     init(
@@ -327,6 +364,7 @@ private struct GaugeKeyboardTextField: UIViewRepresentable {
         hint: String,
         identifier: String,
         showsCorrection: Bool,
+        range: ClosedRange<Int>,
         onSubmit: @escaping () -> Void
     ) {
         self._text = text
@@ -337,6 +375,7 @@ private struct GaugeKeyboardTextField: UIViewRepresentable {
         self.hint = hint
         self.identifier = identifier
         self.showsCorrection = showsCorrection
+        self.range = range
         self.onSubmit = onSubmit
     }
 
@@ -344,8 +383,12 @@ private struct GaugeKeyboardTextField: UIViewRepresentable {
         Coordinator(parent: self)
     }
 
-    func makeUIView(context: Context) -> UITextField {
-        let textField = UITextField()
+    func makeUIView(context: Context) -> AdjustableTextField {
+        let textField = AdjustableTextField()
+        textField.isAccessibilityElement = true
+        textField.accessibilityTraits.insert(.adjustable)
+        textField.onIncrement = { context.coordinator.adjust(by: 1) }
+        textField.onDecrement = { context.coordinator.adjust(by: -1) }
         textField.delegate = context.coordinator
         textField.keyboardType = .decimalPad
         textField.textAlignment = .center
@@ -363,7 +406,6 @@ private struct GaugeKeyboardTextField: UIViewRepresentable {
             action: #selector(Coordinator.textDidChange(_:)),
             for: .editingChanged
         )
-
         let toolbar = UIToolbar()
         toolbar.autoresizingMask = [.flexibleWidth]
         let done = UIBarButtonItem(
@@ -379,8 +421,10 @@ private struct GaugeKeyboardTextField: UIViewRepresentable {
         return textField
     }
 
-    func updateUIView(_ textField: UITextField, context: Context) {
+    func updateUIView(_ textField: AdjustableTextField, context: Context) {
         context.coordinator.parent = self
+        textField.onIncrement = { context.coordinator.adjust(by: 1) }
+        textField.onDecrement = { context.coordinator.adjust(by: -1) }
         if textField.text != text {
             textField.text = text
         }
@@ -433,6 +477,23 @@ private struct GaugeKeyboardTextField: UIViewRepresentable {
 
         @objc func didTapDone() {
             parent.onSubmit()
+        }
+
+        func adjust(by offset: Int) {
+            parent.text = GaugeStepperField.adjustedText(parent.text, in: parent.range, offset: offset)
+        }
+    }
+
+    final class AdjustableTextField: UITextField {
+        var onIncrement: () -> Void = {}
+        var onDecrement: () -> Void = {}
+
+        override func accessibilityIncrement() {
+            onIncrement()
+        }
+
+        override func accessibilityDecrement() {
+            onDecrement()
         }
     }
 }
@@ -530,7 +591,7 @@ private struct GaugeStepperWheelSheet: View {
             .accessibilityIdentifier("\(identifier)-wheel")
 
             Button("Done") {
-                text = "\(selectedValue)"
+                text = GaugeStepperField.committedPickerText(selectedValue)
                 isPresented = false
             }
             .font(.body.weight(.semibold))

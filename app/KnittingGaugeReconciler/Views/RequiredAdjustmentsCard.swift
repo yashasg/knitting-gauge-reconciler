@@ -2,6 +2,34 @@
 // Issue #65 keeps conditional result, reset, and share UI in this existing authorized file.
 import SwiftUI
 
+enum GaugeResultSectionKind: String, CaseIterable {
+    case yokeDepth = "Yoke Depth"
+    case bodyAndSleeves = "Body & Sleeves"
+    case shapingRates = "Shaping Rates"
+    case castOn = "Cast-on"
+}
+
+struct GaugeResultSemantics: Equatable {
+    let stitchMismatch: Bool
+    let rowMismatch: Bool
+    let stitchSummary: String
+    let rowSummary: String
+    let sections: [GaugeResultSectionKind]
+
+    init(inputs: GaugeInputs, result: GaugeMathResult) {
+        stitchMismatch = inputs.stitchMismatch
+        rowMismatch = inputs.rowMismatch
+        stitchSummary = "Stitch-wise width adjusted: \(GaugeMath.fmtPct(result.stitchWidthScale))%"
+        rowSummary = "Row-wise density adjusted: \(GaugeMath.fmtPct(result.rowCountScale))%"
+        sections = [
+            inputs.patternYokeDepth == nil ? nil : .yokeDepth,
+            inputs.patternBodyLength == nil && inputs.patternSleeveLength == nil ? nil : .bodyAndSleeves,
+            inputs.patternIncreaseSpacing == nil ? nil : .shapingRates,
+            inputs.patternCastOn == nil || result.adjustedCastOn == nil ? nil : .castOn,
+        ].compactMap { $0 }
+    }
+}
+
 struct RequiredAdjustmentsCard: View {
     @Binding private var showFullMath: Bool
     @State private var showResetConfirmation = false
@@ -43,6 +71,7 @@ struct RequiredAdjustmentsCard: View {
                 LiveResultsView(
                     result: result,
                     inputs: inputs,
+                    semantics: GaugeResultSemantics(inputs: inputs, result: result),
                     verdict: verdict,
                     unit: unit,
                     showFullMath: $showFullMath,
@@ -98,6 +127,7 @@ private struct LiveResultsView: View {
 
     private let result: GaugeMathResult
     private let inputs: GaugeInputs
+    private let semantics: GaugeResultSemantics
     private let verdict: (title: String, body: String)
     private let unit: MeasurementUnit
     @Binding private var showFullMath: Bool
@@ -106,6 +136,7 @@ private struct LiveResultsView: View {
     init(
         result: GaugeMathResult,
         inputs: GaugeInputs,
+        semantics: GaugeResultSemantics,
         verdict: (title: String, body: String),
         unit: MeasurementUnit,
         showFullMath: Binding<Bool>,
@@ -113,6 +144,7 @@ private struct LiveResultsView: View {
     ) {
         self.result = result
         self.inputs = inputs
+        self.semantics = semantics
         self.verdict = verdict
         self.unit = unit
         self._showFullMath = showFullMath
@@ -121,7 +153,7 @@ private struct LiveResultsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HeroTilesView(result: result)
+            HeroTilesView(result: result, semantics: semantics)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(verdict.title)
@@ -140,7 +172,10 @@ private struct LiveResultsView: View {
                let adjustedDepth = result.adjustedYokeDepth,
                let patternRows = result.patternYokeRows,
                let adjustedRows = result.adjustedYokeRows {
-                sectionCard(title: "Yoke Depth", subtitle: "To preserve pattern row count") {
+                sectionCard(
+                    title: GaugeResultSectionKind.yokeDepth.rawValue,
+                    subtitle: "To preserve pattern row count"
+                ) {
                     AdjustmentRow(
                         name: "Yoke depth",
                         pattern: "\(unit.formatMeasurement(patternDepth)) / \(GaugeMath.fmtRows(patternRows)) rows",
@@ -151,8 +186,8 @@ private struct LiveResultsView: View {
                 }
             }
 
-            if hasBodyOrSleeveGuidance {
-                sectionCard(title: "Body & Sleeves", subtitle: "Length correction") {
+            if semantics.sections.contains(.bodyAndSleeves) {
+                sectionCard(title: GaugeResultSectionKind.bodyAndSleeves.rawValue, subtitle: "Length correction") {
                     VStack(spacing: 12) {
                         if let patternLength = inputs.patternBodyLength,
                            let adjustedLength = result.adjustedBodyLength,
@@ -186,7 +221,7 @@ private struct LiveResultsView: View {
 
             if let patternSpacing = inputs.patternIncreaseSpacing,
                let adjustedSpacing = result.adjustedIncreaseSpacing {
-                sectionCard(title: "Shaping Rates", subtitle: "Increases / decreases") {
+                sectionCard(title: GaugeResultSectionKind.shapingRates.rawValue, subtitle: "Increases / decreases") {
                     AdjustmentRow(
                         name: "Increase-row spacing",
                         pattern: "Every \(plain(patternSpacing)) rows",
@@ -202,7 +237,7 @@ private struct LiveResultsView: View {
                     Double(adjustedCastOn) != patternCastOn
                     ? "Optional width refinement"
                     : "To preserve pattern width"
-                sectionCard(title: "Cast-on", subtitle: castOnSubtitle) {
+                sectionCard(title: GaugeResultSectionKind.castOn.rawValue, subtitle: castOnSubtitle) {
                     VStack(alignment: .leading, spacing: 8) {
                         AdjustmentRow(
                             name: "Cast-on stitches",
@@ -238,10 +273,6 @@ private struct LiveResultsView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("adjustment-sheet")
         .accessibilityHidden(false)
-    }
-
-    private var hasBodyOrSleeveGuidance: Bool {
-        result.adjustedBodyRows != nil || result.adjustedSleeveRows != nil
     }
 
     private var castOnDriftPill: String? {
@@ -387,20 +418,23 @@ private struct LiveResultsView: View {
 
 struct HeroTilesView: View {
     var result: GaugeMathResult
+    var semantics: GaugeResultSemantics
 
     var body: some View {
         GaugeMeasurementPair(spacing: 12) {
             HeroTile(
                 label: "Stitch-wise",
                 value: "\(GaugeMath.fmtPct(result.stitchWidthScale))%",
-                status: gaugeStatus(scale: result.stitchWidthScale)
+                status: gaugeStatus(scale: result.stitchWidthScale),
+                accessibilityLabel: semantics.stitchSummary
             )
             .accessibilityIdentifier("stitch-summary")
         } trailing: {
             HeroTile(
                 label: "Row-wise",
                 value: "\(GaugeMath.fmtPct(result.rowCountScale))%",
-                status: rowStatus(scale: result.rowCountScale)
+                status: rowStatus(scale: result.rowCountScale),
+                accessibilityLabel: semantics.rowSummary
             )
             .accessibilityIdentifier("row-summary")
         }
@@ -415,6 +449,7 @@ private struct HeroTile: View {
     var label: String
     var value: String
     var status: String
+    var accessibilityLabel: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -438,7 +473,7 @@ private struct HeroTile: View {
         .background(AppTheme.oatmeal)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label): \(value), \(status)")
+        .accessibilityLabel(accessibilityLabel)
     }
 
     // swiftlint:disable:next identifier_name

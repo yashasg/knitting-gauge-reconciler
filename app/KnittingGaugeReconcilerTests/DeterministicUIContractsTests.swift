@@ -117,38 +117,50 @@ struct DeterministicUIContractsTests {
             Scenario(
                 name: "perfect match", yourStitches: 32, yourRows: 24,
                 stitchMismatch: false, rowMismatch: false,
-                stitchSummary: "Stitch-wise width adjusted: 100%",
-                rowSummary: "Row-wise density adjusted: 100%"
+                stitchSummary: "Stitch-wise, horizontal. Pattern 32 st/10 cm · Swatch 32 st/10 cm. " +
+                    "100% of pattern width.",
+                rowSummary: "Row-wise, vertical. Pattern 24 rows/10 cm · Swatch 24 rows/10 cm. " +
+                    "100% of pattern row density."
             ),
             Scenario(
                 name: "denser rows", yourStitches: 32, yourRows: 32,
                 stitchMismatch: false, rowMismatch: true,
-                stitchSummary: "Stitch-wise width adjusted: 100%",
-                rowSummary: "Row-wise density adjusted: 133%"
+                stitchSummary: "Stitch-wise, horizontal. Pattern 32 st/10 cm · Swatch 32 st/10 cm. " +
+                    "100% of pattern width.",
+                rowSummary: "Row-wise, vertical. Pattern 24 rows/10 cm · Swatch 32 rows/10 cm. " +
+                    "133% of pattern row density."
             ),
             Scenario(
                 name: "looser rows", yourStitches: 32, yourRows: 20,
                 stitchMismatch: false, rowMismatch: true,
-                stitchSummary: "Stitch-wise width adjusted: 100%",
-                rowSummary: "Row-wise density adjusted: 83%"
+                stitchSummary: "Stitch-wise, horizontal. Pattern 32 st/10 cm · Swatch 32 st/10 cm. " +
+                    "100% of pattern width.",
+                rowSummary: "Row-wise, vertical. Pattern 24 rows/10 cm · Swatch 20 rows/10 cm. " +
+                    "83% of pattern row density."
             ),
             Scenario(
                 name: "denser stitches", yourStitches: 36, yourRows: 24,
                 stitchMismatch: true, rowMismatch: false,
-                stitchSummary: "Stitch-wise width adjusted: 89%",
-                rowSummary: "Row-wise density adjusted: 100%"
+                stitchSummary: "Stitch-wise, horizontal. Pattern 32 st/10 cm · Swatch 36 st/10 cm. " +
+                    "89% of pattern width.",
+                rowSummary: "Row-wise, vertical. Pattern 24 rows/10 cm · Swatch 24 rows/10 cm. " +
+                    "100% of pattern row density."
             ),
             Scenario(
                 name: "looser stitches", yourStitches: 28, yourRows: 24,
                 stitchMismatch: true, rowMismatch: false,
-                stitchSummary: "Stitch-wise width adjusted: 114%",
-                rowSummary: "Row-wise density adjusted: 100%"
+                stitchSummary: "Stitch-wise, horizontal. Pattern 32 st/10 cm · Swatch 28 st/10 cm. " +
+                    "114% of pattern width.",
+                rowSummary: "Row-wise, vertical. Pattern 24 rows/10 cm · Swatch 24 rows/10 cm. " +
+                    "100% of pattern row density."
             ),
             Scenario(
                 name: "both denser", yourStitches: 36, yourRows: 32,
                 stitchMismatch: true, rowMismatch: true,
-                stitchSummary: "Stitch-wise width adjusted: 89%",
-                rowSummary: "Row-wise density adjusted: 133%"
+                stitchSummary: "Stitch-wise, horizontal. Pattern 32 st/10 cm · Swatch 36 st/10 cm. " +
+                    "89% of pattern width.",
+                rowSummary: "Row-wise, vertical. Pattern 24 rows/10 cm · Swatch 32 rows/10 cm. " +
+                    "133% of pattern row density."
             ),
         ]
 
@@ -162,6 +174,8 @@ struct DeterministicUIContractsTests {
             let semantics = ResultCardSemantics(inputs: inputs, result: GaugeMath.compute(inputs))
             #expect(inputs.stitchMismatch == scenario.stitchMismatch, "\(scenario.name): stitches")
             #expect(inputs.rowMismatch == scenario.rowMismatch, "\(scenario.name): rows")
+            #expect(semantics.stitchSummary.contains(semantics.stitchComparison), "\(scenario.name)")
+            #expect(semantics.rowSummary.contains(semantics.rowComparison), "\(scenario.name)")
             #expect(semantics.stitchSummary == scenario.stitchSummary, "\(scenario.name)")
             #expect(semantics.rowSummary == scenario.rowSummary, "\(scenario.name)")
         }

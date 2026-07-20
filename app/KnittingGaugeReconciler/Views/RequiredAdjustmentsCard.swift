@@ -27,6 +27,8 @@ enum ResultActionKind: CaseIterable, Hashable {
 
 struct ResultCardSemantics: Equatable {
     let sectionKinds: [ResultSectionKind]
+    let stitchComparison: String
+    let rowComparison: String
     let stitchSummary: String
     let rowSummary: String
     let castOnGuidance: String?
@@ -47,8 +49,18 @@ struct ResultCardSemantics: Equatable {
         }
         kinds.append(.actions)
         sectionKinds = kinds
-        stitchSummary = "Stitch-wise width adjusted: \(GaugeMath.fmtPct(result.stitchWidthScale))%"
-        rowSummary = "Row-wise density adjusted: \(GaugeMath.fmtPct(result.rowCountScale))%"
+        let stitchGaugeComparison =
+            "Pattern \(plain(inputs.patternStitches)) st/10 cm · Swatch \(plain(inputs.yourStitches)) st/10 cm"
+        let rowGaugeComparison =
+            "Pattern \(plain(inputs.patternRows)) rows/10 cm · Swatch \(plain(inputs.yourRows)) rows/10 cm"
+        stitchComparison = stitchGaugeComparison
+        rowComparison = rowGaugeComparison
+        stitchSummary =
+            "Stitch-wise, horizontal. \(stitchGaugeComparison). " +
+            "\(GaugeMath.fmtPct(result.stitchWidthScale))% of pattern width."
+        rowSummary =
+            "Row-wise, vertical. \(rowGaugeComparison). " +
+            "\(GaugeMath.fmtPct(result.rowCountScale))% of pattern row density."
         castOnGuidance = castOnGuidanceText(inputs: inputs, result: result)
     }
 }
@@ -193,6 +205,12 @@ struct LiveResultsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Text("Reconciliation — both axes")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(AppTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+
             HeroTilesView(result: result, semantics: semantics)
 
             if semantics.sectionKinds.contains(.yokeDepth),
@@ -467,16 +485,18 @@ struct HeroTilesView: View {
     var body: some View {
         GaugeMeasurementPair(spacing: 12) {
             HeroTile(
-                label: "Stitch-wise",
+                label: "Stitch-wise (horizontal)",
                 value: "\(GaugeMath.fmtPct(result.stitchWidthScale))%",
                 status: gaugeStatus(scale: result.stitchWidthScale),
+                detail: semantics.stitchComparison,
                 accessibilityLabel: semantics.stitchSummary
             )
         } trailing: {
             HeroTile(
-                label: "Row-wise",
+                label: "Row-wise (vertical)",
                 value: "\(GaugeMath.fmtPct(result.rowCountScale))%",
                 status: rowStatus(scale: result.rowCountScale),
+                detail: semantics.rowComparison,
                 accessibilityLabel: semantics.rowSummary
             )
         }
@@ -490,6 +510,7 @@ private struct HeroTile: View {
     var label: String
     var value: String
     var status: String
+    var detail: String
     var accessibilityLabel: String
 
     var body: some View {
@@ -508,6 +529,10 @@ private struct HeroTile: View {
                 .frame(minHeight: 44)
                 .background(tileBackground(status))
                 .clipShape(Capsule())
+            Text(detail)
+                .font(.caption2)
+                .foregroundStyle(AppTheme.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
         .padding(14)

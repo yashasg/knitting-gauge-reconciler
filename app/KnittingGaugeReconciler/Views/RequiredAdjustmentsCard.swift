@@ -11,11 +11,24 @@ enum ResultSectionKind: String, CaseIterable {
     case actions
 }
 
+enum ResultActionKind: CaseIterable, Hashable {
+    case share
+    case fullMath
+
+    func label(isExpanded: Bool) -> String {
+        switch self {
+        case .share:
+            return "Share results"
+        case .fullMath:
+            return isExpanded ? "Hide full math" : "Show full math"
+        }
+    }
+}
+
 struct ResultCardSemantics: Equatable {
     let sectionKinds: [ResultSectionKind]
     let stitchSummary: String
     let rowSummary: String
-    let actionLabels: [String]
 
     init(inputs: GaugeInputs, result: GaugeMathResult) {
         var kinds: [ResultSectionKind] = [.gaugeSummary]
@@ -35,7 +48,6 @@ struct ResultCardSemantics: Equatable {
         sectionKinds = kinds
         stitchSummary = "Stitch-wise width adjusted: \(GaugeMath.fmtPct(result.stitchWidthScale))%"
         rowSummary = "Row-wise density adjusted: \(GaugeMath.fmtPct(result.rowCountScale))%"
-        actionLabels = ["Share results", "Show full math"]
     }
 }
 
@@ -125,7 +137,6 @@ struct RequiredAdjustmentsCard: View {
                     .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .accessibilityIdentifier("form-validation-summary")
             }
 
             HStack(alignment: .center, spacing: 16) {
@@ -135,7 +146,6 @@ struct RequiredAdjustmentsCard: View {
                 .contentShape(Rectangle())
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.ink)
-                .accessibilityIdentifier("reset-defaults")
                 .accessibilityHint("Opens a confirmation before replacing every entry")
 
                 if canUndoReset {
@@ -146,7 +156,6 @@ struct RequiredAdjustmentsCard: View {
                         .contentShape(Rectangle())
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
-                        .accessibilityIdentifier("undo-reset")
                         .accessibilityHint("Restores every value from before the last reset")
                 }
             }
@@ -189,7 +198,7 @@ struct LiveResultsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HeroTilesView(result: result)
+            HeroTilesView(result: result, semantics: semantics)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(verdict.title)
@@ -214,8 +223,7 @@ struct LiveResultsView: View {
                         name: "Yoke depth",
                         pattern: "\(unit.formatMeasurement(patternDepth)) / \(GaugeMath.fmtRows(patternRows)) rows",
                         adjusted: "\(unit.formatResultMeasurement(adjustedDepth)) / " +
-                            "\(GaugeMath.fmtRows(adjustedRows)) rows",
-                        adjustedIdentifier: "yoke-your-rows"
+                            "\(GaugeMath.fmtRows(adjustedRows)) rows"
                     )
                 }
             }
@@ -232,8 +240,7 @@ struct LiveResultsView: View {
                                 pattern: "\(unit.formatMeasurement(patternLength)) / " +
                                     "\(GaugeMath.fmtRows(patternRows)) rows",
                                 adjusted: "\(unit.formatResultMeasurement(adjustedLength)) / " +
-                                    "\(GaugeMath.fmtRows(adjustedRows)) rows",
-                                adjustedIdentifier: "body-your-rows"
+                                    "\(GaugeMath.fmtRows(adjustedRows)) rows"
                             )
                         }
                         if let patternLength = inputs.patternSleeveLength,
@@ -245,8 +252,7 @@ struct LiveResultsView: View {
                                 pattern: "\(unit.formatMeasurement(patternLength)) / " +
                                     "\(GaugeMath.fmtRows(patternRows)) rows",
                                 adjusted: "\(unit.formatResultMeasurement(adjustedLength)) / " +
-                                    "\(GaugeMath.fmtRows(adjustedRows)) rows",
-                                adjustedIdentifier: "sleeve-your-rows"
+                                    "\(GaugeMath.fmtRows(adjustedRows)) rows"
                             )
                         }
                     }
@@ -260,8 +266,7 @@ struct LiveResultsView: View {
                     AdjustmentRow(
                         name: "Increase-row spacing",
                         pattern: "Every \(plain(patternSpacing)) rows",
-                        adjusted: "Every \(GaugeMath.fmtRows(adjustedSpacing)) rows",
-                        adjustedIdentifier: "increases-result"
+                        adjusted: "Every \(GaugeMath.fmtRows(adjustedSpacing)) rows"
                     )
                 }
             }
@@ -279,7 +284,6 @@ struct LiveResultsView: View {
                             name: "Cast-on stitches",
                             pattern: "\(plain(patternCastOn)) stitches",
                             adjusted: "\(adjustedCastOn) stitches",
-                            adjustedIdentifier: "cast-on-result",
                             driftPill: castOnDriftPill
                         )
                         Text("Reconcile this rounded stitch count with your pattern's stitch-repeat multiple.")
@@ -295,7 +299,6 @@ struct LiveResultsView: View {
         .sheet(item: $sharePreparation.payload, content: activityView)
         .task(id: sharePreparation.isPreparing, prepareShare)
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("adjustment-sheet")
         .accessibilityHidden(false)
     }
 
@@ -356,9 +359,20 @@ struct LiveResultsView: View {
 
     private var actionsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
+            ForEach(ResultActionKind.allCases, id: \.self) { action in
+                actionView(action)
+            }
+        }
+        .cardStyle()
+    }
+
+    @ViewBuilder
+    private func actionView(_ action: ResultActionKind) -> some View {
+        switch action {
+        case .share:
             Button(action: beginSharing) {
                 HStack {
-                    Text("Share results")
+                    Text(action.label(isExpanded: showFullMath))
                     Spacer()
                     Image(systemName: "square.and.arrow.up")
                         .accessibilityHidden(true)
@@ -370,40 +384,38 @@ struct LiveResultsView: View {
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(AppTheme.ink)
             .disabled(sharePreparation.isPreparing)
-            .accessibilityIdentifier("share-results")
             .accessibilityHint("Opens the share sheet with an image of the current results")
-
-            Button(
-                action: toggleFullMath,
-                label: {
+        case .fullMath:
+            VStack(alignment: .leading, spacing: 12) {
+                Button(
+                    action: toggleFullMath,
+                    label: {
                     HStack {
-                        Text(showFullMath ? "Hide full math" : "Show full math")
+                        Text(action.label(isExpanded: showFullMath))
                         Spacer()
                         Image(systemName: showFullMath ? "chevron.up" : "chevron.down")
                             .font(.caption.weight(.bold))
                     }
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())
-                }
-            )
-            .buttonStyle(.plain)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(AppTheme.ink)
-            .accessibilityIdentifier("disclosure-full-math")
-            .accessibilityLabel(showFullMath ? "Hide full math" : "Show full math")
+                    }
+                )
+                .buttonStyle(.plain)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.ink)
+                .accessibilityLabel(action.label(isExpanded: showFullMath))
 
-            if showFullMath {
-                Text(fullMathBreakdown)
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(AppTheme.muted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(12)
-                    .background(AppTheme.oatmeal)
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                    .accessibilityIdentifier("show-full-math")
+                if showFullMath {
+                    Text(fullMathBreakdown)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(AppTheme.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(AppTheme.oatmeal)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                }
             }
         }
-        .cardStyle()
     }
 
     // swiftlint:disable line_length
@@ -457,25 +469,25 @@ struct LiveResultsView: View {
 
 struct HeroTilesView: View {
     var result: GaugeMathResult
+    var semantics: ResultCardSemantics
 
     var body: some View {
         GaugeMeasurementPair(spacing: 12) {
             HeroTile(
                 label: "Stitch-wise",
                 value: "\(GaugeMath.fmtPct(result.stitchWidthScale))%",
-                status: gaugeStatus(scale: result.stitchWidthScale)
+                status: gaugeStatus(scale: result.stitchWidthScale),
+                accessibilityLabel: semantics.stitchSummary
             )
-            .accessibilityIdentifier("stitch-summary")
         } trailing: {
             HeroTile(
                 label: "Row-wise",
                 value: "\(GaugeMath.fmtPct(result.rowCountScale))%",
-                status: rowStatus(scale: result.rowCountScale)
+                status: rowStatus(scale: result.rowCountScale),
+                accessibilityLabel: semantics.rowSummary
             )
-            .accessibilityIdentifier("row-summary")
         }
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("gauge-summary")
     }
 }
 
@@ -485,6 +497,7 @@ private struct HeroTile: View {
     var label: String
     var value: String
     var status: String
+    var accessibilityLabel: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -508,7 +521,8 @@ private struct HeroTile: View {
         .background(AppTheme.oatmeal)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label): \(value), \(status)")
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(status)
     }
 
     // swiftlint:disable:next identifier_name

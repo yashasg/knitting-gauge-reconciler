@@ -105,20 +105,15 @@ a private `init` for pure-function namespaces. Already established in
   acceptable for shared models but not for pure-math result holders — use a
   computed property on the view instead.
 - Accessibility is non-negotiable: every interactive control must declare an
-  `accessibilityLabel`, `accessibilityHint` when behaviour is non-obvious,
-  and an `accessibilityIdentifier` matching the convention used in UI tests
-  (kebab-case, e.g. `verdict-help-button`).
-- Identifiers used by UI tests are part of the **public contract** — renaming
-  one is a behaviour change and requires a corresponding test update in the
-  same commit.
+  `accessibilityLabel` and an `accessibilityHint` when behaviour is non-obvious.
+- Test public accessibility labels, traits, actions, and layout through native
+  hosted views rather than adding identifiers solely for test lookup.
 
 ### 2.9 Tests
 
-- Unit tests live in `app/KnittingGaugeReconcilerTests/` and use Apple's
-  Swift Testing framework (`@Test`, `#expect`). XCTest is acceptable for UI
-  tests only.
-- UI tests run **serially** (per the 2026-05-20T06-25 decision) to avoid
-  simulator races. Don't reintroduce `parallel: true`.
+- Ordinary tests live in `app/KnittingGaugeReconcilerTests/` and may use
+  Swift Testing (`@Test`, `#expect`) or XCTest with native SwiftUI/UIKit hosts.
+- The project has no XCUITest target. Do not build, select, or run XCUITest.
 - A test that flakes more than once must be deleted or rewritten — see
   Curie's charter. Quarantine via `@Test(.disabled)` is not allowed.
 - Every Jacquard-defined craft scenario sourced from Jacquard's charter and
@@ -225,7 +220,7 @@ Text("Yoke").dynamicTypeSize(...DynamicTypeSize.accessibility1)
 
 The `...DynamicTypeSize.xxx` PartialRangeThrough form acts as an upper ceiling — it clamps all sizes above the named value. This overrides the user's Accessibility → Display & Text Size → Larger Text setting. **Banned at error severity.**
 
-**Scope note:** Both rules are scoped to `app/KnittingGaugeReconciler/` (source only). `app/KnittingGaugeReconcilerTests/` and `app/KnittingGaugeReconcilerUITests/` are excluded — unit/UI tests may legitimately set specific sizes for layout assertions. `#Preview` blocks inside source files that use `.environment(\.dynamicTypeSize, …)` (the environment modifier, not the view modifier) do not trip the `no_dynamic_type_cap` rule because the regex `\.dynamicTypeSize\(\.\.\.` targets only the PartialRangeThrough argument form.
+**Scope note:** Both rules are scoped to `app/KnittingGaugeReconciler/` (source only). `app/KnittingGaugeReconcilerTests/` is excluded because ordinary hosted tests may legitimately set specific sizes for layout assertions. `#Preview` blocks inside source files that use `.environment(\.dynamicTypeSize, …)` (the environment modifier, not the view modifier) do not trip the `no_dynamic_type_cap` rule because the regex `\.dynamicTypeSize\(\.\.\.` targets only the PartialRangeThrough argument form.
 
 ## 4. Resolution rules
 
@@ -247,8 +242,8 @@ Every MR/PR that touches Swift code must:
 - Not introduce force-unwraps on user input (§2.4).
 - Not introduce network or analytics dependencies (§2.3) without a recorded
   decision in `.squad/decisions.md`.
-- Update UI test identifiers and tests in the same commit when renaming a
-  control (§2.8).
+- Update native hosted accessibility tests in the same commit when changing a
+  control's public label, traits, action, or layout contract (§2.8).
 
 ## 6. How agents use this document
 
@@ -262,4 +257,4 @@ it in code review — file an inbox entry titled `tesla-swift-standard-amend-
 
 ## 7. MetricKit
 
-RESOLVED 2026-05-20. MetricKit consumption (via `MXMetricManagerSubscriber` and `MXSignpost(_:)`) is in scope. Re-export of payloads to a developer-owned endpoint is forbidden by default — see §2.3 carve-out. The current roster of `MXSignpost` names (9 total) is documented in `.squad/decisions.md`. Any new signpost name requires a Lead review and an addition to `decisions.md`.
+RESOLVED 2026-05-20. MetricKit consumption (via `MXMetricManagerSubscriber` and `MXSignpost(_:)`) is in scope. Re-export of payloads to a developer-owned endpoint is forbidden by default — see §2.3 carve-out. The current roster of `MXSignpost` names (8 total) is documented in `.squad/decisions.md`. Any new signpost name requires a Lead review and an addition to `decisions.md`.

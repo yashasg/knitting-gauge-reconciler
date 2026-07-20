@@ -72,41 +72,19 @@ struct GaugeInputsCard: View {
         .cardStyle()
     }
 
-    @ViewBuilder
     private var patternFields: some View {
-        if Self.usesStackedLayout(at: dynamicTypeSize) {
-            VStack(alignment: .leading, spacing: 12) {
-                patternStitchesField
-                patternRowsField
-            }
-        } else {
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 0) {
-                GridRow(alignment: .top) {
-                    patternStitchesField
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                    patternRowsField
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
-            }
+        GaugeMeasurementPair {
+            patternStitchesField
+        } trailing: {
+            patternRowsField
         }
     }
 
-    @ViewBuilder
     private var swatchFields: some View {
-        if Self.usesStackedLayout(at: dynamicTypeSize) {
-            VStack(alignment: .leading, spacing: 12) {
-                yourStitchesField
-                yourRowsField
-            }
-        } else {
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 0) {
-                GridRow(alignment: .top) {
-                    yourStitchesField
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                    yourRowsField
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
-            }
+        GaugeMeasurementPair {
+            yourStitchesField
+        } trailing: {
+            yourRowsField
         }
     }
 
@@ -115,7 +93,6 @@ struct GaugeInputsCard: View {
             title: "Stitches",
             text: $patternStitches,
             unit: "st",
-            identifier: "pattern-stitches",
             field: .patternStitches,
             validationMessage: validationMessages[.patternStitches],
             accessibilityLabel: Self.accessibilityLabel(for: .patternStitches),
@@ -129,7 +106,6 @@ struct GaugeInputsCard: View {
             title: "Rows",
             text: $patternRows,
             unit: "ro",
-            identifier: "pattern-rows",
             field: .patternRows,
             validationMessage: validationMessages[.patternRows],
             accessibilityLabel: Self.accessibilityLabel(for: .patternRows),
@@ -143,7 +119,6 @@ struct GaugeInputsCard: View {
             title: "Stitches",
             text: $yourStitches,
             unit: "st",
-            identifier: "your-stitches",
             field: .yourStitches,
             validationMessage: validationMessages[.yourStitches],
             accessibilityLabel: Self.accessibilityLabel(for: .yourStitches),
@@ -160,7 +135,6 @@ struct GaugeInputsCard: View {
             title: "Rows",
             text: $yourRows,
             unit: "ro",
-            identifier: "your-rows",
             field: .yourRows,
             validationMessage: validationMessages[.yourRows],
             accessibilityLabel: Self.accessibilityLabel(for: .yourRows),
@@ -211,6 +185,5 @@ struct GaugeInputsCard: View {
             .lineLimit(1)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityHidden(true)
-            .accessibilityIdentifier("per-tag")
     }
 }

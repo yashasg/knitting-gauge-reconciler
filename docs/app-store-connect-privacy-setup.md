@@ -131,9 +131,9 @@ called on app launch):
 4. **Check delivery:** In Xcode → Organizer → Crashes, symbolicated `MXCrashDiagnostic` and
    `MXHangDiagnostic` reports appear. In App Store Connect → Analytics, aggregate performance
    metrics appear after sufficient volume.
-5. **Signpost events** (`MXSignpostMetric`) for the 9 named signposts (`compute`, `share.invoked`,
+5. **Signpost events** (`MXSignpostMetric`) for the 8 named signposts (`compute`, `share.invoked`,
    `share.fallback`, `reset.tapped`, `verdict.improved`, `verdict.degraded`,
-   `sheet.verdictHelp.opened`, `sheet.aboutHelp.opened`, `cast_on.driftBandShown`) appear in
+   `sheet.aboutHelp.opened`, `cast_on.driftBandShown`) appear in
    App Store Connect Analytics after aggregation.
 
 ---

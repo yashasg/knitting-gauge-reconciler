@@ -2,7 +2,7 @@ import SwiftUI
 
 private final class AppResourceBundleToken {}
 
-private let appResourceBundle = Bundle(for: AppResourceBundleToken.self)
+let appResourceBundle = Bundle(for: AppResourceBundleToken.self)
 
 // MARK: - AppTheme
 

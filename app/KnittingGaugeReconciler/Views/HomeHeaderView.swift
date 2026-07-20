@@ -23,6 +23,5 @@ struct AboutHelpToolbarButton: View {
         }
         .accessibilityLabel(AboutHelpContract.openLabel)
         .accessibilityHint(AboutHelpContract.openHint)
-        .accessibilityIdentifier("about-help-button")
     }
 }

@@ -1,23 +1,13 @@
 import SwiftUI
 
-struct PatternDetailsSemantics: Equatable {
-    let disclosureLabel = "Pattern details (optional)"
-    let disclosureHint = "Expands optional unit, cast-on, length, and shaping fields"
-    let isExpanded: Bool
-    let visibleFields: [GaugeFormField]
-    let lengthLabels: [String]
-
-    init(isExpanded: Bool, unit: MeasurementUnit) {
-        self.isExpanded = isExpanded
-        visibleFields = isExpanded
-            ? [.patternCastOn, .patternYoke, .patternBody, .patternSleeve, .patternIncreases]
-            : []
-        let draft = GaugeFormDraft(unit: unit)
-        lengthLabels = [.patternYoke, .patternBody, .patternSleeve].map(draft.lengthFieldLabel)
-    }
-}
-
 struct PatternInstructionsCard: View {
+    static let disclosureLabel = "Pattern details (optional)"
+    static let disclosureHint = "Expands optional unit, cast-on, length, and shaping fields"
+
+    static func disclosureValue(isExpanded: Bool) -> String {
+        isExpanded ? "Expanded" : "Collapsed"
+    }
+
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @Binding private var patternCastOn: String
@@ -77,7 +67,7 @@ struct PatternInstructionsCard: View {
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(AppTheme.secondary)
                     .accessibilityHidden(true)
-                Text("Pattern details (optional)")
+                Text(Self.disclosureLabel)
                     .font(.title3.weight(.bold))
                     .foregroundStyle(AppTheme.ink)
                     .fixedSize(horizontal: false, vertical: true)
@@ -85,8 +75,10 @@ struct PatternInstructionsCard: View {
             }
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .contentShape(Rectangle())
-            .accessibilityIdentifier("pattern-details-disclosure")
-            .accessibilityHint("Expands optional unit, cast-on, length, and shaping fields")
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityValue(Self.disclosureValue(isExpanded: isExpanded))
+            .accessibilityHint(Self.disclosureHint)
         }
         .tint(AppTheme.sage)
         .cardStyle()
@@ -97,7 +89,6 @@ struct PatternInstructionsCard: View {
             title: "Cast-on stitches",
             text: $patternCastOn,
             unit: "stitches",
-            identifier: "pattern-cast-on",
             field: .patternCastOn,
             validationMessage: validationMessages[.patternCastOn],
             focusedField: focusedField,
@@ -146,10 +137,9 @@ struct PatternInstructionsCard: View {
 
     private var yokeField: some View {
         GaugeStepperField(
-            title: "Yoke depth (\(unit.label))",
+            title: GaugeFormDraft(unit: unit).lengthFieldLabel(.patternYoke),
             text: displayBinding(for: $patternYoke, field: .patternYoke),
             unit: unit.label,
-            identifier: "pattern-yoke",
             field: .patternYoke,
             validationMessage: validationMessages[.patternYoke],
             validationText: patternYoke,
@@ -162,10 +152,9 @@ struct PatternInstructionsCard: View {
 
     private var bodyField: some View {
         GaugeStepperField(
-            title: "Body length (\(unit.label))",
+            title: GaugeFormDraft(unit: unit).lengthFieldLabel(.patternBody),
             text: displayBinding(for: $patternBody, field: .patternBody),
             unit: unit.label,
-            identifier: "pattern-body",
             field: .patternBody,
             validationMessage: validationMessages[.patternBody],
             validationText: patternBody,
@@ -178,10 +167,9 @@ struct PatternInstructionsCard: View {
 
     private var sleeveField: some View {
         GaugeStepperField(
-            title: "Sleeve length (\(unit.label))",
+            title: GaugeFormDraft(unit: unit).lengthFieldLabel(.patternSleeve),
             text: displayBinding(for: $patternSleeve, field: .patternSleeve),
             unit: unit.label,
-            identifier: "pattern-sleeve",
             field: .patternSleeve,
             validationMessage: validationMessages[.patternSleeve],
             validationText: patternSleeve,
@@ -197,7 +185,6 @@ struct PatternInstructionsCard: View {
             title: "Increase every (rows)",
             text: $patternIncreases,
             unit: "rows",
-            identifier: "pattern-increases",
             field: .patternIncreases,
             validationMessage: validationMessages[.patternIncreases],
             focusedField: focusedField,
@@ -251,7 +238,6 @@ private struct UnitToggleView: View {
         }
         .pickerStyle(.segmented)
         .frame(minHeight: 44)
-        .accessibilityIdentifier("unit-toggle")
         .accessibilityLabel("Measurement unit")
         .accessibilityHint("Switches all length fields between centimetres and inches")
     }

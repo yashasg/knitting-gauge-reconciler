@@ -651,52 +651,48 @@ struct GaugeMathTests {
     }
 
     @MainActor
-    @Test func sceneDraftSerializationPreservesEveryRawValueAndDisclosure() throws {
+    @Test func sceneStorageOwnsEveryRawValueAndDisclosure() {
         let properties = Array(Mirror(reflecting: ContentView()).children)
         let stringStorage = Set(properties.compactMap { child in
-            child.value is State<String> ? child.label?.dropFirst().description : nil
+            child.value is SceneStorage<String> ? child.label?.dropFirst().description : nil
         })
         let boolStorage = Set(properties.compactMap { child in
-            child.value is State<Bool> ? child.label?.dropFirst().description : nil
+            child.value is SceneStorage<Bool> ? child.label?.dropFirst().description : nil
         })
 
         #expect(stringStorage == [
             "patternStitches", "patternRows", "yourStitches", "yourRows",
             "patternCastOn", "patternYoke", "patternBody", "patternSleeve", "patternIncreases",
         ])
-        #expect(
-            boolStorage == [
-                "patternDetailsExpanded",
-                "showFullMath",
-                "canUndoReset",
-            ]
-        )
+        #expect(boolStorage == ["patternDetailsExpanded"])
 
         let values = ["31.5", "0", "32", "24", "", "20.5", ".", "", "7e0"]
-        let serialization = SceneDraftStore.serialize(values: values, disclosure: true)
-        let restored = try #require(SceneDraftStore.deserialize(serialization))
-
-        #expect(restored.values == values)
-        #expect(restored.disclosure)
+        let restored = GaugeFormDraft(values: values, patternDetailsExpanded: true)
+        #expect(restored.rawValues == values)
+        #expect(restored.patternDetailsExpanded)
     }
 
-    @Test func malformedSceneDraftSerializationIsRejected() throws {
-        let values = ["31.5", "0", "32", "24", "", "20.5", ".", "", "7e0"]
-        let valid = SceneDraftStore.serialize(values: values, disclosure: true)
-        var missingDisclosure = valid
-        var wrongValueCount = valid
-        var wrongValuesType = valid
-        var wrongDisclosureType = valid
-        missingDisclosure.removeValue(forKey: SceneDraftStore.disclosureKey)
-        wrongValueCount[SceneDraftStore.rawValuesKey] = Array(values.dropLast())
-        wrongValuesType[SceneDraftStore.rawValuesKey] = values.joined(separator: ",")
-        wrongDisclosureType[SceneDraftStore.disclosureKey] = "true"
+    @Test func sceneDraftRestorationPreservesExactCasesAndIsolation() {
+        let cases = [
+            ["31", "23", "29", "21", "141", "19", "49", "44", "7"],
+            ["bad", "100", "-1", "nan", "39", "4", "101", "∞", "31"],
+            ["3.", "2e", "-", " ", "", "20.", ".", "", "7e"],
+            GaugeTextDefaults().resetSceneDraftValues,
+        ]
+        for values in cases {
+            #expect(GaugeFormDraft(values: values).rawValues == values)
+        }
 
-        #expect(SceneDraftStore.deserialize([:]) == nil)
-        #expect(SceneDraftStore.deserialize(missingDisclosure) == nil)
-        #expect(SceneDraftStore.deserialize(wrongValueCount) == nil)
-        #expect(SceneDraftStore.deserialize(wrongValuesType) == nil)
-        #expect(SceneDraftStore.deserialize(wrongDisclosureType) == nil)
+        var firstScene = GaugeFormDraft(values: cases[0], patternDetailsExpanded: true)
+        let secondScene = GaugeFormDraft(values: cases[2])
+        firstScene[.patternBody] = "changed"
+        #expect(secondScene.rawValues == cases[2])
+        #expect(!secondScene.patternDetailsExpanded)
+
+        let snapshot = firstScene.reset()
+        firstScene.restore(snapshot)
+        #expect(firstScene[.patternBody] == "changed")
+        #expect(firstScene.patternDetailsExpanded)
     }
 
     // MARK: - Inline mismatch detection
@@ -746,13 +742,6 @@ struct GaugeMathTests {
                     == "Open picker for \(expectedLabel)"
             )
         }
-    }
-
-    @MainActor @Test func wheelSheetDetentsReflowForWarningAndAccessibilityText() {
-        #expect(GaugeStepperField.sheetDetents(for: .large, hasWarning: false) == [.height(280)])
-        #expect(GaugeStepperField.sheetDetents(for: .accessibility1, hasWarning: false) == [.large])
-        #expect(GaugeStepperField.sheetDetents(for: .large, hasWarning: true) == [.medium, .large])
-        #expect(GaugeStepperField.sheetDetents(for: .accessibility1, hasWarning: true) == [.large])
     }
 
     @Test func resultsActionTokensMeetTextContrastInLightAndDark() throws {

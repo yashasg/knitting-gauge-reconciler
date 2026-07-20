@@ -53,17 +53,22 @@ function computeGaugeMath({ ps, pr, ys, yr, patYoke, patBody, patSleeve, patIncs
   // > 1 → you knit more rows per cm (denser). Used for hero display + increase spacing.
   const rowCountScale = yr / pr;
 
-  // Dimension correction: pattern_row / your_row.
-  // Denser swatch (yr > pr) → dimScale < 1 → knit fewer cm to hit same row count.
-  const dimScale = pr / yr;
-
-  const actYoke   = patYoke   * dimScale;
-  const actBody   = patBody   * dimScale;
-  const actSleeve = patSleeve * dimScale;
+  // Physical section cm = pattern values (unchanged); row counts adapt to your gauge.
+  const actYoke   = patYoke;
+  const actBody   = patBody;
+  const actSleeve = patSleeve;
+  const actYokeRows   = actYoke   * yr / 10;
+  const actBodyRows   = actBody   * yr / 10;
+  const actSleeveRows = actSleeve * yr / 10;
   // Increase-row spacing: scale by your_row/pattern_row so physical gap is preserved.
   const actIncs   = patIncs   * rowCountScale;
 
-  return { stitchWidthScale, rowCountScale, dimScale, actYoke, actBody, actSleeve, actIncs };
+  return {
+    stitchWidthScale, rowCountScale,
+    actYoke, actBody, actSleeve,
+    actYokeRows, actBodyRows, actSleeveRows,
+    actIncs
+  };
 }
 
 /** fmtCm — round to 1 decimal place (mirrors HTML fmtCm). */
@@ -149,10 +154,12 @@ describe('Scenario 1: Perfect Match (32/24 vs 32/24)', () => {
   const r = computeGaugeMath({ ...PAT, ys: 32, yr: 24 });
   assertEqual(r.stitchWidthScale, 1.0,  'stitchWidthScale = 1.0');
   assertEqual(r.rowCountScale,    1.0,  'rowCountScale = 1.0');
-  assertEqual(r.dimScale,         1.0,  'dimScale = 1.0');
   assertEqual(r.actYoke,          20.0, 'actYoke = 20.0 cm');
   assertEqual(r.actBody,          50.0, 'actBody = 50.0 cm');
   assertEqual(r.actSleeve,        45.0, 'actSleeve = 45.0 cm');
+  assertEqual(fmtRows(r.actYokeRows),   48,  '20 cm at 24 rows/10 cm = 48 rows', 0);
+  assertEqual(fmtRows(r.actBodyRows),   120, '50 cm at 24 rows/10 cm = 120 rows', 0);
+  assertEqual(fmtRows(r.actSleeveRows), 108, '45 cm at 24 rows/10 cm = 108 rows', 0);
   assertEqual(r.actIncs,          6.0,  'actIncs = 6.0 rows (exact)');
   assertEqual(fmtRows(r.actIncs), 6,    'fmtRows(actIncs) = 6', 0);
 });
@@ -161,10 +168,12 @@ describe('Scenario 2: Denser Row Only (32/24 vs 32/32)', () => {
   const r = computeGaugeMath({ ...PAT, ys: 32, yr: 32 });
   assertEqual(r.stitchWidthScale,    1.0,          'stitchWidthScale = 1.0');
   assertEqual(r.rowCountScale,       32 / 24,      'rowCountScale = yr/pr = 1.333…');
-  assertEqual(r.dimScale,            24 / 32,      'dimScale = pr/yr = 0.75');
-  assertEqual(fmtCm(r.actYoke),      15.0,         'actYoke rounds to 15.0 cm', 0);
-  assertEqual(fmtCm(r.actBody),      37.5,         'actBody rounds to 37.5 cm', 0);
-  assertEqual(fmtCm(r.actSleeve),    33.8,         'actSleeve rounds to 33.8 cm', 0);
+  assertEqual(fmtCm(r.actYoke),      20.0,         'actYoke = 20.0 cm (unchanged)', 0);
+  assertEqual(fmtCm(r.actBody),      50.0,         'actBody = 50.0 cm (unchanged)', 0);
+  assertEqual(fmtCm(r.actSleeve),    45.0,         'actSleeve = 45.0 cm (unchanged)', 0);
+  assertEqual(fmtRows(r.actYokeRows),   64,        '20 cm at 32 rows/10 cm = 64 rows', 0);
+  assertEqual(fmtRows(r.actBodyRows),   160,       '50 cm at 32 rows/10 cm = 160 rows', 0);
+  assertEqual(fmtRows(r.actSleeveRows), 144,       '45 cm at 32 rows/10 cm = 144 rows', 0);
   assertEqual(r.actIncs,             6 * (32 / 24),'actIncs = 8.0 rows (exact)');
   assertEqual(fmtRows(r.actIncs),    8,            'fmtRows(actIncs) = 8', 0);
 });
@@ -173,10 +182,12 @@ describe('Scenario 3: Looser Row Only (32/24 vs 32/20)', () => {
   const r = computeGaugeMath({ ...PAT, ys: 32, yr: 20 });
   assertEqual(r.stitchWidthScale,    1.0,          'stitchWidthScale = 1.0');
   assertEqual(r.rowCountScale,       20 / 24,      'rowCountScale = yr/pr = 0.833…');
-  assertEqual(r.dimScale,            24 / 20,      'dimScale = pr/yr = 1.2');
-  assertEqual(fmtCm(r.actYoke),      24.0,         'actYoke rounds to 24.0 cm', 0);
-  assertEqual(fmtCm(r.actBody),      60.0,         'actBody rounds to 60.0 cm', 0);
-  assertEqual(fmtCm(r.actSleeve),    54.0,         'actSleeve rounds to 54.0 cm', 0);
+  assertEqual(fmtCm(r.actYoke),      20.0,         'actYoke = 20.0 cm (unchanged)', 0);
+  assertEqual(fmtCm(r.actBody),      50.0,         'actBody = 50.0 cm (unchanged)', 0);
+  assertEqual(fmtCm(r.actSleeve),    45.0,         'actSleeve = 45.0 cm (unchanged)', 0);
+  assertEqual(fmtRows(r.actYokeRows),   40,        '20 cm at 20 rows/10 cm = 40 rows', 0);
+  assertEqual(fmtRows(r.actBodyRows),   100,       '50 cm at 20 rows/10 cm = 100 rows', 0);
+  assertEqual(fmtRows(r.actSleeveRows), 90,        '45 cm at 20 rows/10 cm = 90 rows', 0);
   assertEqual(r.actIncs,             6 * (20 / 24),'actIncs = 5.0 rows (exact)');
   assertEqual(fmtRows(r.actIncs),    5,            'fmtRows(actIncs) = 5', 0);
 });
@@ -187,9 +198,12 @@ describe('Scenario 4: Denser Stitch Only (32/24 vs 36/24)', () => {
   assertEqual(r.stitchWidthScale, 32 / 36,  'stitchWidthScale = ps/ys = 0.889… (display metric)');
   assertEqual(fmtPct(r.stitchWidthScale), 89, 'fmtPct(stitchWidthScale) = 89%', 0);
   assertEqual(r.rowCountScale,    1.0,      'rowCountScale = 1.0 (row gauge matches)');
-  assertEqual(r.dimScale,         1.0,      'dimScale = 1.0 (row gauge matches)');
   assertEqual(fmtCm(r.actYoke),   20.0,     'actYoke unchanged = 20.0 cm', 0);
   assertEqual(fmtCm(r.actBody),   50.0,     'actBody unchanged = 50.0 cm', 0);
+  assertEqual(fmtCm(r.actSleeve), 45.0,     'actSleeve unchanged = 45.0 cm', 0);
+  assertEqual(fmtRows(r.actYokeRows),   48,  '20 cm at 24 rows/10 cm = 48 rows', 0);
+  assertEqual(fmtRows(r.actBodyRows),   120, '50 cm at 24 rows/10 cm = 120 rows', 0);
+  assertEqual(fmtRows(r.actSleeveRows), 108, '45 cm at 24 rows/10 cm = 108 rows', 0);
   assertEqual(fmtRows(r.actIncs), 6,        'fmtRows(actIncs) = 6', 0);
   // adjusted cast-on: ys=36, ps=32, patStitches=128 → 128 × (36/32) = 144
   assertEqual(computeActStitches(32, 36, 128), 144, 'computeActStitches(32, 36, 128) = 144');
@@ -201,9 +215,12 @@ describe('Scenario 5: Looser Stitch Only / Hisahashisaka\'s Case (32/24 vs 28/24
   assertEqual(r.stitchWidthScale, 32 / 28,  'stitchWidthScale = ps/ys = 1.143… (code: wider per count)');
   assertEqual(fmtPct(r.stitchWidthScale), 114, 'fmtPct(stitchWidthScale) = 114%', 0);
   assertEqual(r.rowCountScale,    1.0,      'rowCountScale = 1.0 (row gauge matches)');
-  assertEqual(r.dimScale,         1.0,      'dimScale = 1.0');
   assertEqual(fmtCm(r.actYoke),   20.0,     'actYoke unchanged = 20.0 cm', 0);
   assertEqual(fmtCm(r.actBody),   50.0,     'actBody unchanged = 50.0 cm', 0);
+  assertEqual(fmtCm(r.actSleeve), 45.0,     'actSleeve unchanged = 45.0 cm', 0);
+  assertEqual(fmtRows(r.actYokeRows),   48,  '20 cm at 24 rows/10 cm = 48 rows', 0);
+  assertEqual(fmtRows(r.actBodyRows),   120, '50 cm at 24 rows/10 cm = 120 rows', 0);
+  assertEqual(fmtRows(r.actSleeveRows), 108, '45 cm at 24 rows/10 cm = 108 rows', 0);
   assertEqual(fmtRows(r.actIncs), 6,        'fmtRows(actIncs) = 6', 0);
   // adjusted cast-on: ys=28, ps=32, patStitches=128 → 128 × (28/32) = 112
   assertEqual(computeActStitches(32, 28, 128), 112, 'computeActStitches(32, 28, 128) = 112 [hisahashisaka case]');
@@ -213,9 +230,12 @@ describe('Scenario 6: Both Denser (32/24 vs 36/32)', () => {
   const r = computeGaugeMath({ ...PAT, ys: 36, yr: 32 });
   assertEqual(r.stitchWidthScale, 32 / 36,      'stitchWidthScale = ps/ys = 0.889…');
   assertEqual(r.rowCountScale,    32 / 24,      'rowCountScale = yr/pr = 1.333…');
-  assertEqual(r.dimScale,         24 / 32,      'dimScale = pr/yr = 0.75');
-  assertEqual(fmtCm(r.actYoke),   15.0,         'actYoke = 15.0 cm', 0);
-  assertEqual(fmtCm(r.actBody),   37.5,         'actBody = 37.5 cm', 0);
+  assertEqual(fmtCm(r.actYoke),   20.0,         'actYoke = 20.0 cm (unchanged)', 0);
+  assertEqual(fmtCm(r.actBody),   50.0,         'actBody = 50.0 cm (unchanged)', 0);
+  assertEqual(fmtCm(r.actSleeve), 45.0,         'actSleeve = 45.0 cm (unchanged)', 0);
+  assertEqual(fmtRows(r.actYokeRows),   64,     '20 cm at 32 rows/10 cm = 64 rows', 0);
+  assertEqual(fmtRows(r.actBodyRows),   160,    '50 cm at 32 rows/10 cm = 160 rows', 0);
+  assertEqual(fmtRows(r.actSleeveRows), 144,    '45 cm at 32 rows/10 cm = 144 rows', 0);
   // actIncs = 6 × (32/24) = 8.0
   assertEqual(r.actIncs,          6 * (32 / 24),'actIncs = 8.0 rows (exact)');
   assertEqual(fmtRows(r.actIncs), 8,            'fmtRows(actIncs) = 8', 0);
@@ -237,19 +257,17 @@ describe('Edge: readNumPure fallback to defaults', () => {
 
 describe('Edge: very large drift — row gauge 2× denser (yr = 2 × pr)', () => {
   const r = computeGaugeMath({ ...PAT, ys: 32, yr: 48 });
-  assertEqual(r.dimScale,        0.5,  'dimScale = 0.5 (half the cm)');
   assertEqual(r.rowCountScale,   2.0,  'rowCountScale = 2.0');
-  assertEqual(fmtCm(r.actYoke),  10.0, 'actYoke = 10.0 cm', 0);
-  assertEqual(fmtCm(r.actBody),  25.0, 'actBody = 25.0 cm', 0);
+  assertEqual(fmtCm(r.actYoke),  20.0, 'actYoke = 20.0 cm (unchanged)', 0);
+  assertEqual(fmtCm(r.actBody),  50.0, 'actBody = 50.0 cm (unchanged)', 0);
   assertEqual(fmtRows(r.actIncs),12,   'fmtRows(actIncs) = 12', 0);
 });
 
 describe('Edge: very large drift — row gauge 2× looser (yr = pr / 2)', () => {
   const r = computeGaugeMath({ ...PAT, ys: 32, yr: 12 });
-  assertEqual(r.dimScale,        2.0,  'dimScale = 2.0 (double the cm)');
   assertEqual(r.rowCountScale,   0.5,  'rowCountScale = 0.5');
-  assertEqual(fmtCm(r.actYoke),  40.0, 'actYoke = 40.0 cm', 0);
-  assertEqual(fmtCm(r.actBody), 100.0, 'actBody = 100.0 cm', 0);
+  assertEqual(fmtCm(r.actYoke),  20.0, 'actYoke = 20.0 cm (unchanged)', 0);
+  assertEqual(fmtCm(r.actBody),  50.0, 'actBody = 50.0 cm (unchanged)', 0);
   assertEqual(fmtRows(r.actIncs), 3,   'fmtRows(actIncs) = 3', 0);
 });
 
@@ -282,7 +300,7 @@ describe('Edge: status bands are symmetric at exact boundaries', () => {
 describe('Edge: floating-point precision — perfect match gives exact input values', () => {
   const r = computeGaugeMath({ ps: 32, pr: 24, ys: 32, yr: 24,
                                 patYoke: 20, patBody: 50, patSleeve: 45, patIncs: 6 });
-  // With dimScale = pr/yr = 24/24 = 1.0 exactly, no FP drift expected.
+  // Matched gauge leaves physical section dimensions unchanged.
   assertEqual(r.actYoke,   20.0, 'actYoke === 20.0 exactly (no 19.999...)');
   assertEqual(r.actBody,   50.0, 'actBody === 50.0 exactly');
   assertEqual(r.actSleeve, 45.0, 'actSleeve === 45.0 exactly');
@@ -293,7 +311,6 @@ describe('Edge: floating-point precision — stitch match, arbitrary row drift',
   // Non-power-of-2 gauge values that are prone to FP representation errors
   const r = computeGaugeMath({ ps: 30, pr: 22, ys: 30, yr: 22,
                                 patYoke: 18.5, patBody: 52.3, patSleeve: 41.0, patIncs: 7 });
-  assertEqual(r.dimScale,    1.0,   'dimScale = 1.0 for matched gauge');
   assertEqual(r.actYoke,  18.5,     'actYoke = 18.5 exactly (no FP drift)');
   assertEqual(r.actBody,  52.3,     'actBody = 52.3 exactly');
   assertEqual(r.actIncs,   7.0,     'actIncs = 7.0 exactly');

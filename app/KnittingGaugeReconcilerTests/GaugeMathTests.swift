@@ -12,40 +12,99 @@ struct GaugeMathTests {
 
     @Test func scenario1PerfectMatch() {
         let result = GaugeMath.compute(pattern)
-        expect(result, stitchWidthScale: 1, rowCountScale: 1, dimensionScale: 1, yoke: 20, body: 50, sleeve: 45, increases: 6, castOn: 128)
+        expect(
+            result, stitchWidthScale: 1, rowCountScale: 1,
+            yoke: 20, body: 50, sleeve: 45, increases: 6, castOn: 128
+        )
+        #expect(result.adjustedYokeDepth == 20)
+        #expect(result.adjustedBodyLength == 50)
+        #expect(result.adjustedSleeveLength == 45)
+        #expect(result.adjustedYokeRows?.isApproximately(48) == true)
+        #expect(result.adjustedBodyRows?.isApproximately(120) == true)
+        #expect(result.adjustedSleeveRows?.isApproximately(108) == true)
+        #expect(result.adjustedIncreaseSpacing?.isApproximately(6) == true)
     }
 
     @Test func scenario2DenserRowsOnly() {
         let result = GaugeMath.compute(withGauge(yourStitches: 32, yourRows: 32))
-        expect(result, stitchWidthScale: 1, rowCountScale: 32.0 / 24.0, dimensionScale: 24.0 / 32.0, yoke: 15, body: 37.5, sleeve: 33.75, increases: 8, castOn: 128)
+        expect(
+            result, stitchWidthScale: 1, rowCountScale: 32.0 / 24.0,
+            yoke: 20, body: 50, sleeve: 45, increases: 8, castOn: 128
+        )
         #expect(result.patternYokeRows?.isApproximately(48) == true)
-        #expect(result.adjustedYokeRows?.isApproximately(48) == true)
-        #expect(result.adjustedSleeveLength.map(GaugeMath.fmtCm) == "33.8")
+        #expect(result.adjustedYokeRows?.isApproximately(64) == true)
+        #expect(result.adjustedYokeDepth == 20)
+        #expect(result.adjustedBodyLength == 50)
+        #expect(result.adjustedSleeveLength == 45)
+        #expect(result.adjustedBodyRows?.isApproximately(160) == true)
+        #expect(result.adjustedSleeveRows?.isApproximately(144) == true)
+        #expect(result.adjustedIncreaseSpacing?.isApproximately(8) == true)
+        #expect(result.adjustedSleeveLength.map(GaugeMath.fmtCm) == "45.0")
         #expect(result.adjustedIncreaseSpacing.map(GaugeMath.fmtRows) == 8)
     }
 
     @Test func scenario3LooserRowsOnly() {
         let result = GaugeMath.compute(withGauge(yourStitches: 32, yourRows: 20))
-        expect(result, stitchWidthScale: 1, rowCountScale: 20.0 / 24.0, dimensionScale: 24.0 / 20.0, yoke: 24, body: 60, sleeve: 54, increases: 5, castOn: 128)
-        #expect(result.adjustedSleeveLength.map(GaugeMath.fmtCm) == "54.0")
+        expect(
+            result, stitchWidthScale: 1, rowCountScale: 20.0 / 24.0,
+            yoke: 20, body: 50, sleeve: 45, increases: 5, castOn: 128
+        )
+        #expect(result.adjustedYokeDepth == 20)
+        #expect(result.adjustedBodyLength == 50)
+        #expect(result.adjustedSleeveLength == 45)
+        #expect(result.adjustedYokeRows?.isApproximately(40) == true)
+        #expect(result.adjustedBodyRows?.isApproximately(100) == true)
+        #expect(result.adjustedSleeveRows?.isApproximately(90) == true)
+        #expect(result.adjustedIncreaseSpacing?.isApproximately(5) == true)
+        #expect(result.adjustedSleeveLength.map(GaugeMath.fmtCm) == "45.0")
         #expect(result.adjustedIncreaseSpacing.map(GaugeMath.fmtRows) == 5)
     }
 
     @Test func scenario4DenserStitchesOnly() {
         let result = GaugeMath.compute(withGauge(yourStitches: 36, yourRows: 24))
-        expect(result, stitchWidthScale: 32.0 / 36.0, rowCountScale: 1, dimensionScale: 1, yoke: 20, body: 50, sleeve: 45, increases: 6, castOn: 144)
+        expect(
+            result, stitchWidthScale: 32.0 / 36.0, rowCountScale: 1,
+            yoke: 20, body: 50, sleeve: 45, increases: 6, castOn: 144
+        )
+        #expect(result.adjustedYokeDepth == 20)
+        #expect(result.adjustedBodyLength == 50)
+        #expect(result.adjustedSleeveLength == 45)
+        #expect(result.adjustedYokeRows?.isApproximately(48) == true)
+        #expect(result.adjustedBodyRows?.isApproximately(120) == true)
+        #expect(result.adjustedSleeveRows?.isApproximately(108) == true)
+        #expect(result.adjustedIncreaseSpacing?.isApproximately(6) == true)
         #expect(GaugeMath.fmtPct(result.stitchWidthScale) == 89)
     }
 
     @Test func scenario5LooserStitchesHisahashisakaCase() {
         let result = GaugeMath.compute(withGauge(yourStitches: 28, yourRows: 24))
-        expect(result, stitchWidthScale: 32.0 / 28.0, rowCountScale: 1, dimensionScale: 1, yoke: 20, body: 50, sleeve: 45, increases: 6, castOn: 112)
+        expect(
+            result, stitchWidthScale: 32.0 / 28.0, rowCountScale: 1,
+            yoke: 20, body: 50, sleeve: 45, increases: 6, castOn: 112
+        )
+        #expect(result.adjustedYokeDepth == 20)
+        #expect(result.adjustedBodyLength == 50)
+        #expect(result.adjustedSleeveLength == 45)
+        #expect(result.adjustedYokeRows?.isApproximately(48) == true)
+        #expect(result.adjustedBodyRows?.isApproximately(120) == true)
+        #expect(result.adjustedSleeveRows?.isApproximately(108) == true)
+        #expect(result.adjustedIncreaseSpacing?.isApproximately(6) == true)
         #expect(GaugeMath.fmtPct(result.stitchWidthScale) == 114)
     }
 
     @Test func scenario6BothDenser() {
         let result = GaugeMath.compute(withGauge(yourStitches: 36, yourRows: 32))
-        expect(result, stitchWidthScale: 32.0 / 36.0, rowCountScale: 32.0 / 24.0, dimensionScale: 24.0 / 32.0, yoke: 15, body: 37.5, sleeve: 33.75, increases: 8, castOn: 144)
+        expect(
+            result, stitchWidthScale: 32.0 / 36.0, rowCountScale: 32.0 / 24.0,
+            yoke: 20, body: 50, sleeve: 45, increases: 8, castOn: 144
+        )
+        #expect(result.adjustedYokeDepth == 20)
+        #expect(result.adjustedBodyLength == 50)
+        #expect(result.adjustedSleeveLength == 45)
+        #expect(result.adjustedYokeRows?.isApproximately(64) == true)
+        #expect(result.adjustedBodyRows?.isApproximately(160) == true)
+        #expect(result.adjustedSleeveRows?.isApproximately(144) == true)
+        #expect(result.adjustedIncreaseSpacing?.isApproximately(8) == true)
         #expect(result.adjustedIncreaseSpacing.map(GaugeMath.fmtRows) == 8)
     }
 
@@ -318,26 +377,39 @@ struct GaugeMathTests {
 
     // MARK: - Formula guardrails from .squad/decisions.md
 
-    /// yr = 2 × pr: cm dimensions halve; increase-row guidance doubles.
+    /// yr = 2 × pr: cm dimensions stay unchanged; section rows and increase-row guidance double.
     @Test func edgeVeryLargeDriftDenserRows() {
         let result = GaugeMath.compute(withGauge(yourStitches: 32, yourRows: 48))
-        #expect(result.dimensionScale.isApproximately(0.5))
         #expect(result.rowCountScale.isApproximately(2.0))
-        #expect(result.adjustedYokeDepth.map(GaugeMath.fmtCm) == "10.0")
-        #expect(result.adjustedBodyLength.map(GaugeMath.fmtCm) == "25.0")
-        #expect(result.adjustedYokeRows.map(GaugeMath.fmtRows) == 48)
+        #expect(result.adjustedYokeDepth.map(GaugeMath.fmtCm) == "20.0")
+        #expect(result.adjustedBodyLength.map(GaugeMath.fmtCm) == "50.0")
+        #expect(result.adjustedYokeRows.map(GaugeMath.fmtRows) == 96)
         #expect(result.adjustedIncreaseSpacing.map(GaugeMath.fmtRows) == 12)
     }
 
-    /// yr = pr / 2: cm dimensions double; increase-row guidance halves.
+    /// yr = pr / 2: cm dimensions stay unchanged; section rows and increase-row guidance halve.
     @Test func edgeVeryLargeDriftLooserRows() {
         let result = GaugeMath.compute(withGauge(yourStitches: 32, yourRows: 12))
-        #expect(result.dimensionScale.isApproximately(2.0))
         #expect(result.rowCountScale.isApproximately(0.5))
-        #expect(result.adjustedYokeDepth.map(GaugeMath.fmtCm) == "40.0")
-        #expect(result.adjustedBodyLength.map(GaugeMath.fmtCm) == "100.0")
-        #expect(result.adjustedYokeRows.map(GaugeMath.fmtRows) == 48)
+        #expect(result.adjustedYokeDepth.map(GaugeMath.fmtCm) == "20.0")
+        #expect(result.adjustedBodyLength.map(GaugeMath.fmtCm) == "50.0")
+        #expect(result.adjustedYokeRows.map(GaugeMath.fmtRows) == 24)
         #expect(result.adjustedIncreaseSpacing.map(GaugeMath.fmtRows) == 3)
+    }
+
+    /// Issue #158 anchors: 20 cm → 64 rows at 32 rows/10cm; 40 rows at 20 rows/10cm.
+    @Test func rowGaugeRowCountsTableAnchor() {
+        let cases: [(yr: Double, yokeRows: Int, bodyRows: Int)] = [
+            (32, 64, 160),  // denser:  20×32/10=64, 50×32/10=160
+            (20, 40, 100),  // looser:  20×20/10=40, 50×20/10=100
+            (24, 48, 120),  // match:   20×24/10=48, 50×24/10=120
+        ]
+        for (yr, yokeRows, bodyRows) in cases {
+            let result = GaugeMath.compute(withGauge(yourStitches: 32, yourRows: yr))
+            #expect(result.adjustedYokeDepth == 20.0, "yr=\(Int(yr)) cm unchanged")
+            #expect(result.adjustedYokeRows.map(GaugeMath.fmtRows) == yokeRows, "yr=\(Int(yr)) yoke rows")
+            #expect(result.adjustedBodyRows.map(GaugeMath.fmtRows) == bodyRows, "yr=\(Int(yr)) body rows")
+        }
     }
 
     /// Perfect-match gauge: no floating-point drift — results must be exactly the pattern values.
@@ -355,7 +427,7 @@ struct GaugeMathTests {
         #expect(result.adjustedIncreaseSpacing == 6.0)
     }
 
-    /// Non-power-of-2 gauge values, stitch and row match: dimScale must be exactly 1.0.
+    /// Non-power-of-2 matched gauges leave physical dimensions exactly unchanged.
     @Test func floatPrecisionArbitraryMatchedGauge() {
         let result = GaugeMath.compute(GaugeInputs(
             patternStitches: 30, patternRows: 22,
@@ -364,7 +436,6 @@ struct GaugeMathTests {
             patternSleeveLength: 41.0, patternIncreaseSpacing: 7,
             patternCastOn: 120
         ))
-        #expect(result.dimensionScale == 1.0)
         #expect(result.adjustedYokeDepth == 18.5)
         #expect(result.adjustedBodyLength == 52.3)
         #expect(result.adjustedIncreaseSpacing == 7.0)
@@ -442,11 +513,11 @@ struct GaugeMathTests {
         )
         #expect(summary.sections.map(\.name) == ["Yoke depth", "Body length", "Sleeve length", "Increase-row spacing"])
         #expect(summary.sections[0].pattern == "20 cm / 48 rows")
-        #expect(summary.sections[0].adjusted == "15 cm / 48 rows")
+        #expect(summary.sections[0].adjusted == "20 cm / 64 rows")
         #expect(summary.sections[1].pattern == "50 cm / 120 rows")
-        #expect(summary.sections[1].adjusted == "37.5 cm / 120 rows")
+        #expect(summary.sections[1].adjusted == "50 cm / 160 rows")
         #expect(summary.sections[2].pattern == "45 cm / 108 rows")
-        #expect(summary.sections[2].adjusted == "33.8 cm / 108 rows")
+        #expect(summary.sections[2].adjusted == "45 cm / 144 rows")
     }
 
     @Test func shareTextFormatterIncludesCurrentGaugeAndGuidanceAsFallback() {
@@ -467,10 +538,10 @@ struct GaugeMathTests {
                     "reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
             )
         )
-        #expect(summary.contains("• Yoke depth: 20 cm / 48 rows → 15 cm / 48 rows"))
-        #expect(summary.contains("• Body length: 50 cm / 120 rows → 37.5 cm / 120 rows"))
-        #expect(summary.contains("• Sleeve length: 45 cm / 108 rows → 33.8 cm / 108 rows"))
-        #expect(!summary.contains("64 rows"))
+        #expect(summary.contains("• Yoke depth: 20 cm / 48 rows → 20 cm / 64 rows"))
+        #expect(summary.contains("• Body length: 50 cm / 120 rows → 50 cm / 160 rows"))
+        #expect(summary.contains("• Sleeve length: 45 cm / 108 rows → 45 cm / 144 rows"))
+        #expect(summary.contains("64 rows"))
         #expect(summary.contains("• Increase-row spacing: space every 8 rows/rounds (pattern every 6 rows)"))
     }
 
@@ -485,12 +556,12 @@ struct GaugeMathTests {
         #expect(first == second)
         #expect(first.contains("Stitchwise"))
         #expect(first.contains("Section row/round guidance"))
-        #expect(first.contains("• Body length: 50 cm / 120 rows → 37.5 cm / 120 rows"))
+        #expect(first.contains("• Body length: 50 cm / 120 rows → 50 cm / 160 rows"))
         #expect(!first.contains("<table>"))
         #expect(!first.contains("| Section |"))
     }
 
-    @Test func sectionGuidanceAdjustsDepthAndPreservesPatternRows() {
+    @Test func sectionGuidancePreservesDepthAndAdaptsRowCount() {
         let inputs = GaugeInputs(
             patternStitches: 32, patternRows: 24, yourStitches: 32, yourRows: 32,
             patternYokeDepth: 20, patternBodyLength: 50, patternSleeveLength: 45,
@@ -500,20 +571,20 @@ struct GaugeMathTests {
         let export = ResultsExportSummary(inputs: inputs, result: result)
         let share = ResultsShareTextFormatter.string(inputs: inputs, result: result)
 
-        #expect(result.adjustedYokeDepth?.isApproximately(15) == true)
-        #expect(result.adjustedBodyLength?.isApproximately(37.5) == true)
-        #expect(result.adjustedSleeveLength?.isApproximately(33.75) == true)
-        #expect(result.adjustedYokeRows == result.patternYokeRows)
-        #expect(result.adjustedBodyRows == result.patternBodyRows)
-        #expect(result.adjustedSleeveRows == result.patternSleeveRows)
+        #expect(result.adjustedYokeDepth?.isApproximately(20) == true)
+        #expect(result.adjustedBodyLength?.isApproximately(50) == true)
+        #expect(result.adjustedSleeveLength?.isApproximately(45) == true)
+        #expect(result.adjustedYokeRows?.isApproximately(64) == true)
+        #expect(result.adjustedBodyRows?.isApproximately(160) == true)
+        #expect(result.adjustedSleeveRows?.isApproximately(144) == true)
         #expect(export.sections[0].pattern == "20 cm / 48 rows")
-        #expect(export.sections[0].adjusted == "15 cm / 48 rows")
-        #expect(export.sections[1].adjusted == "37.5 cm / 120 rows")
-        #expect(export.sections[2].adjusted == "33.8 cm / 108 rows")
-        #expect(share.contains("• Yoke depth: 20 cm / 48 rows → 15 cm / 48 rows"))
-        #expect(share.contains("• Body length: 50 cm / 120 rows → 37.5 cm / 120 rows"))
-        #expect(share.contains("• Sleeve length: 45 cm / 108 rows → 33.8 cm / 108 rows"))
-        #expect(!share.contains("64 rows"))
+        #expect(export.sections[0].adjusted == "20 cm / 64 rows")
+        #expect(export.sections[1].adjusted == "50 cm / 160 rows")
+        #expect(export.sections[2].adjusted == "45 cm / 144 rows")
+        #expect(share.contains("• Yoke depth: 20 cm / 48 rows → 20 cm / 64 rows"))
+        #expect(share.contains("• Body length: 50 cm / 120 rows → 50 cm / 160 rows"))
+        #expect(share.contains("• Sleeve length: 45 cm / 108 rows → 45 cm / 144 rows"))
+        #expect(share.contains("64 rows"))
     }
 
     @Test func optionalOutputMatrixOmitsIrrelevantExportAndShareSections() {
@@ -931,7 +1002,6 @@ struct GaugeMathTests {
         _ result: GaugeMathResult,
         stitchWidthScale: Double,
         rowCountScale: Double,
-        dimensionScale: Double,
         yoke: Double,
         body: Double,
         sleeve: Double,
@@ -940,7 +1010,6 @@ struct GaugeMathTests {
     ) {
         #expect(result.stitchWidthScale.isApproximately(stitchWidthScale))
         #expect(result.rowCountScale.isApproximately(rowCountScale))
-        #expect(result.dimensionScale.isApproximately(dimensionScale))
         #expect(result.adjustedYokeDepth?.isApproximately(yoke) == true)
         #expect(result.adjustedBodyLength?.isApproximately(body) == true)
         #expect(result.adjustedSleeveLength?.isApproximately(sleeve) == true)

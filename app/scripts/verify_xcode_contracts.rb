@@ -143,6 +143,7 @@ def validate_coverage_report(report, root, expected_paths)
   extra = records.keys - expected
   raise ContractError, "missing coverage files: #{missing.join(", ")}" if missing.any?
   raise ContractError, "unexpected coverage files: #{extra.join(", ")}" if extra.any?
+  raise ContractError, "production coverage must contain executable lines" if target_executable.zero?
 
   failures = []
   if target_covered != target_executable
@@ -154,7 +155,7 @@ def validate_coverage_report(report, root, expected_paths)
   end
   raise ContractError, failures.join("; ") if failures.any?
 
-  true
+  [target_covered, target_executable]
 end
 
 def validate_coverage_json(json, root, expected_paths)
@@ -174,13 +175,14 @@ def verify_coverage(result_bundle_path, root, expected_paths, runner: Open3.meth
     "--json",
     result_bundle_path
   )
+  detail = error.to_s.strip
   unless status.success?
-    detail = error.to_s.strip
     raise ContractError, ["xccov failed", detail].reject(&:empty?).join(": ")
   end
+  raise ContractError, "xccov emitted diagnostics: #{detail}" unless detail.empty?
 
-  validate_coverage_json(output, root, expected_paths)
-  puts "Coverage contracts: #{PRODUCTION_COVERAGE_TARGET} and #{expected_paths.length} production files are fully covered"
+  covered, executable = validate_coverage_json(output, root, expected_paths)
+  puts "Coverage contracts: #{PRODUCTION_COVERAGE_TARGET} covered #{covered}/#{executable} executable lines (100.00%) across #{expected_paths.length} production files"
 end
 
 def expect_contract_rejection(name, pattern)
@@ -300,6 +302,14 @@ def assert_coverage_regression_fixtures
     ["executable aggregate mismatch", /counts do not match its file sums/, changed.call do |report|
       target.call(report)["executableLines"] = 4
     end],
+    ["zero executable production coverage", /must contain executable lines/, changed.call do |report|
+      target.call(report)["coveredLines"] = 0
+      target.call(report)["executableLines"] = 0
+      target.call(report)["files"].each do |record|
+        record["coveredLines"] = 0
+        record["executableLines"] = 0
+      end
+    end],
     ["consistent uncovered", /target .*A\.swift has 1 uncovered production lines/, changed.call do |report|
       target.call(report)["coveredLines"] = 2
       file.call(report)["coveredLines"] = 0
@@ -377,6 +387,14 @@ def assert_coverage_regression_fixtures
       root,
       expected,
       runner: lambda { |*| ["", "fixture failure", failed_status] }
+    )
+  end
+  expect_contract_rejection("successful command diagnostics", /xccov emitted diagnostics: fixture warning/) do
+    verify_coverage(
+      "fixture.xcresult",
+      root,
+      expected,
+      runner: lambda { |*| [valid_json, "fixture warning", success_status] }
     )
   end
 end

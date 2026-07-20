@@ -1,5 +1,9 @@
 import SwiftUI
 
+private final class AppResourceBundleToken {}
+
+private let appResourceBundle = Bundle(for: AppResourceBundleToken.self)
+
 // MARK: - AppTheme
 
 enum AppTheme {
@@ -32,29 +36,32 @@ enum AppTheme {
         ),
     ]
 
-    static let background       = Color("app-theme-background")
-    static let card             = Color("app-theme-card")
-    static let oatmeal          = Color("app-theme-oatmeal")
-    static let accentSoft       = Color("app-theme-accent-soft")
-    static let ink              = Color("app-theme-ink")
-    static let muted            = Color("app-theme-muted")
-    static let outline          = Color("app-theme-outline")
-    static let sage             = Color("app-theme-sage")
-    static let secondary        = Color("app-theme-secondary")
-    static let terracotta       = Color("app-theme-terracotta")
-    static let warningText      = Color("app-theme-warning-text")
-    static let warningBackground = Color("app-theme-warning-background")
-    static let warningAccent    = Color("app-theme-warning-accent")
+    static let background       = Color("app-theme-background", bundle: appResourceBundle)
+    static let card             = Color("app-theme-card", bundle: appResourceBundle)
+    static let oatmeal          = Color("app-theme-oatmeal", bundle: appResourceBundle)
+    static let accentSoft       = Color("app-theme-accent-soft", bundle: appResourceBundle)
+    static let ink              = Color("app-theme-ink", bundle: appResourceBundle)
+    static let muted            = Color("app-theme-muted", bundle: appResourceBundle)
+    static let outline          = Color("app-theme-outline", bundle: appResourceBundle)
+    static let sage             = Color("app-theme-sage", bundle: appResourceBundle)
+    static let secondary        = Color("app-theme-secondary", bundle: appResourceBundle)
+    static let terracotta       = Color("app-theme-terracotta", bundle: appResourceBundle)
+    static let warningText      = Color("app-theme-warning-text", bundle: appResourceBundle)
+    static let warningBackground = Color("app-theme-warning-background", bundle: appResourceBundle)
+    static let warningAccent    = Color("app-theme-warning-accent", bundle: appResourceBundle)
     /// Red for inline gauge mismatch indicators. Semantically "this IS different
     /// from the pattern" — distinct from warningText (warm amber, "might be wrong").
-    static let mismatchText     = Color("app-theme-mismatch-text")
+    static let mismatchText     = Color("app-theme-mismatch-text", bundle: appResourceBundle)
     /// Cream text for use on dark backgrounds (e.g. the Calculate CTA button).
-    static let cream            = Color("app-theme-cream")
+    static let cream            = Color("app-theme-cream", bundle: appResourceBundle)
     static let deltaPill        = ink
     /// Dot color for the TexturedBackground canvas. Alpha baked into Color Set
     /// (0.30 light / 0.10 dark) — gives the subtle cross-stitch fabric look
     /// without visual noise, and recedes further on dark surfaces.
-    static let surfaceTextureDot = Color("app-theme-surface-texture-dot")
+    static let surfaceTextureDot = Color(
+        "app-theme-surface-texture-dot",
+        bundle: appResourceBundle
+    )
 }
 
 // MARK: - cardStyle

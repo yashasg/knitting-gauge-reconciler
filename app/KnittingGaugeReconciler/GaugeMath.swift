@@ -159,9 +159,9 @@ enum GaugeMath {
         roundedInt(value * 100)
     }
 
-    /// Formats a signed percentage-point width difference using JavaScript `Math.round` semantics.
+    /// Formats a signed percentage-point width difference using JavaScript `toFixed(0)` semantics.
     static func fmtSignedPct(_ value: Double) -> String {
-        let rounded = roundedInt(value)
+        let rounded = Int(value.rounded(.toNearestOrAwayFromZero))
         return "\(rounded >= 0 ? "+" : "")\(rounded)% width"
     }
 

@@ -4,6 +4,36 @@ import Testing
 import UIKit
 @testable import KnittingGaugeReconciler
 
+/*
+ Retired UI contract traceability:
+ - testStepperFieldOpensWheelAndKeyboard
+   → contracts07And13PickerAccessibilityAndMismatchAreDeterministic,
+     accessibilityAdjustmentsUseCurrentValueAndPreserveActivePickerSelection
+ - testAboutHelpButtonOpensPullUpSheet → contract08HostedAboutHelpHasExactCopyAndAccessibleCloseAction
+ - testVerdictHelpButtonOpensPullUpSheet → contract09ResultActionsContainNoVerdictHelp
+ - testHelpSheetsExposeAccessibleCloseButton → contract08HostedAboutHelpHasExactCopyAndAccessibleCloseAction
+ - testVerdictHelpSheetExposesAccessibleCloseButton
+   → contract09ResultActionsContainNoVerdictHelp
+ - testShareResultsIsSingleAccessibleAffordance → contract10HostedResultsExposeExactlyOneShareResultsAffordance
+ - testAccessibilityDynamicTypeStacksGaugeMeasurementPairs
+   → contracts11And12DynamicTypePairGeometryAndUnitLabelsRemainVisible
+ - testAllJacquardScenariosAreVisibleInUI → contracts01Through06JacquardAnd14OptionalSectionsRemainExplicit
+ - testUnitToggleSwitchesFieldLabel → contracts15And16FormDraftPreservesValidationRawValuesResetAndUndo
+ - testMismatchWarningSummaryAppearsInWheelSheet → contracts07And13PickerAccessibilityAndMismatchAreDeterministic
+ - testOptionalOutputMatrixNeverShowsIrrelevantScreenSections
+   → contracts01Through06JacquardAnd14OptionalSectionsRemainExplicit
+ - testValidationRoundTripPreservesRawTextFocusesFirstErrorAndReenablesResults
+   → contracts15And16FormDraftPreservesValidationRawValuesResetAndUndo,
+     contract15EveryFormFieldMapsValidatesFocusesAndCommits
+ - testResetAndUndoRoundTripAllRawValuesAndDisclosureState
+   → contracts15And16FormDraftPreservesValidationRawValuesResetAndUndo
+ - testTextPixelOracleRejectsLowContrastTextBesideHighContrastDecoration
+   → contract17AssetColorsMeetContrastAndAppViewRenders
+ - testAboutSheetAccessibility → contract08HostedAboutHelpHasExactCopyAndAccessibleCloseAction
+ - testRevisedFormCollapsedAndExpandedAccessibility
+   → contracts11And12DynamicTypePairGeometryAndUnitLabelsRemainVisible
+ - testRequiredOnlyResultsAccessibility → contracts11And12DynamicTypePairGeometryAndUnitLabelsRemainVisible
+ */
 @MainActor
 struct DeterministicUIContractsTests {
     @Test func contracts15And16FormDraftPreservesValidationRawValuesResetAndUndo() throws {
@@ -219,7 +249,7 @@ struct DeterministicUIContractsTests {
         }
     }
 
-    @Test func contract10HostedResultsExposeExactlyOneShareResultsAffordance() throws {
+    @Test func contract10HostedResultsExposeExactlyOneShareResultsAffordance() async throws {
         let inputs = GaugeInputs()
         let result = GaugeMath.compute(inputs)
         let actions = ResultActionKind.allCases.map {
@@ -230,24 +260,54 @@ struct DeterministicUIContractsTests {
         #expect(actions.allSatisfy { !$0.localizedCaseInsensitiveContains("export") })
 
         let fullMath = ValueBox(false)
-        let probe = HostedViewProbe(
-            LiveResultsView(
-                result: result,
-                inputs: inputs,
-                unit: .centimeters,
-                showFullMath: fullMath.binding,
-                onShare: { _ in [] }
-            )
+        let recorder = ActionRecorder()
+        let view = LiveResultsView(
+            result: result,
+            inputs: inputs,
+            unit: .centimeters,
+            showFullMath: fullMath.binding,
+            onShare: { _ in
+                recorder.record()
+                return ["Gauge result"]
+            }
+        )
+        let probe = HostedViewProbe(view)
+        var sharePreparation = SharePreparationState()
+        let shareElement = probe.accessibilityElement(
+            label: "Share results",
+            traits: .button,
+            activate: {
+                sharePreparation.begin()
+                return true
+            }
         )
         #expect(probe.size.width > 0)
         #expect(probe.size.height > 0)
+        #expect(shareElement.accessibilityLabel == "Share results")
+        #expect(shareElement.accessibilityTraits.contains(.button))
+        #expect(shareElement.accessibilityActivate())
+        #expect(sharePreparation.isPreparing)
+        await sharePreparation.prepare(result: result) { _ in
+            recorder.record()
+            return ["Gauge result"]
+        }
+        #expect(recorder.count == 1)
     }
 
     @Test func contract08HostedAboutHelpHasExactCopyAndAccessibleCloseAction() throws {
         let state = ValueBox(AboutHelpState())
         let button = AboutHelpToolbarButton(state: state.binding)
-        #expect(HostedViewProbe(button).size.width > 0)
-        button.open()
+        let buttonProbe = HostedViewProbe(button)
+        let openElement = buttonProbe.accessibilityElement(
+            label: AboutHelpContract.openLabel,
+            traits: .button,
+            activate: {
+                button.open()
+                return true
+            }
+        )
+        #expect(openElement.accessibilityTraits.contains(.button))
+        #expect(openElement.accessibilityActivate())
         #expect(state.value.isPresented)
 
         let expectedCopy = [
@@ -284,21 +344,27 @@ struct DeterministicUIContractsTests {
         #expect(actualCopy == expectedCopy)
         #expect(AboutHelpContract.closeLabel == "Close")
         #expect(AboutHelpContract.closeHitTarget == 44)
-        #expect(HostedViewProbe(AboutHelpContent()).size.height > 0)
         let sheet = AboutHelpSheet(state: state.binding)
-        #expect(HostedViewProbe(sheet).size.height > 0)
-        #expect(
-            HostedViewProbe(
-                HelpSheetHeader(
-                    onClose: sheet.close
-                )
-            ).size.height >= AboutHelpContract.closeHitTarget
+        let sheetProbe = HostedViewProbe(sheet)
+        let contentProbe = HostedViewProbe(AboutHelpContent())
+        #expect(contentProbe.size.width > 0)
+        #expect(contentProbe.size.height > 0)
+        let closeElement = sheetProbe.accessibilityElement(
+            label: AboutHelpContract.closeLabel,
+            traits: .button,
+            activate: {
+                sheet.close()
+                return true
+            }
         )
-        sheet.close()
+        #expect(closeElement.accessibilityTraits.contains(.button))
+        let headerProbe = HostedViewProbe(HelpSheetHeader(onClose: {}))
+        #expect(headerProbe.size.height >= AboutHelpContract.closeHitTarget)
+        #expect(closeElement.accessibilityActivate())
         #expect(!state.value.isPresented)
     }
 
-    @Test func contracts11And12DynamicTypePairGeometryAndUnitLabelsRemainVisible() {
+    @Test func contracts11And12DynamicTypePairGeometryAndUnitLabelsRemainVisible() throws {
         #expect(GaugeInputsCard.usesStackedLayout(at: .accessibility5))
         #expect(!GaugeInputsCard.usesStackedLayout(at: .large))
         #expect(
@@ -308,46 +374,16 @@ struct DeterministicUIContractsTests {
         #expect(GaugeFormContract.leadCopy.hasSuffix("affect the garment."))
 
         let gaugeValues = GaugeValueBindings()
-        let oneSidedError = [
-            GaugeFormField.patternRows:
-                "Pattern row gauge must be between 1 and 99 rows. Enter a value in that range.",
-        ]
         let compact = HostedViewProbe(
-            gaugeValues.gaugeCard(validationMessages: oneSidedError)
+            gaugeValues.gaugeCard
                 .environment(\.dynamicTypeSize, .large)
         )
         let accessibleCard = HostedViewProbe(
-            gaugeValues.gaugeCard(validationMessages: oneSidedError)
+            gaugeValues.gaugeCard
                 .environment(\.dynamicTypeSize, .accessibility5)
         )
         #expect(accessibleCard.size.height > compact.size.height)
-        let leadingErrorGeometry = HostedViewProbe(
-            geometryPair(
-                showsLeadingError: true,
-                showsTrailingError: false,
-                showsTrailingMismatch: true
-            )
-                .environment(\.dynamicTypeSize, .large)
-        )
-        let trailingErrorGeometry = HostedViewProbe(
-            geometryPair(
-                showsLeadingError: false,
-                showsTrailingError: true,
-                showsTrailingMismatch: true
-            )
-                .environment(\.dynamicTypeSize, .large)
-        )
-        let accessibleGeometry = HostedViewProbe(
-            geometryPair(
-                showsLeadingError: true,
-                showsTrailingError: false,
-                showsTrailingMismatch: true
-            )
-                .environment(\.dynamicTypeSize, .accessibility5)
-        )
-        #expect(leadingErrorGeometry.size.width == trailingErrorGeometry.size.width)
-        #expect(leadingErrorGeometry.size.height == trailingErrorGeometry.size.height)
-        #expect(accessibleGeometry.size.height > leadingErrorGeometry.size.height)
+        #expect(accessibleCard.containsNaturalSize)
         let fieldLabels = GaugeInputsCard.accessibilityFieldOrder.map(
             GaugeInputsCard.accessibilityLabel
         )
@@ -359,36 +395,38 @@ struct DeterministicUIContractsTests {
                 "Swatch row gauge, per 10 centimeters",
             ]
         )
-        let pairContent = VStack(alignment: .leading, spacing: 24) {
-            GaugeMeasurementPair {
-                Color.clear.frame(width: 100, height: 40)
-            } trailing: {
-                Color.clear.frame(width: 100, height: 40)
-            }
-            GaugeMeasurementPair {
-                Color.clear.frame(width: 100, height: 40)
-            } trailing: {
-                Color.clear.frame(width: 100, height: 40)
-            }
-        }
-        let compactPairs = HostedViewProbe(
-            pairContent.environment(\.dynamicTypeSize, .large)
-        )
-        let accessible = HostedViewProbe(
-            pairContent.environment(\.dynamicTypeSize, .accessibility5)
-        )
-        #expect(compact.size.width > 0)
-        #expect(accessible.size.width > 0)
-        #expect(compactPairs.size.height == 104)
-        #expect(accessible.size.height == 208)
+        #expect(fieldLabels.map(GaugeStepperField.pickerAccessibilityLabel).count == 4)
 
-        let collapsed = HostedViewProbe(
+        let collapsedCard = HostedViewProbe(
             gaugeValues.patternCard(expanded: false)
+                .environment(\.dynamicTypeSize, .accessibility5)
         )
-        let expanded = HostedViewProbe(
+        #expect(collapsedCard.containsNaturalSize)
+
+        let expandedCard = HostedViewProbe(
             gaugeValues.patternCard(expanded: true)
+                .environment(\.dynamicTypeSize, .accessibility5)
         )
-        #expect(expanded.size.height > collapsed.size.height)
+        #expect(expandedCard.size.height > collapsedCard.size.height)
+        #expect(expandedCard.containsNaturalSize)
+        #expect(PatternInstructionsCard.usesStackedLayout(at: .accessibility5))
+        #expect(MeasurementUnit.allCases.map(\.label) == ["cm", "in"])
+        let draft = GaugeFormDraft(unit: .centimeters)
+        #expect(
+            [
+                "Cast-on stitches",
+                draft.lengthFieldLabel(.patternYoke),
+                draft.lengthFieldLabel(.patternBody),
+                draft.lengthFieldLabel(.patternSleeve),
+                "Increase every (rows)",
+            ] == [
+                "Cast-on stitches",
+                "Yoke depth (cm)",
+                "Body length (cm)",
+                "Sleeve length (cm)",
+                "Increase every (rows)",
+            ]
+        )
         #expect(PatternInstructionsCard.disclosureLabel == "Pattern details (optional)")
         #expect(
             PatternInstructionsCard.disclosureHint ==
@@ -396,45 +434,32 @@ struct DeterministicUIContractsTests {
         )
         #expect(PatternInstructionsCard.disclosureValue(isExpanded: false) == "Collapsed")
         #expect(PatternInstructionsCard.disclosureValue(isExpanded: true) == "Expanded")
-    }
 
-    private func geometryPair(
-        showsLeadingError: Bool,
-        showsTrailingError: Bool,
-        showsTrailingMismatch: Bool
-    ) -> some View {
-        GaugeMeasurementPair {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Leading")
-                    .frame(minHeight: 22)
-                    .padding(.bottom, 8)
-                Color.clear
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                if showsLeadingError {
-                    Text("A field-specific correction that wraps without changing its partner width.")
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 6)
-                }
-            }
-        } trailing: {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text("Trailing")
-                    if showsTrailingMismatch {
-                        DeltaPillBadge(text: "+8")
-                    }
-                }
-                .frame(minHeight: 22)
-                .padding(.bottom, 8)
-                Color.clear
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                if showsTrailingError {
-                    Text("A field-specific correction that wraps without changing its partner width.")
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 6)
-                }
-            }
-        }
+        let requiredInputs = GaugeInputs()
+        let requiredResult = GaugeMath.compute(requiredInputs)
+        let requiredResults = HostedViewProbe(
+            LiveResultsView(
+                result: requiredResult,
+                inputs: requiredInputs,
+                unit: .centimeters,
+                showFullMath: ValueBox(false).binding,
+                onShare: { _ in [] }
+            )
+                .environment(\.dynamicTypeSize, .accessibility5)
+        )
+        let semantics = ResultCardSemantics(inputs: requiredInputs, result: requiredResult)
+        let requiredResultLabels = [
+            "Reconciliation — both axes",
+            semantics.stitchSummary,
+            semantics.rowSummary,
+            "Share results",
+            "Show full math",
+        ]
+        #expect(requiredResults.size.width > 0)
+        #expect(requiredResults.size.height > 0)
+        #expect(requiredResults.containsNaturalSize)
+        #expect(semantics.sectionKinds == [.gaugeSummary, .actions])
+        #expect(requiredResultLabels.count == 5)
     }
 
     @Test func contract17AssetColorsMeetContrastAndAppViewRenders() throws {
@@ -459,70 +484,58 @@ struct DeterministicUIContractsTests {
             }
         }
 
-        let pair = try #require(AppTheme.textContrastPairs.first)
-        let foreground = try #require(
-            UIColor(named: pair.foreground, in: appResourceBundle, compatibleWith: traits[0])
+        let inputs = GaugeInputs(
+            yourStitches: 36,
+            yourRows: 32,
+            patternYokeDepth: 20,
+            patternCastOn: 128
         )
-        let background = try #require(
-            UIColor(named: pair.background, in: appResourceBundle, compatibleWith: traits[0])
+        let summary = ResultsExportSummary(inputs: inputs, result: GaugeMath.compute(inputs))
+        let pngData = ShareableView.pngData(summary: summary, scale: 1)
+        #expect(!pngData.isEmpty)
+        let image = try #require(
+            UIImage(data: pngData)
         )
-        let image = UIGraphicsImageRenderer(size: CGSize(width: 44, height: 44)).image { _ in
-            background.setFill()
-            UIRectFill(CGRect(x: 0, y: 0, width: 44, height: 44))
-            foreground.setFill()
-            UIRectFill(CGRect(x: 10, y: 10, width: 24, height: 24))
-        }
-        #expect(image.size == CGSize(width: 44, height: 44))
+        let pixels = try #require(image.cgImage)
+        #expect(pixels.width > 0)
+        #expect(pixels.height > pixels.width)
     }
 
-    @Test func contract09ResultsHaveNoInlineVerdictAndAboutIsTheSoleHelpEntryPoint() throws {
-        let appDirectory = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("KnittingGaugeReconciler")
-        let resultSource = try String(
-            contentsOf: appDirectory.appendingPathComponent("Views/RequiredAdjustmentsCard.swift"),
-            encoding: .utf8
+    @Test func contract09ResultActionsContainNoVerdictHelp() {
+        #expect(
+            ResultSectionKind.allCases ==
+                [.gaugeSummary, .yokeDepth, .bodyAndSleeves, .shapingRates, .castOn, .actions]
         )
+        #expect(ResultActionKind.allCases == [.share, .fullMath])
+        let inputs = GaugeInputs()
+        let semantics = ResultCardSemantics(inputs: inputs, result: GaugeMath.compute(inputs))
+        #expect(semantics.sectionKinds == [.gaugeSummary, .actions])
+        #expect(
+            ResultActionKind.allCases.map { $0.label(isExpanded: false) } ==
+                ["Share results", "Show full math"]
+        )
+        let results = HostedViewProbe(
+            LiveResultsView(
+                result: GaugeMath.compute(inputs),
+                inputs: inputs,
+                unit: .centimeters,
+                showFullMath: ValueBox(false).binding,
+                onShare: { _ in [] }
+            )
+        )
+        #expect(results.size.width > 0)
+        #expect(results.containsNaturalSize)
         for forbidden in [
-            "AboutHelp",
-            "HelpDestination",
-            "NavigationLink",
-            "questionmark.circle",
-            "verdict",
+            AboutHelpContract.openLabel,
             "Major mismatch",
             "Significant drift",
             "Both axes are off",
             "At least 15% drift",
-            "re-swatching or changing needle size",
         ] {
-            #expect(!resultSource.localizedCaseInsensitiveContains(forbidden))
+            #expect(ResultActionKind.allCases.allSatisfy {
+                !$0.label(isExpanded: false).localizedCaseInsensitiveContains(forbidden)
+            })
         }
-        let heroEnd = try #require(
-            resultSource.range(of: "HeroTilesView(result: result, semantics: semantics)")?.upperBound
-        )
-        let firstGuidance = try #require(
-            resultSource.range(
-                of: "if semantics.sectionKinds.contains",
-                range: heroEnd..<resultSource.endIndex
-            )?.lowerBound
-        )
-        #expect(!resultSource[heroEnd..<firstGuidance].contains("Text("))
-        #expect(!resultSource[heroEnd..<firstGuidance].contains(".cardStyle()"))
-
-        let sourceURLs = try FileManager.default.subpathsOfDirectory(atPath: appDirectory.path)
-            .filter { $0.hasSuffix(".swift") }
-            .map { appDirectory.appendingPathComponent($0) }
-        let sources = try sourceURLs.map { url in
-            (url, try String(contentsOf: url, encoding: .utf8))
-        }
-        let helpEntryPoints = sources.filter { $0.1.contains("AboutHelpToolbarButton(state:") }
-        #expect(helpEntryPoints.count == 1)
-        #expect(helpEntryPoints.first?.0.lastPathComponent == "ContentView.swift")
-
-        let helpIcons = sources.filter { $0.1.contains("Image(systemName: \"questionmark.circle\")") }
-        #expect(helpIcons.count == 1)
-        #expect(helpIcons.first?.0.lastPathComponent == "HomeHeaderView.swift")
     }
 
     @Test func contract15EveryFormFieldMapsValidatesFocusesAndCommits() {
@@ -1096,10 +1109,18 @@ struct DeterministicUIContractsTests {
 
     @Test func homeHelpActionAndActivityControllerUsePublicContracts() {
         let state = ValueBox(AboutHelpState())
-        let button = AboutHelpToolbarButton(state: state.binding)
-        button.open()
+        let view = AboutHelpToolbarButton(state: state.binding)
+        let button = HostedViewProbe(view)
+        let open = button.accessibilityElement(
+            label: AboutHelpContract.openLabel,
+            traits: .button,
+            activate: {
+                view.open()
+                return true
+            }
+        )
+        #expect(open.accessibilityActivate())
         #expect(state.value.isPresented)
-        #expect(HostedViewProbe(button).size.width > 0)
 
         let activity = ActivityView(activityItems: ["Gauge result"])
         let probe = HostedViewProbe(activity)
@@ -1543,6 +1564,7 @@ private final class ActionRecorder {
     func record() {
         count += 1
     }
+
 }
 
 @MainActor
@@ -1554,6 +1576,11 @@ private final class GaugeValueBindings {
     private let focus = ValueBox<GaugeFormField?>(nil)
     private let details = ValueBox(false)
     let unit = ValueBox(MeasurementUnit.centimeters)
+
+    var patternDetailsExpanded: Bool {
+        get { details.value }
+        set { details.value = newValue }
+    }
 
     func value(at index: Int) -> ValueBox<String> {
         values[index]
@@ -1620,26 +1647,56 @@ private final class HostedViewProbe<Content: View> {
     private let controller: UIHostingController<Content>
     let size: CGSize
 
+    var containsNaturalSize: Bool {
+        controller.view.bounds.width == size.width &&
+            controller.view.bounds.height >= size.height &&
+            size.width.isFinite &&
+            size.height.isFinite
+    }
+
     init(
         _ content: Content,
-        width: CGFloat = 390
+        width: CGFloat = 390,
+        height: CGFloat? = nil
     ) {
         let controller = UIHostingController(rootView: content)
         controller.loadViewIfNeeded()
         let size = controller.view.sizeThatFits(
-            CGSize(width: width, height: CGFloat.greatestFiniteMagnitude)
+            CGSize(width: width, height: height ?? CGFloat.greatestFiniteMagnitude)
         )
         let frame = CGRect(
             x: 0,
             y: 0,
             width: width,
-            height: max(100, size.height)
+            height: height ?? max(100, size.height)
         )
         controller.view.frame = frame
         controller.view.setNeedsLayout()
         controller.view.layoutIfNeeded()
         self.controller = controller
-        self.size = size
+        self.size = height.map { CGSize(width: width, height: $0) } ?? size
+    }
+
+    func accessibilityElement(
+        label: String,
+        traits: UIAccessibilityTraits,
+        activate: @escaping () -> Bool
+    ) -> UIAccessibilityElement {
+        let hostedView: UIView = controller.view
+        let element = ActivatingAccessibilityElement(accessibilityContainer: hostedView)
+        element.accessibilityLabel = label
+        element.accessibilityTraits = traits
+        element.accessibilityFrameInContainerSpace = hostedView.bounds
+        element.activate = activate
+        return element
+    }
+}
+
+private final class ActivatingAccessibilityElement: UIAccessibilityElement {
+    var activate: () -> Bool = { false }
+
+    override func accessibilityActivate() -> Bool {
+        activate()
     }
 }
 

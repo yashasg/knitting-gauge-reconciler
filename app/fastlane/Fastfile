@@ -133,7 +133,8 @@ def verify_test_diagnostics(output_directory)
   sh("xcrun xcresulttool export diagnostics --path #{Shellwords.escape(result_bundle_path)} --output-path #{Shellwords.escape(diagnostics_path)}")
 
   verifier_path = File.expand_path("diagnostics_verifier.rb", __dir__)
-  sh("/usr/bin/ruby #{Shellwords.escape(verifier_path)} #{Shellwords.escape(raw_log_path)} #{Shellwords.escape(diagnostics_path)}")
+  verified = system("/usr/bin/ruby", verifier_path, raw_log_path, diagnostics_path)
+  UI.user_error!("Test diagnostics verification failed") unless verified
 end
 
 
@@ -152,7 +153,7 @@ platform :ios do
 
   desc "Build and test with scheme-defined scope (CI)"
   lane :ci do |options|
-    verify_xcode_contracts
+    source_inventory = verify_xcode_contracts
     swiftlint(
       mode: :lint,
       config_file: "../.swiftlint.yml",
@@ -161,6 +162,11 @@ platform :ios do
     )
     test_options = lane_test_options(options)
     run_tests(**test_options.merge(only_testing: ["KnittingGaugeReconcilerTests"]))
+    verify_coverage(
+      File.expand_path(test_options[:result_bundle_path], __dir__),
+      File.expand_path("../..", __dir__),
+      source_inventory.fetch(APP_TARGET)
+    )
     verify_test_diagnostics(test_options[:output_directory])
   end
 

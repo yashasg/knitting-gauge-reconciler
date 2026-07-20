@@ -39,6 +39,32 @@ struct ResultCardSemantics: Equatable {
     }
 }
 
+struct SharePreparationState {
+    var payload: ShareSheetPayload?
+    var isPreparing = false
+
+    mutating func begin() {
+        guard !isPreparing else { return }
+        isPreparing = true
+    }
+
+    mutating func finish(items: [Any], cancelled: Bool) {
+        if !cancelled {
+            payload = ShareSheetPayload(items: items)
+        }
+        isPreparing = false
+    }
+
+    @MainActor mutating func prepare(
+        result: GaugeMathResult,
+        onShare: (GaugeMathResult) async -> [Any]
+    ) async {
+        guard isPreparing else { return }
+        let items = await onShare(result)
+        finish(items: items, cancelled: Task.isCancelled)
+    }
+}
+
 struct RequiredAdjustmentsCard: View {
     @Binding private var showFullMath: Bool
     @State private var showResetConfirmation = false
@@ -74,6 +100,14 @@ struct RequiredAdjustmentsCard: View {
         self.onShare = onShare
     }
 
+    func requestReset() {
+        showResetConfirmation = true
+    }
+
+    func keepEditing() {
+        showResetConfirmation = false
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let result, let inputs {
@@ -95,9 +129,7 @@ struct RequiredAdjustmentsCard: View {
             }
 
             HStack(alignment: .center, spacing: 16) {
-                Button("Reset values") {
-                    showResetConfirmation = true
-                }
+                Button("Reset values", action: requestReset)
                 .buttonStyle(.plain)
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
@@ -121,7 +153,7 @@ struct RequiredAdjustmentsCard: View {
         }
         .alert("Reset all values?", isPresented: $showResetConfirmation) {
             Button("Reset values", role: .destructive, action: onReset)
-            Button("Keep editing", role: .cancel) {}
+            Button("Keep editing", role: .cancel, action: keepEditing)
         } message: {
             Text("This replaces every entry with the sample gauge values.")
         }
@@ -130,8 +162,7 @@ struct RequiredAdjustmentsCard: View {
 
 // swiftlint:disable:next type_body_length
 struct LiveResultsView: View {
-    @State private var sharePayload: ShareSheetPayload?
-    @State private var isPreparingShare = false
+    @State private var sharePreparation = SharePreparationState()
 
     private let result: GaugeMathResult
     private let inputs: GaugeInputs
@@ -261,20 +292,8 @@ struct LiveResultsView: View {
 
             actionsCard
         }
-        .sheet(item: $sharePayload) { payload in
-            ActivityView(activityItems: payload.items)
-                .presentationDetents([.medium, .large])
-        }
-        .task(id: isPreparingShare) {
-            guard isPreparingShare else { return }
-            let items = await onShare(result)
-            guard !Task.isCancelled else {
-                isPreparingShare = false
-                return
-            }
-            sharePayload = ShareSheetPayload(items: items)
-            isPreparingShare = false
-        }
+        .sheet(item: $sharePreparation.payload, content: activityView)
+        .task(id: sharePreparation.isPreparing, prepareShare)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("adjustment-sheet")
         .accessibilityHidden(false)
@@ -284,7 +303,26 @@ struct LiveResultsView: View {
         ResultCardSemantics(inputs: inputs, result: result)
     }
 
-    private var castOnDriftPill: String? {
+    func activityView(_ payload: ShareSheetPayload) -> some View {
+        ActivityView(activityItems: payload.items)
+            .presentationDetents([.medium, .large])
+    }
+
+    func beginSharing() {
+        sharePreparation.begin()
+    }
+
+    func prepareShare() async {
+        var preparation = sharePreparation
+        await preparation.prepare(result: result, onShare: onShare)
+        sharePreparation = preparation
+    }
+
+    func toggleFullMath() {
+        showFullMath.toggle()
+    }
+
+    var castOnDriftPill: String? {
         guard let drift = result.castOnRoundingDriftPercent, abs(drift) >= 3 else {
             return nil
         }
@@ -318,20 +356,12 @@ struct LiveResultsView: View {
 
     private var actionsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Button {
-                guard !isPreparingShare else { return }
-                isPreparingShare = true
-            } label: {
+            Button(action: beginSharing) {
                 HStack {
                     Text("Share results")
                     Spacer()
-                    if isPreparingShare {
-                        ProgressView()
-                            .tint(AppTheme.sage)
-                    } else {
-                        Image(systemName: "square.and.arrow.up")
-                            .accessibilityHidden(true)
-                    }
+                    Image(systemName: "square.and.arrow.up")
+                        .accessibilityHidden(true)
                 }
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
@@ -339,12 +369,12 @@ struct LiveResultsView: View {
             .buttonStyle(.plain)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(AppTheme.ink)
-            .disabled(isPreparingShare)
+            .disabled(sharePreparation.isPreparing)
             .accessibilityIdentifier("share-results")
             .accessibilityHint("Opens the share sheet with an image of the current results")
 
             Button(
-                action: { showFullMath.toggle() },
+                action: toggleFullMath,
                 label: {
                     HStack {
                         Text(showFullMath ? "Hide full math" : "Show full math")
@@ -377,7 +407,7 @@ struct LiveResultsView: View {
     }
 
     // swiftlint:disable line_length
-    private var fullMathBreakdown: String {
+    var fullMathBreakdown: String {
         var lines = [
             "pattern: \(plain(inputs.patternStitches)) st x \(plain(inputs.patternRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.patternStitches / inputs.patternRows)))",
             "you:     \(plain(inputs.yourStitches)) st x \(plain(inputs.yourRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.yourStitches / inputs.yourRows)))",

@@ -5,6 +5,17 @@ import MetricKit
 import os.signpost
 // Components and Views are in separate files under Components/ and Views/
 
+struct GaugeInputPresentation {
+    let stitchMismatch: Bool
+    let rowMismatch: Bool
+    let stitchDelta: Double?
+    let rowDelta: Double?
+}
+
+private final class ResetSnapshot {
+    var draft: GaugeFormDraft?
+}
+
 // swiftlint:disable:next type_body_length
 struct ContentView: View {
     private static let defaults = GaugeTextDefaults()
@@ -17,37 +28,25 @@ struct ContentView: View {
 
     // MARK: - State
 
-    @SceneStorage("gauge.pattern-stitches")
-    private var patternStitches = initialText("KGR_PS", defaultValue: "32")
-    @SceneStorage("gauge.pattern-rows")
-    private var patternRows = initialText("KGR_PR", defaultValue: "24")
-    @SceneStorage("gauge.swatch-stitches")
-    private var yourStitches = initialText("KGR_YS", defaultValue: "32")
-    @SceneStorage("gauge.swatch-rows")
-    private var yourRows = initialText("KGR_YR", defaultValue: "32")
-    @SceneStorage("gauge.pattern-cast-on")
-    private var patternCastOn = initialText("KGR_CAST_ON", defaultValue: "")
-    @SceneStorage("gauge.pattern-yoke")
-    private var patternYoke = initialText("KGR_YOKE", defaultValue: "")
-    @SceneStorage("gauge.pattern-body")
-    private var patternBody = initialText("KGR_BODY", defaultValue: "")
-    @SceneStorage("gauge.pattern-sleeve")
-    private var patternSleeve = initialText("KGR_SLEEVE", defaultValue: "")
-    @SceneStorage("gauge.pattern-increases")
-    private var patternIncreases = initialText("KGR_INCREASES", defaultValue: "")
-    @SceneStorage("gauge.pattern-details-expanded")
-    private var patternDetailsExpanded = initialBool("KGR_SHOW_PATTERN_DETAILS")
+    @State private var patternStitches = initialText("KGR_PS", defaultValue: "32")
+    @State private var patternRows = initialText("KGR_PR", defaultValue: "24")
+    @State private var yourStitches = initialText("KGR_YS", defaultValue: "32")
+    @State private var yourRows = initialText("KGR_YR", defaultValue: "32")
+    @State private var patternCastOn = initialText("KGR_CAST_ON", defaultValue: "")
+    @State private var patternYoke = initialText("KGR_YOKE", defaultValue: "")
+    @State private var patternBody = initialText("KGR_BODY", defaultValue: "")
+    @State private var patternSleeve = initialText("KGR_SLEEVE", defaultValue: "")
+    @State private var patternIncreases = initialText("KGR_INCREASES", defaultValue: "")
+    @State private var patternDetailsExpanded = initialBool("KGR_SHOW_PATTERN_DETAILS")
 
     @State private var showFullMath = initialBool("KGR_SHOW_FULL_MATH")
     @State private var aboutHelp = AboutHelpState(
         isPresented: initialBool("KGR_SHOW_ABOUT_HELP")
     )
-    @State private var previousVerdictBucket: VerdictBucket?
     @State private var driftBandSignpostFired = false
-    @State private var resetSnapshot: GaugeFormDraft?
+    @State private var resetSnapshot = ResetSnapshot()
+    @State private var canUndoReset = false
     @State private var focusedField: GaugeFormField?
-    @State private var sceneSessionIdentifier: String?
-    @State private var sceneRestorationReady = false
 
     // MARK: - Persisted unit preference
 
@@ -62,17 +61,57 @@ struct ContentView: View {
     }
 
     private var liveResult: GaugeMathResult? {
+        Self.computeResult(inputs)
+    }
+
+    static func computeResult(_ inputs: GaugeInputs?) -> GaugeMathResult? {
         guard let inputs else { return nil }
-        os_signpost(.begin, log: MetricsSubscriber.log, name: SignpostNames.compute)
+        os_signpost(.begin, log: SignpostNames.log, name: SignpostNames.compute)
         let result = GaugeMath.compute(inputs)
-        os_signpost(.end, log: MetricsSubscriber.log, name: SignpostNames.compute)
+        os_signpost(.end, log: SignpostNames.log, name: SignpostNames.compute)
         return result
+    }
+
+    static func inputPresentation(
+        _ inputs: GaugeInputs?
+    ) -> GaugeInputPresentation {
+        guard let inputs else {
+            return GaugeInputPresentation(
+                stitchMismatch: false,
+                rowMismatch: false,
+                stitchDelta: nil,
+                rowDelta: nil
+            )
+        }
+        return GaugeInputPresentation(
+            stitchMismatch: inputs.stitchMismatch,
+            rowMismatch: inputs.rowMismatch,
+            stitchDelta: inputs.yourStitches - inputs.patternStitches,
+            rowDelta: inputs.yourRows - inputs.patternRows
+        )
+    }
+
+    static func hasCastOnDrift(_ result: GaugeMathResult?) -> Bool {
+        guard let drift = result?.castOnRoundingDriftPercent else { return false }
+        return abs(drift) >= 3
     }
 
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
+        navigationContent
+            .userActivity(
+                Self.sceneDraftActivityType,
+                isActive: true,
+                updateSceneRestorationActivity
+            )
+            .onContinueUserActivity(Self.sceneDraftActivityType, perform: restoreSceneDraft)
+            .onChange(of: scenePhase, scenePhaseChanged)
+    }
+
+    private var navigationContent: some View {
+        let inputPresentation = Self.inputPresentation(inputs)
+        return NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: cardSpacing) {
                     ZStack(alignment: .leading) {
@@ -95,10 +134,10 @@ struct ContentView: View {
                         patternRows: draftBinding($patternRows, at: 1),
                         yourStitches: draftBinding($yourStitches, at: 2),
                         yourRows: draftBinding($yourRows, at: 3),
-                        stitchMismatch: inputs?.stitchMismatch ?? false,
-                        rowMismatch: inputs?.rowMismatch ?? false,
-                        stitchDelta: inputs.map { $0.yourStitches - $0.patternStitches },
-                        rowDelta: inputs.map { $0.yourRows - $0.patternRows },
+                        stitchMismatch: inputPresentation.stitchMismatch,
+                        rowMismatch: inputPresentation.rowMismatch,
+                        stitchDelta: inputPresentation.stitchDelta,
+                        rowDelta: inputPresentation.rowDelta,
                         validationMessages: validationMessages,
                         focusedField: $focusedField,
                         onSubmit: finishEditing
@@ -121,10 +160,10 @@ struct ContentView: View {
                         verdict: (title: verdictTitle, body: resultGuidanceBody),
                         unit: measurementUnit,
                         showFullMath: $showFullMath,
-                        canUndoReset: resetSnapshot != nil,
+                        canUndoReset: canUndoReset,
                         onReset: resetToDefaults,
                         onUndoReset: undoReset,
-                        onShare: { result in await shareItems(for: result) }
+                        onShare: shareItems
                     )
                 }
                 .padding(.horizontal, 16)
@@ -132,8 +171,6 @@ struct ContentView: View {
                 .padding(.bottom, 16)
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
-                .opacity(sceneRestorationReady ? 1 : 0)
-                .accessibilityHidden(!sceneRestorationReady)
             }
             // While a help sheet is presented, the underlying view is still rendered
             // (dimmed) behind the sheet. Apple's accessibility audit traverses every
@@ -158,69 +195,100 @@ struct ContentView: View {
                     AboutHelpToolbarButton(state: $aboutHelp)
                 }
             }
-            .sheet(isPresented: $aboutHelp.isPresented) {
-                AboutHelpSheet()
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            }
-            .onChange(of: aboutHelp.isPresented) { _, newValue in
-                if newValue {
-                    os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.sheetAboutHelpOpened)
-                }
-            }
-            .onChange(of: measurementUnit) { previousUnit, newUnit in
-                reconcileSceneDraft(from: previousUnit, to: newUnit)
-            }
-            .onChange(of: validationMessages) { previous, current in
-                guard UIAccessibility.isVoiceOverRunning,
-                      let message = newValidationAnnouncement(previous: previous, current: current) else {
-                    return
-                }
-                UIAccessibility.post(notification: .announcement, argument: message)
-            }
-            .onChange(of: verdictTitle) { _, newValue in
-                let current = newValue.isEmpty ? nil : VerdictBucket(verdictTitle: newValue)
-                if let name = VerdictBucket.signpostName(
-                    previous: previousVerdictBucket,
-                    current: current
-                ) {
-                    os_signpost(.event, log: MetricsSubscriber.log, name: name)
-                }
-                previousVerdictBucket = current
-            }
-            .onChange(
-                of: liveResult?.castOnRoundingDriftPercent.map { abs($0) >= 3 } ?? false
-            ) { _, isVisible in
-                if isVisible, !driftBandSignpostFired {
-                    os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.castOnDriftBandShown)
-                    driftBandSignpostFired = true
-                } else if !isVisible {
-                    driftBandSignpostFired = false
-                }
-            }
+            .sheet(isPresented: $aboutHelp.isPresented, content: aboutHelpSheet)
+            .onChange(of: aboutHelp.isPresented, helpPresentationChanged)
+            .onChange(of: measurementUnit, measurementUnitChanged)
+            .onChange(of: validationMessages, validationMessagesChanged)
+            .onChange(of: verdictTitle, verdictChanged)
+            .onChange(of: Self.hasCastOnDrift(liveResult), castOnDriftChanged)
         }
-        .background {
-            SceneSessionReader(onResolve: connectToSceneSession)
+    }
+
+    func aboutHelpSheet() -> some View {
+        AboutHelpSheet(state: $aboutHelp)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    func castOnDriftChanged(_ oldValue: Bool, _ newValue: Bool) {
+        driftVisibilityChanged(newValue)
+    }
+
+    func scenePhaseChanged(_ oldValue: ScenePhase, _ newValue: ScenePhase) {
+        if newValue != .active {
+            UserDefaults.standard.synchronize()
         }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase != .active {
-                UserDefaults.standard.synchronize()
-            }
+    }
+
+    func helpPresentationChanged(_ oldValue: Bool, _ newValue: Bool) {
+        if newValue {
+            os_signpost(.event, log: SignpostNames.log, name: SignpostNames.sheetAboutHelpOpened)
+        }
+    }
+
+    func measurementUnitChanged(_ previousUnit: MeasurementUnit, _ newUnit: MeasurementUnit) {
+        reconcileSceneDraft(from: previousUnit, to: newUnit)
+    }
+
+    func validationMessagesChanged(
+        _ previous: [GaugeFormField: String],
+        _ current: [GaugeFormField: String]
+    ) {
+        announceValidation(previous: previous, current: current)
+    }
+
+    func announceValidation(
+        previous: [GaugeFormField: String],
+        current: [GaugeFormField: String],
+        isVoiceOverRunning: Bool = UIAccessibility.isVoiceOverRunning
+    ) {
+        guard isVoiceOverRunning,
+              let message = newValidationAnnouncement(previous: previous, current: current) else {
+            return
+        }
+        UIAccessibility.post(notification: .announcement, argument: message)
+    }
+
+    func verdictChanged(_ oldValue: String, _ newValue: String) {
+        let previous = oldValue.isEmpty ? nil : VerdictBucket(verdictTitle: oldValue)
+        let current = newValue.isEmpty ? nil : VerdictBucket(verdictTitle: newValue)
+        if let name = VerdictBucket.signpostName(
+            previous: previous,
+            current: current
+        ) {
+            os_signpost(.event, log: SignpostNames.log, name: name)
+        }
+    }
+
+    func driftVisibilityChanged(_ isVisible: Bool) {
+        if isVisible, !driftBandSignpostFired {
+            os_signpost(.event, log: SignpostNames.log, name: SignpostNames.castOnDriftBandShown)
+            driftBandSignpostFired = true
+        } else if !isVisible {
+            driftBandSignpostFired = false
         }
     }
 
     // MARK: - Verdict
 
     private var verdictTitle: String {
-        guard inputs != nil, let result = liveResult else { return "" }
-        return verdictTitleComputed(result: result)
+        Self.verdictTitle(inputs: inputs, result: liveResult)
     }
 
     private var resultGuidanceBody: String {
-        guard let liveResult, let inputs else {
+        Self.resultGuidanceBody(inputs: inputs, result: liveResult)
+    }
+
+    static func verdictTitle(inputs: GaugeInputs?, result: GaugeMathResult?) -> String {
+        guard inputs != nil, let result else { return "" }
+        return ContentView().verdictTitleComputed(result: result)
+    }
+
+    static func resultGuidanceBody(inputs: GaugeInputs?, result: GaugeMathResult?) -> String {
+        guard let result, let inputs else {
             return "Correct the highlighted fields before viewing gauge guidance."
         }
-        return verdictBodyComputed(result: liveResult, inputs: inputs)
+        return ContentView().verdictBodyComputed(result: result, inputs: inputs)
     }
 
     func verdictTitleComputed(result: GaugeMathResult) -> String {
@@ -295,7 +363,7 @@ struct ContentView: View {
 
     // MARK: - Validation
 
-    private var rawTextValues: [String] {
+    var rawTextValues: [String] {
         [
             patternStitches,
             patternRows,
@@ -309,7 +377,7 @@ struct ContentView: View {
         ]
     }
 
-    private var formDraft: GaugeFormDraft {
+    var formDraft: GaugeFormDraft {
         GaugeFormDraft(
             values: rawTextValues,
             unit: measurementUnit,
@@ -318,7 +386,7 @@ struct ContentView: View {
         )
     }
 
-    private func draftBinding(_ binding: Binding<String>, at index: Int) -> Binding<String> {
+    func draftBinding(_ binding: Binding<String>, at index: Int) -> Binding<String> {
         Binding(
             get: { binding.wrappedValue },
             set: { newValue in
@@ -327,29 +395,21 @@ struct ContentView: View {
                 values[index] = newValue
                 binding.wrappedValue = newValue
                 resetResultMetrics()
-                updateSceneRestorationActivity(
-                    values: values,
-                    disclosure: patternDetailsExpanded
-                )
             }
         )
     }
 
-    private var patternDetailsBinding: Binding<Bool> {
+    var patternDetailsBinding: Binding<Bool> {
         Binding(
             get: { patternDetailsExpanded },
             set: { newValue in
                 guard newValue != patternDetailsExpanded else { return }
                 patternDetailsExpanded = newValue
-                updateSceneRestorationActivity(
-                    values: rawTextValues,
-                    disclosure: newValue
-                )
             }
         )
     }
 
-    private var measurementUnitBinding: Binding<MeasurementUnit> {
+    var measurementUnitBinding: Binding<MeasurementUnit> {
         Binding(
             get: { measurementUnit },
             set: { newUnit in
@@ -361,13 +421,12 @@ struct ContentView: View {
         )
     }
 
-    private func reconcileSceneDraft(
+    func reconcileSceneDraft(
         from previousUnit: MeasurementUnit,
         to newUnit: MeasurementUnit
     ) {
         guard previousUnit == .inches, newUnit == .centimeters else { return }
         let values = SceneDraftStore.reconcileInvalidInchProvenance(in: rawTextValues, for: newUnit)
-        guard values != rawTextValues else { return }
         applySceneDraft(values: values, disclosure: patternDetailsExpanded)
     }
 
@@ -375,17 +434,15 @@ struct ContentView: View {
         formDraft.validationMessages
     }
 
-    private func validationMessage(for field: GaugeFormField) -> String? {
-        formDraft.validationMessage(for: field)
+    func finishEditing() {
+        var draft = formDraft
+        Self.finishEditing(&draft)
+        patternDetailsBinding.wrappedValue = draft.patternDetailsExpanded
+        focusedField = draft.focusedField
     }
 
-    private func finishEditing() {
-        var draft = formDraft
+    static func finishEditing(_ draft: inout GaugeFormDraft) {
         let message = draft.finishEditing()
-        if draft.patternDetailsExpanded != patternDetailsExpanded {
-            patternDetailsBinding.wrappedValue = draft.patternDetailsExpanded
-        }
-        focusedField = draft.focusedField
         if let message {
             UIAccessibility.post(notification: .announcement, argument: message)
         }
@@ -393,100 +450,25 @@ struct ContentView: View {
 
     // MARK: - Scene restoration
 
-    private func connectToSceneSession(_ session: UISceneSession) {
-        guard sceneSessionIdentifier != session.persistentIdentifier else { return }
-        sceneSessionIdentifier = session.persistentIdentifier
-        if Self.ignoresPersistentState {
-            restoreLaunchDraft(for: session)
-        } else {
-            var restored = session.stateRestorationActivity.map {
-                restoreSceneDraft(from: $0, for: session)
-            } ?? false
-            if !restored, let userInfo = session.userInfo {
-                restored = restoreSceneDraft(from: userInfo, for: session)
-            }
-            if !restored,
-               let userInfo = SceneDraftStore.load(sceneID: session.persistentIdentifier) {
-                restored = restoreSceneDraft(from: userInfo, for: session)
-            }
-            if !restored,
-               Self.isOnlyOpenSession(session),
-               let previousIdentifier = SceneDraftStore.singleSceneID(),
-               let userInfo = SceneDraftStore.load(sceneID: previousIdentifier) {
-                restored = restoreSceneDraft(from: userInfo, for: session)
-            }
-            if !restored,
-               Self.isOnlyOpenSession(session),
-               let userInfo = SceneDraftStore.singleSceneHandoff() {
-                restored = restoreSceneDraft(from: userInfo, for: session)
-            }
-            if !restored {
-                updateSceneRestorationActivity(
-                    values: rawTextValues,
-                    disclosure: patternDetailsExpanded,
-                    for: session
-                )
-            }
-        }
-        sceneRestorationReady = true
-    }
-
-    private func restoreLaunchDraft(for session: UISceneSession) {
-        applySceneDraft(
-            values: [
-                initialText("KGR_PS", defaultValue: Self.defaults.patternStitches),
-                initialText("KGR_PR", defaultValue: Self.defaults.patternRows),
-                initialText("KGR_YS", defaultValue: Self.defaults.yourStitches),
-                initialText("KGR_YR", defaultValue: Self.defaults.yourRows),
-                initialText("KGR_CAST_ON", defaultValue: ""),
-                initialText("KGR_YOKE", defaultValue: ""),
-                initialText("KGR_BODY", defaultValue: ""),
-                initialText("KGR_SLEEVE", defaultValue: ""),
-                initialText("KGR_INCREASES", defaultValue: ""),
-            ],
-            disclosure: initialBool("KGR_SHOW_PATTERN_DETAILS"),
-            for: session
+    func updateSceneRestorationActivity(_ activity: NSUserActivity) {
+        let draft = SceneDraftStore.serialize(
+            values: rawTextValues,
+            disclosure: patternDetailsExpanded
         )
+        activity.addUserInfoEntries(from: draft)
     }
 
-    private static var ignoresPersistentState: Bool {
-        launchArgumentEnabled("-ApplePersistenceIgnoreState")
-    }
-
-    private static func launchArgumentEnabled(_ key: String) -> Bool {
-        let arguments = ProcessInfo.processInfo.arguments
-        guard let index = arguments.lastIndex(of: key),
-              arguments.indices.contains(index + 1) else {
-            return false
+    func restoreSceneDraft(_ activity: NSUserActivity) {
+        guard let userInfo = activity.userInfo,
+              let draft = SceneDraftStore.deserialize(userInfo) else {
+            return
         }
-        return arguments[index + 1].caseInsensitiveCompare("YES") == .orderedSame
+        applySceneDraft(values: draft.values, disclosure: draft.disclosure)
     }
 
-    private static func isOnlyOpenSession(_ session: UISceneSession) -> Bool {
-        let openSessions = UIApplication.shared.openSessions
-        return openSessions.count == 1 && openSessions.contains(session)
-    }
-
-    @discardableResult
-    private func restoreSceneDraft(from activity: NSUserActivity, for session: UISceneSession) -> Bool {
-        guard let userInfo = activity.userInfo else { return false }
-        return restoreSceneDraft(from: userInfo, for: session)
-    }
-
-    @discardableResult
-    private func restoreSceneDraft(
-        from userInfo: [AnyHashable: Any],
-        for session: UISceneSession
-    ) -> Bool {
-        guard let draft = SceneDraftStore.deserialize(userInfo) else { return false }
-        applySceneDraft(values: draft.values, disclosure: draft.disclosure, for: session)
-        return true
-    }
-
-    private func applySceneDraft(
+    func applySceneDraft(
         values: [String],
         disclosure: Bool,
-        for session: UISceneSession? = nil,
         synchronizingDefaults: Bool = false
     ) {
         let values = SceneDraftStore.reconcileInvalidInchProvenance(
@@ -504,53 +486,6 @@ struct ContentView: View {
         patternIncreases = values[8]
         patternDetailsExpanded = disclosure
         resetResultMetrics()
-        updateSceneRestorationActivity(
-            values: values,
-            disclosure: disclosure,
-            for: session,
-            synchronizingDefaults: synchronizingDefaults
-        )
-    }
-
-    private func updateSceneRestorationActivity(
-        values: [String],
-        disclosure: Bool,
-        for resolvedSession: UISceneSession? = nil,
-        synchronizingDefaults: Bool = false
-    ) {
-        let session: UISceneSession?
-        if let resolvedSession {
-            session = resolvedSession
-        } else if let sceneSessionIdentifier {
-            session = UIApplication.shared.connectedScenes.first(where: {
-                $0.session.persistentIdentifier == sceneSessionIdentifier
-            })?.session
-        } else {
-            session = nil
-        }
-        guard let session else { return }
-
-        // Namespace process-loss snapshots by scene; the single-scene alias is removed when another scene exists.
-        guard let draft = SceneDraftStore.serialize(values: values, disclosure: disclosure) else {
-            return
-        }
-        let activity = session.stateRestorationActivity
-            ?? NSUserActivity(activityType: Self.sceneDraftActivityType)
-        activity.addUserInfoEntries(from: draft)
-        session.stateRestorationActivity = activity
-        var userInfo = session.userInfo ?? [:]
-        for (key, value) in draft {
-            userInfo[key] = value
-        }
-        session.userInfo = userInfo
-        SceneDraftStore.save(draft, sceneID: session.persistentIdentifier)
-        if Self.isOnlyOpenSession(session) {
-            SceneDraftStore.setSingleSceneID(session.persistentIdentifier)
-            SceneDraftStore.setSingleSceneHandoff(draft)
-        } else {
-            SceneDraftStore.setSingleSceneID(nil)
-            SceneDraftStore.setSingleSceneHandoff(nil)
-        }
         if synchronizingDefaults {
             UserDefaults.standard.synchronize()
         }
@@ -558,10 +493,11 @@ struct ContentView: View {
 
     // MARK: - Actions
 
-    private func resetToDefaults() {
+    func resetToDefaults() {
         var draft = formDraft
-        resetSnapshot = draft.reset()
-        os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.resetTapped)
+        resetSnapshot.draft = draft.reset()
+        canUndoReset = true
+        os_signpost(.event, log: SignpostNames.log, name: SignpostNames.resetTapped)
         applySceneDraft(
             values: draft.rawValues,
             disclosure: draft.patternDetailsExpanded,
@@ -571,11 +507,12 @@ struct ContentView: View {
         showFullMath = false
     }
 
-    private func undoReset() {
-        guard let snapshot = resetSnapshot else { return }
-        resetSnapshot = nil
+    func undoReset() {
+        guard let snapshot = resetSnapshot.draft else { return }
         var draft = formDraft
         draft.restore(snapshot)
+        resetSnapshot.draft = nil
+        canUndoReset = false
         applySceneDraft(
             values: draft.rawValues,
             disclosure: draft.patternDetailsExpanded,
@@ -586,48 +523,55 @@ struct ContentView: View {
     }
 
     private func resetResultMetrics() {
-        previousVerdictBucket = nil
         driftBandSignpostFired = false
     }
 
     @MainActor
-    private func shareItems(for result: GaugeMathResult) async -> [Any] {
+    func shareItems(for result: GaugeMathResult) async -> [Any] {
+        await Self.shareItems(
+            for: result,
+            inputs: inputs,
+            unit: measurementUnit
+        )
+    }
+
+    @MainActor
+    static func shareItems(
+        for result: GaugeMathResult,
+        inputs: GaugeInputs?,
+        unit: MeasurementUnit,
+        exportDirectory: URL? = nil
+    ) async -> [Any] {
         guard let inputs else { return [] }
-        let summary = ResultsExportSummary(inputs: inputs, result: result, unit: measurementUnit)
-        if let imageURL = await renderShareImageURL(summary: summary) {
-            os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareInvoked)
+        let summary = ResultsExportSummary(inputs: inputs, result: result, unit: unit)
+        if let imageURL = await renderShareImageURL(
+            summary: summary,
+            exportDirectory: exportDirectory
+        ) {
+            os_signpost(.event, log: SignpostNames.log, name: SignpostNames.shareInvoked)
             return [imageURL]
         }
 
-        os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareFallback)
-        return [ResultsShareTextFormatter.string(inputs: inputs, result: result, unit: measurementUnit)]
+        os_signpost(.event, log: SignpostNames.log, name: SignpostNames.shareFallback)
+        return [ResultsShareTextFormatter.string(inputs: inputs, result: result, unit: unit)]
     }
 
-    /// Rasterizes the share card on the MainActor (ImageRenderer requirement), then
-    /// encodes to PNG on the MainActor and offloads the file write to a detached task
-    /// so the main thread is never blocked by disk I/O.
+    /// Rasterizes and encodes the share card on the MainActor, then offloads the file
+    /// write to a detached task so the main thread is never blocked by disk I/O.
     @MainActor
-    private func renderShareImageURL(summary: ResultsExportSummary) async -> URL? {
-        let renderer = ImageRenderer(content: ShareableView(summary: summary))
-        renderer.proposedSize = .init(width: 390, height: nil)
-        renderer.scale = 3
-
-        // ImageRenderer.uiImage must be accessed on the MainActor.
-        // pngData() is kept here too — do NOT capture UIImage across the detached boundary.
-        guard let image = renderer.uiImage, let pngData = image.pngData() else {
-            return nil
-        }
-
-        // Offload only the disk write; Data and URL are Sendable.
+    static func renderShareImageURL(
+        summary: ResultsExportSummary,
+        exportDirectory: URL? = nil
+    ) async -> URL? {
+        let pngData = ShareableView.pngData(summary: summary)
         return await Task.detached(priority: .userInitiated) {
             do {
-                let caches = try FileManager.default.url(
+                let directory = try exportDirectory ?? FileManager.default.url(
                     for: .cachesDirectory,
                     in: .userDomainMask,
                     appropriateFor: nil,
                     create: true
-                )
-                let directory = caches.appendingPathComponent("ShareExports", isDirectory: true)
+                ).appendingPathComponent("ShareExports", isDirectory: true)
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
                 let fileURL = directory.appendingPathComponent("knitting-gauge-results-\(UUID().uuidString).png")
                 try pngData.write(to: fileURL, options: [.atomic])
@@ -642,22 +586,19 @@ struct ContentView: View {
 // MARK: - AboutHelpSheet
 
 struct AboutHelpSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    private let onClose: (() -> Void)?
+    @Binding private var state: AboutHelpState
 
-    init(onClose: (() -> Void)? = nil) {
-        self.onClose = onClose
+    init(state: Binding<AboutHelpState>) {
+        _state = state
+    }
+
+    func close() {
+        state.close()
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            HelpSheetHeader(closeIdentifier: AboutHelpContract.closeIdentifier) {
-                if let onClose {
-                    onClose()
-                } else {
-                    dismiss()
-                }
-            }
+            HelpSheetHeader(closeIdentifier: AboutHelpContract.closeIdentifier, onClose: close)
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     Text(AboutHelpContract.openLabel)

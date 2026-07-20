@@ -3,8 +3,13 @@ import SwiftUI
 // MARK: - ShareSheetPayload
 
 struct ShareSheetPayload: Identifiable {
-    let id = UUID()
+    let id: UUID
     var items: [Any]
+
+    init(id: UUID = UUID(), items: [Any]) {
+        self.id = id
+        self.items = items
+    }
 }
 
 // MARK: - AdjustmentRow
@@ -19,8 +24,19 @@ struct AdjustmentRow: View {
     var adjustedIdentifier: String?
     var driftPill: String?
 
-    private var defaultAdjustedID: String {
+    static func defaultAdjustedIdentifier(name: String) -> String {
         "adjustment-\(name.lowercased().replacingOccurrences(of: " ", with: "-"))-value"
+    }
+
+    static func adjustedAccessibilityLabel(name: String, adjusted: String, driftPill: String?) -> String {
+        if let driftPill {
+            return "\(name) adjusted: \(adjusted), \(driftPill) drift"
+        }
+        return "\(name) adjusted: \(adjusted)"
+    }
+
+    private var defaultAdjustedID: String {
+        Self.defaultAdjustedIdentifier(name: name)
     }
 
     var body: some View {
@@ -91,9 +107,6 @@ struct AdjustmentRow: View {
     }
 
     private var adjustedTileAccessibilityLabel: String {
-        if let pill = driftPill {
-            return "\(name) adjusted: \(adjusted), \(pill) drift"
-        }
-        return "\(name) adjusted: \(adjusted)"
+        Self.adjustedAccessibilityLabel(name: name, adjusted: adjusted, driftPill: driftPill)
     }
 }

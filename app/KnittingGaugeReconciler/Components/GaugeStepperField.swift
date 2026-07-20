@@ -238,13 +238,6 @@ struct GaugeStepperField: View {
         )
     }
 
-    private var sheetDetents: Set<PresentationDetent> {
-        Self.sheetDetents(
-            for: dynamicTypeSize,
-            hasWarning: mismatchSentence != nil
-        )
-    }
-
     static func sheetDetents(
         for dynamicTypeSize: DynamicTypeSize,
         hasWarning: Bool
@@ -265,6 +258,60 @@ struct GaugeStepperField: View {
 
     private func mismatchBadge(_ text: String) -> some View {
         DeltaPillBadge(text: text)
+    }
+
+    func openPicker() {
+        focusedField.wrappedValue = nil
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+        showWheelPicker = true
+    }
+
+    func increment() {
+        text = Self.adjustedText(
+            validationText,
+            by: 1,
+            field: field,
+            displayUnit: displayUnit,
+            range: range
+        )
+    }
+
+    func decrement() {
+        text = Self.adjustedText(
+            validationText,
+            by: -1,
+            field: field,
+            displayUnit: displayUnit,
+            range: range
+        )
+    }
+
+    func wheelSheet() -> some View {
+        GaugeStepperWheelSheet(
+            title: title,
+            text: $text,
+            range: range,
+            identifier: identifier,
+            validationText: validationText,
+            field: field,
+            accessibilityLabel: accessibilityLabel,
+            displayUnit: displayUnit,
+            mismatchLabel: mismatchSentence,
+            mismatchDeltaText: mismatchDeltaText,
+            isPresented: $showWheelPicker
+        )
+        .presentationDetents(
+            Self.sheetDetents(
+                for: dynamicTypeSize,
+                hasWarning: mismatchSentence != nil
+            )
+        )
+        .presentationDragIndicator(.visible)
     }
 
     var body: some View {
@@ -321,16 +368,7 @@ struct GaugeStepperField: View {
                     .padding(.bottom, 8)
                     .frame(minHeight: 44)
 
-                Button {
-                    focusedField.wrappedValue = nil
-                    UIApplication.shared.sendAction(
-                        #selector(UIResponder.resignFirstResponder),
-                        to: nil,
-                        from: nil,
-                        for: nil
-                    )
-                    showWheelPicker = true
-                } label: {
+                Button(action: openPicker) {
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(AppTheme.muted)
@@ -342,24 +380,8 @@ struct GaugeStepperField: View {
                 .accessibilityValue(pickerAccessibilityValue)
                 .accessibilityHint(pickerAccessibilityHint)
                 .accessibilityIdentifier("\(identifier)-chevron")
-                .accessibilityAction(named: "Increment") {
-                    text = Self.adjustedText(
-                        validationText,
-                        by: 1,
-                        field: field,
-                        displayUnit: displayUnit,
-                        range: range
-                    )
-                }
-                .accessibilityAction(named: "Decrement") {
-                    text = Self.adjustedText(
-                        validationText,
-                        by: -1,
-                        field: field,
-                        displayUnit: displayUnit,
-                        range: range
-                    )
-                }
+                .accessibilityAction(named: "Increment", increment)
+                .accessibilityAction(named: "Decrement", decrement)
             }
             .frame(minHeight: 44)
             .background(AppTheme.card)
@@ -391,29 +413,13 @@ struct GaugeStepperField: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .sheet(isPresented: $showWheelPicker) {
-            GaugeStepperWheelSheet(
-                title: title,
-                text: $text,
-                range: range,
-                identifier: identifier,
-                validationText: validationText,
-                field: field,
-                accessibilityLabel: accessibilityLabel,
-                displayUnit: displayUnit,
-                mismatchLabel: mismatchSentence,
-                mismatchDeltaText: mismatchDeltaText,
-                isPresented: $showWheelPicker
-            )
-            .presentationDetents(sheetDetents)
-            .presentationDragIndicator(.visible)
-        }
+        .sheet(isPresented: $showWheelPicker, content: wheelSheet)
     }
 }
 
 // MARK: - GaugeKeyboardTextField
 
-private struct GaugeKeyboardTextField: UIViewRepresentable {
+struct GaugeKeyboardTextField: UIViewRepresentable {
     @Binding private var text: String
 
     private let field: GaugeFormField
@@ -501,16 +507,28 @@ private struct GaugeKeyboardTextField: UIViewRepresentable {
         let shouldFocus = focusedField.wrappedValue == field
         guard shouldFocus != textField.isFirstResponder,
               !coordinator.focusUpdateScheduled else { return }
+        Self.updateFocusAfterUpdate(coordinator: coordinator, textField: textField)
+    }
+
+    @discardableResult
+    static func updateFocusAfterUpdate(
+        coordinator: Coordinator,
+        textField: UITextField
+    ) -> Task<Void, Never> {
         coordinator.focusUpdateScheduled = true
-        Task { @MainActor in
+        return Task { @MainActor in
             defer { coordinator.focusUpdateScheduled = false }
             let shouldFocus = coordinator.parent.focusedField.wrappedValue == coordinator.parent.field
             guard shouldFocus != textField.isFirstResponder else { return }
-            if shouldFocus {
-                textField.becomeFirstResponder()
-            } else {
-                textField.resignFirstResponder()
-            }
+            Self.updateFocus(shouldFocus, textField: textField)
+        }
+    }
+
+    static func updateFocus(_ shouldFocus: Bool, textField: UITextField) {
+        if shouldFocus {
+            textField.becomeFirstResponder()
+        } else {
+            textField.resignFirstResponder()
         }
     }
 
@@ -546,7 +564,7 @@ private struct GaugeKeyboardTextField: UIViewRepresentable {
 
 // MARK: - GaugeStepperWheelSheet
 
-private struct GaugeStepperWheelSheet: View {
+struct GaugeStepperWheelSheet: View {
     let title: String
     @Binding private var text: String
     let range: ClosedRange<Int>
@@ -598,6 +616,15 @@ private struct GaugeStepperWheelSheet: View {
         DeltaPillBadge(text: text)
     }
 
+    func commit() {
+        text = GaugeStepperField.committedText(
+            selection: selectedValue,
+            field: field,
+            displayUnit: displayUnit
+        )
+        isPresented = false
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
@@ -634,14 +661,7 @@ private struct GaugeStepperWheelSheet: View {
             .accessibilityLabel(accessibilityLabel)
             .accessibilityIdentifier("\(identifier)-wheel")
 
-            Button("Done") {
-                text = GaugeStepperField.committedText(
-                    selection: selectedValue,
-                    field: field,
-                    displayUnit: displayUnit
-                )
-                isPresented = false
-            }
+            Button("Done", action: commit)
             .font(.body.weight(.semibold))
             .foregroundStyle(.primary)
             .frame(maxWidth: .infinity, alignment: .trailing)

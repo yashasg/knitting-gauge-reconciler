@@ -206,7 +206,7 @@ struct PatternInstructionsCard: View {
         )
     }
 
-    private func displayBinding(
+    func displayBinding(
         for centimeters: Binding<String>,
         field: GaugeFormField
     ) -> Binding<String> {

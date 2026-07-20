@@ -9,10 +9,12 @@ struct AboutHelpToolbarButton: View {
         _state = state
     }
 
+    func open() {
+        state.open()
+    }
+
     var body: some View {
-        Button {
-            state.open()
-        } label: {
+        Button(action: open) {
             Image(systemName: "questionmark.circle")
                 .font(.body.weight(.medium))
                 .foregroundStyle(AppTheme.sage)

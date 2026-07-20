@@ -167,7 +167,9 @@ def collect_diagnostic_files(directory, display_path, relative_components, keep_
     stat = child.stat
     components = relative_components + [name]
     if stat.directory?
-      collect_diagnostic_files(child, child_path, components, keep_open, files)
+      # Simulator-wide support bundles contain historical toolchain logs, not this test run.
+      collect_diagnostic_files(child, child_path, components, keep_open, files) unless
+        components.include?("simctl_diagnostics")
     elsif stat.file?
       files << [child_path, components, keep_open ? child : nil, stat.dev, stat.ino]
       child = nil if keep_open
@@ -399,6 +401,11 @@ def diagnostics_verifier_self_check
   stdout, stderr, status = run.call
   raise "clean diagnostics were rejected: #{stderr}" unless status.success?
   raise "nested dot-path diagnostic was not emitted byte-for-byte" unless stdout.b.include?("hidden nested clean \xFF\n".b)
+  FileUtils.mkdir_p(File.join(diagnostics_path, "simctl_diagnostics"))
+  File.binwrite(File.join(diagnostics_path, "simctl_diagnostics", "runtime.log"), "warning: simulator history\n")
+  stdout, stderr, status = run.call
+  raise "simulator support bundle was scanned: #{stderr}" unless status.success?
+  raise "simulator support bundle was emitted" if stdout.include?("simulator history")
   puts "ok: clean nested/dot and invalid UTF-8 diagnostics exit 0"
 
   race_path = File.join(root, "race-boundary")

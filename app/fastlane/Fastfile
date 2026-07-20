@@ -133,7 +133,8 @@ def verify_test_diagnostics(output_directory)
   sh("xcrun xcresulttool export diagnostics --path #{Shellwords.escape(result_bundle_path)} --output-path #{Shellwords.escape(diagnostics_path)}")
 
   verifier_path = File.expand_path("diagnostics_verifier.rb", __dir__)
-  sh("/usr/bin/ruby #{Shellwords.escape(verifier_path)} #{Shellwords.escape(raw_log_path)} #{Shellwords.escape(diagnostics_path)}")
+  verified = system("/usr/bin/ruby", verifier_path, raw_log_path, diagnostics_path)
+  UI.user_error!("Test diagnostics verification failed") unless verified
 end
 
 

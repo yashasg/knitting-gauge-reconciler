@@ -1,5 +1,4 @@
 // Issue #134 keeps the small form/help contracts beside the state helpers they exercise.
-// swiftlint:disable file_length
 import SwiftUI
 import UIKit
 
@@ -12,65 +11,13 @@ func newValidationAnnouncement(
     }).flatMap { current[$0] }
 }
 
-// MARK: - SceneSessionReader
-
-struct SceneSessionReader: UIViewRepresentable {
-    let onResolve: (UISceneSession) -> Void
-
-    func makeUIView(context: Context) -> SceneSessionReaderView {
-        let view = SceneSessionReaderView(onResolve: onResolve)
-        view.isUserInteractionEnabled = false
-        view.isAccessibilityElement = false
-        return view
-    }
-
-    func updateUIView(_ uiView: SceneSessionReaderView, context: Context) {
-        uiView.onResolve = onResolve
-    }
-}
-
-final class SceneSessionReaderView: UIView {
-    var onResolve: (UISceneSession) -> Void
-    private var resolvedSessionIdentifier: String?
-    private var resolutionScheduled = false
-
-    init(onResolve: @escaping (UISceneSession) -> Void) {
-        self.onResolve = onResolve
-        super.init(frame: .zero)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        nil
-    }
-
-    override func didMoveToWindow() {
-        super.didMoveToWindow()
-        guard window != nil, !resolutionScheduled else { return }
-        resolutionScheduled = true
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            resolutionScheduled = false
-            guard let session = window?.windowScene?.session,
-                  resolvedSessionIdentifier != session.persistentIdentifier else {
-                return
-            }
-            resolvedSessionIdentifier = session.persistentIdentifier
-            onResolve(session)
-        }
-    }
-}
-
 enum SceneDraftStore {
     static let rawValuesKey = "gauge.raw-values"
     static let disclosureKey = "gauge.pattern-details-expanded"
     private static let rawValueCount = 9
-    private static let keyPrefix = "gauge.scene-draft."
-    private static let singleSceneIdentifierKey = "gauge.single-scene-identifier"
-    private static let singleSceneHandoffKey = "gauge.single-scene-handoff"
 
-    static func serialize(values: [String], disclosure: Bool) -> [String: Any]? {
-        guard values.count == rawValueCount else { return nil }
+    static func serialize(values: [String], disclosure: Bool) -> [String: Any] {
+        precondition(values.count == rawValueCount)
         return [
             rawValuesKey: values,
             disclosureKey: disclosure,
@@ -101,41 +48,6 @@ enum SceneDraftStore {
             )
         }
         return reconciled
-    }
-
-    static func load(sceneID: String, defaults: UserDefaults = .standard) -> [String: Any]? {
-        defaults.dictionary(forKey: keyPrefix + sceneID)
-    }
-
-    static func save(_ draft: [String: Any], sceneID: String, defaults: UserDefaults = .standard) {
-        defaults.set(draft, forKey: keyPrefix + sceneID)
-    }
-
-    static func singleSceneID(defaults: UserDefaults = .standard) -> String? {
-        defaults.string(forKey: singleSceneIdentifierKey)
-    }
-
-    static func setSingleSceneID(_ sceneID: String?, defaults: UserDefaults = .standard) {
-        defaults.set(sceneID, forKey: singleSceneIdentifierKey)
-    }
-
-    static func singleSceneHandoff(defaults: UserDefaults = .standard) -> [String: Any]? {
-        defaults.dictionary(forKey: singleSceneHandoffKey)
-    }
-
-    static func setSingleSceneHandoff(_ draft: [String: Any]?, defaults: UserDefaults = .standard) {
-        defaults.set(draft, forKey: singleSceneHandoffKey)
-    }
-
-    static func discard(sceneIDs: [String], defaults: UserDefaults = .standard) {
-        for sceneID in sceneIDs {
-            defaults.removeObject(forKey: keyPrefix + sceneID)
-        }
-        if let singleSceneID = singleSceneID(defaults: defaults),
-           sceneIDs.contains(singleSceneID) {
-            setSingleSceneID(nil, defaults: defaults)
-            setSingleSceneHandoff(nil, defaults: defaults)
-        }
     }
 }
 
@@ -247,7 +159,7 @@ struct GaugeFormDraft: Equatable {
     }
 
     var rawValues: [String] {
-        GaugeFormField.allCases.map { values[$0, default: ""] }
+        GaugeFormField.allCases.map { values[$0]! }
     }
 
     var inputs: GaugeInputs? {
@@ -276,15 +188,17 @@ struct GaugeFormDraft: Equatable {
     }
 
     var validationMessages: [GaugeFormField: String] {
-        Dictionary(
-            uniqueKeysWithValues: GaugeFormField.allCases.compactMap { field in
-                validationMessage(for: field).map { (field, $0) }
+        var messages: [GaugeFormField: String] = [:]
+        for field in GaugeFormField.allCases {
+            if let message = validationMessage(for: field) {
+                messages[field] = message
             }
-        )
+        }
+        return messages
     }
 
     subscript(field: GaugeFormField) -> String {
-        get { values[field, default: ""] }
+        get { values[field]! }
         set { values[field] = newValue }
     }
 

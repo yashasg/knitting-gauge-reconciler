@@ -614,22 +614,27 @@ struct GaugeMathTests {
     @Test func sceneDraftSerializationPreservesEveryRawValueAndDisclosure() throws {
         let properties = Array(Mirror(reflecting: ContentView()).children)
         let stringStorage = Set(properties.compactMap { child in
-            child.value is SceneStorage<String> ? child.label?.dropFirst().description : nil
+            child.value is State<String> ? child.label?.dropFirst().description : nil
         })
         let boolStorage = Set(properties.compactMap { child in
-            child.value is SceneStorage<Bool> ? child.label?.dropFirst().description : nil
+            child.value is State<Bool> ? child.label?.dropFirst().description : nil
         })
 
         #expect(stringStorage == [
             "patternStitches", "patternRows", "yourStitches", "yourRows",
             "patternCastOn", "patternYoke", "patternBody", "patternSleeve", "patternIncreases",
         ])
-        #expect(boolStorage == ["patternDetailsExpanded"])
+        #expect(
+            boolStorage == [
+                "patternDetailsExpanded",
+                "showFullMath",
+                "driftBandSignpostFired",
+                "canUndoReset",
+            ]
+        )
 
         let values = ["31.5", "0", "32", "24", "", "20.5", ".", "", "7e0"]
-        let serialization = try #require(
-            SceneDraftStore.serialize(values: values, disclosure: true)
-        )
+        let serialization = SceneDraftStore.serialize(values: values, disclosure: true)
         let restored = try #require(SceneDraftStore.deserialize(serialization))
 
         #expect(restored.values == values)
@@ -638,7 +643,7 @@ struct GaugeMathTests {
 
     @Test func malformedSceneDraftSerializationIsRejected() throws {
         let values = ["31.5", "0", "32", "24", "", "20.5", ".", "", "7e0"]
-        let valid = try #require(SceneDraftStore.serialize(values: values, disclosure: true))
+        let valid = SceneDraftStore.serialize(values: values, disclosure: true)
         var missingDisclosure = valid
         var wrongValueCount = valid
         var wrongValuesType = valid
@@ -648,150 +653,11 @@ struct GaugeMathTests {
         wrongValuesType[SceneDraftStore.rawValuesKey] = values.joined(separator: ",")
         wrongDisclosureType[SceneDraftStore.disclosureKey] = "true"
 
-        #expect(SceneDraftStore.serialize(values: Array(values.dropLast()), disclosure: true) == nil)
         #expect(SceneDraftStore.deserialize([:]) == nil)
         #expect(SceneDraftStore.deserialize(missingDisclosure) == nil)
         #expect(SceneDraftStore.deserialize(wrongValueCount) == nil)
         #expect(SceneDraftStore.deserialize(wrongValuesType) == nil)
         #expect(SceneDraftStore.deserialize(wrongDisclosureType) == nil)
-    }
-
-    @Test func independentSceneDraftsRemainIsolated() throws {
-        let suiteName = "SceneDraftStoreTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-        let firstValues = ["31.5", "0", "32", "24", "", "20.5", ".", "", ""]
-        let secondValues = ["28", "22", "30", "26", "144", "", "", "46", "7"]
-        let firstDraft = try #require(
-            SceneDraftStore.serialize(values: firstValues, disclosure: true)
-        )
-        let secondDraft = try #require(
-            SceneDraftStore.serialize(values: secondValues, disclosure: false)
-        )
-        SceneDraftStore.save(
-            firstDraft,
-            sceneID: "scene-a",
-            defaults: defaults
-        )
-        SceneDraftStore.save(
-            secondDraft,
-            sceneID: "scene-b",
-            defaults: defaults
-        )
-
-        let firstRestored = try #require(
-            SceneDraftStore.load(sceneID: "scene-a", defaults: defaults)
-                .flatMap(SceneDraftStore.deserialize)
-        )
-        let secondRestored = try #require(
-            SceneDraftStore.load(sceneID: "scene-b", defaults: defaults)
-                .flatMap(SceneDraftStore.deserialize)
-        )
-
-        #expect(firstRestored.values == firstValues)
-        #expect(firstRestored.disclosure)
-        #expect(secondRestored.values == secondValues)
-        #expect(!secondRestored.disclosure)
-    }
-
-    @Test func twoSceneDraftsAndRestorationReconcileInvalidInchesUnderCentimeters() throws {
-        let suiteName = "SceneDraftReconciliationTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-        let firstValues = [
-            "32", "24", "32", "24", "",
-            MeasurementUnit.inches.centimeterStorageText(from: " 8.50 ", cmRange: 5...100),
-            MeasurementUnit.inches.centimeterStorageText(from: "40", cmRange: 5...100),
-            MeasurementUnit.inches.centimeterStorageText(from: "8..5", cmRange: 5...100),
-            "",
-        ]
-        let secondValues = [
-            "28", "22", "30", "26", "144", "20.32",
-            MeasurementUnit.inches.centimeterStorageText(from: "\t40\n", cmRange: 5...100),
-            MeasurementUnit.inches.centimeterStorageText(from: "100.1", cmRange: 5...100),
-            "7",
-        ]
-        let firstDraft = try #require(SceneDraftStore.serialize(values: firstValues, disclosure: true))
-        let secondDraft = try #require(SceneDraftStore.serialize(values: secondValues, disclosure: false))
-        SceneDraftStore.save(firstDraft, sceneID: "scene-a", defaults: defaults)
-        SceneDraftStore.save(secondDraft, sceneID: "scene-b", defaults: defaults)
-
-        for sceneID in ["scene-a", "scene-b"] {
-            let stored = try #require(SceneDraftStore.load(sceneID: sceneID, defaults: defaults))
-            let restored = try #require(SceneDraftStore.deserialize(stored))
-            let reconciled = SceneDraftStore.reconcileInvalidInchProvenance(
-                in: restored.values,
-                for: .centimeters
-            )
-            let normalized = try #require(
-                SceneDraftStore.serialize(values: reconciled, disclosure: restored.disclosure)
-            )
-            SceneDraftStore.save(normalized, sceneID: sceneID, defaults: defaults)
-        }
-
-        let firstRestored = try #require(
-            SceneDraftStore.load(sceneID: "scene-a", defaults: defaults)
-                .flatMap(SceneDraftStore.deserialize)
-        )
-        let secondRestored = try #require(
-            SceneDraftStore.load(sceneID: "scene-b", defaults: defaults)
-                .flatMap(SceneDraftStore.deserialize)
-        )
-
-        #expect(firstRestored.values == ["32", "24", "32", "24", "", " 8.50 ", "40", "8..5", ""])
-        #expect(firstRestored.disclosure)
-        #expect(secondRestored.values == ["28", "22", "30", "26", "144", "20.32", "\t40\n", "100.1", "7"])
-        #expect(!secondRestored.disclosure)
-        #expect(GaugeMath.validate(firstRestored.values[5], for: .patternYokeDepth) == .success(8.5))
-        #expect(GaugeMath.validate(firstRestored.values[6], for: .patternBodyLength) == .success(40))
-        #expect(GaugeMath.validate(firstRestored.values[7], for: .patternSleeveLength) == .failure(.invalidNumber))
-        #expect(GaugeMath.validate(secondRestored.values[5], for: .patternYokeDepth) == .success(20.32))
-        #expect(GaugeMath.validate(secondRestored.values[6], for: .patternBodyLength) == .success(40))
-        #expect(
-            GaugeMath.validate(secondRestored.values[7], for: .patternSleeveLength)
-                == .failure(.outOfRange(5...100))
-        )
-    }
-
-    @Test func resetDraftPersistsThroughHandoffAndDiscardRemovesOnlyItsScene() throws {
-        let suiteName = "SceneDraftStoreResetTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-        let resetValues = GaugeTextDefaults().resetSceneDraftValues
-        let resetDraft = try #require(
-            SceneDraftStore.serialize(values: resetValues, disclosure: false)
-        )
-        let otherValues = ["28", "22", "30", "26", "144", "", "", "46", "7"]
-        let otherDraft = try #require(
-            SceneDraftStore.serialize(values: otherValues, disclosure: true)
-        )
-        SceneDraftStore.save(resetDraft, sceneID: "scene-a", defaults: defaults)
-        SceneDraftStore.save(otherDraft, sceneID: "scene-b", defaults: defaults)
-        SceneDraftStore.setSingleSceneID("scene-a", defaults: defaults)
-        SceneDraftStore.setSingleSceneHandoff(resetDraft, defaults: defaults)
-
-        let resetRestored = try #require(
-            SceneDraftStore.load(sceneID: "scene-a", defaults: defaults)
-                .flatMap(SceneDraftStore.deserialize)
-        )
-        let handoffRestored = try #require(
-            SceneDraftStore.singleSceneHandoff(defaults: defaults)
-                .flatMap(SceneDraftStore.deserialize)
-        )
-
-        #expect(resetRestored.values == ["32", "24", "32", "32", "", "", "", "", ""])
-        #expect(!resetRestored.disclosure)
-        #expect(handoffRestored.values == resetRestored.values)
-        #expect(!handoffRestored.disclosure)
-
-        SceneDraftStore.discard(sceneIDs: ["scene-a"], defaults: defaults)
-        #expect(SceneDraftStore.load(sceneID: "scene-a", defaults: defaults) == nil)
-        #expect(
-            SceneDraftStore.load(sceneID: "scene-b", defaults: defaults)
-                .flatMap(SceneDraftStore.deserialize)?.values == otherValues
-        )
-        #expect(SceneDraftStore.singleSceneID(defaults: defaults) == nil)
-        #expect(SceneDraftStore.singleSceneHandoff(defaults: defaults) == nil)
     }
 
     // MARK: - Inline mismatch detection

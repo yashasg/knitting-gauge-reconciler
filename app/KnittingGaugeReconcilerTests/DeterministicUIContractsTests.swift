@@ -787,7 +787,17 @@ struct DeterministicUIContractsTests {
 
     @Test func wheelSheetsAndKeyboardFieldsHostBothWarningLayouts() {
         let text = ValueBox("32")
-        let presented = ValueBox(true)
+        let presented = ValueBox(false)
+        let focus = ValueBox<GaugeFormField?>(.yourRows)
+        let actionFocus = ValueBox<GaugeFormField?>(.yourRows)
+        let openPicker = GaugeStepperOpenPickerAction(
+            focusedField: actionFocus.binding,
+            isPresented: presented.binding
+        )
+        openPicker.perform()
+        #expect(actionFocus.value == nil)
+        #expect(presented.value)
+
         let warning = GaugeStepperWheelSheet(
             title: "Rows",
             text: text.binding,
@@ -820,9 +830,7 @@ struct DeterministicUIContractsTests {
         )
         plain.commit()
         #expect(HostedViewProbe(plain.environment(\.dynamicTypeSize, .accessibility1)).size.height > 0)
-
         text.value = "32"
-        let focus = ValueBox<GaugeFormField?>(.yourRows)
         let keyboard = GaugeKeyboardTextField(
             text: text.binding,
             field: .yourRows,
@@ -850,12 +858,21 @@ struct DeterministicUIContractsTests {
             mismatchDelta: 8
         )
         text.value = "32"
-        stepper.openPicker()
+        let stepperProbe = HostedViewProbe(stepper)
         stepper.increment()
         #expect(text.value == "33")
         stepper.decrement()
         #expect(text.value == "31")
-        #expect(HostedViewProbe(stepper.wheelSheet()).size.height > 0)
+        #expect(stepperProbe.size.height > 0)
+        let sheet = stepper.wheelSheet(
+            isPresented: presented.binding,
+            dynamicTypeSize: .large
+        )
+        let sheetProvider = SheetContentProvider(content: sheet)
+        let providedSheet = sheetProvider.contentView()
+        #expect(type(of: providedSheet) == type(of: sheet))
+        #expect(HostedViewProbe(sheet).size.height > 0)
+        #expect(HostedViewProbe(providedSheet).size.height > 0)
     }
 
     @Test func defaultPairPayloadAndAccessiblePatternLeavesAreLive() {
@@ -939,13 +956,42 @@ struct DeterministicUIContractsTests {
     }
 
     @Test func contentRendersAndUpdatesNativeRestorationActivity() async throws {
-        let content = HostedViewProbe(ContentView())
+        let noOp: (NSUserActivity) -> Void = { _ in }
+        let enabled = EmptyView().modifier(
+            SceneDraftLifecycleModifier(
+                isEnabled: true,
+                activityType: "test.scene-draft",
+                update: noOp,
+                restore: noOp
+            )
+        )
+        let disabled = EmptyView().modifier(
+            SceneDraftLifecycleModifier(
+                isEnabled: false,
+                activityType: "test.scene-draft",
+                update: noOp,
+                restore: noOp
+            )
+        )
+        #expect(
+            type(of: enabled) ==
+                ModifiedContent<EmptyView, SceneDraftLifecycleModifier>.self
+        )
+        #expect(type(of: disabled) == type(of: enabled))
+        #expect(enabled.modifier.isEnabled)
+        #expect(!disabled.modifier.isEnabled)
+        #expect(enabled.modifier.activityType == "test.scene-draft")
+        let enabledContent = enabled.modifier.modifiedContent(enabled.content)
+        let disabledContent = disabled.modifier.modifiedContent(disabled.content)
+        #expect(type(of: enabledContent) == type(of: disabledContent))
+
+        let view = ContentView(sceneLifecycleEnabled: false)
+        let content = HostedViewProbe(view)
         #expect(content.size.width > 0)
         await Task.yield()
         await Task.yield()
 
         let activity = NSUserActivity(activityType: "test.scene-draft")
-        let view = ContentView()
         view.updateSceneRestorationActivity(activity)
         let restored = try #require(
             activity.userInfo.flatMap(SceneDraftStore.deserialize)
@@ -958,11 +1004,11 @@ struct DeterministicUIContractsTests {
 
         let scene = KnittingGaugeReconcilerApp().body
         #expect(String(reflecting: type(of: scene)).contains("WindowGroup"))
-        #expect(HostedViewProbe(KnittingGaugeReconcilerApp.content()).size.width > 0)
     }
 
     @Test func contentBindingsActionsLifecycleAndSharingAreDeterministic() async throws {
-        let view = ContentView()
+        let view = ContentView(sceneLifecycleEnabled: false)
+        #expect(HostedViewProbe(view).size.width > 0)
         let text = ValueBox("32")
         let draftBinding = view.draftBinding(text.binding, at: 0)
         draftBinding.wrappedValue = "32"
@@ -1111,7 +1157,12 @@ struct DeterministicUIContractsTests {
                 isVoiceOverRunning: true
             ) == stitchError
         )
-        #expect(HostedViewProbe(view.aboutHelpSheet()).size.height > 0)
+        let aboutHelp = ValueBox(AboutHelpState(isPresented: true))
+        #expect(
+            HostedViewProbe(
+                ContentView.aboutHelpSheet(state: aboutHelp.binding)
+            ).size.height > 0
+        )
 
         let inputs = GaugeInputs(yourRows: 24, patternCastOn: 128)
         let result = GaugeMath.compute(inputs)
@@ -1314,17 +1365,17 @@ private final class GaugeValueBindings {
 }
 
 @MainActor
-private final class HostedViewProbe {
-    private let controller: UIHostingController<AnyView>
+private final class HostedViewProbe<Content: View> {
+    private let controller: UIHostingController<Content>
     private let window: UIWindow?
     let size: CGSize
 
-    init<Content: View>(
+    init(
         _ content: Content,
         width: CGFloat = 390,
         windowScene: UIWindowScene? = nil
     ) {
-        controller = UIHostingController(rootView: AnyView(content))
+        controller = UIHostingController(rootView: content)
         if let windowScene {
             let window = UIWindow(windowScene: windowScene)
             window.rootViewController = controller

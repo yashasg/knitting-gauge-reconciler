@@ -11,6 +11,7 @@ PROHIBITED_TEST_DIAGNOSTIC = /
   \bfopen\b.*\b(?:cannot|error|fail(?:ed|ure)?)\b |
   ^\d{4}-\d{2}-\d{2}.*\b(?:error|fail(?:ed|ure)?)\b |
   \bwarning: |
+  \[(?:Invalid\s+Configuration|Presentation|SwiftUI)\] |
   \[!\] |
   \badvisory\b |
   \bfound\s+[1-9][0-9]*\s+violations?\b |
@@ -346,6 +347,19 @@ def diagnostics_verifier_self_check
   raise "prohibited sibling diagnostic was accepted" if status.success?
   raise "rejection omitted source path and line" unless stderr.include?(expected_rejection)
   puts "ok: prohibited sibling exit #{status.exitstatus}, #{testmanagerd_path}:1"
+
+  [
+    ["Invalid Configuration", "[Invalid Configuration] No color named 'app-theme-ink' found\n"],
+    ["Presentation", "[Presentation] Attempt to present a view while a presentation is in progress.\n"],
+    ["SwiftUI", "[SwiftUI] Accessing State's value outside of being installed on a View.\n"]
+  ].each do |name, diagnostic|
+    File.binwrite(testmanagerd_path, diagnostic)
+    _stdout, stderr, status = run.call
+    expected_rejection = "#{testmanagerd_path}:1:#{diagnostic.chomp}"
+    raise "#{name} diagnostic was accepted" if status.success?
+    raise "#{name} rejection omitted source path and line" unless stderr.include?(expected_rejection)
+    puts "ok: #{name} diagnostic rejected, exit #{status.exitstatus}"
+  end
 
   File.binwrite(testmanagerd_path, "testmanagerd clean\n")
   outside_path = File.join(root, "outside.log")

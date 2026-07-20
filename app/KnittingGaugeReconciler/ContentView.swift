@@ -16,10 +16,34 @@ private final class ResetSnapshot {
     var draft: GaugeFormDraft?
 }
 
+struct SceneDraftLifecycleModifier: ViewModifier {
+    let isEnabled: Bool
+    let activityType: String
+    let update: (NSUserActivity) -> Void
+    let restore: (NSUserActivity) -> Void
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        modifiedContent(content)
+    }
+
+    @ViewBuilder
+    func modifiedContent<Content: View>(_ content: Content) -> some View {
+        if isEnabled {
+            content
+                .userActivity(activityType, isActive: true, update)
+                .onContinueUserActivity(activityType, perform: restore)
+        } else {
+            content
+        }
+    }
+}
+
 // swiftlint:disable:next type_body_length
 struct ContentView: View {
     private static let defaults = GaugeTextDefaults()
     private static let sceneDraftActivityType = "com.stitchwise.scene-draft"
+    private let sceneLifecycleEnabled: Bool
 
     // MARK: - Adaptive layout
 
@@ -51,6 +75,10 @@ struct ContentView: View {
     /// User's chosen measurement unit. Stored in UserDefaults; defaults to cm.
     /// INTERNAL MODEL IS ALWAYS CM — this controls display/entry conversion only.
     @AppStorage("measurementUnit") private var measurementUnit: MeasurementUnit = .centimeters
+
+    init(sceneLifecycleEnabled: Bool = true) {
+        self.sceneLifecycleEnabled = sceneLifecycleEnabled
+    }
 
     // MARK: - Derived
 
@@ -98,16 +126,21 @@ struct ContentView: View {
 
     var body: some View {
         navigationContent
-            .userActivity(
-                Self.sceneDraftActivityType,
-                isActive: true,
-                updateSceneRestorationActivity
+            .modifier(
+                SceneDraftLifecycleModifier(
+                    isEnabled: sceneLifecycleEnabled,
+                    activityType: Self.sceneDraftActivityType,
+                    update: updateSceneRestorationActivity,
+                    restore: restoreSceneDraft
+                )
             )
-            .onContinueUserActivity(Self.sceneDraftActivityType, perform: restoreSceneDraft)
     }
 
     private var navigationContent: some View {
         let inputPresentation = Self.inputPresentation(inputs)
+        let aboutSheet = SheetContentProvider(
+            content: Self.aboutHelpSheet(state: $aboutHelp)
+        )
         return NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: cardSpacing) {
@@ -192,7 +225,7 @@ struct ContentView: View {
                     AboutHelpToolbarButton(state: $aboutHelp)
                 }
             }
-            .sheet(isPresented: $aboutHelp.isPresented, content: aboutHelpSheet)
+            .sheet(isPresented: $aboutHelp.isPresented, content: aboutSheet.contentView)
             .onChange(of: aboutHelp.isPresented, helpPresentationChanged)
             .onChange(of: measurementUnit, measurementUnitChanged)
             .onChange(of: validationMessages, validationMessagesChanged)
@@ -201,8 +234,8 @@ struct ContentView: View {
         }
     }
 
-    func aboutHelpSheet() -> some View {
-        AboutHelpSheet(state: $aboutHelp)
+    static func aboutHelpSheet(state: Binding<AboutHelpState>) -> some View {
+        AboutHelpSheet(state: state)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }

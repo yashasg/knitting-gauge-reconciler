@@ -46,6 +46,27 @@ struct GaugeStepperAccessibilityContract: Equatable {
     let warningSummary: String?
 }
 
+struct SheetContentProvider<Content: View> {
+    let content: Content
+    func contentView() -> Content { content }
+}
+
+struct GaugeStepperOpenPickerAction {
+    let focusedField: Binding<GaugeFormField?>
+    let isPresented: Binding<Bool>
+
+    @MainActor func perform() {
+        focusedField.wrappedValue = nil
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+        isPresented.wrappedValue = true
+    }
+}
+
 // Issue #134 keeps the pure stepper semantics on the view instead of adding an adapter.
 // swiftlint:disable:next type_body_length
 struct GaugeStepperField: View {
@@ -260,17 +281,6 @@ struct GaugeStepperField: View {
         DeltaPillBadge(text: text)
     }
 
-    func openPicker() {
-        focusedField.wrappedValue = nil
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder),
-            to: nil,
-            from: nil,
-            for: nil
-        )
-        showWheelPicker = true
-    }
-
     func increment() {
         text = Self.adjustedText(
             validationText,
@@ -291,7 +301,10 @@ struct GaugeStepperField: View {
         )
     }
 
-    func wheelSheet() -> some View {
+    func wheelSheet(
+        isPresented: Binding<Bool>,
+        dynamicTypeSize: DynamicTypeSize
+    ) -> some View {
         GaugeStepperWheelSheet(
             title: title,
             text: $text,
@@ -303,7 +316,7 @@ struct GaugeStepperField: View {
             displayUnit: displayUnit,
             mismatchLabel: mismatchSentence,
             mismatchDeltaText: mismatchDeltaText,
-            isPresented: $showWheelPicker
+            isPresented: isPresented
         )
         .presentationDetents(
             Self.sheetDetents(
@@ -315,7 +328,17 @@ struct GaugeStepperField: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let openPicker = GaugeStepperOpenPickerAction(
+            focusedField: focusedField,
+            isPresented: $showWheelPicker
+        )
+        let sheetContent = SheetContentProvider(
+            content: wheelSheet(
+                isPresented: $showWheelPicker,
+                dynamicTypeSize: dynamicTypeSize
+            )
+        )
+        return VStack(alignment: .leading, spacing: 0) {
             Group {
                 if dynamicTypeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 4) {
@@ -368,7 +391,7 @@ struct GaugeStepperField: View {
                     .padding(.bottom, 8)
                     .frame(minHeight: 44)
 
-                Button(action: openPicker) {
+                Button(action: openPicker.perform) {
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(AppTheme.muted)
@@ -413,7 +436,7 @@ struct GaugeStepperField: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .sheet(isPresented: $showWheelPicker, content: wheelSheet)
+        .sheet(isPresented: $showWheelPicker, content: sheetContent.contentView)
     }
 }
 

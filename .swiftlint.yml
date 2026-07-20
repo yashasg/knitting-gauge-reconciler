@@ -3,7 +3,6 @@ included:
 
 excluded:
   - app/KnittingGaugeReconcilerTests
-  - app/KnittingGaugeReconcilerUITests
 
 # Opt-in rules relevant to HIG compliance
 opt_in_rules:

@@ -15,8 +15,6 @@
 		000000000000000000000104 /* GaugeMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000004 /* GaugeMathTests.swift */; };
 		000000000000000000000107 /* MetricKitSubscriberTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000007 /* MetricKitSubscriberTests.swift */; };
 		000000000000000000000137 /* ReplacementCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000037 /* ReplacementCoverageTests.swift */; };
-		000000000000000000000105 /* KnittingGaugeReconcilerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000005 /* KnittingGaugeReconcilerUITests.swift */; };
-		000000000000000000000115 /* AccessibilityAuditTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000015 /* AccessibilityAuditTests.swift */; };
 		000000000000000000000106 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000006 /* PrivacyInfo.xcprivacy */; };
 		000000000000000000000120 /* HomeHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000020 /* HomeHeaderView.swift */; };
 		000000000000000000000121 /* GaugeInputsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000021 /* GaugeInputsCard.swift */; };
@@ -45,13 +43,6 @@
 			remoteGlobalIDString = 000000000000000000000401;
 			remoteInfo = KnittingGaugeReconciler;
 		};
-		000000000000000000000202 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 000000000000000000000301 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 000000000000000000000401;
-			remoteInfo = KnittingGaugeReconciler;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -63,12 +54,9 @@
 		000000000000000000000004 /* GaugeMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeMathTests.swift; sourceTree = "<group>"; };
 		000000000000000000000007 /* MetricKitSubscriberTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricKitSubscriberTests.swift; sourceTree = "<group>"; };
 		000000000000000000000037 /* ReplacementCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplacementCoverageTests.swift; sourceTree = "<group>"; };
-		000000000000000000000005 /* KnittingGaugeReconcilerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingGaugeReconcilerUITests.swift; sourceTree = "<group>"; };
-		000000000000000000000015 /* AccessibilityAuditTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityAuditTests.swift; sourceTree = "<group>"; };
 		000000000000000000000006 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml.plist; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		000000000000000000000011 /* KnittingGaugeReconciler.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KnittingGaugeReconciler.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000012 /* KnittingGaugeReconcilerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KnittingGaugeReconcilerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		000000000000000000000013 /* KnittingGaugeReconcilerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KnittingGaugeReconcilerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000020 /* HomeHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHeaderView.swift; sourceTree = "<group>"; };
 		000000000000000000000021 /* GaugeInputsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeInputsCard.swift; sourceTree = "<group>"; };
 		000000000000000000000022 /* PatternInstructionsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternInstructionsCard.swift; sourceTree = "<group>"; };
@@ -91,7 +79,6 @@
 /* Begin PBXFrameworksBuildPhase section */
 		000000000000000000000601 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		000000000000000000000602 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		000000000000000000000603 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -100,7 +87,6 @@
 			children = (
 				000000000000000000000701 /* KnittingGaugeReconciler */,
 				000000000000000000000702 /* KnittingGaugeReconcilerTests */,
-				000000000000000000000703 /* KnittingGaugeReconcilerUITests */,
 				000000000000000000000704 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -161,21 +147,11 @@
 			path = KnittingGaugeReconcilerTests;
 			sourceTree = "<group>";
 		};
-		000000000000000000000703 /* KnittingGaugeReconcilerUITests */ = {
-			isa = PBXGroup;
-			children = (
-				000000000000000000000005 /* KnittingGaugeReconcilerUITests.swift */,
-				000000000000000000000015 /* AccessibilityAuditTests.swift */,
-			);
-			path = KnittingGaugeReconcilerUITests;
-			sourceTree = "<group>";
-		};
 		000000000000000000000704 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				000000000000000000000011 /* KnittingGaugeReconciler.app */,
 				000000000000000000000012 /* KnittingGaugeReconcilerTests.xctest */,
-				000000000000000000000013 /* KnittingGaugeReconcilerUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -215,23 +191,6 @@
 			productReference = 000000000000000000000012 /* KnittingGaugeReconcilerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		000000000000000000000403 /* KnittingGaugeReconcilerUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 000000000000000000000803 /* Build configuration list for PBXNativeTarget "KnittingGaugeReconcilerUITests" */;
-			buildPhases = (
-				000000000000000000000903 /* Sources */,
-				000000000000000000000603 /* Frameworks */,
-				000000000000000000000906 /* Resources */,
-			);
-			buildRules = ();
-			dependencies = (
-				000000000000000000000212 /* PBXTargetDependency */,
-			);
-			name = KnittingGaugeReconcilerUITests;
-			productName = KnittingGaugeReconcilerUITests;
-			productReference = 000000000000000000000013 /* KnittingGaugeReconcilerUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -244,7 +203,6 @@
 				TargetAttributes = {
 					000000000000000000000401 = {CreatedOnToolsVersion = 26.4; };
 					000000000000000000000402 = {CreatedOnToolsVersion = 26.4; TestTargetID = 000000000000000000000401; };
-					000000000000000000000403 = {CreatedOnToolsVersion = 26.4; TestTargetID = 000000000000000000000401; };
 				};
 			};
 			buildConfigurationList = 000000000000000000000804 /* Build configuration list for PBXProject "KnittingGaugeReconciler" */;
@@ -260,7 +218,6 @@
 			targets = (
 				000000000000000000000401 /* KnittingGaugeReconciler */,
 				000000000000000000000402 /* KnittingGaugeReconcilerTests */,
-				000000000000000000000403 /* KnittingGaugeReconcilerUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -268,18 +225,15 @@
 /* Begin PBXResourcesBuildPhase section */
 		000000000000000000000904 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000106 /* PrivacyInfo.xcprivacy in Resources */, 000000000000000000000133 /* Assets.xcassets in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
 		000000000000000000000905 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		000000000000000000000906 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000108, 000000000000000000000109, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000127, 000000000000000000000128, 000000000000000000000129, 000000000000000000000130, 000000000000000000000131, 000000000000000000000132, 000000000000000000000134, 000000000000000000000135, 000000000000000000000136); runOnlyForDeploymentPostprocessing = 0; };
 		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107, 000000000000000000000137); runOnlyForDeploymentPostprocessing = 0; };
-		000000000000000000000903 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000105, 000000000000000000000115); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		000000000000000000000211 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 000000000000000000000401 /* KnittingGaugeReconciler */; targetProxy = 000000000000000000000201 /* PBXContainerItemProxy */; };
-		000000000000000000000212 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 000000000000000000000401 /* KnittingGaugeReconciler */; targetProxy = 000000000000000000000202 /* PBXContainerItemProxy */; };
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -440,44 +394,11 @@
 			};
 			name = Release;
 		};
-		000000000000000000001301 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yashasg.knitting-guage-reconcilerUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = KnittingGaugeReconciler;
-			};
-			name = Debug;
-		};
-		000000000000000000001302 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yashasg.knitting-guage-reconcilerUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = KnittingGaugeReconciler;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
 		000000000000000000000801 /* Build configuration list for PBXNativeTarget "KnittingGaugeReconciler" */ = {isa = XCConfigurationList; buildConfigurations = (000000000000000000001101, 000000000000000000001102); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		000000000000000000000802 /* Build configuration list for PBXNativeTarget "KnittingGaugeReconcilerTests" */ = {isa = XCConfigurationList; buildConfigurations = (000000000000000000001201, 000000000000000000001202); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		000000000000000000000803 /* Build configuration list for PBXNativeTarget "KnittingGaugeReconcilerUITests" */ = {isa = XCConfigurationList; buildConfigurations = (000000000000000000001301, 000000000000000000001302); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		000000000000000000000804 /* Build configuration list for PBXProject "KnittingGaugeReconciler" */ = {isa = XCConfigurationList; buildConfigurations = (000000000000000000001001, 000000000000000000001002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 	};

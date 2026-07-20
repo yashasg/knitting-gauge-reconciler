@@ -414,7 +414,6 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
             target: context.coordinator,
             action: #selector(Coordinator.didTapDone)
         )
-        done.accessibilityIdentifier = "keyboard-done"
         toolbar.items = [done]
         toolbar.sizeToFit()
         textField.inputAccessoryView = toolbar

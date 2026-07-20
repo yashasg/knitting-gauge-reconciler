@@ -5,6 +5,7 @@ require "json"
 require "fileutils"
 require "shellwords"
 require "xcodeproj"
+require_relative "project_guard"
 
 # This file contains the fastlane.tools configuration
 # You can find the documentation at https://docs.fastlane.tools
@@ -145,6 +146,8 @@ platform :ios do
 
   desc "Build and test with scheme-defined scope (CI)"
   lane :ci do |options|
+    ProjectGuard.verify!
+    ProjectGuard.self_test!
     swiftlint(
       mode: :lint,
       config_file: "../.swiftlint.yml",

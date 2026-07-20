@@ -390,11 +390,3 @@ enum GaugeFormField: CaseIterable, Hashable {
 }
 
 // MARK: - Helpers
-
-func initialText(_ environmentKey: String, defaultValue: String) -> String {
-    ProcessInfo.processInfo.environment[environmentKey] ?? defaultValue
-}
-
-func initialBool(_ environmentKey: String) -> Bool {
-    ProcessInfo.processInfo.environment[environmentKey] == "1"
-}

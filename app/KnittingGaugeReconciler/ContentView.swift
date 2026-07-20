@@ -18,29 +18,28 @@ struct ContentView: View {
     // MARK: - State
 
     @SceneStorage("gauge.pattern-stitches")
-    private var patternStitches = initialText("KGR_PS", defaultValue: "32")
+    private var patternStitches = "32"
     @SceneStorage("gauge.pattern-rows")
-    private var patternRows = initialText("KGR_PR", defaultValue: "24")
+    private var patternRows = "24"
     @SceneStorage("gauge.swatch-stitches")
-    private var yourStitches = initialText("KGR_YS", defaultValue: "32")
+    private var yourStitches = "32"
     @SceneStorage("gauge.swatch-rows")
-    private var yourRows = initialText("KGR_YR", defaultValue: "32")
+    private var yourRows = "32"
     @SceneStorage("gauge.pattern-cast-on")
-    private var patternCastOn = initialText("KGR_CAST_ON", defaultValue: "")
+    private var patternCastOn = ""
     @SceneStorage("gauge.pattern-yoke")
-    private var patternYoke = initialText("KGR_YOKE", defaultValue: "")
+    private var patternYoke = ""
     @SceneStorage("gauge.pattern-body")
-    private var patternBody = initialText("KGR_BODY", defaultValue: "")
+    private var patternBody = ""
     @SceneStorage("gauge.pattern-sleeve")
-    private var patternSleeve = initialText("KGR_SLEEVE", defaultValue: "")
+    private var patternSleeve = ""
     @SceneStorage("gauge.pattern-increases")
-    private var patternIncreases = initialText("KGR_INCREASES", defaultValue: "")
+    private var patternIncreases = ""
     @SceneStorage("gauge.pattern-details-expanded")
-    private var patternDetailsExpanded = initialBool("KGR_SHOW_PATTERN_DETAILS")
+    private var patternDetailsExpanded = false
 
-    @State private var showFullMath = initialBool("KGR_SHOW_FULL_MATH")
-    @State private var showVerdictHelp = initialBool("KGR_SHOW_VERDICT_HELP")
-    @State private var showAboutHelp = initialBool("KGR_SHOW_ABOUT_HELP")
+    @State private var showFullMath = false
+    @State private var showAboutHelp = false
     @State private var previousVerdictBucket: VerdictBucket?
     @State private var driftBandSignpostFired = false
     @State private var resetSnapshot: GaugeFormDraft?
@@ -146,7 +145,7 @@ struct ContentView: View {
             // Modal sheets own accessibility focus while presented. Their roots
             // explicitly opt back in below so underlying controls are not audited
             // through the system dimming layer.
-            .accessibilityHidden(showVerdictHelp || showAboutHelp)
+            .accessibilityHidden(showAboutHelp)
             .navigationTitle("Stitchwise")
             .background(
                 ZStack {
@@ -160,20 +159,10 @@ struct ContentView: View {
                     AboutHelpToolbarButton(showAboutHelp: $showAboutHelp)
                 }
             }
-            .sheet(isPresented: $showVerdictHelp) {
-                VerdictHelpSheet(title: sheetVerdictTitle, explanation: sheetVerdictBody)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            }
             .sheet(isPresented: $showAboutHelp) {
                 AboutHelpSheet()
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
-            }
-            .onChange(of: showVerdictHelp) { _, newValue in
-                if newValue {
-                    os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.sheetVerdictHelpOpened)
-                }
             }
             .onChange(of: showAboutHelp) { _, newValue in
                 if newValue {
@@ -226,11 +215,6 @@ struct ContentView: View {
     private var verdictTitle: String {
         guard inputs != nil, let result = liveResult else { return "" }
         return verdictTitleComputed(result: result)
-    }
-
-    private var sheetVerdictTitle: String {
-        guard let liveResult else { return "Correct your gauge values" }
-        return verdictTitleComputed(result: liveResult)
     }
 
     private var sheetVerdictBody: String {
@@ -443,17 +427,17 @@ struct ContentView: View {
     private func restoreLaunchDraft(for session: UISceneSession) {
         applySceneDraft(
             values: [
-                initialText("KGR_PS", defaultValue: Self.defaults.patternStitches),
-                initialText("KGR_PR", defaultValue: Self.defaults.patternRows),
-                initialText("KGR_YS", defaultValue: Self.defaults.yourStitches),
-                initialText("KGR_YR", defaultValue: Self.defaults.yourRows),
-                initialText("KGR_CAST_ON", defaultValue: ""),
-                initialText("KGR_YOKE", defaultValue: ""),
-                initialText("KGR_BODY", defaultValue: ""),
-                initialText("KGR_SLEEVE", defaultValue: ""),
-                initialText("KGR_INCREASES", defaultValue: ""),
+                Self.defaults.patternStitches,
+                Self.defaults.patternRows,
+                Self.defaults.yourStitches,
+                Self.defaults.yourRows,
+                "",
+                "",
+                "",
+                "",
+                "",
             ],
-            disclosure: initialBool("KGR_SHOW_PATTERN_DETAILS"),
+            disclosure: false,
             for: session
         )
     }
@@ -666,39 +650,6 @@ struct GaugeLeadView: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isStaticText)
         .accessibilityIdentifier("gauge-lead")
-    }
-}
-
-// MARK: - VerdictHelpSheet
-
-struct VerdictHelpSheet: View {
-    var title: String
-    var explanation: String
-
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HelpSheetHeader(closeIdentifier: "verdict-help-close") { dismiss() }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(title)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(AppTheme.sage)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                    Text(explanation)
-                        .font(.body)
-                        .lineSpacing(4)
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .accessibilityIdentifier("verdict-help-sheet")
-        }
-        .background(AppTheme.background.ignoresSafeArea())
     }
 }
 

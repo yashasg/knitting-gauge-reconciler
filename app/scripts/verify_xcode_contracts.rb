@@ -25,9 +25,15 @@ end
 def ui_recurrences(paths, contents)
   path_pattern = %r{(^|/)(XCUITests|[^/]*UITests)(/|$)}
   metadata_pattern = /com\.apple\.product-type\.bundle\.ui-testing|\bXCUITest|\b[A-Za-z0-9_]*UITests\b/
+  api_pattern = /\b(?:XCUIApplication|XCUIElement|XCUIDevice)\b/
   paths.grep(path_pattern) + contents.each_with_object([]) do |(path, text), matches|
-    matches << path if text.match?(metadata_pattern)
+    matches << path if text.match?(metadata_pattern) || text.match?(api_pattern)
   end
+end
+
+def verify_no_ui_recurrence(paths, contents)
+  recurrence = ui_recurrences(paths, contents).uniq
+  raise ContractError, "UI-test recurrence detected: #{recurrence.join(", ")}" if recurrence.any?
 end
 
 def normalized_coverage_path(path, root)
@@ -442,6 +448,12 @@ def verify_target_membership(target, root, tracked)
 end
 
 def assert_metadata_regression_fixtures(root)
+  neutral_path = "app/KnittingGaugeReconcilerTests/InteractionContracts.swift"
+  neutral_source = "let app: XCUIApplication\nlet element: XCUIElement\nlet device: XCUIDevice"
+  expect_contract_rejection("neutral-named Swift XCUI API", /UI-test recurrence detected/) do
+    verify_no_ui_recurrence([neutral_path], { neutral_path => neutral_source })
+  end
+
   fixture_root = File.join(root, "app", ".xcode-contract-fixture-#{Process.pid}")
   FileUtils.rm_rf(fixture_root)
   begin
@@ -529,10 +541,10 @@ def verify_repository(root)
     "app/fastlane",
     ".github",
     ".gitlab-ci.yml"
-  )
+  ) + all_tracked.grep(/\.swift\z/)
+  scan_paths.uniq!
   contents = scan_paths.to_h { |path| [path, File.binread(File.join(root, path))] }
-  recurrence = ui_recurrences(all_tracked, contents).uniq
-  raise ContractError, "UI-test recurrence detected: #{recurrence.join(", ")}" if recurrence.any?
+  verify_no_ui_recurrence(all_tracked, contents)
 
   project.targets.each do |target|
     if target.product_type == "com.apple.product-type.bundle.ui-testing"

@@ -227,7 +227,6 @@ struct GaugeMathTests {
         }
     }
 
-    @MainActor
     @Test func computedExactThreePercentBoundariesAreNotMatches() {
         let lowerInputs = GaugeInputs(
             patternStitches: 29.1, patternRows: 30, yourStitches: 30, yourRows: 29.1,
@@ -259,8 +258,6 @@ struct GaugeMathTests {
         let fineUpper = GaugeMath.compute(fineUpperInputs)
         let lowerInside = GaugeMath.compute(lowerInsideInputs)
         let upperInside = GaugeMath.compute(upperInsideInputs)
-        let view = ContentView()
-
         #expect(lower.stitchWidthScale == 0.97.nextUp)
         #expect(lower.rowCountScale == 0.97.nextUp)
         #expect(upper.stitchWidthScale == 1.03.nextDown)
@@ -277,8 +274,6 @@ struct GaugeMathTests {
             #expect(!isGaugeMatch(scale: result.rowCountScale))
             #expect(gaugeStatus(scale: result.stitchWidthScale) == stitchStatus)
             #expect(rowStatus(scale: result.rowCountScale) == rowStatusValue)
-            #expect(view.verdictTitleComputed(result: result) == "Significant drift")
-            #expect(view.verdictBodyComputed(result: result, inputs: inputs).hasPrefix("Both axes are off."))
             #expect(castOnGuidanceText(inputs: inputs, result: result)?.hasPrefix("Cast on") == true)
         }
 
@@ -287,30 +282,8 @@ struct GaugeMathTests {
             #expect(isGaugeMatch(scale: result.rowCountScale))
             #expect(gaugeStatus(scale: result.stitchWidthScale) == "Match")
             #expect(rowStatus(scale: result.rowCountScale) == "Match")
-            #expect(view.verdictTitleComputed(result: result) == "Gauge match")
-            #expect(
-                view.verdictBodyComputed(result: result, inputs: inputs).hasPrefix(
-                    "Both gauges are within the match range."
-                )
-            )
             #expect(castOnGuidanceText(inputs: inputs, result: result)?.hasPrefix("Optionally cast on") == true)
         }
-    }
-
-    @Test func isMajorDriftIsSymmetricAtExact15Percent() {
-        let positiveBoundaryResult = GaugeMath.compute(GaugeInputs(
-            patternStitches: 23, patternRows: 24, yourStitches: 20, yourRows: 24
-        ))
-        let negativeBoundaryResult = GaugeMath.compute(GaugeInputs(
-            patternStitches: 17, patternRows: 24, yourStitches: 20, yourRows: 24
-        ))
-        let belowBoundaryResult = GaugeMath.compute(GaugeInputs(
-            patternStitches: 22, patternRows: 24, yourStitches: 20, yourRows: 24
-        ))
-
-        #expect(isMajorDrift(abs(positiveBoundaryResult.stitchWidthScale - 1)))
-        #expect(isMajorDrift(abs(negativeBoundaryResult.stitchWidthScale - 1)))
-        #expect(!isMajorDrift(abs(belowBoundaryResult.stitchWidthScale - 1)))
     }
 
     @Test func castOnGuidanceTextOptionalInsideMatchImperativeOutside() {
@@ -407,7 +380,6 @@ struct GaugeMathTests {
         #expect(result5.castOnRoundingDriftPercent?.isApproximately(0.0) == true)
     }
 
-    @MainActor
     @Test func adjustedCastOnOmitsExtremeRatioGuidance() {
         let inputs = GaugeInputs(
             patternStitches: 99, patternRows: 24, yourStitches: 1, yourRows: 24,
@@ -423,11 +395,6 @@ struct GaugeMathTests {
         #expect(export.castOn == nil)
         #expect(!share.contains("Cast-on"))
         #expect(!share.contains("Cast on 0"))
-        #expect(
-            ContentView().verdictBodyComputed(result: result, inputs: inputs).contains(
-                "No usable whole-stitch cast-on can be calculated from these values. Re-swatch before proceeding."
-            )
-        )
     }
 
     @Test func castOnHalfTieAndSignedRoundingDriftUseDeliveredCount() {

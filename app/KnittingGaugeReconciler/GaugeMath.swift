@@ -366,9 +366,6 @@ func rowStatus(scale: Double) -> String {
     return scale > 1 ? "Much denser" : "Much looser"
 }
 
-// ponytail: the tolerance only absorbs binary rounding at the exact decimal boundary.
-func isMajorDrift(_ drift: Double) -> Bool { drift + 1e-12 >= 0.15 }
-
 /// Cast-on guidance text, or `nil` when no usable adjusted cast-on is available.
 func castOnGuidanceText(inputs: GaugeInputs, result: GaugeMathResult) -> String? {
     guard let patternCastOn = inputs.patternCastOn, let adjustedCastOn = result.adjustedCastOn else {

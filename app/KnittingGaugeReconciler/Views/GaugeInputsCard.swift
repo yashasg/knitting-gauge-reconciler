@@ -2,6 +2,13 @@ import SwiftUI
 
 struct GaugeInputsCard: View {
     private static let spokenGaugeBasis = "per 10 centimeters"
+    static let accessibilityFieldOrder: [GaugeFormField] = [
+        .patternStitches, .patternRows, .yourStitches, .yourRows,
+    ]
+
+    static func usesStackedLayout(at size: DynamicTypeSize) -> Bool {
+        size.isAccessibilitySize
+    }
 
     static func accessibilityLabel(for field: GaugeFormField) -> String {
         guard !field.isPatternDetail else { return field.correctionName }
@@ -67,7 +74,7 @@ struct GaugeInputsCard: View {
 
     @ViewBuilder
     private var patternFields: some View {
-        if dynamicTypeSize.isAccessibilitySize {
+        if Self.usesStackedLayout(at: dynamicTypeSize) {
             VStack(alignment: .leading, spacing: 12) {
                 patternStitchesField
                 patternRowsField
@@ -86,7 +93,7 @@ struct GaugeInputsCard: View {
 
     @ViewBuilder
     private var swatchFields: some View {
-        if dynamicTypeSize.isAccessibilitySize {
+        if Self.usesStackedLayout(at: dynamicTypeSize) {
             VStack(alignment: .leading, spacing: 12) {
                 yourStitchesField
                 yourRowsField

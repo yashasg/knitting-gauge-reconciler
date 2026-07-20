@@ -13,7 +13,6 @@ enum SignpostNames {
     static let resetTapped: StaticString            = "reset.tapped"              // EVENT
     static let verdictImproved: StaticString        = "verdict.improved"          // EVENT
     static let verdictDegraded: StaticString        = "verdict.degraded"          // EVENT
-    static let sheetVerdictHelpOpened: StaticString = "sheet.verdictHelp.opened"  // EVENT
     static let sheetAboutHelpOpened: StaticString   = "sheet.aboutHelp.opened"    // EVENT
     static let castOnDriftBandShown: StaticString   = "cast_on.driftBandShown"    // EVENT
 }

@@ -3,15 +3,15 @@ import SwiftUI
 // MARK: - AboutHelpToolbarButton
 
 struct AboutHelpToolbarButton: View {
-    @Binding private var showAboutHelp: Bool
+    @Binding private var state: AboutHelpState
 
-    init(showAboutHelp: Binding<Bool>) {
-        _showAboutHelp = showAboutHelp
+    init(state: Binding<AboutHelpState>) {
+        _state = state
     }
 
     var body: some View {
         Button {
-            showAboutHelp = true
+            state.open()
         } label: {
             Image(systemName: "questionmark.circle")
                 .font(.body.weight(.medium))
@@ -19,8 +19,8 @@ struct AboutHelpToolbarButton: View {
                 .frame(minWidth: 44, minHeight: 44)
                 .contentShape(Rectangle())
         }
-        .accessibilityLabel("About this calculator")
-        .accessibilityHint("Opens an explanation of how this calculator works")
+        .accessibilityLabel(AboutHelpContract.openLabel)
+        .accessibilityHint(AboutHelpContract.openHint)
         .accessibilityIdentifier("about-help-button")
     }
 }

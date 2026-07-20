@@ -3,6 +3,35 @@ import SwiftUI
 // MARK: - AppTheme
 
 enum AppTheme {
+    struct ContrastPair: Equatable {
+        let foreground: String
+        let background: String
+        let minimumRatio: Double
+    }
+
+    static let textContrastPairs = [
+        ContrastPair(
+            foreground: "app-theme-ink",
+            background: "app-theme-background",
+            minimumRatio: 4.5
+        ),
+        ContrastPair(
+            foreground: "app-theme-muted",
+            background: "app-theme-card",
+            minimumRatio: 4.5
+        ),
+        ContrastPair(
+            foreground: "app-theme-warning-text",
+            background: "app-theme-warning-background",
+            minimumRatio: 4.5
+        ),
+        ContrastPair(
+            foreground: "app-theme-cream",
+            background: "app-theme-sage",
+            minimumRatio: 4.5
+        ),
+    ]
+
     static let background       = Color("app-theme-background")
     static let card             = Color("app-theme-card")
     static let oatmeal          = Color("app-theme-oatmeal")

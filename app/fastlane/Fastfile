@@ -137,6 +137,13 @@ def verify_test_diagnostics(output_directory)
 end
 
 
+def verify_xcode_contracts
+  verifier_path = File.expand_path("../scripts/verify_xcode_contracts.rb", __dir__)
+  load(verifier_path)
+  verify_repository(File.expand_path("../..", __dir__))
+end
+
+
 platform :ios do
   desc "Sync certificates and provisioning profiles"
   lane :certs do
@@ -145,6 +152,7 @@ platform :ios do
 
   desc "Build and test with scheme-defined scope (CI)"
   lane :ci do |options|
+    verify_xcode_contracts
     swiftlint(
       mode: :lint,
       config_file: "../.swiftlint.yml",

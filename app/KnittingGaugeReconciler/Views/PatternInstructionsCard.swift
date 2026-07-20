@@ -1,5 +1,22 @@
 import SwiftUI
 
+struct PatternDetailsSemantics: Equatable {
+    let disclosureLabel = "Pattern details (optional)"
+    let disclosureHint = "Expands optional unit, cast-on, length, and shaping fields"
+    let isExpanded: Bool
+    let visibleFields: [GaugeFormField]
+    let lengthLabels: [String]
+
+    init(isExpanded: Bool, unit: MeasurementUnit) {
+        self.isExpanded = isExpanded
+        visibleFields = isExpanded
+            ? [.patternCastOn, .patternYoke, .patternBody, .patternSleeve, .patternIncreases]
+            : []
+        let draft = GaugeFormDraft(unit: unit)
+        lengthLabels = [.patternYoke, .patternBody, .patternSleeve].map(draft.lengthFieldLabel)
+    }
+}
+
 struct PatternInstructionsCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -16,6 +33,10 @@ struct PatternInstructionsCard: View {
     private let onSubmit: () -> Void
 
     private static let lengthCmRange: ClosedRange<Int> = 5...100
+
+    static func usesStackedLayout(at size: DynamicTypeSize) -> Bool {
+        size.isAccessibilitySize
+    }
 
     init(
         patternCastOn: Binding<String>,
@@ -87,7 +108,7 @@ struct PatternInstructionsCard: View {
 
     @ViewBuilder
     private var lengthFields: some View {
-        if dynamicTypeSize.isAccessibilitySize {
+        if Self.usesStackedLayout(at: dynamicTypeSize) {
             VStack(alignment: .leading, spacing: 12) {
                 yokeField
                 bodyField
@@ -106,7 +127,7 @@ struct PatternInstructionsCard: View {
 
     @ViewBuilder
     private var sleeveAndShapingFields: some View {
-        if dynamicTypeSize.isAccessibilitySize {
+        if Self.usesStackedLayout(at: dynamicTypeSize) {
             VStack(alignment: .leading, spacing: 12) {
                 sleeveField
                 shapingField

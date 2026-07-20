@@ -975,8 +975,41 @@ struct DeterministicUIContractsTests {
         let unit = view.measurementUnitBinding
         unit.wrappedValue = unit.wrappedValue
         unit.wrappedValue = .inches
-        view.reconcileSceneDraft(from: .centimeters, to: .inches)
-        view.reconcileSceneDraft(from: .inches, to: .centimeters)
+        let rawInchDraft = MeasurementUnit.inches.centimeterStorageText(
+            from: "1",
+            cmRange: 5...100
+        )
+        var inchValues = view.rawTextValues
+        inchValues[5] = rawInchDraft
+        #expect(
+            ContentView.reconciledSceneDraft(
+                values: inchValues,
+                from: .centimeters,
+                to: .inches
+            ) == nil
+        )
+        let reconciledValues = try #require(
+            ContentView.reconciledSceneDraft(
+                values: inchValues,
+                from: .inches,
+                to: .centimeters
+            )
+        )
+        #expect(reconciledValues[5] == "1")
+        #expect(Array(reconciledValues[0...4]) == Array(inchValues[0...4]))
+        let unchangedValues = view.rawTextValues
+        #expect(view.reconcileSceneDraft(from: .centimeters, to: .inches) == nil)
+        #expect(view.rawTextValues == unchangedValues)
+        let appliedValues = try #require(
+            view.reconcileSceneDraft(from: .inches, to: .centimeters)
+        )
+        #expect(
+            appliedValues ==
+                SceneDraftStore.reconcileInvalidInchProvenance(
+                    in: unchangedValues,
+                    for: .centimeters
+                )
+        )
         unit.wrappedValue = .centimeters
         view.finishEditing()
         var invalidDraft = GaugeFormDraft()
@@ -989,26 +1022,95 @@ struct DeterministicUIContractsTests {
         view.undoReset()
         #expect(view.formDraft.rawValues.count == GaugeFormField.allCases.count)
 
-        view.scenePhaseChanged(.active, .active)
-        view.scenePhaseChanged(.active, .background)
-        view.helpPresentationChanged(false, false)
-        view.helpPresentationChanged(false, true)
-        view.measurementUnitChanged(.centimeters, .inches)
-        view.announceValidation(previous: [:], current: [:], isVoiceOverRunning: false)
-        view.announceValidation(previous: [:], current: [:], isVoiceOverRunning: true)
-        view.announceValidation(
-            previous: [:],
-            current: [.patternStitches: "Pattern stitch gauge is required."],
-            isVoiceOverRunning: true
+        let telemetryCases: [
+            (decision: StaticString?, expected: String?, perform: () -> Void)
+        ] = [
+            (
+                ContentView.helpSignpostName(previous: true, current: false),
+                nil,
+                { view.helpPresentationChanged(true, false) }
+            ),
+            (
+                ContentView.helpSignpostName(previous: false, current: true),
+                SignpostNames.sheetAboutHelpOpened.description,
+                { view.helpPresentationChanged(false, true) }
+            ),
+            (
+                ContentView.verdictSignpostName(previous: "", current: "Gauge match"),
+                nil,
+                { view.verdictChanged("", "Gauge match") }
+            ),
+            (
+                ContentView.verdictSignpostName(previous: "Gauge match", current: "Drift"),
+                SignpostNames.verdictDegraded.description,
+                { view.verdictChanged("Gauge match", "Drift") }
+            ),
+            (
+                ContentView.verdictSignpostName(
+                    previous: "Major mismatch",
+                    current: "Gauge match"
+                ),
+                SignpostNames.verdictImproved.description,
+                { view.verdictChanged("Major mismatch", "Gauge match") }
+            ),
+            (
+                ContentView.driftBandSignpostName(previous: true, current: false),
+                nil,
+                { view.castOnDriftChanged(true, false) }
+            ),
+            (
+                ContentView.driftBandSignpostName(previous: false, current: true),
+                SignpostNames.castOnDriftBandShown.description,
+                { view.castOnDriftChanged(false, true) }
+            ),
+        ]
+        for testCase in telemetryCases {
+            testCase.perform()
+            #expect(testCase.decision?.description == testCase.expected)
+        }
+
+        let valuesBeforeNoOpUnitChange = view.formDraft.rawValues
+        #expect(
+            {
+                view.measurementUnitChanged(.centimeters, .inches)
+                return view.formDraft.rawValues == valuesBeforeNoOpUnitChange
+            }()
         )
-        view.validationMessagesChanged([:], [:])
-        view.verdictChanged("", "")
-        view.verdictChanged("", "Gauge match")
-        view.verdictChanged("Gauge match", "Drift")
-        view.driftVisibilityChanged(true)
-        view.driftVisibilityChanged(true)
-        view.driftVisibilityChanged(false)
-        view.castOnDriftChanged(false, true)
+        let stitchError = "Pattern stitch gauge is required."
+        #expect(
+            view.validationMessagesChanged(
+                [:],
+                [.patternStitches: stitchError],
+                isVoiceOverRunning: false
+            ) == nil
+        )
+        #expect(
+            view.validationMessagesChanged(
+                [:],
+                [:],
+                isVoiceOverRunning: true
+            ) == nil
+        )
+        #expect(
+            {
+                view.validationMessagesChanged(
+                    [:],
+                    [.patternStitches: stitchError]
+                )
+                return ContentView.validationAnnouncement(
+                    previous: [:],
+                    current: [.patternStitches: stitchError],
+                    isVoiceOverRunning: true
+                ) == stitchError
+            }()
+        )
+        #expect(
+            view.validationMessagesChanged(
+                [:],
+                [.patternStitches: stitchError],
+                isVoiceOverRunning: true
+            ) == stitchError
+        )
         #expect(HostedViewProbe(view.aboutHelpSheet()).size.height > 0)
 
         let inputs = GaugeInputs(yourRows: 24, patternCastOn: 128)

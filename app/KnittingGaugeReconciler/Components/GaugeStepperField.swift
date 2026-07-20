@@ -158,20 +158,8 @@ struct GaugeStepperField: View {
         return rounded.flatMap { range.contains($0) ? $0 : nil } ?? range.lowerBound
     }
 
-    static func committedText(
-        selection: Int,
-        field: GaugeFormField,
-        displayUnit: MeasurementUnit?
-    ) -> String {
-        switch field {
-        case .patternYoke, .patternBody, .patternSleeve:
-            return (displayUnit ?? .centimeters).centimeterStorageText(
-                from: "\(selection)",
-                cmRange: 5...100
-            )
-        default:
-            return "\(selection)"
-        }
+    static func committedText(selection: Int) -> String {
+        "\(selection)"
     }
 
     static func adjustedText(
@@ -188,7 +176,7 @@ struct GaugeStepperField: View {
             range: range
         )
         let adjusted = min(max(current + adjustment, range.lowerBound), range.upperBound)
-        return committedText(selection: adjusted, field: field, displayUnit: displayUnit)
+        return committedText(selection: adjusted)
     }
 
     init(
@@ -619,11 +607,7 @@ struct GaugeStepperWheelSheet: View {
     }
 
     func commit() {
-        text = GaugeStepperField.committedText(
-            selection: selectedValue,
-            field: field,
-            displayUnit: displayUnit
-        )
+        text = GaugeStepperField.committedText(selection: selectedValue)
         isPresented = false
     }
 

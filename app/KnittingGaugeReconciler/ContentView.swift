@@ -5,6 +5,16 @@ import MetricKit
 import os.signpost
 // Components and Views are in separate files under Components/ and Views/
 
+enum SignpostNames {
+    static let log: OSLog = MXMetricManager.makeLogHandle(category: "user_actions")
+    static let compute: StaticString = "compute"
+    static let shareInvoked: StaticString = "share.invoked"
+    static let shareFallback: StaticString = "share.fallback"
+    static let resetTapped: StaticString = "reset.tapped"
+    static let sheetAboutHelpOpened: StaticString = "sheet.aboutHelp.opened"
+    static let castOnDriftBandShown: StaticString = "cast_on.driftBandShown"
+}
+
 struct GaugeInputPresentation {
     let stitchMismatch: Bool
     let rowMismatch: Bool
@@ -183,7 +193,6 @@ struct ContentView: View {
                     RequiredAdjustmentsCard(
                         result: liveResult,
                         inputs: inputs,
-                        verdict: (title: verdictTitle, body: resultGuidanceBody),
                         unit: measurementUnit,
                         showFullMath: $showFullMath,
                         canUndoReset: canUndoReset,
@@ -225,7 +234,6 @@ struct ContentView: View {
             .onChange(of: aboutHelp.isPresented, helpPresentationChanged)
             .onChange(of: measurementUnit, measurementUnitChanged)
             .onChange(of: validationMessages, validationMessagesChanged)
-            .onChange(of: verdictTitle, verdictChanged)
             .onChange(of: Self.hasCastOnDrift(liveResult), castOnDriftChanged)
         }
     }
@@ -291,118 +299,8 @@ struct ContentView: View {
         return newValidationAnnouncement(previous: previous, current: current)
     }
 
-    static func verdictSignpostName(
-        previous oldValue: String,
-        current newValue: String
-    ) -> StaticString? {
-        let previous = oldValue.isEmpty ? nil : VerdictBucket(verdictTitle: oldValue)
-        let current = newValue.isEmpty ? nil : VerdictBucket(verdictTitle: newValue)
-        return VerdictBucket.signpostName(
-            previous: previous,
-            current: current
-        )
-    }
-
-    func verdictChanged(_ oldValue: String, _ newValue: String) {
-        if let name = Self.verdictSignpostName(previous: oldValue, current: newValue) {
-            os_signpost(.event, log: SignpostNames.log, name: name)
-        }
-    }
-
     static func driftBandSignpostName(previous: Bool, current: Bool) -> StaticString? {
         !previous && current ? SignpostNames.castOnDriftBandShown : nil
-    }
-
-    // MARK: - Verdict
-
-    private var verdictTitle: String {
-        Self.verdictTitle(inputs: inputs, result: liveResult)
-    }
-
-    private var resultGuidanceBody: String {
-        Self.resultGuidanceBody(inputs: inputs, result: liveResult)
-    }
-
-    static func verdictTitle(inputs: GaugeInputs?, result: GaugeMathResult?) -> String {
-        guard inputs != nil, let result else { return "" }
-        return ContentView().verdictTitleComputed(result: result)
-    }
-
-    static func resultGuidanceBody(inputs: GaugeInputs?, result: GaugeMathResult?) -> String {
-        guard let result, let inputs else {
-            return "Correct the highlighted fields before viewing gauge guidance."
-        }
-        return ContentView().verdictBodyComputed(result: result, inputs: inputs)
-    }
-
-    func verdictTitleComputed(result: GaugeMathResult) -> String {
-        let stitchDrift = abs(result.stitchWidthScale - 1)
-        let rowDrift = abs(result.rowCountScale - 1)
-        let stitchMatches = isGaugeMatch(scale: result.stitchWidthScale)
-        let rowMatches = isGaugeMatch(scale: result.rowCountScale)
-        if stitchMatches, rowMatches { return "Gauge match" }
-        if isMajorDrift(stitchDrift) || isMajorDrift(rowDrift) { return "Major mismatch" }
-        let stitchOffRange = !stitchMatches && stitchDrift < 0.15
-        let rowOffRange = !rowMatches && rowDrift < 0.15
-        if stitchOffRange && rowOffRange { return "Significant drift" }
-        return "Drift"
-    }
-
-    func verdictBodyComputed(result: GaugeMathResult, inputs: GaugeInputs) -> String {
-        let stitchDrift   = abs(result.stitchWidthScale - 1)
-        let rowDrift      = abs(result.rowCountScale - 1)
-        let stitchPercent = abs(GaugeMath.fmtPct(result.stitchWidthScale) - 100)
-        let rowPercent    = abs(GaugeMath.fmtPct(result.rowCountScale) - 100)
-        let stitchOff = !isGaugeMatch(scale: result.stitchWidthScale)
-        let rowOff    = !isGaugeMatch(scale: result.rowCountScale)
-        let stitchDir = result.stitchWidthScale > 1 ? "wider" : "narrower"
-        let rowDir    = result.rowCountScale > 1 ? "denser" : "looser"
-        let sectionDir = result.rowCountScale > 1 ? "shorter" : "longer"
-        let majorNote = (isMajorDrift(stitchDrift) || isMajorDrift(rowDrift))
-            ? " At least 15% drift. Consider re-swatching or changing needle size before proceeding."
-            : ""
-        let castOnGuidance = castOnGuidance(result: result, inputs: inputs)
-        let stitchAction = if inputs.patternCastOn == nil {
-            "If you want an adjusted cast-on count, add the pattern cast-on in Pattern details. "
-        } else if result.adjustedCastOn == nil {
-            "No usable whole-stitch cast-on can be calculated from these values. " +
-                "Re-swatch before proceeding. "
-        } else {
-            "Use the cast-on guidance below to preserve the intended width. "
-        }
-        let hasSectionTargets = inputs.patternYokeDepth != nil ||
-            inputs.patternBodyLength != nil ||
-            inputs.patternSleeveLength != nil
-        let rowAction = hasSectionTargets
-            ? "Use the adjusted depth guidance below; pattern row counts stay unchanged."
-            : "Open Pattern details and enter section targets for adjusted depth guidance."
-        if !stitchOff && !rowOff {
-            return "Both gauges are within the match range. \(castOnGuidance)" +
-                "Re-check after blocking."
-        }
-        if stitchOff && !rowOff {
-            return (
-                "Your row gauge is within the match range. At the pattern stitch counts, the garment will be " +
-                "\(stitchPercent)% \(stitchDir). \(stitchAction)" +
-                "Vertical sections remain within the match range.\(majorNote)"
-            )
-        }
-        if !stitchOff {
-            return (
-                "Your stitch gauge matches. \(castOnGuidance)" +
-                "Your row gauge is \(rowPercent)% \(rowDir) than expected. At the pattern row counts, " +
-                "vertical sections will be \(sectionDir). \(rowAction)\(majorNote)"
-            )
-        }
-        return (
-            "Both axes are off. At the pattern stitch counts, the garment will be \(stitchPercent)% \(stitchDir). " +
-            "\(stitchAction)Your row gauge is \(rowPercent)% \(rowDir) than expected. At the pattern row counts, " +
-            "vertical sections will be \(sectionDir). \(rowAction)\(majorNote)"
-        )
-    }
-
-    private func castOnGuidance(result: GaugeMathResult, inputs: GaugeInputs) -> String {
-        castOnGuidanceText(inputs: inputs, result: result).map { $0 + " " } ?? ""
     }
 
     // MARK: - Validation

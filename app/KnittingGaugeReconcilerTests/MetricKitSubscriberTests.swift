@@ -28,24 +28,3 @@ struct MetricKitGuardTests {
         }
     }
 }
-
-@Suite("Verdict telemetry")
-struct VerdictTelemetryTests {
-    @Test func transitionsMapToSignposts() {
-        let cases: [(previous: VerdictBucket?, current: VerdictBucket?, expected: String?)] = [
-            (nil, .gaugeMatch, nil),
-            (.gaugeMatch, nil, nil),
-            (.drift, .drift, nil),
-            (.majorMismatch, .gaugeMatch, "verdict.improved"),
-            (.gaugeMatch, .majorMismatch, "verdict.degraded"),
-        ]
-
-        for testCase in cases {
-            let actual = VerdictBucket.signpostName(
-                previous: testCase.previous,
-                current: testCase.current
-            )
-            #expect(actual?.description == testCase.expected)
-        }
-    }
-}

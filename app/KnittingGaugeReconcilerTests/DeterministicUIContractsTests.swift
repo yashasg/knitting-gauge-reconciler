@@ -219,7 +219,6 @@ struct DeterministicUIContractsTests {
             LiveResultsView(
                 result: result,
                 inputs: inputs,
-                verdict: ("Gauge match", "Both gauges are within the match range."),
                 unit: .centimeters,
                 showFullMath: fullMath.binding,
                 onShare: { _ in [] }
@@ -386,7 +385,7 @@ struct DeterministicUIContractsTests {
         #expect(image.size == CGSize(width: 44, height: 44))
     }
 
-    @Test func contract09VerdictHasNoHelpAndAboutIsTheSoleHelpEntryPoint() throws {
+    @Test func contract09ResultsHaveNoInlineVerdictAndAboutIsTheSoleHelpEntryPoint() throws {
         let appDirectory = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -395,9 +394,31 @@ struct DeterministicUIContractsTests {
             contentsOf: appDirectory.appendingPathComponent("Views/RequiredAdjustmentsCard.swift"),
             encoding: .utf8
         )
-        for forbidden in ["AboutHelp", "HelpDestination", "NavigationLink", "questionmark.circle"] {
-            #expect(!resultSource.contains(forbidden), "Verdict/results UI must not contain \(forbidden)")
+        for forbidden in [
+            "AboutHelp",
+            "HelpDestination",
+            "NavigationLink",
+            "questionmark.circle",
+            "verdict",
+            "Major mismatch",
+            "Significant drift",
+            "Both axes are off",
+            "At least 15% drift",
+            "re-swatching or changing needle size",
+        ] {
+            #expect(!resultSource.localizedCaseInsensitiveContains(forbidden))
         }
+        let heroEnd = try #require(
+            resultSource.range(of: "HeroTilesView(result: result, semantics: semantics)")?.upperBound
+        )
+        let firstGuidance = try #require(
+            resultSource.range(
+                of: "if semantics.sectionKinds.contains",
+                range: heroEnd..<resultSource.endIndex
+            )?.lowerBound
+        )
+        #expect(!resultSource[heroEnd..<firstGuidance].contains("Text("))
+        #expect(!resultSource[heroEnd..<firstGuidance].contains(".cardStyle()"))
 
         let sourceURLs = try FileManager.default.subpathsOfDirectory(atPath: appDirectory.path)
             .filter { $0.hasSuffix(".swift") }
@@ -716,7 +737,6 @@ struct DeterministicUIContractsTests {
         let live = LiveResultsView(
             result: result,
             inputs: inputs,
-            verdict: ("Major mismatch", "Both axes are off."),
             unit: .inches,
             showFullMath: fullMath.binding,
             onShare: { _ in ["share"] }
@@ -734,7 +754,6 @@ struct DeterministicUIContractsTests {
             RequiredAdjustmentsCard(
                 result: nil,
                 inputs: nil,
-                verdict: ("", "Fix fields"),
                 unit: .centimeters,
                 showFullMath: ValueBox(false).binding,
                 canUndoReset: true,
@@ -750,7 +769,6 @@ struct DeterministicUIContractsTests {
         let noDrift = LiveResultsView(
             result: noDriftResult,
             inputs: noDriftInputs,
-            verdict: ("Gauge match", "Both gauges match."),
             unit: .centimeters,
             showFullMath: ValueBox(false).binding,
             onShare: { _ in [] }
@@ -766,7 +784,6 @@ struct DeterministicUIContractsTests {
         let refinement = LiveResultsView(
             result: GaugeMath.compute(refinementInputs),
             inputs: refinementInputs,
-            verdict: ("Gauge match", "Within range."),
             unit: .centimeters,
             showFullMath: ValueBox(false).binding,
             onShare: { _ in [] }
@@ -781,7 +798,6 @@ struct DeterministicUIContractsTests {
         let moderate = LiveResultsView(
             result: GaugeMath.compute(moderateInputs),
             inputs: moderateInputs,
-            verdict: ("Drift", "Both axes are slightly off."),
             unit: .centimeters,
             showFullMath: ValueBox(false).binding,
             onShare: { _ in [] }
@@ -976,7 +992,6 @@ struct DeterministicUIContractsTests {
         let card = RequiredAdjustmentsCard(
             result: result,
             inputs: inputs,
-            verdict: ("Gauge match", "Both gauges match."),
             unit: .centimeters,
             showFullMath: ValueBox(false).binding,
             canUndoReset: false,
@@ -1012,7 +1027,6 @@ struct DeterministicUIContractsTests {
         let view = LiveResultsView(
             result: result,
             inputs: inputs,
-            verdict: ("Gauge match", "Within range."),
             unit: .centimeters,
             showFullMath: fullMath.binding,
             onShare: { _ in ["Gauge"] }
@@ -1152,24 +1166,6 @@ struct DeterministicUIContractsTests {
                 { view.helpPresentationChanged(false, true) }
             ),
             (
-                ContentView.verdictSignpostName(previous: "", current: "Gauge match"),
-                nil,
-                { view.verdictChanged("", "Gauge match") }
-            ),
-            (
-                ContentView.verdictSignpostName(previous: "Gauge match", current: "Drift"),
-                SignpostNames.verdictDegraded.description,
-                { view.verdictChanged("Gauge match", "Drift") }
-            ),
-            (
-                ContentView.verdictSignpostName(
-                    previous: "Major mismatch",
-                    current: "Gauge match"
-                ),
-                SignpostNames.verdictImproved.description,
-                { view.verdictChanged("Major mismatch", "Gauge match") }
-            ),
-            (
                 ContentView.driftBandSignpostName(previous: true, current: false),
                 nil,
                 { view.castOnDriftChanged(true, false) }
@@ -1246,36 +1242,6 @@ struct DeterministicUIContractsTests {
         #expect(presentation.stitchDelta == 0)
         #expect(!ContentView.hasCastOnDrift(nil))
         #expect(!ContentView.hasCastOnDrift(result))
-        #expect(ContentView.verdictTitle(inputs: nil, result: nil) == "")
-        #expect(
-            ContentView.resultGuidanceBody(inputs: nil, result: nil) ==
-                "Correct the highlighted fields before viewing gauge guidance."
-        )
-        #expect(ContentView.verdictTitle(inputs: inputs, result: result) == "Gauge match")
-        #expect(ContentView.resultGuidanceBody(inputs: inputs, result: result).contains("match range"))
-
-        let significantInputs = GaugeInputs(
-            patternStitches: 32,
-            patternRows: 24,
-            yourStitches: 35,
-            yourRows: 26
-        )
-        let significantResult = GaugeMath.compute(significantInputs)
-        #expect(view.verdictTitleComputed(result: significantResult) == "Significant drift")
-        #expect(
-            view.verdictBodyComputed(result: significantResult, inputs: significantInputs)
-                .hasPrefix("Both axes are off.")
-        )
-        let rowInputs = GaugeInputs(yourRows: 30, patternYokeDepth: 20)
-        #expect(
-            view.verdictBodyComputed(result: GaugeMath.compute(rowInputs), inputs: rowInputs)
-                .contains("Use the adjusted depth guidance below")
-        )
-        #expect(
-            view.verdictTitleComputed(
-                result: GaugeMath.compute(GaugeInputs(yourStitches: 34, yourRows: 24))
-            ) == "Drift"
-        )
 
         let emptyShare = await ContentView.shareItems(
             for: result,

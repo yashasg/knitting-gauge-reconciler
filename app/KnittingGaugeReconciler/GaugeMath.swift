@@ -92,8 +92,8 @@ enum GaugeMath {
         guard !trimmed.isEmpty else {
             return field.isRequired ? .failure(.required) : .success(nil)
         }
-        let normalized = trimmed.replacingOccurrences(of: locale.decimalSeparator ?? ".", with: ".")
-        guard let value = Double(trimmed) ?? Double(normalized), value.isFinite else {
+        let localizedValue = locale.decimalSeparator.flatMap { Double(trimmed.replacingOccurrences(of: $0, with: ".")) }
+        guard let value = Double(trimmed) ?? localizedValue, value.isFinite else {
             return .failure(.invalidNumber)
         }
         guard field.range.contains(value) else {
@@ -121,7 +121,7 @@ enum GaugeMath {
         let patternBodyRows = inputs.patternBodyLength.map { $0 * patternRowsPerCm }
         let patternSleeveRows = inputs.patternSleeveLength.map { $0 * patternRowsPerCm }
         let exactCastOn = inputs.patternCastOn.map { $0 * stitchCountMultiplier }
-        let adjustedCastOn = exactCastOn.flatMap(roundedInt).flatMap { $0 > 0 ? $0 : nil }
+        let adjustedCastOn = exactCastOn.map(roundedInt).flatMap { $0 > 0 ? $0 : nil }
         let castOnRoundingDriftPercent = exactCastOn.flatMap { exact in
             adjustedCastOn.map { ((Double($0) - exact) / exact) * 100 }
         }
@@ -153,22 +153,22 @@ enum GaugeMath {
 
     /// Formats a validated row value as a whole number.
     static func fmtRows(_ value: Double) -> Int {
-        max(1, roundedInt(value) ?? 0)
+        max(1, roundedInt(value))
     }
 
     /// Formats a validated scale as a whole percentage.
     static func fmtPct(_ value: Double) -> Int {
-        roundedInt(value * 100) ?? 0
+        roundedInt(value * 100)
     }
 
     /// Formats a signed percentage-point width difference using JavaScript `Math.round` semantics.
     static func fmtSignedPct(_ value: Double) -> String {
-        let rounded = roundedInt(value) ?? 0
+        let rounded = roundedInt(value)
         return "\(rounded >= 0 ? "+" : "")\(rounded)% width"
     }
 
-    private static func roundedInt(_ value: Double) -> Int? {
-        Int(exactly: floor(value + 0.5))
+    private static func roundedInt(_ value: Double) -> Int {
+        Int(floor(value + 0.5))
     }
 }
 

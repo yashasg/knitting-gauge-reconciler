@@ -951,13 +951,6 @@ struct GaugeMathTests {
             .deletingLastPathComponent()
         let sites = [
             (
-                "KnittingGaugeReconciler/Components/AdjustmentValuePair.swift",
-                "Text(yourLabel)",
-                "Text(\"\\(yourValue)\")",
-                "private var yourTile",
-                "private var yourTileAccessibilityLabel"
-            ),
-            (
                 "KnittingGaugeReconciler/Views/AdjustmentRow.swift",
                 "Text(\"Adjusted\")",
                 "Text(adjusted)",

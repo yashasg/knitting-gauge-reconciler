@@ -63,9 +63,9 @@ struct ContentView: View {
 
     private var liveResult: GaugeMathResult? {
         guard let inputs else { return nil }
-        os_signpost(.begin, log: MetricsSubscriber.log, name: SignpostNames.compute)
+        os_signpost(.begin, log: SignpostNames.log, name: SignpostNames.compute)
         let result = GaugeMath.compute(inputs)
-        os_signpost(.end, log: MetricsSubscriber.log, name: SignpostNames.compute)
+        os_signpost(.end, log: SignpostNames.log, name: SignpostNames.compute)
         return result
     }
 
@@ -165,7 +165,7 @@ struct ContentView: View {
             }
             .onChange(of: aboutHelp.isPresented) { _, newValue in
                 if newValue {
-                    os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.sheetAboutHelpOpened)
+                    os_signpost(.event, log: SignpostNames.log, name: SignpostNames.sheetAboutHelpOpened)
                 }
             }
             .onChange(of: measurementUnit) { previousUnit, newUnit in
@@ -184,7 +184,7 @@ struct ContentView: View {
                     previous: previousVerdictBucket,
                     current: current
                 ) {
-                    os_signpost(.event, log: MetricsSubscriber.log, name: name)
+                    os_signpost(.event, log: SignpostNames.log, name: name)
                 }
                 previousVerdictBucket = current
             }
@@ -192,7 +192,7 @@ struct ContentView: View {
                 of: liveResult?.castOnRoundingDriftPercent.map { abs($0) >= 3 } ?? false
             ) { _, isVisible in
                 if isVisible, !driftBandSignpostFired {
-                    os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.castOnDriftBandShown)
+                    os_signpost(.event, log: SignpostNames.log, name: SignpostNames.castOnDriftBandShown)
                     driftBandSignpostFired = true
                 } else if !isVisible {
                     driftBandSignpostFired = false
@@ -561,7 +561,7 @@ struct ContentView: View {
     private func resetToDefaults() {
         var draft = formDraft
         resetSnapshot = draft.reset()
-        os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.resetTapped)
+        os_signpost(.event, log: SignpostNames.log, name: SignpostNames.resetTapped)
         applySceneDraft(
             values: draft.rawValues,
             disclosure: draft.patternDetailsExpanded,
@@ -595,11 +595,11 @@ struct ContentView: View {
         guard let inputs else { return [] }
         let summary = ResultsExportSummary(inputs: inputs, result: result, unit: measurementUnit)
         if let imageURL = await renderShareImageURL(summary: summary) {
-            os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareInvoked)
+            os_signpost(.event, log: SignpostNames.log, name: SignpostNames.shareInvoked)
             return [imageURL]
         }
 
-        os_signpost(.event, log: MetricsSubscriber.log, name: SignpostNames.shareFallback)
+        os_signpost(.event, log: SignpostNames.log, name: SignpostNames.shareFallback)
         return [ResultsShareTextFormatter.string(inputs: inputs, result: result, unit: measurementUnit)]
     }
 

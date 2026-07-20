@@ -1,3 +1,18 @@
+import MetricKit
+import os
+
+enum SignpostNames {
+    static let log: OSLog = MXMetricManager.makeLogHandle(category: "user_actions")
+    static let compute: StaticString = "compute"
+    static let shareInvoked: StaticString = "share.invoked"
+    static let shareFallback: StaticString = "share.fallback"
+    static let resetTapped: StaticString = "reset.tapped"
+    static let verdictImproved: StaticString = "verdict.improved"
+    static let verdictDegraded: StaticString = "verdict.degraded"
+    static let sheetAboutHelpOpened: StaticString = "sheet.aboutHelp.opened"
+    static let castOnDriftBandShown: StaticString = "cast_on.driftBandShown"
+}
+
 // MARK: - VerdictBucket
 
 /// Ordered distance from gaugeMatch. Lower index = closer to ideal.

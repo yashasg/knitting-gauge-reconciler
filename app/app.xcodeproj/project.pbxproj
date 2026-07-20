@@ -10,7 +10,6 @@
 		000000000000000000000101 /* KnittingGaugeReconcilerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000001 /* KnittingGaugeReconcilerApp.swift */; };
 		000000000000000000000102 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000002 /* ContentView.swift */; };
 		000000000000000000000103 /* GaugeMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000003 /* GaugeMath.swift */; };
-		000000000000000000000108 /* MetricsSubscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000008 /* MetricsSubscriber.swift */; };
 		000000000000000000000109 /* GaugeMathMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000009 /* GaugeMathMetrics.swift */; };
 		000000000000000000000104 /* GaugeMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000004 /* GaugeMathTests.swift */; };
 		000000000000000000000107 /* MetricKitSubscriberTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000007 /* MetricKitSubscriberTests.swift */; };
@@ -45,7 +44,6 @@
 		000000000000000000000001 /* KnittingGaugeReconcilerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingGaugeReconcilerApp.swift; sourceTree = "<group>"; };
 		000000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		000000000000000000000003 /* GaugeMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeMath.swift; sourceTree = "<group>"; };
-		000000000000000000000008 /* MetricsSubscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsSubscriber.swift; sourceTree = "<group>"; };
 		000000000000000000000009 /* GaugeMathMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeMathMetrics.swift; sourceTree = "<group>"; };
 		000000000000000000000004 /* GaugeMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeMathTests.swift; sourceTree = "<group>"; };
 		000000000000000000000007 /* MetricKitSubscriberTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricKitSubscriberTests.swift; sourceTree = "<group>"; };
@@ -91,7 +89,6 @@
 				000000000000000000000034 /* ContentViewHelpers.swift */,
 				000000000000000000000003 /* GaugeMath.swift */,
 			000000000000000000000036 /* MeasurementUnit.swift */,
-				000000000000000000000008 /* MetricsSubscriber.swift */,
 				000000000000000000000009 /* GaugeMathMetrics.swift */,
 				000000000000000000000006 /* PrivacyInfo.xcprivacy */,
 				000000000000000000000033 /* Assets.xcassets */,
@@ -216,7 +213,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000108, 000000000000000000000109, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000129, 000000000000000000000132, 000000000000000000000134, 000000000000000000000135, 000000000000000000000136); runOnlyForDeploymentPostprocessing = 0; };
+		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000109, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000129, 000000000000000000000132, 000000000000000000000134, 000000000000000000000135, 000000000000000000000136); runOnlyForDeploymentPostprocessing = 0; };
 		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107, 000000000000000000000137); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

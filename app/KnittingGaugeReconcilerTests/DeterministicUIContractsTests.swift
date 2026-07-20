@@ -298,7 +298,7 @@ struct DeterministicUIContractsTests {
         #expect(!state.value.isPresented)
     }
 
-    @Test func contracts11And12DynamicTypePairGeometryAndUnitLabelsRemainVisible() throws {
+    @Test func contracts11And12DynamicTypePairGeometryAndUnitLabelsRemainVisible() {
         #expect(GaugeInputsCard.usesStackedLayout(at: .accessibility5))
         #expect(!GaugeInputsCard.usesStackedLayout(at: .large))
         #expect(
@@ -308,13 +308,46 @@ struct DeterministicUIContractsTests {
         #expect(GaugeFormContract.leadCopy.hasSuffix("affect the garment."))
 
         let gaugeValues = GaugeValueBindings()
+        let oneSidedError = [
+            GaugeFormField.patternRows:
+                "Pattern row gauge must be between 1 and 99 rows. Enter a value in that range.",
+        ]
         let compact = HostedViewProbe(
-            gaugeValues.gaugeCard.environment(\.dynamicTypeSize, .large)
+            gaugeValues.gaugeCard(validationMessages: oneSidedError)
+                .environment(\.dynamicTypeSize, .large)
         )
         let accessibleCard = HostedViewProbe(
-            gaugeValues.gaugeCard.environment(\.dynamicTypeSize, .accessibility5)
+            gaugeValues.gaugeCard(validationMessages: oneSidedError)
+                .environment(\.dynamicTypeSize, .accessibility5)
         )
         #expect(accessibleCard.size.height > compact.size.height)
+        let leadingErrorGeometry = HostedViewProbe(
+            geometryPair(
+                showsLeadingError: true,
+                showsTrailingError: false,
+                showsTrailingMismatch: true
+            )
+                .environment(\.dynamicTypeSize, .large)
+        )
+        let trailingErrorGeometry = HostedViewProbe(
+            geometryPair(
+                showsLeadingError: false,
+                showsTrailingError: true,
+                showsTrailingMismatch: true
+            )
+                .environment(\.dynamicTypeSize, .large)
+        )
+        let accessibleGeometry = HostedViewProbe(
+            geometryPair(
+                showsLeadingError: true,
+                showsTrailingError: false,
+                showsTrailingMismatch: true
+            )
+                .environment(\.dynamicTypeSize, .accessibility5)
+        )
+        #expect(leadingErrorGeometry.size.width == trailingErrorGeometry.size.width)
+        #expect(leadingErrorGeometry.size.height == trailingErrorGeometry.size.height)
+        #expect(accessibleGeometry.size.height > leadingErrorGeometry.size.height)
         let fieldLabels = GaugeInputsCard.accessibilityFieldOrder.map(
             GaugeInputsCard.accessibilityLabel
         )
@@ -363,6 +396,45 @@ struct DeterministicUIContractsTests {
         )
         #expect(PatternInstructionsCard.disclosureValue(isExpanded: false) == "Collapsed")
         #expect(PatternInstructionsCard.disclosureValue(isExpanded: true) == "Expanded")
+    }
+
+    private func geometryPair(
+        showsLeadingError: Bool,
+        showsTrailingError: Bool,
+        showsTrailingMismatch: Bool
+    ) -> some View {
+        GaugeMeasurementPair {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Leading")
+                    .frame(minHeight: 22)
+                    .padding(.bottom, 8)
+                Color.clear
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                if showsLeadingError {
+                    Text("A field-specific correction that wraps without changing its partner width.")
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 6)
+                }
+            }
+        } trailing: {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("Trailing")
+                    if showsTrailingMismatch {
+                        DeltaPillBadge(text: "+8")
+                    }
+                }
+                .frame(minHeight: 22)
+                .padding(.bottom, 8)
+                Color.clear
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                if showsTrailingError {
+                    Text("A field-specific correction that wraps without changing its partner width.")
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 6)
+                }
+            }
+        }
     }
 
     @Test func contract17AssetColorsMeetContrastAndAppViewRenders() throws {
@@ -572,25 +644,22 @@ struct DeterministicUIContractsTests {
         #expect(yoke.wrappedValue == "20")
     }
 
-    @Test func sceneDraftStoreRejectsMalformedRestorationData() throws {
+    @Test func sceneDraftStoreUsesDistinctKeysAndReconcilesOnlyCompleteDrafts() {
+        let keys = [
+            SceneDraftStore.patternStitchesKey,
+            SceneDraftStore.patternRowsKey,
+            SceneDraftStore.yourStitchesKey,
+            SceneDraftStore.yourRowsKey,
+            SceneDraftStore.patternCastOnKey,
+            SceneDraftStore.patternYokeKey,
+            SceneDraftStore.patternBodyKey,
+            SceneDraftStore.patternSleeveKey,
+            SceneDraftStore.patternIncreasesKey,
+            SceneDraftStore.disclosureKey,
+        ]
+        #expect(Set(keys).count == 10)
+
         let values = GaugeTextDefaults().resetSceneDraftValues
-        let serialized = SceneDraftStore.serialize(values: values, disclosure: true)
-        let decoded = try #require(SceneDraftStore.deserialize(serialized))
-        #expect(decoded.values == values)
-        #expect(decoded.disclosure)
-        #expect(SceneDraftStore.deserialize([:]) == nil)
-        #expect(
-            SceneDraftStore.deserialize([
-                SceneDraftStore.rawValuesKey: Array(values.dropLast()),
-                SceneDraftStore.disclosureKey: true,
-            ]) == nil
-        )
-        #expect(
-            SceneDraftStore.deserialize([
-                SceneDraftStore.rawValuesKey: values,
-                SceneDraftStore.disclosureKey: "yes",
-            ]) == nil
-        )
         #expect(SceneDraftStore.reconcileInvalidInchProvenance(in: values, for: .inches) == values)
         #expect(
             SceneDraftStore.reconcileInvalidInchProvenance(
@@ -600,7 +669,7 @@ struct DeterministicUIContractsTests {
         )
     }
 
-    @Test func stepperHelpersCoverValidationUnitsWarningsAndDetents() {
+    @Test func stepperHelpersCoverValidationUnitsAndWarnings() {
         let contracts = [
             GaugeStepperField.accessibilityContract(
                 text: " ",
@@ -656,9 +725,6 @@ struct DeterministicUIContractsTests {
                 range: 1...99
             ) == "99"
         )
-        #expect(GaugeStepperField.sheetDetents(for: .accessibility1, hasWarning: false) == [.large])
-        #expect(GaugeStepperField.sheetDetents(for: .large, hasWarning: true) == [.medium, .large])
-        #expect(GaugeStepperField.sheetDetents(for: .large, hasWarning: false) == [.height(280)])
     }
 
     @Test func keyboardCoordinatorPropagatesTextFocusAndSubmit() async throws {
@@ -677,10 +743,6 @@ struct DeterministicUIContractsTests {
         )
         let coordinator = field.makeCoordinator()
         let textField = FocusRecordingTextField()
-        GaugeKeyboardTextField.updateFocus(true, textField: textField)
-        GaugeKeyboardTextField.updateFocus(false, textField: textField)
-        #expect(textField.becameFirstResponder)
-        #expect(textField.resignedFirstResponder)
 
         textField.text = "31"
         coordinator.textDidChange(textField)
@@ -697,15 +759,108 @@ struct DeterministicUIContractsTests {
         coordinator.textFieldDidEndEditing(textField)
         coordinator.textFieldDidEndEditing(textField)
         #expect(focus.value == nil)
-        coordinator.didTapDone()
-        #expect(recorder.count == 1)
 
-        focus.value = .yourRows
+        GaugeKeyboardTextField.handlePickerRequest(
+            1,
+            coordinator: coordinator,
+            textField: textField,
+            activate: false
+        )
+        GaugeKeyboardTextField.handlePickerRequest(
+            1,
+            coordinator: coordinator,
+            textField: textField,
+            activate: false
+        )
+        #expect(coordinator.handledPickerRequest == 1)
+        #expect(textField.inputView === coordinator.pickerView)
+        #expect(coordinator.pendingSelection == 24)
+        #expect(coordinator.numberOfComponents(in: coordinator.pickerView) == 1)
+        #expect(
+            coordinator.pickerView(
+                coordinator.pickerView,
+                numberOfRowsInComponent: 0
+            ) == 99
+        )
+        #expect(
+            coordinator.pickerView(
+                coordinator.pickerView,
+                titleForRow: 0,
+                forComponent: 0
+            ) == "1"
+        )
+        coordinator.adjust(by: 1)
+        #expect(text.value == "25")
+        #expect(coordinator.pendingSelection == 25)
+        coordinator.pickerView(
+            coordinator.pickerView,
+            didSelectRow: 30,
+            inComponent: 0
+        )
+        coordinator.didTapDone()
+        #expect(text.value == "31")
+        #expect(textField.inputView == nil)
+        #expect(recorder.count == 1)
+        coordinator.didTapDone()
+        #expect(recorder.count == 2)
+
+        focus.value = nil
         await GaugeKeyboardTextField.updateFocusAfterUpdate(
             coordinator: coordinator,
             textField: textField
         ).value
-        #expect(textField.becameFirstResponder)
+
+    }
+
+    @Test func accessibilityAdjustmentsUseCurrentValueAndPreserveActivePickerSelection() {
+        let text = ValueBox("25")
+        let focus = ValueBox<GaugeFormField?>(nil)
+        let recorder = ActionRecorder()
+        func field() -> GaugeKeyboardTextField {
+            GaugeKeyboardTextField(
+                text: text.binding,
+                field: .yourRows,
+                focusedField: focus.binding,
+                label: "Rows",
+                value: "\(text.value) rows",
+                hint: "Double-tap to edit.",
+                showsCorrection: false,
+                onSubmit: recorder.record
+            )
+        }
+
+        let coordinator = field().makeCoordinator()
+        let textField = GaugePickerTextField()
+        coordinator.textField = textField
+        textField.coordinator = coordinator
+
+        text.value = "31"
+        coordinator.parent = field()
+        textField.accessibilityIncrement()
+        #expect(text.value == "32")
+        #expect(coordinator.pendingSelection == 32)
+
+        text.value = "40"
+        coordinator.parent = field()
+        textField.accessibilityDecrement()
+        #expect(text.value == "39")
+        #expect(coordinator.pendingSelection == 39)
+
+        coordinator.parent = field()
+        coordinator.showPicker(in: textField, activate: false)
+        coordinator.pickerView(
+            coordinator.pickerView,
+            didSelectRow: 49,
+            inComponent: 0
+        )
+        text.value = "31"
+        coordinator.parent = field()
+        textField.accessibilityIncrement()
+        #expect(coordinator.pendingSelection == 51)
+        coordinator.didTapDone()
+        #expect(text.value == "51")
+        #expect(textField.inputView == nil)
+        #expect(recorder.count == 1)
     }
 
     @Test func adjustmentRowsExposeLabelsAndAdaptiveLayouts() {
@@ -781,18 +936,26 @@ struct DeterministicUIContractsTests {
         let liveProbe = HostedViewProbe(live.environment(\.dynamicTypeSize, .accessibility2))
         #expect(liveProbe.size.height > 0)
 
-        let invalidResult = HostedViewProbe(
-            RequiredAdjustmentsCard(
-                result: nil,
-                inputs: nil,
-                unit: .centimeters,
-                showFullMath: ValueBox(false).binding,
-                canUndoReset: true,
-                onReset: {},
-                onUndoReset: {},
-                onShare: { _ in [] }
-            )
+        let correctionDraft = ValueBox(GaugeFormDraft())
+        correctionDraft.value[.patternBody] = "bad"
+        let correctionCard = RequiredAdjustmentsCard(
+            result: nil,
+            inputs: nil,
+            correctionMessage: "Enter body length as a number.",
+            unit: .centimeters,
+            showFullMath: ValueBox(false).binding,
+            canUndoReset: true,
+            onCorrect: {
+                _ = correctionDraft.value.finishEditing()
+            },
+            onReset: {},
+            onUndoReset: {},
+            onShare: { _ in [] }
         )
+        correctionCard.requestCorrection()
+        #expect(correctionDraft.value.patternDetailsExpanded)
+        #expect(correctionDraft.value.focusedField == .patternBody)
+        let invalidResult = HostedViewProbe(correctionCard)
         #expect(invalidResult.size.height > 0)
 
         let unusableCastOnInputs = GaugeInputs(
@@ -821,9 +984,11 @@ struct DeterministicUIContractsTests {
         let unusableCastOn = RequiredAdjustmentsCard(
             result: unusableCastOnResult,
             inputs: unusableCastOnInputs,
+            correctionMessage: nil,
             unit: .centimeters,
             showFullMath: ValueBox(false).binding,
             canUndoReset: false,
+            onCorrect: {},
             onReset: {},
             onUndoReset: {},
             onShare: { _ in [] }
@@ -939,52 +1104,25 @@ struct DeterministicUIContractsTests {
         let activity = ActivityView(activityItems: ["Gauge result"])
         let probe = HostedViewProbe(activity)
         #expect(probe.size.width > 0)
+
+        let provider = SheetContentProvider(content: Text("About"))
+        #expect(HostedViewProbe(provider.contentView()).size.width > 0)
     }
 
-    @Test func wheelSheetsAndKeyboardFieldsHostBothWarningLayouts() {
+    @Test func pickerInputViewAndKeyboardFieldsHostBothWarningLayouts() {
         let text = ValueBox("32")
-        let presented = ValueBox(false)
-        let focus = ValueBox<GaugeFormField?>(.yourRows)
-        let actionFocus = ValueBox<GaugeFormField?>(.yourRows)
+        let focus = ValueBox<GaugeFormField?>(nil)
+        let actionFocus = ValueBox<GaugeFormField?>(nil)
+        let pickerRequest = ValueBox(0)
         let openPicker = GaugeStepperOpenPickerAction(
+            field: .yourRows,
             focusedField: actionFocus.binding,
-            isPresented: presented.binding
+            pickerRequest: pickerRequest.binding
         )
         openPicker.perform()
-        #expect(actionFocus.value == nil)
-        #expect(presented.value)
+        #expect(actionFocus.value == .yourRows)
+        #expect(pickerRequest.value == 1)
 
-        let warning = GaugeStepperWheelSheet(
-            title: "Rows",
-            text: text.binding,
-            range: 1...99,
-            validationText: "32",
-            field: .yourRows,
-            accessibilityLabel: "Swatch rows",
-            displayUnit: nil,
-            mismatchLabel: "Row gauge mismatch detected",
-            mismatchDeltaText: "+8",
-            isPresented: presented.binding
-        )
-        warning.commit()
-        #expect(!presented.value)
-        #expect(HostedViewProbe(warning).size.height > 0)
-
-        let plain = GaugeStepperWheelSheet(
-            title: "Yoke",
-            text: text.binding,
-            range: 2...39,
-            validationText: "",
-            field: .patternYoke,
-            accessibilityLabel: "Yoke depth",
-            displayUnit: .inches,
-            mismatchLabel: nil,
-            mismatchDeltaText: nil,
-            isPresented: presented.binding
-        )
-        plain.commit()
-        #expect(HostedViewProbe(plain.environment(\.dynamicTypeSize, .accessibility1)).size.height > 0)
-        text.value = "32"
         let keyboard = GaugeKeyboardTextField(
             text: text.binding,
             field: .yourRows,
@@ -1016,15 +1154,6 @@ struct DeterministicUIContractsTests {
         stepper.decrement()
         #expect(text.value == "31")
         #expect(stepperProbe.size.height > 0)
-        let sheet = stepper.wheelSheet(
-            isPresented: presented.binding,
-            dynamicTypeSize: .large
-        )
-        let sheetProvider = SheetContentProvider(content: sheet)
-        let providedSheet = sheetProvider.contentView()
-        #expect(type(of: providedSheet) == type(of: sheet))
-        #expect(HostedViewProbe(sheet).size.height > 0)
-        #expect(HostedViewProbe(providedSheet).size.height > 0)
     }
 
     @Test func defaultPairPayloadAndAccessiblePatternLeavesAreLive() {
@@ -1058,9 +1187,11 @@ struct DeterministicUIContractsTests {
         let card = RequiredAdjustmentsCard(
             result: result,
             inputs: inputs,
+            correctionMessage: nil,
             unit: .centimeters,
             showFullMath: ValueBox(false).binding,
             canUndoReset: false,
+            onCorrect: {},
             onReset: {},
             onUndoReset: {},
             onShare: { _ in ["Gauge"] }
@@ -1105,59 +1236,69 @@ struct DeterministicUIContractsTests {
         #expect(HostedViewProbe(view.activityView(payload)).size.width > 0)
     }
 
-    @Test func contentRendersAndUpdatesNativeRestorationActivity() async throws {
-        let noOp: (NSUserActivity) -> Void = { _ in }
-        let enabled = EmptyView().modifier(
-            SceneDraftLifecycleModifier(
-                isEnabled: true,
-                activityType: "test.scene-draft",
-                update: noOp,
-                restore: noOp
-            )
+    @Test func contentAppearanceReconcilesDisconnectedSceneUnitsBeforeRestoringFocus() throws {
+        let contentForm = try #require(
+            ContentView(sceneStorageEnabled: false).body as? GaugeFormView
         )
-        let disabled = EmptyView().modifier(
-            SceneDraftLifecycleModifier(
-                isEnabled: false,
-                activityType: "test.scene-draft",
-                update: noOp,
-                restore: noOp
-            )
+        #expect(HostedViewProbe(contentForm).size.width > 0)
+        contentForm.applySceneDraft(
+            values: GaugeTextDefaults().resetSceneDraftValues,
+            disclosure: true
         )
+        contentForm.measurementUnitBinding.wrappedValue = .inches
+
+        let inchScene = GaugeValueBindings()
+        inchScene.unit.value = .inches
+        inchScene.value(at: 5).value = MeasurementUnit.inches.centimeterStorageText(
+            from: "40",
+            cmRange: 5...100
+        )
+        #expect(MeasurementUnit.invalidInchesText(from: inchScene.value(at: 5).value) == "40")
+
+        inchScene.unit.value = .centimeters
+        let restoredCentimeterForm = inchScene.formView
+        restoredCentimeterForm.sceneDidAppear()
+        #expect(inchScene.value(at: 5).value == "40")
+        #expect(restoredCentimeterForm.formDraft.validationMessages.isEmpty)
+        #expect(restoredCentimeterForm.formDraft.focusedField == nil)
         #expect(
-            type(of: enabled) ==
-                ModifiedContent<EmptyView, SceneDraftLifecycleModifier>.self
+            GaugeStepperField.pickerSelection(
+                validationText: inchScene.value(at: 5).value,
+                field: .patternYoke,
+                displayUnit: .centimeters,
+                range: 5...100
+            ) == 40
         )
-        #expect(type(of: disabled) == type(of: enabled))
-        #expect(enabled.modifier.isEnabled)
-        #expect(!disabled.modifier.isEnabled)
-        #expect(enabled.modifier.activityType == "test.scene-draft")
-        let enabledContent = enabled.modifier.modifiedContent(enabled.content)
-        let disabledContent = disabled.modifier.modifiedContent(disabled.content)
-        #expect(type(of: enabledContent) == type(of: disabledContent))
 
-        let view = ContentView(sceneLifecycleEnabled: false)
-        let content = HostedViewProbe(view)
-        #expect(content.size.width > 0)
-        await Task.yield()
-        await Task.yield()
-
-        let activity = NSUserActivity(activityType: "test.scene-draft")
-        view.updateSceneRestorationActivity(activity)
-        let restored = try #require(
-            activity.userInfo.flatMap(SceneDraftStore.deserialize)
+        let centimeterScene = GaugeValueBindings()
+        centimeterScene.value(at: 5).value = "20.32"
+        centimeterScene.unit.value = .inches
+        let restoredInchForm = centimeterScene.formView
+        restoredInchForm.sceneDidAppear()
+        #expect(centimeterScene.value(at: 5).value == "20.32")
+        #expect(
+            GaugeStepperField.pickerSelection(
+                validationText: centimeterScene.value(at: 5).value,
+                field: .patternYoke,
+                displayUnit: .inches,
+                range: 2...39
+            ) == 8
         )
-        #expect(restored.values == GaugeTextDefaults().resetSceneDraftValues)
-        #expect(!restored.disclosure)
-
-        view.restoreSceneDraft(NSUserActivity(activityType: "empty"))
-        view.restoreSceneDraft(activity)
+        let inchCard = centimeterScene.patternInstructionsCard(expanded: true)
+        #expect(
+            inchCard.displayBinding(
+                for: centimeterScene.value(at: 5).binding,
+                field: .patternYoke
+            ).wrappedValue == "8"
+        )
 
         let scene = KnittingGaugeReconcilerApp().body
         #expect(String(reflecting: type(of: scene)).contains("WindowGroup"))
     }
 
     @Test func contentBindingsActionsLifecycleAndSharingAreDeterministic() async throws {
-        let view = ContentView(sceneLifecycleEnabled: false)
+        let values = GaugeValueBindings()
+        let view = values.formView
         #expect(HostedViewProbe(view).size.width > 0)
         let text = ValueBox("32")
         let draftBinding = view.draftBinding(text.binding, at: 0)
@@ -1178,14 +1319,14 @@ struct DeterministicUIContractsTests {
         var inchValues = view.rawTextValues
         inchValues[5] = rawInchDraft
         #expect(
-            ContentView.reconciledSceneDraft(
+            GaugeFormView.reconciledSceneDraft(
                 values: inchValues,
                 from: .centimeters,
                 to: .inches
             ) == nil
         )
         let reconciledValues = try #require(
-            ContentView.reconciledSceneDraft(
+            GaugeFormView.reconciledSceneDraft(
                 values: inchValues,
                 from: .inches,
                 to: .centimeters
@@ -1210,7 +1351,7 @@ struct DeterministicUIContractsTests {
         view.finishEditing()
         var invalidDraft = GaugeFormDraft()
         invalidDraft[.patternStitches] = ""
-        ContentView.finishEditing(&invalidDraft)
+        GaugeFormView.finishEditing(&invalidDraft)
         #expect(invalidDraft.focusedField == .patternStitches)
 
         view.undoReset()
@@ -1222,22 +1363,22 @@ struct DeterministicUIContractsTests {
             (decision: StaticString?, expected: String?, perform: () -> Void)
         ] = [
             (
-                ContentView.helpSignpostName(previous: true, current: false),
+                GaugeFormView.helpSignpostName(previous: true, current: false),
                 nil,
                 { view.helpPresentationChanged(true, false) }
             ),
             (
-                ContentView.helpSignpostName(previous: false, current: true),
+                GaugeFormView.helpSignpostName(previous: false, current: true),
                 SignpostNames.sheetAboutHelpOpened.description,
                 { view.helpPresentationChanged(false, true) }
             ),
             (
-                ContentView.driftBandSignpostName(previous: true, current: false),
+                GaugeFormView.driftBandSignpostName(previous: true, current: false),
                 nil,
                 { view.castOnDriftChanged(true, false) }
             ),
             (
-                ContentView.driftBandSignpostName(previous: false, current: true),
+                GaugeFormView.driftBandSignpostName(previous: false, current: true),
                 SignpostNames.castOnDriftBandShown.description,
                 { view.castOnDriftChanged(false, true) }
             ),
@@ -1275,7 +1416,7 @@ struct DeterministicUIContractsTests {
                     [:],
                     [.patternStitches: stitchError]
                 )
-                return ContentView.validationAnnouncement(
+                return GaugeFormView.validationAnnouncement(
                     previous: [:],
                     current: [.patternStitches: stitchError],
                     isVoiceOverRunning: true
@@ -1292,31 +1433,31 @@ struct DeterministicUIContractsTests {
         let aboutHelp = ValueBox(AboutHelpState(isPresented: true))
         #expect(
             HostedViewProbe(
-                ContentView.aboutHelpSheet(state: aboutHelp.binding)
+                GaugeFormView.aboutHelpSheet(state: aboutHelp.binding)
             ).size.height > 0
         )
 
         let inputs = GaugeInputs(yourRows: 24, patternCastOn: 128)
         let result = GaugeMath.compute(inputs)
-        #expect(ContentView.computeResult(nil) == nil)
-        #expect(ContentView.computeResult(inputs) != nil)
-        let emptyPresentation = ContentView.inputPresentation(nil)
+        #expect(GaugeFormView.computeResult(nil) == nil)
+        #expect(GaugeFormView.computeResult(inputs) != nil)
+        let emptyPresentation = GaugeFormView.inputPresentation(nil)
         #expect(!emptyPresentation.stitchMismatch)
         #expect(emptyPresentation.stitchDelta == nil)
-        let presentation = ContentView.inputPresentation(inputs)
+        let presentation = GaugeFormView.inputPresentation(inputs)
         #expect(!presentation.stitchMismatch)
         #expect(presentation.stitchDelta == 0)
-        #expect(!ContentView.hasCastOnDrift(nil))
-        #expect(!ContentView.hasCastOnDrift(result))
+        #expect(!GaugeFormView.hasCastOnDrift(nil))
+        #expect(!GaugeFormView.hasCastOnDrift(result))
 
-        let emptyShare = await ContentView.shareItems(
+        let emptyShare = await GaugeFormView.shareItems(
             for: result,
             inputs: nil,
             unit: .centimeters
         )
         #expect(emptyShare.isEmpty)
 
-        let fallback = await ContentView.shareItems(
+        let fallback = await GaugeFormView.shareItems(
             for: result,
             inputs: inputs,
             unit: .centimeters,
@@ -1324,7 +1465,7 @@ struct DeterministicUIContractsTests {
         )
         #expect(fallback.first is String)
 
-        let shared = await ContentView.shareItems(
+        let shared = await GaugeFormView.shareItems(
             for: result,
             inputs: inputs,
             unit: .centimeters
@@ -1372,7 +1513,7 @@ private final class ValueBox<Value> {
 }
 
 @MainActor
-private final class FocusRecordingTextField: UITextField {
+private final class FocusRecordingTextField: GaugePickerTextField {
     var becameFirstResponder = false
     var resignedFirstResponder = false
 
@@ -1411,10 +1552,27 @@ private final class GaugeValueBindings {
         ValueBox(""), ValueBox(""), ValueBox(""), ValueBox(""), ValueBox(""),
     ]
     private let focus = ValueBox<GaugeFormField?>(nil)
+    private let details = ValueBox(false)
     let unit = ValueBox(MeasurementUnit.centimeters)
 
     func value(at index: Int) -> ValueBox<String> {
         values[index]
+    }
+
+    var formView: GaugeFormView {
+        GaugeFormView(
+            patternStitches: values[0].binding,
+            patternRows: values[1].binding,
+            yourStitches: values[2].binding,
+            yourRows: values[3].binding,
+            patternCastOn: values[4].binding,
+            patternYoke: values[5].binding,
+            patternBody: values[6].binding,
+            patternSleeve: values[7].binding,
+            patternIncreases: values[8].binding,
+            patternDetailsExpanded: details.binding,
+            measurementUnit: unit.binding
+        )
     }
 
     var gaugeCard: some View {
@@ -1466,9 +1624,9 @@ private final class HostedViewProbe<Content: View> {
         _ content: Content,
         width: CGFloat = 390
     ) {
-        controller = UIHostingController(rootView: content)
+        let controller = UIHostingController(rootView: content)
         controller.loadViewIfNeeded()
-        size = controller.view.sizeThatFits(
+        let size = controller.view.sizeThatFits(
             CGSize(width: width, height: CGFloat.greatestFiniteMagnitude)
         )
         let frame = CGRect(
@@ -1480,6 +1638,8 @@ private final class HostedViewProbe<Content: View> {
         controller.view.frame = frame
         controller.view.setNeedsLayout()
         controller.view.layoutIfNeeded()
+        self.controller = controller
+        self.size = size
     }
 }
 

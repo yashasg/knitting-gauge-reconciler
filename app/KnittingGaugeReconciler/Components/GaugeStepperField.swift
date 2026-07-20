@@ -13,7 +13,7 @@ func fmtGaugeDelta(_ value: Double) -> String {
 // MARK: - GaugeStepperField
 // Outlined rounded container: [ value · · · · | ⇅ ]
 // Tap the value/text area → numeric keyboard opens (direct entry).
-// Tap the chevron (⇅) → wheel picker sheet opens.
+// Tap the chevron (⇅) → wheel picker opens in the field's input view.
 // Unit suffix intentionally omitted — labels above each field communicate units.
 
 struct DeltaPillBadge: View {
@@ -51,18 +51,13 @@ struct SheetContentProvider<Content: View> {
 }
 
 struct GaugeStepperOpenPickerAction {
+    let field: GaugeFormField
     let focusedField: Binding<GaugeFormField?>
-    let isPresented: Binding<Bool>
+    let pickerRequest: Binding<Int>
 
     @MainActor func perform() {
-        focusedField.wrappedValue = nil
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder),
-            to: nil,
-            from: nil,
-            for: nil
-        )
-        isPresented.wrappedValue = true
+        focusedField.wrappedValue = field
+        pickerRequest.wrappedValue += 1
     }
 }
 
@@ -86,7 +81,7 @@ struct GaugeStepperField: View {
     private let mismatchLabel: String?
     private let mismatchDelta: Double?
 
-    @State private var showWheelPicker = false
+    @State private var pickerRequest = 0
 
     static func pickerAccessibilityLabel(for fieldLabel: String) -> String {
         "Open picker for \(fieldLabel)"
@@ -243,19 +238,6 @@ struct GaugeStepperField: View {
         )
     }
 
-    static func sheetDetents(
-        for dynamicTypeSize: DynamicTypeSize,
-        hasWarning: Bool
-    ) -> Set<PresentationDetent> {
-        if dynamicTypeSize.isAccessibilitySize {
-            return [.large]
-        }
-        if hasWarning {
-            return [.medium, .large]
-        }
-        return [.height(280)]
-    }
-
     private var mismatchDeltaText: String? {
         guard hasMismatch, let mismatchDelta else { return nil }
         return fmtGaugeDelta(mismatchDelta)
@@ -285,41 +267,11 @@ struct GaugeStepperField: View {
         )
     }
 
-    func wheelSheet(
-        isPresented: Binding<Bool>,
-        dynamicTypeSize: DynamicTypeSize
-    ) -> some View {
-        GaugeStepperWheelSheet(
-            title: title,
-            text: $text,
-            range: range,
-            validationText: validationText,
-            field: field,
-            accessibilityLabel: accessibilityLabel,
-            displayUnit: displayUnit,
-            mismatchLabel: mismatchSentence,
-            mismatchDeltaText: mismatchDeltaText,
-            isPresented: isPresented
-        )
-        .presentationDetents(
-            Self.sheetDetents(
-                for: dynamicTypeSize,
-                hasWarning: mismatchSentence != nil
-            )
-        )
-        .presentationDragIndicator(.visible)
-    }
-
     var body: some View {
         let openPicker = GaugeStepperOpenPickerAction(
+            field: field,
             focusedField: focusedField,
-            isPresented: $showWheelPicker
-        )
-        let sheetContent = SheetContentProvider(
-            content: wheelSheet(
-                isPresented: $showWheelPicker,
-                dynamicTypeSize: dynamicTypeSize
-            )
+            pickerRequest: $pickerRequest
         )
         return VStack(alignment: .leading, spacing: 0) {
             Group {
@@ -347,8 +299,8 @@ struct GaugeStepperField: View {
             }
             // Pin the title row height so the delta pill (caption2 + capsule
             // padding) cannot push the field downward when mismatch toggles.
-            // Both states (with and without pill) now occupy identical vertical
-            // space, keeping the Calculate button anchored. See GitLab #35.
+            // Both states (with and without pill) occupy identical vertical
+            // space, keeping paired fields aligned.
             .frame(minHeight: 22, alignment: .leading)
             .padding(.bottom, 8)
 
@@ -361,6 +313,10 @@ struct GaugeStepperField: View {
                     value: fieldAccessibilityValue,
                     hint: fieldAccessibilityHint,
                     showsCorrection: hasMismatch || validationMessage != nil,
+                    validationText: validationText,
+                    displayUnit: displayUnit,
+                    range: range,
+                    pickerRequest: pickerRequest,
                     onSubmit: onSubmit
                 )
                     .frame(maxWidth: .infinity, minHeight: 44)
@@ -411,11 +367,22 @@ struct GaugeStepperField: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .sheet(isPresented: $showWheelPicker, content: sheetContent.contentView)
     }
 }
 
 // MARK: - GaugeKeyboardTextField
+
+class GaugePickerTextField: UITextField {
+    weak var coordinator: GaugeKeyboardTextField.Coordinator?
+
+    override func accessibilityIncrement() {
+        coordinator?.adjust(by: 1)
+    }
+
+    override func accessibilityDecrement() {
+        coordinator?.adjust(by: -1)
+    }
+}
 
 struct GaugeKeyboardTextField: UIViewRepresentable {
     @Binding private var text: String
@@ -426,6 +393,10 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
     private let value: String
     private let hint: String
     private let showsCorrection: Bool
+    private let validationText: String
+    private let displayUnit: MeasurementUnit?
+    private let range: ClosedRange<Int>
+    private let pickerRequest: Int
     private let onSubmit: () -> Void
 
     init(
@@ -436,6 +407,10 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         value: String,
         hint: String,
         showsCorrection: Bool,
+        validationText: String? = nil,
+        displayUnit: MeasurementUnit? = nil,
+        range: ClosedRange<Int> = 1...99,
+        pickerRequest: Int = 0,
         onSubmit: @escaping () -> Void
     ) {
         self._text = text
@@ -445,6 +420,10 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         self.value = value
         self.hint = hint
         self.showsCorrection = showsCorrection
+        self.validationText = validationText ?? text.wrappedValue
+        self.displayUnit = displayUnit
+        self.range = range
+        self.pickerRequest = pickerRequest
         self.onSubmit = onSubmit
     }
 
@@ -453,7 +432,7 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> UITextField {
-        let textField = UITextField()
+        let textField = GaugePickerTextField()
         textField.delegate = context.coordinator
         textField.keyboardType = .decimalPad
         textField.textAlignment = .center
@@ -471,6 +450,9 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
             action: #selector(Coordinator.textDidChange(_:)),
             for: .editingChanged
         )
+        textField.accessibilityTraits.insert(.adjustable)
+        textField.coordinator = context.coordinator
+        context.coordinator.textField = textField
 
         let toolbar = UIToolbar()
         toolbar.autoresizingMask = [.flexibleWidth]
@@ -497,10 +479,23 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         textField.accessibilityHint = hint
 
         let coordinator = context.coordinator
-        let shouldFocus = focusedField.wrappedValue == field
-        guard shouldFocus != textField.isFirstResponder,
-              !coordinator.focusUpdateScheduled else { return }
+        Self.handlePickerRequest(
+            pickerRequest,
+            coordinator: coordinator,
+            textField: textField
+        )
         Self.updateFocusAfterUpdate(coordinator: coordinator, textField: textField)
+    }
+
+    static func handlePickerRequest(
+        _ request: Int,
+        coordinator: Coordinator,
+        textField: UITextField,
+        activate: Bool = true
+    ) {
+        guard coordinator.handledPickerRequest != request else { return }
+        coordinator.handledPickerRequest = request
+        coordinator.showPicker(in: textField, activate: activate)
     }
 
     @discardableResult
@@ -508,29 +503,34 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         coordinator: Coordinator,
         textField: UITextField
     ) -> Task<Void, Never> {
-        coordinator.focusUpdateScheduled = true
         return Task { @MainActor in
-            defer { coordinator.focusUpdateScheduled = false }
             let shouldFocus = coordinator.parent.focusedField.wrappedValue == coordinator.parent.field
-            guard shouldFocus != textField.isFirstResponder else { return }
-            Self.updateFocus(shouldFocus, textField: textField)
+            // swiftlint:disable:next line_length
+            if shouldFocus != textField.isFirstResponder { _ = shouldFocus ? textField.becomeFirstResponder() : textField.resignFirstResponder() }
         }
     }
 
-    static func updateFocus(_ shouldFocus: Bool, textField: UITextField) {
-        if shouldFocus {
-            textField.becomeFirstResponder()
-        } else {
-            textField.resignFirstResponder()
-        }
-    }
-
-    final class Coordinator: NSObject, UITextFieldDelegate {
+    final class Coordinator: NSObject, UITextFieldDelegate, UIPickerViewDataSource, UIPickerViewDelegate {
         var parent: GaugeKeyboardTextField
-        var focusUpdateScheduled = false
+        var handledPickerRequest = 0
+        weak var textField: UITextField?
+        lazy var pickerView: UIPickerView = {
+            let pickerView = UIPickerView()
+            pickerView.dataSource = self
+            pickerView.delegate = self
+            return pickerView
+        }()
+        private(set) var pendingSelection: Int
 
         init(parent: GaugeKeyboardTextField) {
             self.parent = parent
+            self.pendingSelection = GaugeStepperField.pickerSelection(
+                validationText: parent.validationText,
+                field: parent.field,
+                displayUnit: parent.displayUnit,
+                range: parent.range
+            )
+            super.init()
         }
 
         @objc func textDidChange(_ textField: UITextField) {
@@ -544,114 +544,83 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         }
 
         func textFieldDidEndEditing(_ textField: UITextField) {
+            textField.inputView = nil
             if parent.focusedField.wrappedValue == parent.field {
                 parent.focusedField.wrappedValue = nil
             }
         }
 
+        func showPicker(in textField: UITextField, activate: Bool = true) {
+            self.textField = textField
+            pendingSelection = GaugeStepperField.pickerSelection(
+                validationText: parent.validationText,
+                field: parent.field,
+                displayUnit: parent.displayUnit,
+                range: parent.range
+            )
+            pickerView.accessibilityLabel = parent.label
+            pickerView.selectRow(
+                pendingSelection - parent.range.lowerBound,
+                inComponent: 0,
+                animated: false
+            )
+            textField.inputView = pickerView
+            textField.reloadInputViews()
+            if activate { textField.becomeFirstResponder() }
+        }
+
         @objc func didTapDone() {
+            if textField?.inputView === pickerView {
+                parent.text = GaugeStepperField.committedText(selection: pendingSelection)
+            }
+            textField?.inputView = nil
+            textField?.reloadInputViews()
             parent.onSubmit()
         }
-    }
-}
 
-// MARK: - GaugeStepperWheelSheet
-
-struct GaugeStepperWheelSheet: View {
-    let title: String
-    @Binding private var text: String
-    let range: ClosedRange<Int>
-    let validationText: String
-    let field: GaugeFormField
-    let accessibilityLabel: String
-    let displayUnit: MeasurementUnit?
-    let mismatchLabel: String?
-    let mismatchDeltaText: String?
-    @Binding private var isPresented: Bool
-
-    @State private var selectedValue: Int
-
-    init(
-        title: String,
-        text: Binding<String>,
-        range: ClosedRange<Int>,
-        validationText: String,
-        field: GaugeFormField,
-        accessibilityLabel: String,
-        displayUnit: MeasurementUnit?,
-        mismatchLabel: String?,
-        mismatchDeltaText: String?,
-        isPresented: Binding<Bool>
-    ) {
-        self.title = title
-        self._text = text
-        self.range = range
-        self.validationText = validationText
-        self.field = field
-        self.accessibilityLabel = accessibilityLabel
-        self.displayUnit = displayUnit
-        self.mismatchLabel = mismatchLabel
-        self.mismatchDeltaText = mismatchDeltaText
-        self._isPresented = isPresented
-        let initial = GaugeStepperField.pickerSelection(
-            validationText: validationText,
-            field: field,
-            displayUnit: displayUnit,
-            range: range
-        )
-        self._selectedValue = State(initialValue: initial)
-    }
-
-    private func mismatchBadge(_ text: String) -> some View {
-        DeltaPillBadge(text: text)
-    }
-
-    func commit() {
-        text = GaugeStepperField.committedText(selection: selectedValue)
-        isPresented = false
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 8) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.ink)
-
-                if let mismatchDeltaText {
-                    mismatchBadge(mismatchDeltaText)
-                }
+        func adjust(by adjustment: Int) {
+            if textField?.inputView !== pickerView {
+                pendingSelection = GaugeStepperField.pickerSelection(
+                    validationText: parent.validationText,
+                    field: parent.field,
+                    displayUnit: parent.displayUnit,
+                    range: parent.range
+                )
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal)
-            .padding(.top)
-            .padding(.bottom, mismatchLabel == nil ? 4 : 12)
-
-            if let mismatchLabel {
-                Text(mismatchLabel)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.mismatchText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.bottom, 8)
-            }
-
-            Picker(title, selection: $selectedValue) {
-                ForEach(range, id: \.self) { value in
-                    Text("\(value)").tag(value)
-                }
-            }
-            .pickerStyle(.wheel)
-            .labelsHidden()
-            .accessibilityLabel(accessibilityLabel)
-
-            Button("Done", action: commit)
-            .font(.body.weight(.semibold))
-            .foregroundStyle(.primary)
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.horizontal)
-            .padding(.vertical)
+            pendingSelection = min(
+                max(pendingSelection + adjustment, parent.range.lowerBound),
+                parent.range.upperBound
+            )
+            parent.text = GaugeStepperField.committedText(selection: pendingSelection)
+            pickerView.selectRow(
+                pendingSelection - parent.range.lowerBound,
+                inComponent: 0,
+                animated: true
+            )
         }
-        .background(AppTheme.card)
+
+        func numberOfComponents(in pickerView: UIPickerView) -> Int {
+            1
+        }
+
+        func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+            parent.range.count
+        }
+
+        func pickerView(
+            _ pickerView: UIPickerView,
+            titleForRow row: Int,
+            forComponent component: Int
+        ) -> String? {
+            "\(parent.range.lowerBound + row)"
+        }
+
+        func pickerView(
+            _ pickerView: UIPickerView,
+            didSelectRow row: Int,
+            inComponent component: Int
+        ) {
+            pendingSelection = parent.range.lowerBound + row
+        }
     }
 }

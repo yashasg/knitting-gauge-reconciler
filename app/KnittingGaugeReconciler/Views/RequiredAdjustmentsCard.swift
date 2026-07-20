@@ -97,8 +97,10 @@ struct RequiredAdjustmentsCard: View {
 
     private let result: GaugeMathResult?
     private let inputs: GaugeInputs?
+    private let correctionMessage: String?
     private let unit: MeasurementUnit
     private let canUndoReset: Bool
+    private let onCorrect: () -> Void
     private let onReset: () -> Void
     private let onUndoReset: () -> Void
     private let onShare: (GaugeMathResult) async -> [Any]
@@ -106,18 +108,22 @@ struct RequiredAdjustmentsCard: View {
     init(
         result: GaugeMathResult?,
         inputs: GaugeInputs?,
+        correctionMessage: String?,
         unit: MeasurementUnit,
         showFullMath: Binding<Bool>,
         canUndoReset: Bool,
+        onCorrect: @escaping () -> Void,
         onReset: @escaping () -> Void,
         onUndoReset: @escaping () -> Void,
         onShare: @escaping (GaugeMathResult) async -> [Any]
     ) {
         self.result = result
         self.inputs = inputs
+        self.correctionMessage = correctionMessage
         self.unit = unit
         self._showFullMath = showFullMath
         self.canUndoReset = canUndoReset
+        self.onCorrect = onCorrect
         self.onReset = onReset
         self.onUndoReset = onUndoReset
         self.onShare = onShare
@@ -131,6 +137,10 @@ struct RequiredAdjustmentsCard: View {
         showResetConfirmation = false
     }
 
+    func requestCorrection() {
+        onCorrect()
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let result, let inputs {
@@ -141,12 +151,16 @@ struct RequiredAdjustmentsCard: View {
                     showFullMath: $showFullMath,
                     onShare: onShare
                 )
-            } else {
-                Text("Correct the highlighted fields to view results.")
-                    .font(.caption)
-                    .foregroundStyle(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .center)
+            } else if let correctionMessage {
+                Button(action: requestCorrection) {
+                    Text(correctionMessage)
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Reveals and focuses the first field that needs correction")
             }
 
             HStack(alignment: .center, spacing: 16) {

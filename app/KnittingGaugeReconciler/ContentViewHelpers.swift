@@ -11,28 +11,18 @@ func newValidationAnnouncement(
 }
 
 enum SceneDraftStore {
-    static let rawValuesKey = "gauge.raw-values"
+    private static let rawValueCount = GaugeFormField.allCases.count
+
+    static let patternStitchesKey = "gauge.pattern-stitches"
+    static let patternRowsKey = "gauge.pattern-rows"
+    static let yourStitchesKey = "gauge.your-stitches"
+    static let yourRowsKey = "gauge.your-rows"
+    static let patternCastOnKey = "gauge.pattern-cast-on"
+    static let patternYokeKey = "gauge.pattern-yoke"
+    static let patternBodyKey = "gauge.pattern-body"
+    static let patternSleeveKey = "gauge.pattern-sleeve"
+    static let patternIncreasesKey = "gauge.pattern-increases"
     static let disclosureKey = "gauge.pattern-details-expanded"
-    private static let rawValueCount = 9
-
-    static func serialize(values: [String], disclosure: Bool) -> [String: Any] {
-        precondition(values.count == rawValueCount)
-        return [
-            rawValuesKey: values,
-            disclosureKey: disclosure,
-        ]
-    }
-
-    static func deserialize(
-        _ serialization: [AnyHashable: Any]
-    ) -> (values: [String], disclosure: Bool)? {
-        guard let values = serialization[rawValuesKey] as? [String],
-              values.count == rawValueCount,
-              let disclosure = serialization[disclosureKey] as? Bool else {
-            return nil
-        }
-        return (values, disclosure)
-    }
 
     static func reconcileInvalidInchProvenance(
         in values: [String],

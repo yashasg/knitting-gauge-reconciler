@@ -26,50 +26,101 @@ private final class ResetSnapshot {
     var draft: GaugeFormDraft?
 }
 
-struct SceneDraftLifecycleModifier: ViewModifier {
-    let isEnabled: Bool
-    let activityType: String
-    let update: (NSUserActivity) -> Void
-    let restore: (NSUserActivity) -> Void
+struct ContentView: View {
+    private let sceneStorageEnabled: Bool
 
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        modifiedContent(content)
+    @SceneStorage(SceneDraftStore.patternStitchesKey)
+    private var patternStitches = GaugeTextDefaults().patternStitches
+    @SceneStorage(SceneDraftStore.patternRowsKey)
+    private var patternRows = GaugeTextDefaults().patternRows
+    @SceneStorage(SceneDraftStore.yourStitchesKey)
+    private var yourStitches = GaugeTextDefaults().yourStitches
+    @SceneStorage(SceneDraftStore.yourRowsKey)
+    private var yourRows = GaugeTextDefaults().yourRows
+    @SceneStorage(SceneDraftStore.patternCastOnKey) private var patternCastOn = ""
+    @SceneStorage(SceneDraftStore.patternYokeKey) private var patternYoke = ""
+    @SceneStorage(SceneDraftStore.patternBodyKey) private var patternBody = ""
+    @SceneStorage(SceneDraftStore.patternSleeveKey) private var patternSleeve = ""
+    @SceneStorage(SceneDraftStore.patternIncreasesKey) private var patternIncreases = ""
+    @SceneStorage(SceneDraftStore.disclosureKey) private var patternDetailsExpanded = false
+
+    /// User's chosen measurement unit. Stored in UserDefaults; defaults to cm.
+    @AppStorage("measurementUnit") private var measurementUnit: MeasurementUnit = .centimeters
+
+    init(sceneStorageEnabled: Bool = true) {
+        self.sceneStorageEnabled = sceneStorageEnabled
     }
 
-    @ViewBuilder
-    func modifiedContent<Content: View>(_ content: Content) -> some View {
-        if isEnabled {
-            content
-                .userActivity(activityType, isActive: true, update)
-                .onContinueUserActivity(activityType, perform: restore)
-        } else {
-            content
-        }
+    var body: some View {
+        let defaults = GaugeTextDefaults()
+        GaugeFormView(
+            patternStitches: Binding(
+                get: { sceneStorageEnabled ? patternStitches : defaults.patternStitches },
+                set: { if sceneStorageEnabled { patternStitches = $0 } }
+            ),
+            patternRows: Binding(
+                get: { sceneStorageEnabled ? patternRows : defaults.patternRows },
+                set: { if sceneStorageEnabled { patternRows = $0 } }
+            ),
+            yourStitches: Binding(
+                get: { sceneStorageEnabled ? yourStitches : defaults.yourStitches },
+                set: { if sceneStorageEnabled { yourStitches = $0 } }
+            ),
+            yourRows: Binding(
+                get: { sceneStorageEnabled ? yourRows : defaults.yourRows },
+                set: { if sceneStorageEnabled { yourRows = $0 } }
+            ),
+            patternCastOn: Binding(
+                get: { sceneStorageEnabled ? patternCastOn : "" },
+                set: { if sceneStorageEnabled { patternCastOn = $0 } }
+            ),
+            patternYoke: Binding(
+                get: { sceneStorageEnabled ? patternYoke : "" },
+                set: { if sceneStorageEnabled { patternYoke = $0 } }
+            ),
+            patternBody: Binding(
+                get: { sceneStorageEnabled ? patternBody : "" },
+                set: { if sceneStorageEnabled { patternBody = $0 } }
+            ),
+            patternSleeve: Binding(
+                get: { sceneStorageEnabled ? patternSleeve : "" },
+                set: { if sceneStorageEnabled { patternSleeve = $0 } }
+            ),
+            patternIncreases: Binding(
+                get: { sceneStorageEnabled ? patternIncreases : "" },
+                set: { if sceneStorageEnabled { patternIncreases = $0 } }
+            ),
+            patternDetailsExpanded: Binding(
+                get: { sceneStorageEnabled ? patternDetailsExpanded : false },
+                set: { if sceneStorageEnabled { patternDetailsExpanded = $0 } }
+            ),
+            measurementUnit: Binding(
+                get: { sceneStorageEnabled ? measurementUnit : .centimeters },
+                set: { if sceneStorageEnabled { measurementUnit = $0 } }
+            )
+        )
     }
 }
 
 // swiftlint:disable:next type_body_length
-struct ContentView: View {
-    private static let sceneDraftActivityType = "com.stitchwise.scene-draft"
-    private let sceneLifecycleEnabled: Bool
-
+struct GaugeFormView: View {
     // MARK: - Adaptive layout
 
     @ScaledMetric(relativeTo: .body) private var cardSpacing: CGFloat = 12
 
     // MARK: - State
 
-    @State private var patternStitches = GaugeTextDefaults().patternStitches
-    @State private var patternRows = GaugeTextDefaults().patternRows
-    @State private var yourStitches = GaugeTextDefaults().yourStitches
-    @State private var yourRows = GaugeTextDefaults().yourRows
-    @State private var patternCastOn = ""
-    @State private var patternYoke = ""
-    @State private var patternBody = ""
-    @State private var patternSleeve = ""
-    @State private var patternIncreases = ""
-    @State private var patternDetailsExpanded = false
+    @Binding private var patternStitches: String
+    @Binding private var patternRows: String
+    @Binding private var yourStitches: String
+    @Binding private var yourRows: String
+    @Binding private var patternCastOn: String
+    @Binding private var patternYoke: String
+    @Binding private var patternBody: String
+    @Binding private var patternSleeve: String
+    @Binding private var patternIncreases: String
+    @Binding private var patternDetailsExpanded: Bool
+    @Binding private var measurementUnit: MeasurementUnit
 
     @State private var showFullMath = false
     @State private var aboutHelp = AboutHelpState()
@@ -77,14 +128,30 @@ struct ContentView: View {
     @State private var canUndoReset = false
     @State private var focusedField: GaugeFormField?
 
-    // MARK: - Persisted unit preference
-
-    /// User's chosen measurement unit. Stored in UserDefaults; defaults to cm.
-    /// INTERNAL MODEL IS ALWAYS CM — this controls display/entry conversion only.
-    @AppStorage("measurementUnit") private var measurementUnit: MeasurementUnit = .centimeters
-
-    init(sceneLifecycleEnabled: Bool = true) {
-        self.sceneLifecycleEnabled = sceneLifecycleEnabled
+    init(
+        patternStitches: Binding<String>,
+        patternRows: Binding<String>,
+        yourStitches: Binding<String>,
+        yourRows: Binding<String>,
+        patternCastOn: Binding<String>,
+        patternYoke: Binding<String>,
+        patternBody: Binding<String>,
+        patternSleeve: Binding<String>,
+        patternIncreases: Binding<String>,
+        patternDetailsExpanded: Binding<Bool>,
+        measurementUnit: Binding<MeasurementUnit>
+    ) {
+        _patternStitches = patternStitches
+        _patternRows = patternRows
+        _yourStitches = yourStitches
+        _yourRows = yourRows
+        _patternCastOn = patternCastOn
+        _patternYoke = patternYoke
+        _patternBody = patternBody
+        _patternSleeve = patternSleeve
+        _patternIncreases = patternIncreases
+        _patternDetailsExpanded = patternDetailsExpanded
+        _measurementUnit = measurementUnit
     }
 
     // MARK: - Derived
@@ -133,14 +200,6 @@ struct ContentView: View {
 
     var body: some View {
         navigationContent
-            .modifier(
-                SceneDraftLifecycleModifier(
-                    isEnabled: sceneLifecycleEnabled,
-                    activityType: Self.sceneDraftActivityType,
-                    update: updateSceneRestorationActivity,
-                    restore: restoreSceneDraft
-                )
-            )
     }
 
     private var navigationContent: some View {
@@ -193,9 +252,11 @@ struct ContentView: View {
                     RequiredAdjustmentsCard(
                         result: liveResult,
                         inputs: inputs,
+                        correctionMessage: firstValidationMessage,
                         unit: measurementUnit,
                         showFullMath: $showFullMath,
                         canUndoReset: canUndoReset,
+                        onCorrect: finishEditing,
                         onReset: resetToDefaults,
                         onUndoReset: undoReset,
                         onShare: shareItems
@@ -235,6 +296,7 @@ struct ContentView: View {
             .onChange(of: measurementUnit, measurementUnitChanged)
             .onChange(of: validationMessages, validationMessagesChanged)
             .onChange(of: Self.hasCastOnDrift(liveResult), castOnDriftChanged)
+            .onAppear(perform: sceneDidAppear)
         }
     }
 
@@ -262,6 +324,17 @@ struct ContentView: View {
 
     func measurementUnitChanged(_ previousUnit: MeasurementUnit, _ newUnit: MeasurementUnit) {
         reconcileSceneDraft(from: previousUnit, to: newUnit)
+    }
+
+    func sceneDidAppear() {
+        let reconciledValues = SceneDraftStore.reconcileInvalidInchProvenance(
+            in: rawTextValues,
+            for: measurementUnit
+        )
+        if reconciledValues != rawTextValues {
+            applySceneDraft(values: reconciledValues, disclosure: patternDetailsExpanded)
+        }
+        finishEditing()
     }
 
     func validationMessagesChanged(
@@ -387,6 +460,10 @@ struct ContentView: View {
         formDraft.validationMessages
     }
 
+    private var firstValidationMessage: String? {
+        GaugeFormField.allCases.lazy.compactMap { validationMessages[$0] }.first
+    }
+
     func finishEditing() {
         var draft = formDraft
         Self.finishEditing(&draft)
@@ -399,24 +476,6 @@ struct ContentView: View {
         if let message {
             UIAccessibility.post(notification: .announcement, argument: message)
         }
-    }
-
-    // MARK: - Scene restoration
-
-    func updateSceneRestorationActivity(_ activity: NSUserActivity) {
-        let draft = SceneDraftStore.serialize(
-            values: rawTextValues,
-            disclosure: patternDetailsExpanded
-        )
-        activity.addUserInfoEntries(from: draft)
-    }
-
-    func restoreSceneDraft(_ activity: NSUserActivity) {
-        guard let userInfo = activity.userInfo,
-              let draft = SceneDraftStore.deserialize(userInfo) else {
-            return
-        }
-        applySceneDraft(values: draft.values, disclosure: draft.disclosure)
     }
 
     func applySceneDraft(

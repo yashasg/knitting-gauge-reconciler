@@ -104,11 +104,7 @@ struct DeterministicUIContractsTests {
             ) == "1"
         )
         #expect(
-            GaugeStepperField.committedText(
-                selection: 8,
-                field: .patternYoke,
-                displayUnit: .inches
-            ) == "20.32"
+            GaugeStepperField.committedText(selection: 8) == "8"
         )
     }
 
@@ -527,10 +523,34 @@ struct DeterministicUIContractsTests {
 
         let values = GaugeValueBindings()
         values.unit.value = .inches
-        values.value(at: 5).value = "20.32"
         let card = values.patternInstructionsCard(expanded: true)
         let yoke = card.displayBinding(for: values.value(at: 5).binding, field: .patternYoke)
+        yoke.wrappedValue = GaugeStepperField.committedText(selection: 8)
+        #expect(values.value(at: 5).value == "20.32")
         #expect(yoke.wrappedValue == "8")
+        yoke.wrappedValue = GaugeStepperField.adjustedText(
+            values.value(at: 5).value,
+            by: 1,
+            field: .patternYoke,
+            displayUnit: .inches,
+            range: 2...39
+        )
+        #expect(values.value(at: 5).value == "22.86")
+        yoke.wrappedValue = GaugeStepperField.adjustedText(
+            values.value(at: 5).value,
+            by: -1,
+            field: .patternYoke,
+            displayUnit: .inches,
+            range: 2...39
+        )
+        #expect(values.value(at: 5).value == "20.32")
+        let committedDraft = GaugeFormDraft(
+            values: (0..<GaugeFormField.allCases.count).map { values.value(at: $0).value },
+            unit: .inches,
+            patternDetailsExpanded: true
+        )
+        #expect(committedDraft.inputs != nil)
+
         yoke.wrappedValue = "9"
         #expect(values.value(at: 5).value == "22.86")
         yoke.wrappedValue = ""
@@ -622,18 +642,7 @@ struct DeterministicUIContractsTests {
             ) == 1
         )
         #expect(
-            GaugeStepperField.committedText(
-                selection: 7,
-                field: .patternStitches,
-                displayUnit: nil
-            ) == "7"
-        )
-        #expect(
-            GaugeStepperField.committedText(
-                selection: 7,
-                field: .patternBody,
-                displayUnit: nil
-            ) == "7"
+            GaugeStepperField.committedText(selection: 7) == "7"
         )
         #expect(
             GaugeStepperField.adjustedText(

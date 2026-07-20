@@ -380,7 +380,7 @@ struct GaugeMathTests {
         #expect(result5.castOnRoundingDriftPercent?.isApproximately(0.0) == true)
     }
 
-    @Test func adjustedCastOnOmitsExtremeRatioGuidance() {
+    @Test func adjustedCastOnWarnsForExtremeRatio() {
         let inputs = GaugeInputs(
             patternStitches: 99, patternRows: 24, yourStitches: 1, yourRows: 24,
             patternCastOn: 40
@@ -388,12 +388,13 @@ struct GaugeMathTests {
         let result = GaugeMath.compute(inputs)
         let export = ResultsExportSummary(inputs: inputs, result: result)
         let share = ResultsShareTextFormatter.string(inputs: inputs, result: result)
+        let warning = "No usable whole-stitch cast-on result. Re-swatch or change needle size before casting on."
 
         #expect(result.adjustedCastOn == nil)
         #expect(result.castOnRoundingDriftPercent == nil)
-        #expect(castOnGuidanceText(inputs: inputs, result: result) == nil)
-        #expect(export.castOn == nil)
-        #expect(!share.contains("Cast-on"))
+        #expect(castOnGuidanceText(inputs: inputs, result: result) == warning)
+        #expect(export.castOn == warning)
+        #expect(share.contains("• Cast-on: \(warning.lowercased())"))
         #expect(!share.contains("Cast on 0"))
     }
 

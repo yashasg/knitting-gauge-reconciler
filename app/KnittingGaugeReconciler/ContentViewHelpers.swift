@@ -1,5 +1,4 @@
 // Issue #134 keeps the small form/help contracts beside the state helpers they exercise.
-// swiftlint:disable file_length
 import SwiftUI
 import UIKit
 
@@ -10,55 +9,6 @@ func newValidationAnnouncement(
     GaugeFormField.allCases.first(where: {
         previous[$0] != current[$0] && current[$0] != nil
     }).flatMap { current[$0] }
-}
-
-// MARK: - SceneSessionReader
-
-struct SceneSessionReader: UIViewRepresentable {
-    let onResolve: (UISceneSession) -> Void
-
-    func makeUIView(context: Context) -> SceneSessionReaderView {
-        let view = SceneSessionReaderView(onResolve: onResolve)
-        view.isUserInteractionEnabled = false
-        view.isAccessibilityElement = false
-        return view
-    }
-
-    func updateUIView(_ uiView: SceneSessionReaderView, context: Context) {
-        uiView.onResolve = onResolve
-    }
-}
-
-final class SceneSessionReaderView: UIView {
-    var onResolve: (UISceneSession) -> Void
-    private var resolvedSessionIdentifier: String?
-    private var resolutionScheduled = false
-
-    init(onResolve: @escaping (UISceneSession) -> Void) {
-        self.onResolve = onResolve
-        super.init(frame: .zero)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        nil
-    }
-
-    override func didMoveToWindow() {
-        super.didMoveToWindow()
-        guard window != nil, !resolutionScheduled else { return }
-        resolutionScheduled = true
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            resolutionScheduled = false
-            guard let session = window?.windowScene?.session,
-                  resolvedSessionIdentifier != session.persistentIdentifier else {
-                return
-            }
-            resolvedSessionIdentifier = session.persistentIdentifier
-            onResolve(session)
-        }
-    }
 }
 
 enum SceneDraftStore {
@@ -247,7 +197,7 @@ struct GaugeFormDraft: Equatable {
     }
 
     var rawValues: [String] {
-        GaugeFormField.allCases.map { values[$0, default: ""] }
+        GaugeFormField.allCases.map { values[$0]! }
     }
 
     var inputs: GaugeInputs? {
@@ -276,15 +226,17 @@ struct GaugeFormDraft: Equatable {
     }
 
     var validationMessages: [GaugeFormField: String] {
-        Dictionary(
-            uniqueKeysWithValues: GaugeFormField.allCases.compactMap { field in
-                validationMessage(for: field).map { (field, $0) }
+        var messages: [GaugeFormField: String] = [:]
+        for field in GaugeFormField.allCases {
+            if let message = validationMessage(for: field) {
+                messages[field] = message
             }
-        )
+        }
+        return messages
     }
 
     subscript(field: GaugeFormField) -> String {
-        get { values[field, default: ""] }
+        get { values[field]! }
         set { values[field] = newValue }
     }
 

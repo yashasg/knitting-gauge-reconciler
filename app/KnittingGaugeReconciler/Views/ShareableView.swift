@@ -1,12 +1,28 @@
 import SwiftUI
+import UIKit
 
 struct ShareableView: View {
-    private let columns = [
-        GridItem(.flexible(minimum: 0), spacing: 12),
-        GridItem(.flexible(minimum: 0), spacing: 12)
-    ]
-
     var summary: ResultsExportSummary
+
+    private var columns: [GridItem] {
+        [
+            GridItem(.flexible(minimum: 0), spacing: 12),
+            GridItem(.flexible(minimum: 0), spacing: 12),
+        ]
+    }
+
+    @MainActor
+    static func pngData(summary: ResultsExportSummary, scale: CGFloat = 3) -> Data {
+        let renderer = ImageRenderer(content: ShareableView(summary: summary))
+        renderer.proposedSize = .init(width: 390, height: nil)
+        var data = Data()
+        renderer.render(rasterizationScale: scale) { size, draw in
+            data = UIGraphicsImageRenderer(size: size).pngData { context in
+                draw(context.cgContext)
+            }
+        }
+        return data
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -167,7 +183,7 @@ private struct ShareableAdjustmentRow: View {
     }
 }
 
-private func shareMetricBackground(_ status: String) -> Color {
+func shareMetricBackground(_ status: String) -> Color {
     if status == "Match" {
         return AppTheme.sage
     }

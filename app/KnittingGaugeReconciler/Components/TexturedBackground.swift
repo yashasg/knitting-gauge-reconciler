@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - TexturedBackground
 // Canvas-based dot grid that renders behind all cards. Spacing and dot size are
@@ -6,6 +7,23 @@ import SwiftUI
 // AppTheme.surfaceTextureDot (muted at 30% opacity).
 
 struct TexturedBackground: View {
+    @MainActor
+    static func renderedImage(size: CGSize, scale: CGFloat = 2) -> UIImage? {
+        let renderer = ImageRenderer(
+            content: TexturedBackground()
+                .frame(width: size.width, height: size.height)
+                .background(AppTheme.background)
+        )
+        renderer.proposedSize = .init(size)
+        var image: UIImage?
+        renderer.render(rasterizationScale: scale) { renderedSize, draw in
+            image = UIGraphicsImageRenderer(size: renderedSize).image { context in
+                draw(context.cgContext)
+            }
+        }
+        return image
+    }
+
     var body: some View {
         Canvas { context, size in
             let spacing: CGFloat = 14

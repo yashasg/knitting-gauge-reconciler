@@ -614,17 +614,24 @@ struct GaugeMathTests {
     @Test func sceneDraftSerializationPreservesEveryRawValueAndDisclosure() throws {
         let properties = Array(Mirror(reflecting: ContentView()).children)
         let stringStorage = Set(properties.compactMap { child in
-            child.value is SceneStorage<String> ? child.label?.dropFirst().description : nil
+            child.value is State<String> ? child.label?.dropFirst().description : nil
         })
         let boolStorage = Set(properties.compactMap { child in
-            child.value is SceneStorage<Bool> ? child.label?.dropFirst().description : nil
+            child.value is State<Bool> ? child.label?.dropFirst().description : nil
         })
 
         #expect(stringStorage == [
             "patternStitches", "patternRows", "yourStitches", "yourRows",
             "patternCastOn", "patternYoke", "patternBody", "patternSleeve", "patternIncreases",
         ])
-        #expect(boolStorage == ["patternDetailsExpanded"])
+        #expect(
+            boolStorage == [
+                "patternDetailsExpanded",
+                "showFullMath",
+                "driftBandSignpostFired",
+                "canUndoReset",
+            ]
+        )
 
         let values = ["31.5", "0", "32", "24", "", "20.5", ".", "", "7e0"]
         let serialization = try #require(

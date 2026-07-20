@@ -447,9 +447,13 @@ struct LiveResultsView: View {
         if let spacing = inputs.patternIncreaseSpacing, let adjusted = result.adjustedIncreaseSpacing {
             lines.append("increase spacing = \(plain(spacing)) x row density = \(GaugeMath.fmtRows(adjusted)) rows")
         }
-        if let castOn = inputs.patternCastOn, let adjusted = result.adjustedCastOn {
-            lines.append("cast-on adjust = your_st / pattern_st x \(plain(castOn)) = \(adjusted) stitches")
-            lines.append("reconcile the rounded stitch count with the pattern stitch-repeat multiple")
+        if let castOn = inputs.patternCastOn {
+            if let adjusted = result.adjustedCastOn {
+                lines.append("cast-on adjust = your_st / pattern_st x \(plain(castOn)) = \(adjusted) stitches")
+                lines.append("reconcile the rounded stitch count with the pattern stitch-repeat multiple")
+            } else if let guidance = semantics.castOnGuidance {
+                lines.append("cast-on adjust = your_st / pattern_st x \(plain(castOn)); \(guidance)")
+            }
         }
         return lines.joined(separator: "\n")
     }

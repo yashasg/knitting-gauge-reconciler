@@ -778,6 +778,20 @@ struct DeterministicUIContractsTests {
             ResultCardSemantics(inputs: unusableCastOnInputs, result: unusableCastOnResult).castOnGuidance ==
                 "No usable whole-stitch cast-on result. Re-swatch or change needle size before casting on."
         )
+        let unusableCastOnLive = LiveResultsView(
+            result: unusableCastOnResult,
+            inputs: unusableCastOnInputs,
+            unit: .centimeters,
+            showFullMath: ValueBox(true).binding,
+            onShare: { _ in [] }
+        )
+        #expect(unusableCastOnLive.fullMathBreakdown.contains("cast-on adjust = your_st / pattern_st x 40"))
+        #expect(unusableCastOnLive.fullMathBreakdown.contains("No usable whole-stitch cast-on result."))
+        #expect(
+            unusableCastOnLive.fullMathBreakdown.contains(
+                "Re-swatch or change needle size before casting on."
+            )
+        )
         let unusableCastOn = RequiredAdjustmentsCard(
             result: unusableCastOnResult,
             inputs: unusableCastOnInputs,

@@ -81,8 +81,9 @@ function fmtPct(x) { return Math.round(x * 100); }
 function loadPrototypeHelper(name) {
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const match = html.match(new RegExp(`function ${name}\\(scale\\)\\{([\\s\\S]*?)\\n  \\}`));
-  if (!match) throw new Error(`Missing prototype helper: ${name}`);
-  return new Function('scale', match[1]);
+  const dependencies = html.match(/(const statusBoundaryTolerance[\s\S]*?function isMatch\(scale\)\{[^\n]*\})/);
+  if (!match || !dependencies) throw new Error(`Missing prototype helper: ${name}`);
+  return new Function('scale', `${dependencies[1]}\n${match[1]}`);
 }
 
 const pillFor = loadPrototypeHelper('pillFor');

@@ -628,7 +628,6 @@ struct GaugeMathTests {
             boolStorage == [
                 "patternDetailsExpanded",
                 "showFullMath",
-                "driftBandSignpostFired",
                 "canUndoReset",
             ]
         )

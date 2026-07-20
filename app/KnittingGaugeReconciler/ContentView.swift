@@ -23,7 +23,6 @@ struct ContentView: View {
 
     // MARK: - Adaptive layout
 
-    @Environment(\.scenePhase) private var scenePhase
     @ScaledMetric(relativeTo: .body) private var cardSpacing: CGFloat = 12
 
     // MARK: - State
@@ -43,7 +42,6 @@ struct ContentView: View {
     @State private var aboutHelp = AboutHelpState(
         isPresented: initialBool("KGR_SHOW_ABOUT_HELP")
     )
-    @State private var driftBandSignpostFired = false
     @State private var resetSnapshot = ResetSnapshot()
     @State private var canUndoReset = false
     @State private var focusedField: GaugeFormField?
@@ -106,7 +104,6 @@ struct ContentView: View {
                 updateSceneRestorationActivity
             )
             .onContinueUserActivity(Self.sceneDraftActivityType, perform: restoreSceneDraft)
-            .onChange(of: scenePhase, scenePhaseChanged)
     }
 
     private var navigationContent: some View {
@@ -211,18 +208,18 @@ struct ContentView: View {
     }
 
     func castOnDriftChanged(_ oldValue: Bool, _ newValue: Bool) {
-        driftVisibilityChanged(newValue)
-    }
-
-    func scenePhaseChanged(_ oldValue: ScenePhase, _ newValue: ScenePhase) {
-        if newValue != .active {
-            UserDefaults.standard.synchronize()
+        if let name = Self.driftBandSignpostName(previous: oldValue, current: newValue) {
+            os_signpost(.event, log: SignpostNames.log, name: name)
         }
     }
 
+    static func helpSignpostName(previous: Bool, current: Bool) -> StaticString? {
+        !previous && current ? SignpostNames.sheetAboutHelpOpened : nil
+    }
+
     func helpPresentationChanged(_ oldValue: Bool, _ newValue: Bool) {
-        if newValue {
-            os_signpost(.event, log: SignpostNames.log, name: SignpostNames.sheetAboutHelpOpened)
+        if let name = Self.helpSignpostName(previous: oldValue, current: newValue) {
+            os_signpost(.event, log: SignpostNames.log, name: name)
         }
     }
 
@@ -234,39 +231,57 @@ struct ContentView: View {
         _ previous: [GaugeFormField: String],
         _ current: [GaugeFormField: String]
     ) {
-        announceValidation(previous: previous, current: current)
+        validationMessagesChanged(
+            previous,
+            current,
+            isVoiceOverRunning: UIAccessibility.isVoiceOverRunning
+        )
     }
 
-    func announceValidation(
+    @discardableResult
+    func validationMessagesChanged(
+        _ previous: [GaugeFormField: String],
+        _ current: [GaugeFormField: String],
+        isVoiceOverRunning: Bool
+    ) -> String? {
+        guard let message = Self.validationAnnouncement(
+            previous: previous,
+            current: current,
+            isVoiceOverRunning: isVoiceOverRunning
+        ) else { return nil }
+        UIAccessibility.post(notification: .announcement, argument: message)
+        return message
+    }
+
+    static func validationAnnouncement(
         previous: [GaugeFormField: String],
         current: [GaugeFormField: String],
-        isVoiceOverRunning: Bool = UIAccessibility.isVoiceOverRunning
-    ) {
-        guard isVoiceOverRunning,
-              let message = newValidationAnnouncement(previous: previous, current: current) else {
-            return
-        }
-        UIAccessibility.post(notification: .announcement, argument: message)
+        isVoiceOverRunning: Bool
+    ) -> String? {
+        guard isVoiceOverRunning else { return nil }
+        return newValidationAnnouncement(previous: previous, current: current)
+    }
+
+    static func verdictSignpostName(
+        previous oldValue: String,
+        current newValue: String
+    ) -> StaticString? {
+        let previous = oldValue.isEmpty ? nil : VerdictBucket(verdictTitle: oldValue)
+        let current = newValue.isEmpty ? nil : VerdictBucket(verdictTitle: newValue)
+        return VerdictBucket.signpostName(
+            previous: previous,
+            current: current
+        )
     }
 
     func verdictChanged(_ oldValue: String, _ newValue: String) {
-        let previous = oldValue.isEmpty ? nil : VerdictBucket(verdictTitle: oldValue)
-        let current = newValue.isEmpty ? nil : VerdictBucket(verdictTitle: newValue)
-        if let name = VerdictBucket.signpostName(
-            previous: previous,
-            current: current
-        ) {
+        if let name = Self.verdictSignpostName(previous: oldValue, current: newValue) {
             os_signpost(.event, log: SignpostNames.log, name: name)
         }
     }
 
-    func driftVisibilityChanged(_ isVisible: Bool) {
-        if isVisible, !driftBandSignpostFired {
-            os_signpost(.event, log: SignpostNames.log, name: SignpostNames.castOnDriftBandShown)
-            driftBandSignpostFired = true
-        } else if !isVisible {
-            driftBandSignpostFired = false
-        }
+    static func driftBandSignpostName(previous: Bool, current: Bool) -> StaticString? {
+        !previous && current ? SignpostNames.castOnDriftBandShown : nil
     }
 
     // MARK: - Verdict
@@ -391,10 +406,7 @@ struct ContentView: View {
             get: { binding.wrappedValue },
             set: { newValue in
                 guard newValue != binding.wrappedValue else { return }
-                var values = rawTextValues
-                values[index] = newValue
                 binding.wrappedValue = newValue
-                resetResultMetrics()
             }
         )
     }
@@ -421,13 +433,27 @@ struct ContentView: View {
         )
     }
 
+    static func reconciledSceneDraft(
+        values: [String],
+        from previousUnit: MeasurementUnit,
+        to newUnit: MeasurementUnit
+    ) -> [String]? {
+        guard previousUnit == .inches, newUnit == .centimeters else { return nil }
+        return SceneDraftStore.reconcileInvalidInchProvenance(in: values, for: newUnit)
+    }
+
+    @discardableResult
     func reconcileSceneDraft(
         from previousUnit: MeasurementUnit,
         to newUnit: MeasurementUnit
-    ) {
-        guard previousUnit == .inches, newUnit == .centimeters else { return }
-        let values = SceneDraftStore.reconcileInvalidInchProvenance(in: rawTextValues, for: newUnit)
+    ) -> [String]? {
+        guard let values = Self.reconciledSceneDraft(
+            values: rawTextValues,
+            from: previousUnit,
+            to: newUnit
+        ) else { return nil }
         applySceneDraft(values: values, disclosure: patternDetailsExpanded)
+        return values
     }
 
     private var validationMessages: [GaugeFormField: String] {
@@ -485,7 +511,6 @@ struct ContentView: View {
         patternSleeve = values[7]
         patternIncreases = values[8]
         patternDetailsExpanded = disclosure
-        resetResultMetrics()
         if synchronizingDefaults {
             UserDefaults.standard.synchronize()
         }
@@ -520,10 +545,6 @@ struct ContentView: View {
         )
         focusedField = nil
         showFullMath = false
-    }
-
-    private func resetResultMetrics() {
-        driftBandSignpostFired = false
     }
 
     @MainActor

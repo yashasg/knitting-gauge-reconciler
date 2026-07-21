@@ -210,20 +210,6 @@ struct GaugeFormView: View {
         return NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: cardSpacing) {
-                    ZStack(alignment: .leading) {
-                        AppTheme.background
-                        Text(GaugeFormContract.leadCopy)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(AppTheme.ink)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.horizontal, 12)
-                            .padding(.top, 8)
-                            .padding(.bottom, 8)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityAddTraits(.isStaticText)
-
                     GaugeInputsCard(
                         patternStitches: draftBinding($patternStitches, at: 0),
                         patternRows: draftBinding($patternRows, at: 1),

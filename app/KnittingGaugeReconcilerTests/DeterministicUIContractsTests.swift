@@ -371,7 +371,6 @@ struct DeterministicUIContractsTests {
             GaugeInputsCard.accessibilityFieldOrder ==
                 [.patternStitches, .patternRows, .yourStitches, .yourRows]
         )
-        #expect(GaugeFormContract.leadCopy.hasSuffix("affect the garment."))
 
         let gaugeValues = GaugeValueBindings()
         let compact = HostedViewProbe(

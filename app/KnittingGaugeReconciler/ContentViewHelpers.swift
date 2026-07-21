@@ -280,11 +280,6 @@ struct AboutHelpState: Equatable {
     }
 }
 
-enum GaugeFormContract {
-    static let leadCopy =
-        "Compare your pattern gauge with your swatch to see how stitch and row differences affect the garment."
-}
-
 enum AboutHelpContract {
     static let openLabel = "About this calculator"
     static let openHint = "Opens an explanation of how this calculator works"

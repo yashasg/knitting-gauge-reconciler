@@ -9,6 +9,7 @@ SIMULATOR_UDID="${SIMULATOR_UDID:-}"
 DESTINATION="${DESTINATION:-}"
 BUILD_DIR="${BUILD_DIR:-$PROJECT_DIR/.build}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$BUILD_DIR/derived-data}"
+PERIPHERY_INDEX_STORE_PATH="$BUILD_DIR/periphery-index"
 COMPILER_INDEX_STORE_ENABLE="${COMPILER_INDEX_STORE_ENABLE:-YES}"
 
 usage() {
@@ -95,16 +96,15 @@ ensure_tool() {
 
 run_periphery() {
   ensure_tool periphery
-  local index_store_path="$DERIVED_DATA_PATH/Index.noindex/DataStore"
-  [[ -d "$index_store_path" ]] || \
-    fail "Periphery index store not found at '$index_store_path' after Xcode test build"
+  [[ -d "$PERIPHERY_INDEX_STORE_PATH" ]] || \
+    fail "Periphery index store not found at '$PERIPHERY_INDEX_STORE_PATH' after Xcode test build"
 
   echo "→ Periphery (unused code)..."
   (
     cd "$REPO_ROOT"
     periphery scan \
       --config "$REPO_ROOT/.periphery.yml" \
-      --index-store-path "$index_store_path" \
+      --index-store-path "$PERIPHERY_INDEX_STORE_PATH" \
       --skip-build \
       --color never
   )
@@ -271,6 +271,7 @@ fi
 if [[ "$MODE" == "test" ]]; then
   simulator_test_preflight
   foreign_app_preflight
+  rm -rf "$PERIPHERY_INDEX_STORE_PATH"
 fi
 
 xcargs=(
@@ -288,6 +289,7 @@ fi
 
 if [[ "$MODE" == "test" ]]; then
   xcargs+=(
+    "INDEX_DATA_STORE_DIR=${PERIPHERY_INDEX_STORE_PATH}"
     "-parallel-testing-enabled NO"
   )
 fi

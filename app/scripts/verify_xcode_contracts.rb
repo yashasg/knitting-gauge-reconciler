@@ -418,6 +418,20 @@ def assert_regression_fixtures(root)
   expect_contract_rejection("system Ruby under Bundler", /must isolate the system Ruby from Bundler/) do
     verify_fastlane_contracts(root, contents: system_ruby_fastfile)
   end
+
+  build_script = File.read(File.join(root, "app/build.sh"))
+  stale_index_build_script = build_script.sub(
+    'PERIPHERY_INDEX_STORE_PATH="$BUILD_DIR/periphery-index"',
+    'PERIPHERY_INDEX_STORE_PATH="$DERIVED_DATA_PATH/Index.noindex/DataStore"'
+  )
+  expect_contract_rejection("cached Periphery index", /fresh dedicated index store/) do
+    verify_periphery_index_contract(root, build_script: stale_index_build_script)
+  end
+
+  non_clean_fastfile = fastfile.sub("clean: true,", "clean: false,")
+  expect_contract_rejection("incremental Periphery index", /fresh dedicated index store/) do
+    verify_periphery_index_contract(root, fastfile: non_clean_fastfile)
+  end
 end
 
 def target_source_paths(target, root)
@@ -529,6 +543,26 @@ def verify_fastlane_contracts(root, contents: nil)
   end
 end
 
+def verify_periphery_index_contract(root, build_script: nil, fastfile: nil)
+  build_script ||= File.read(File.join(root, "app/build.sh"))
+  fastfile ||= File.read(File.join(root, "app/fastlane/Fastfile"))
+  required_build_script = [
+    'PERIPHERY_INDEX_STORE_PATH="$BUILD_DIR/periphery-index"',
+    'rm -rf "$PERIPHERY_INDEX_STORE_PATH"',
+    '"INDEX_DATA_STORE_DIR=${PERIPHERY_INDEX_STORE_PATH}"',
+    '--index-store-path "$PERIPHERY_INDEX_STORE_PATH"',
+  ]
+  clean_test_build = <<~RUBY
+    derived_data_path: lane_derived_data_path(options),
+        clean: true,
+        code_coverage: true,
+  RUBY
+  unless required_build_script.all? { |contract| build_script.include?(contract) } &&
+         fastfile.include?(clean_test_build)
+    raise ContractError, "Periphery must use a fresh dedicated index store"
+  end
+end
+
 def verify_repository(root)
   assert_regression_fixtures(root)
   project = Xcodeproj::Project.open(File.join(root, "app/app.xcodeproj"))
@@ -571,6 +605,7 @@ def verify_repository(root)
   end
   verify_scheme(root)
   verify_fastlane_contracts(root)
+  verify_periphery_index_contract(root)
   puts "Xcode contracts: tracked membership complete; UI-test and coverage regression fixtures passed"
   inventory
 end

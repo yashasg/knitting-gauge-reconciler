@@ -85,10 +85,12 @@ jobs:
             echo "::error::GitLab checkout credential persisted in the remote URL"
             exit 1
           }
-          printf 'event=%s\n' "$GITLAB_EVENT" >> "$GITHUB_OUTPUT"
-          printf 'ref=%s\n' "$GITLAB_REF" >> "$GITHUB_OUTPUT"
-          printf 'sha=%s\n' "$GITLAB_SHA" >> "$GITHUB_OUTPUT"
-          echo "validated=true" >> "$GITHUB_OUTPUT"
+          {
+            printf 'event=%s\n' "$GITLAB_EVENT"
+            printf 'ref=%s\n' "$GITLAB_REF"
+            printf 'sha=%s\n' "$GITLAB_SHA"
+            echo "validated=true"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Require SwiftLint before Xcode
         run: |
@@ -186,6 +188,59 @@ jobs:
           path: /opt/homebrew/Cellar/swiftlint
           key: swiftlint-brew-${{ runner.os }}
 
+      - name: Restore Periphery cache
+        id: cache-periphery
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: /opt/homebrew/Cellar/periphery
+          key: periphery-brew-${{ runner.os }}
+
+      - name: Install or link Periphery
+        run: |
+          if [ "${{ steps.cache-periphery.outputs.cache-hit }}" == 'true' ]; then
+            brew link periphery
+          else
+            brew install periphery
+          fi
+
+      - name: Save Periphery cache
+        if: steps.cache-periphery.outputs.cache-hit != 'true'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: /opt/homebrew/Cellar/periphery
+          key: periphery-brew-${{ runner.os }}
+
+      - name: Verify blocking Periphery configuration
+        run: |
+          set -euo pipefail
+          command -v periphery > /dev/null || {
+            echo "::error::Periphery is unavailable after installation"
+            exit 1
+          }
+          [[ "$(periphery version)" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::Periphery returned an invalid version"
+            exit 1
+          }
+          ruby - "$GITHUB_WORKSPACE/.periphery.yml" "$GITHUB_WORKSPACE" <<'RUBY'
+          require "yaml"
+
+          config_path, workspace = ARGV
+          config = YAML.safe_load(File.read(config_path), permitted_classes: [], aliases: false)
+          expected = {
+            "project" => "app/app.xcodeproj",
+            "schemes" => ["KnittingGaugeReconciler"],
+            "format" => "xcode",
+            "strict" => true,
+            "retain_objc_accessible" => true,
+            "disable_update_check" => true,
+            "quiet" => true
+          }
+          abort("Periphery configuration does not match the blocking CI contract") unless config == expected
+          abort("Periphery project is missing") unless File.directory?(File.join(workspace, config.fetch("project")))
+          RUBY
+          periphery scan --help | grep -F -- "--index-store-path" > /dev/null
+          periphery scan --help | grep -F -- "--skip-build" > /dev/null
+
       - name: Build & Test
         id: build-test
         env:
@@ -223,3 +278,218 @@ jobs:
             --data-urlencode "name=Build & Test" \
             --data-urlencode "ref=$GITLAB_REF" \
             --data-urlencode "target_url=$TARGET_URL"
+
+      - name: Resolve exact GitLab merge request for Danger
+        id: danger-mr
+        if: steps.source.outputs.event == 'merge_request'
+        continue-on-error: true
+        env:
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+          SOURCE_REF: ${{ steps.source.outputs.ref }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          api="https://gitlab.com/api/v4/projects/$GITLAB_PROJECT_ID"
+          merge_requests="$(
+            curl --fail --silent --show-error --get \
+              --header "PRIVATE-TOKEN: $GITLAB_PAT" \
+              --data-urlencode "state=opened" \
+              --data-urlencode "scope=all" \
+              --data-urlencode "source_branch=$SOURCE_REF" \
+              --data-urlencode "per_page=100" \
+              "$api/merge_requests"
+          )"
+          candidate="$(
+            jq -cer \
+              --argjson project_id "$GITLAB_PROJECT_ID" \
+              --arg source_ref "$SOURCE_REF" \
+              '
+                if type != "array" then
+                  error("GitLab merge request response is not an array")
+                else
+                  [.[] | select(
+                    type == "object" and
+                    .state == "opened" and
+                    .source_project_id == $project_id and
+                    .target_project_id == $project_id and
+                    .source_branch == $source_ref
+                  )] |
+                  if length != 1 then
+                    error("expected exactly one trusted open merge request for the source branch")
+                  else
+                    .[0]
+                  end
+                end
+              ' <<< "$merge_requests"
+          )"
+          mr_iid="$(jq -er '.iid | select(type == "number" and . > 0)' <<< "$candidate")"
+          merge_request="$(
+            curl --fail --silent --show-error \
+              --header "PRIVATE-TOKEN: $GITLAB_PAT" \
+              "$api/merge_requests/$mr_iid"
+          )"
+          merge_request="$(
+            jq -cer \
+              --argjson mr_iid "$mr_iid" \
+              --argjson project_id "$GITLAB_PROJECT_ID" \
+              --arg source_ref "$SOURCE_REF" \
+              --arg source_sha "$SOURCE_SHA" \
+              '
+                if type != "object" then
+                  error("GitLab merge request detail is not an object")
+                elif .iid != $mr_iid or
+                     .state != "opened" or
+                     .source_project_id != $project_id or
+                     .target_project_id != $project_id or
+                     .source_branch != $source_ref then
+                  error("GitLab merge request detail does not match the trusted candidate")
+                elif .sha != $source_sha then
+                  error("merge request source SHA does not match the payload SHA")
+                elif .diff_refs.head_sha != $source_sha then
+                  error("merge request diff head SHA does not match the payload SHA")
+                else
+                  .
+                end
+              ' <<< "$merge_request"
+          )"
+          target_ref="$(jq -er '.target_branch | select(type == "string" and length > 0)' <<< "$merge_request")"
+          base_sha="$(jq -er '.diff_refs.base_sha | select(test("^[0-9a-f]{40}$"))' <<< "$merge_request")"
+          git check-ref-format "refs/heads/$target_ref" > /dev/null || {
+            echo "::error::Invalid GitLab merge request target ref"
+            exit 1
+          }
+
+          encoded_target_ref="$(jq -rn --arg value "$target_ref" '$value | @uri')"
+          target="$(
+            curl --fail --silent --show-error \
+              --header "PRIVATE-TOKEN: $GITLAB_PAT" \
+              "$api/repository/branches/$encoded_target_ref"
+          )"
+          [[ "$(jq -er '.name' <<< "$target")" == "$target_ref" ]] || {
+            echo "::error::Resolved GitLab target branch does not match the merge request"
+            exit 1
+          }
+          target_sha="$(jq -er '.commit.id | select(test("^[0-9a-f]{40}$"))' <<< "$target")"
+
+          {
+            printf 'mr-iid=%s\n' "$mr_iid"
+            printf 'target-ref=%s\n' "$target_ref"
+            printf 'target-sha=%s\n' "$target_sha"
+            printf 'base-sha=%s\n' "$base_sha"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Fetch exact GitLab base and head for Danger
+        id: danger-refs
+        if: >-
+          steps.source.outputs.event == 'merge_request' &&
+          steps.danger-mr.outcome == 'success'
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ steps.danger-mr.outputs.base-sha }}
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+          HEAD_SHA: ${{ steps.source.outputs.sha }}
+          SOURCE_REF: ${{ steps.source.outputs.ref }}
+          TARGET_REF: ${{ steps.danger-mr.outputs.target-ref }}
+          TARGET_SHA: ${{ steps.danger-mr.outputs.target-sha }}
+        run: |
+          set -euo pipefail
+          cleanup_git_auth() {
+            unset auth_header GITLAB_PAT
+            git config --local --unset-all http.extraHeader > /dev/null 2>&1 || true
+          }
+          trap cleanup_git_auth EXIT
+
+          auth_header="$(printf 'oauth2:%s' "$GITLAB_PAT" | base64 | tr -d '\n')"
+          fetch_args=(--no-tags)
+          if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
+            fetch_args+=(--unshallow)
+          fi
+          git -c "http.extraHeader=Authorization: Basic $auth_header" fetch \
+            "${fetch_args[@]}" origin \
+            "+refs/heads/$SOURCE_REF:refs/remotes/origin/danger-head" \
+            "+refs/heads/$TARGET_REF:refs/remotes/origin/danger-base"
+          cleanup_git_auth
+
+          [[ "$(git rev-parse 'refs/remotes/origin/danger-head^{commit}')" == "$HEAD_SHA" ]] || {
+            echo "::error::Fetched Danger head does not match the payload SHA"
+            exit 1
+          }
+          [[ "$(git rev-parse 'refs/remotes/origin/danger-base^{commit}')" == "$TARGET_SHA" ]] || {
+            echo "::error::Fetched Danger target does not match the resolved target SHA"
+            exit 1
+          }
+          [[ "$(git merge-base "$TARGET_SHA" "$HEAD_SHA")" == "$BASE_SHA" ]] || {
+            echo "::error::Fetched merge base does not match the GitLab merge request base SHA"
+            exit 1
+          }
+          if git config --local --get-regexp '^http\..*extraheader$' > /dev/null 2>&1; then
+            echo "::error::GitLab Danger credential persisted in local Git config"
+            exit 1
+          fi
+          [[ "$(git remote get-url origin)" == "https://gitlab.com/${GITLAB_PROJECT}.git" ]] || {
+            echo "::error::GitLab Danger credential persisted in the remote URL"
+            exit 1
+          }
+          printf 'base-sha=%s\n' "$BASE_SHA" >> "$GITHUB_OUTPUT"
+          printf 'head-sha=%s\n' "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Restore advisory Danger bundle cache
+        id: cache-danger
+        if: >-
+          steps.source.outputs.event == 'merge_request' &&
+          steps.danger-refs.outcome == 'success'
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: ${{ github.workspace }}/.bundle
+          key: danger-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('app/Gemfile.lock') }}
+
+      - name: Run advisory Danger against exact GitLab merge request
+        id: danger
+        if: >-
+          steps.source.outputs.event == 'merge_request' &&
+          steps.danger-refs.outcome == 'success'
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ steps.danger-refs.outputs.base-sha }}
+          BUNDLE_GEMFILE: ${{ github.workspace }}/app/Gemfile
+          BUNDLE_PATH: ${{ github.workspace }}/.bundle/vendor
+          HEAD_SHA: ${{ steps.danger-refs.outputs.head-sha }}
+        run: |
+          set -euo pipefail
+          bundler_version="$(
+            awk '/^BUNDLED WITH$/ { getline; gsub(/^[[:space:]]+/, ""); print; exit }' \
+              "$GITHUB_WORKSPACE/app/Gemfile.lock"
+          )"
+          [[ "$bundler_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::Could not resolve the app Bundler version"
+            exit 1
+          }
+
+          export GEM_HOME="$GITHUB_WORKSPACE/.bundle/tools"
+          export PATH="$GEM_HOME/bin:$PATH"
+          if ! gem list --exact --installed bundler --version "$bundler_version" > /dev/null; then
+            gem install --no-document --install-dir "$GEM_HOME" \
+              bundler --version "$bundler_version"
+          fi
+          if ! bundle "_${bundler_version}_" check; then
+            bundle "_${bundler_version}_" install --jobs 4 --retry 3
+          fi
+
+          danger_tmpdir="$RUNNER_TEMP/danger"
+          mkdir -p "$danger_tmpdir"
+          DANGER_TMPDIR="$danger_tmpdir" bundle "_${bundler_version}_" exec danger dry_run \
+            --base="$BASE_SHA" \
+            --head="$HEAD_SHA" \
+            --dangerfile="$GITHUB_WORKSPACE/Dangerfile"
+
+      - name: Save advisory Danger bundle cache
+        if: >-
+          steps.source.outputs.event == 'merge_request' &&
+          steps.danger.outcome == 'success' &&
+          steps.cache-danger.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: ${{ github.workspace }}/.bundle
+          key: danger-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('app/Gemfile.lock') }}

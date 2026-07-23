@@ -71,9 +71,7 @@ struct AdjustmentRow: View {
             }
             .frame(maxWidth: .infinity)
             .padding(14)
-            .padding(.top, driftPill != nil ? 8 : 0)
-            .background(AppTheme.sage)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(.top, driftPill != nil ? 16 : 0)
 
             if let pill = driftPill {
                 Text(pill)
@@ -85,12 +83,16 @@ struct AdjustmentRow: View {
                     .padding(.bottom, 4)
                     .background(AppTheme.deltaPill)
                     .clipShape(Capsule())
-                    .offset(x: -4, y: -8)
+                    .padding(.top, 4)
+                    .padding(.trailing, 4)
                     // Decorative drift indicator — adjacent adjusted tile
                     // carries the semantic information.
                     .accessibilityHidden(true)
             }
         }
+        .frame(maxWidth: .infinity)
+        .background(AppTheme.sage)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(adjustedTileAccessibilityLabel)
     }

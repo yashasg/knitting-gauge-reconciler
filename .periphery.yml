@@ -1,0 +1,8 @@
+project: app/app.xcodeproj
+schemes:
+  - KnittingGaugeReconciler
+format: xcode
+strict: true
+retain_objc_accessible: true
+disable_update_check: true
+quiet: true

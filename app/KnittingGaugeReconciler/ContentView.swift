@@ -24,6 +24,7 @@ struct GaugeInputPresentation {
 
 private final class ResetSnapshot {
     var draft: GaugeFormDraft?
+    var revealedValidationFields: Set<GaugeFormField> = []
 }
 
 struct ContentView: View {
@@ -127,6 +128,7 @@ struct GaugeFormView: View {
     @State private var resetSnapshot = ResetSnapshot()
     @State private var canUndoReset = false
     @State private var focusedField: GaugeFormField?
+    @State private var revealedValidationFields: Set<GaugeFormField> = []
 
     init(
         patternStitches: Binding<String>,
@@ -158,10 +160,6 @@ struct GaugeFormView: View {
 
     private var inputs: GaugeInputs? {
         formDraft.inputs
-    }
-
-    private var liveResult: GaugeMathResult? {
-        Self.computeResult(inputs)
     }
 
     static func computeResult(_ inputs: GaugeInputs?) -> GaugeMathResult? {
@@ -199,11 +197,20 @@ struct GaugeFormView: View {
     // MARK: - Body
 
     var body: some View {
-        navigationContent
+        let currentInputs = inputs
+        let currentResult = Self.computeResult(currentInputs)
+        return navigationContent(
+            currentInputs: currentInputs,
+            currentResult: currentResult
+        )
     }
 
-    private var navigationContent: some View {
-        let inputPresentation = Self.inputPresentation(inputs)
+    // swiftlint:disable:next function_body_length
+    private func navigationContent(
+        currentInputs: GaugeInputs?,
+        currentResult: GaugeMathResult?
+    ) -> some View {
+        let inputPresentation = Self.inputPresentation(currentInputs)
         let aboutSheet = SheetContentProvider(
             content: Self.aboutHelpSheet(state: $aboutHelp)
         )
@@ -211,33 +218,32 @@ struct GaugeFormView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: cardSpacing) {
                     GaugeInputsCard(
-                        patternStitches: draftBinding($patternStitches, at: 0),
-                        patternRows: draftBinding($patternRows, at: 1),
-                        yourStitches: draftBinding($yourStitches, at: 2),
-                        yourRows: draftBinding($yourRows, at: 3),
+                        patternStitches: draftBinding(for: .patternStitches),
+                        patternRows: draftBinding(for: .patternRows),
+                        yourStitches: draftBinding(for: .yourStitches),
+                        yourRows: draftBinding(for: .yourRows),
+                        unit: measurementUnitBinding,
                         stitchMismatch: inputPresentation.stitchMismatch,
                         rowMismatch: inputPresentation.rowMismatch,
                         stitchDelta: inputPresentation.stitchDelta,
                         rowDelta: inputPresentation.rowDelta,
                         validationMessages: validationMessages,
                         focusedField: $focusedField,
-                        onSubmit: finishEditing
                     )
                     PatternInstructionsCard(
-                        patternCastOn: draftBinding($patternCastOn, at: 4),
-                        patternYoke: draftBinding($patternYoke, at: 5),
-                        patternBody: draftBinding($patternBody, at: 6),
-                        patternSleeve: draftBinding($patternSleeve, at: 7),
-                        patternIncreases: draftBinding($patternIncreases, at: 8),
+                        patternCastOn: draftBinding(for: .patternCastOn),
+                        patternYoke: draftBinding(for: .patternYoke),
+                        patternBody: draftBinding(for: .patternBody),
+                        patternSleeve: draftBinding(for: .patternSleeve),
+                        patternIncreases: draftBinding(for: .patternIncreases),
                         unit: measurementUnitBinding,
                         isExpanded: patternDetailsBinding,
                         validationMessages: validationMessages,
                         focusedField: $focusedField,
-                        onSubmit: finishEditing
                     )
                     RequiredAdjustmentsCard(
-                        result: liveResult,
-                        inputs: inputs,
+                        result: currentResult,
+                        inputs: currentInputs,
                         correctionMessage: firstValidationMessage,
                         unit: measurementUnit,
                         showFullMath: $showFullMath,
@@ -280,8 +286,8 @@ struct GaugeFormView: View {
             .sheet(isPresented: $aboutHelp.isPresented, content: aboutSheet.contentView)
             .onChange(of: aboutHelp.isPresented, helpPresentationChanged)
             .onChange(of: measurementUnit, measurementUnitChanged)
-            .onChange(of: validationMessages, validationMessagesChanged)
-            .onChange(of: Self.hasCastOnDrift(liveResult), castOnDriftChanged)
+            .onChange(of: focusedField, fieldFocusChanged)
+            .onChange(of: Self.hasCastOnDrift(currentResult), castOnDriftChanged)
             .onAppear(perform: sceneDidAppear)
         }
     }
@@ -312,50 +318,20 @@ struct GaugeFormView: View {
         reconcileSceneDraft(from: previousUnit, to: newUnit)
     }
 
+    func fieldFocusChanged(_ previousField: GaugeFormField?, _ currentField: GaugeFormField?) {
+        guard let previousField, previousField != currentField else { return }
+        revealedValidationFields.insert(previousField)
+    }
+
     func sceneDidAppear() {
+        let values = formValues
         let reconciledValues = SceneDraftStore.reconcileInvalidInchProvenance(
-            in: rawTextValues,
+            in: values,
             for: measurementUnit
         )
-        if reconciledValues != rawTextValues {
+        if reconciledValues != values {
             applySceneDraft(values: reconciledValues, disclosure: patternDetailsExpanded)
         }
-        finishEditing()
-    }
-
-    func validationMessagesChanged(
-        _ previous: [GaugeFormField: String],
-        _ current: [GaugeFormField: String]
-    ) {
-        validationMessagesChanged(
-            previous,
-            current,
-            isVoiceOverRunning: UIAccessibility.isVoiceOverRunning
-        )
-    }
-
-    @discardableResult
-    func validationMessagesChanged(
-        _ previous: [GaugeFormField: String],
-        _ current: [GaugeFormField: String],
-        isVoiceOverRunning: Bool
-    ) -> String? {
-        guard let message = Self.validationAnnouncement(
-            previous: previous,
-            current: current,
-            isVoiceOverRunning: isVoiceOverRunning
-        ) else { return nil }
-        UIAccessibility.post(notification: .announcement, argument: message)
-        return message
-    }
-
-    static func validationAnnouncement(
-        previous: [GaugeFormField: String],
-        current: [GaugeFormField: String],
-        isVoiceOverRunning: Bool
-    ) -> String? {
-        guard isVoiceOverRunning else { return nil }
-        return newValidationAnnouncement(previous: previous, current: current)
     }
 
     static func driftBandSignpostName(previous: Bool, current: Bool) -> StaticString? {
@@ -364,35 +340,46 @@ struct GaugeFormView: View {
 
     // MARK: - Validation
 
-    var rawTextValues: [String] {
-        [
-            patternStitches,
-            patternRows,
-            yourStitches,
-            yourRows,
-            patternCastOn,
-            patternYoke,
-            patternBody,
-            patternSleeve,
-            patternIncreases
-        ]
+    var formValues: GaugeFormValues {
+        GaugeFormValues(
+            patternStitches: patternStitches,
+            patternRows: patternRows,
+            yourStitches: yourStitches,
+            yourRows: yourRows,
+            patternCastOn: patternCastOn,
+            patternYoke: patternYoke,
+            patternBody: patternBody,
+            patternSleeve: patternSleeve,
+            patternIncreases: patternIncreases
+        )
     }
 
     var formDraft: GaugeFormDraft {
         GaugeFormDraft(
-            values: rawTextValues,
+            values: formValues,
             unit: measurementUnit,
             patternDetailsExpanded: patternDetailsExpanded,
             focusedField: focusedField
         )
     }
 
-    func draftBinding(_ binding: Binding<String>, at index: Int) -> Binding<String> {
-        Binding(
-            get: { binding.wrappedValue },
+    func draftBinding(for field: GaugeFormField) -> Binding<String> {
+        let keyPath = field.valueKeyPath
+        return Binding(
+            get: { formValues[keyPath: keyPath] },
             set: { newValue in
-                guard newValue != binding.wrappedValue else { return }
-                binding.wrappedValue = newValue
+                guard newValue != formValues[keyPath: keyPath] else { return }
+                switch field {
+                case .patternStitches: patternStitches = newValue
+                case .patternRows: patternRows = newValue
+                case .yourStitches: yourStitches = newValue
+                case .yourRows: yourRows = newValue
+                case .patternCastOn: patternCastOn = newValue
+                case .patternYoke: patternYoke = newValue
+                case .patternBody: patternBody = newValue
+                case .patternSleeve: patternSleeve = newValue
+                case .patternIncreases: patternIncreases = newValue
+                }
             }
         )
     }
@@ -412,18 +399,16 @@ struct GaugeFormView: View {
             get: { measurementUnit },
             set: { newUnit in
                 guard newUnit != measurementUnit else { return }
-                let previousUnit = measurementUnit
                 measurementUnit = newUnit
-                reconcileSceneDraft(from: previousUnit, to: newUnit)
             }
         )
     }
 
     static func reconciledSceneDraft(
-        values: [String],
+        values: GaugeFormValues,
         from previousUnit: MeasurementUnit,
         to newUnit: MeasurementUnit
-    ) -> [String]? {
+    ) -> GaugeFormValues? {
         guard previousUnit == .inches, newUnit == .centimeters else { return nil }
         return SceneDraftStore.reconcileInvalidInchProvenance(in: values, for: newUnit)
     }
@@ -432,9 +417,9 @@ struct GaugeFormView: View {
     func reconcileSceneDraft(
         from previousUnit: MeasurementUnit,
         to newUnit: MeasurementUnit
-    ) -> [String]? {
+    ) -> GaugeFormValues? {
         guard let values = Self.reconciledSceneDraft(
-            values: rawTextValues,
+            values: formValues,
             from: previousUnit,
             to: newUnit
         ) else { return nil }
@@ -443,7 +428,7 @@ struct GaugeFormView: View {
     }
 
     private var validationMessages: [GaugeFormField: String] {
-        formDraft.validationMessages
+        formDraft.validationMessages.filter { revealedValidationFields.contains($0.key) }
     }
 
     private var firstValidationMessage: String? {
@@ -452,6 +437,7 @@ struct GaugeFormView: View {
 
     func finishEditing() {
         var draft = formDraft
+        revealedValidationFields.formUnion(draft.validationMessages.keys)
         Self.finishEditing(&draft)
         patternDetailsBinding.wrappedValue = draft.patternDetailsExpanded
         focusedField = draft.focusedField
@@ -465,27 +451,23 @@ struct GaugeFormView: View {
     }
 
     func applySceneDraft(
-        values: [String],
-        disclosure: Bool,
-        synchronizingDefaults: Bool = false
+        values: GaugeFormValues,
+        disclosure: Bool
     ) {
         let values = SceneDraftStore.reconcileInvalidInchProvenance(
             in: values,
             for: measurementUnit
         )
-        patternStitches = values[0]
-        patternRows = values[1]
-        yourStitches = values[2]
-        yourRows = values[3]
-        patternCastOn = values[4]
-        patternYoke = values[5]
-        patternBody = values[6]
-        patternSleeve = values[7]
-        patternIncreases = values[8]
+        patternStitches = values.patternStitches
+        patternRows = values.patternRows
+        yourStitches = values.yourStitches
+        yourRows = values.yourRows
+        patternCastOn = values.patternCastOn
+        patternYoke = values.patternYoke
+        patternBody = values.patternBody
+        patternSleeve = values.patternSleeve
+        patternIncreases = values.patternIncreases
         patternDetailsExpanded = disclosure
-        if synchronizingDefaults {
-            UserDefaults.standard.synchronize()
-        }
     }
 
     // MARK: - Actions
@@ -493,14 +475,15 @@ struct GaugeFormView: View {
     func resetToDefaults() {
         var draft = formDraft
         resetSnapshot.draft = draft.reset()
+        resetSnapshot.revealedValidationFields = revealedValidationFields
         canUndoReset = true
         os_signpost(.event, log: SignpostNames.log, name: SignpostNames.resetTapped)
         applySceneDraft(
-            values: draft.rawValues,
-            disclosure: draft.patternDetailsExpanded,
-            synchronizingDefaults: true
+            values: draft.formValues,
+            disclosure: draft.patternDetailsExpanded
         )
         focusedField = nil
+        revealedValidationFields.removeAll()
         showFullMath = false
     }
 
@@ -511,11 +494,12 @@ struct GaugeFormView: View {
         resetSnapshot.draft = nil
         canUndoReset = false
         applySceneDraft(
-            values: draft.rawValues,
-            disclosure: draft.patternDetailsExpanded,
-            synchronizingDefaults: true
+            values: draft.formValues,
+            disclosure: draft.patternDetailsExpanded
         )
         focusedField = nil
+        revealedValidationFields = resetSnapshot.revealedValidationFields
+        resetSnapshot.revealedValidationFields.removeAll()
         showFullMath = false
     }
 
@@ -533,46 +517,17 @@ struct GaugeFormView: View {
         for result: GaugeMathResult,
         inputs: GaugeInputs?,
         unit: MeasurementUnit,
-        exportDirectory: URL? = nil
+        imageFactory: (Data) -> UIImage? = { UIImage(data: $0) }
     ) async -> [Any] {
         guard let inputs else { return [] }
         let summary = ResultsExportSummary(inputs: inputs, result: result, unit: unit)
-        if let imageURL = await renderShareImageURL(
-            summary: summary,
-            exportDirectory: exportDirectory
-        ) {
+        if let image = imageFactory(ShareableView.pngData(summary: summary)) {
             os_signpost(.event, log: SignpostNames.log, name: SignpostNames.shareInvoked)
-            return [imageURL]
+            return [image]
         }
 
         os_signpost(.event, log: SignpostNames.log, name: SignpostNames.shareFallback)
         return [ResultsShareTextFormatter.string(inputs: inputs, result: result, unit: unit)]
-    }
-
-    /// Rasterizes and encodes the share card on the MainActor, then offloads the file
-    /// write to a detached task so the main thread is never blocked by disk I/O.
-    @MainActor
-    static func renderShareImageURL(
-        summary: ResultsExportSummary,
-        exportDirectory: URL? = nil
-    ) async -> URL? {
-        let pngData = ShareableView.pngData(summary: summary)
-        return await Task.detached(priority: .userInitiated) {
-            do {
-                let directory = try exportDirectory ?? FileManager.default.url(
-                    for: .cachesDirectory,
-                    in: .userDomainMask,
-                    appropriateFor: nil,
-                    create: true
-                ).appendingPathComponent("ShareExports", isDirectory: true)
-                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                let fileURL = directory.appendingPathComponent("knitting-gauge-results-\(UUID().uuidString).png")
-                try pngData.write(to: fileURL, options: [.atomic])
-                return fileURL
-            } catch {
-                return nil as URL?
-            }
-        }.value
     }
 }
 

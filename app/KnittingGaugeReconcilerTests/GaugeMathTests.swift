@@ -199,36 +199,6 @@ struct GaugeMathTests {
         )
     }
 
-    @Test func liveValidationAnnouncementUsesChangedErrorsInFieldOrder() {
-        let stitchError = "Pattern stitches is required."
-        let rowError = "Your rows must be between 1 and 99 rows."
-
-        #expect(
-            newValidationAnnouncement(previous: [:], current: [.yourRows: rowError]) == rowError
-        )
-        #expect(
-            newValidationAnnouncement(
-                previous: [.yourRows: "Enter your rows as a number."],
-                current: [.yourRows: rowError]
-            ) == rowError
-        )
-        #expect(
-            newValidationAnnouncement(
-                previous: [.yourRows: rowError],
-                current: [.yourRows: rowError]
-            ) == nil
-        )
-        #expect(
-            newValidationAnnouncement(previous: [.yourRows: rowError], current: [:]) == nil
-        )
-        #expect(
-            newValidationAnnouncement(
-                previous: [:],
-                current: [.yourRows: rowError, .patternStitches: stitchError]
-            ) == stitchError
-        )
-    }
-
     @Test func rowFormattingUsesEstablishedRounding() {
         #expect(GaugeMath.fmtRows(6.5) == 7)
         #expect(GaugeMath.fmtRows(6.4) == 6)
@@ -501,24 +471,50 @@ struct GaugeMathTests {
             yoke: 20, body: 50, sleeve: 45, shaping: 6
         )
         let result = GaugeMath.compute(inputs)
+        let cases: [
+            (
+                unit: MeasurementUnit,
+                basis: String,
+                yoke: String,
+                adjustedYoke: String,
+                body: String,
+                adjustedBody: String,
+                sleeve: String,
+                adjustedSleeve: String
+            )
+        ] = [
+            (.centimeters, "10 cm", "20 cm / 48 rows", "20 cm / 64 rows",
+             "50 cm / 120 rows", "50 cm / 160 rows", "45 cm / 108 rows", "45 cm / 144 rows"),
+            (.inches, "4 in", "7.9 in / 48 rows", "7.9 in / 64 rows",
+             "19.7 in / 120 rows", "19.7 in / 160 rows", "17.7 in / 108 rows", "17.7 in / 144 rows"),
+        ]
 
-        let summary = ResultsExportSummary(inputs: inputs, result: result)
-        #expect(summary.title == "Stitchwise")
-        #expect(summary.patternGauge.stitches == "32 st / 10 cm")
-        #expect(summary.swatchGauge.rows == "32 rows / 10 cm")
-        #expect(summary.stitchMetric == .init(title: "Stitch-wise", value: "89%", status: "Much tighter"))
-        #expect(summary.rowMetric == .init(title: "Row-wise", value: "133%", status: "Much denser"))
-        #expect(
-            summary.castOn == "Cast on 144 stitches instead of 128. " +
-                "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
-        )
-        #expect(summary.sections.map(\.name) == ["Yoke depth", "Body length", "Sleeve length", "Increase-row spacing"])
-        #expect(summary.sections[0].pattern == "20 cm / 48 rows")
-        #expect(summary.sections[0].adjusted == "20 cm / 64 rows")
-        #expect(summary.sections[1].pattern == "50 cm / 120 rows")
-        #expect(summary.sections[1].adjusted == "50 cm / 160 rows")
-        #expect(summary.sections[2].pattern == "45 cm / 108 rows")
-        #expect(summary.sections[2].adjusted == "45 cm / 144 rows")
+        for testCase in cases {
+            let summary = ResultsExportSummary(inputs: inputs, result: result, unit: testCase.unit)
+            #expect(summary.title == "Stitchwise")
+            #expect(summary.patternGauge.stitches == "32 st / \(testCase.basis)")
+            #expect(summary.patternGauge.rows == "24 rows / \(testCase.basis)")
+            #expect(summary.swatchGauge.stitches == "36 st / \(testCase.basis)")
+            #expect(summary.swatchGauge.rows == "32 rows / \(testCase.basis)")
+            #expect(summary.stitchMetric == .init(title: "Stitch-wise", value: "89%", status: "Much tighter"))
+            #expect(summary.rowMetric == .init(title: "Row-wise", value: "133%", status: "Much denser"))
+            #expect(
+                summary.castOn == "Cast on 144 stitches instead of 128. " +
+                    "Reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
+            )
+            #expect(
+                summary.sections.map(\.name) ==
+                    ["Yoke depth", "Body length", "Sleeve length", "Increase-row spacing"]
+            )
+            #expect(summary.sections[0].pattern == testCase.yoke)
+            #expect(summary.sections[0].adjusted == testCase.adjustedYoke)
+            #expect(summary.sections[1].pattern == testCase.body)
+            #expect(summary.sections[1].adjusted == testCase.adjustedBody)
+            #expect(summary.sections[2].pattern == testCase.sleeve)
+            #expect(summary.sections[2].adjusted == testCase.adjustedSleeve)
+            #expect(summary.sections[3].pattern == "Every 6 rows")
+            #expect(summary.sections[3].adjusted == "Space every 8 rows/rounds")
+        }
     }
 
     @Test func shareTextFormatterIncludesCurrentGaugeAndGuidanceAsFallback() {
@@ -528,22 +524,63 @@ struct GaugeMathTests {
         )
         let result = GaugeMath.compute(inputs)
 
-        let summary = ResultsShareTextFormatter.string(inputs: inputs, result: result)
-        #expect(summary.contains("Pattern gauge\n• Stitches: 32 st / 10 cm\n• Rows: 24 rows / 10 cm"))
-        #expect(summary.contains("Swatch gauge\n• Stitches: 36 st / 10 cm\n• Rows: 32 rows / 10 cm"))
-        #expect(summary.contains("• Stitch-wise: 89% (Much tighter)"))
-        #expect(summary.contains("• Row-wise: 133% (Much denser)"))
-        #expect(
-            summary.contains(
-                "• Cast-on: cast on 144 stitches instead of 128. " +
-                    "reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
+        let cases: [
+            (
+                unit: MeasurementUnit,
+                basis: String,
+                yoke: String,
+                body: String,
+                sleeve: String
             )
-        )
-        #expect(summary.contains("• Yoke depth: 20 cm / 48 rows → 20 cm / 64 rows"))
-        #expect(summary.contains("• Body length: 50 cm / 120 rows → 50 cm / 160 rows"))
-        #expect(summary.contains("• Sleeve length: 45 cm / 108 rows → 45 cm / 144 rows"))
-        #expect(summary.contains("64 rows"))
-        #expect(summary.contains("• Increase-row spacing: space every 8 rows/rounds (pattern every 6 rows)"))
+        ] = [
+            (
+                .centimeters,
+                "10 cm",
+                "20 cm / 48 rows → 20 cm / 64 rows",
+                "50 cm / 120 rows → 50 cm / 160 rows",
+                "45 cm / 108 rows → 45 cm / 144 rows"
+            ),
+            (
+                .inches,
+                "4 in",
+                "7.9 in / 48 rows → 7.9 in / 64 rows",
+                "19.7 in / 120 rows → 19.7 in / 160 rows",
+                "17.7 in / 108 rows → 17.7 in / 144 rows"
+            ),
+        ]
+
+        for testCase in cases {
+            let summary = ResultsShareTextFormatter.string(
+                inputs: inputs,
+                result: result,
+                unit: testCase.unit
+            )
+            #expect(
+                summary.contains(
+                    "Pattern gauge\n• Stitches: 32 st / \(testCase.basis)\n" +
+                        "• Rows: 24 rows / \(testCase.basis)"
+                )
+            )
+            #expect(
+                summary.contains(
+                    "Swatch gauge\n• Stitches: 36 st / \(testCase.basis)\n" +
+                        "• Rows: 32 rows / \(testCase.basis)"
+                )
+            )
+            #expect(summary.contains("• Stitch-wise: 89% (Much tighter)"))
+            #expect(summary.contains("• Row-wise: 133% (Much denser)"))
+            #expect(
+                summary.contains(
+                    "• Cast-on: cast on 144 stitches instead of 128. " +
+                        "reconcile this rounded stitch count with your pattern's stitch-repeat multiple."
+                )
+            )
+            #expect(summary.contains("• Yoke depth: \(testCase.yoke)"))
+            #expect(summary.contains("• Body length: \(testCase.body)"))
+            #expect(summary.contains("• Sleeve length: \(testCase.sleeve)"))
+            #expect(summary.contains("64 rows"))
+            #expect(summary.contains("• Increase-row spacing: space every 8 rows/rounds (pattern every 6 rows)"))
+        }
     }
 
     @Test func shareTextFormatterIsDeterministicFormattedTextFallback() {
@@ -666,27 +703,190 @@ struct GaugeMathTests {
         ])
         #expect(boolStorage == ["patternDetailsExpanded"])
 
-        let values = ["31.5", "0", "32", "24", "", "20.5", ".", "", "7e0"]
+        let values = GaugeFormValues(
+            patternStitches: "31.5",
+            patternRows: "0",
+            yourStitches: "32",
+            yourRows: "24",
+            patternYoke: "20.5",
+            patternBody: ".",
+            patternIncreases: "7e0"
+        )
         let restored = GaugeFormDraft(values: values, patternDetailsExpanded: true)
-        #expect(restored.rawValues == values)
+        #expect(restored.formValues == values)
         #expect(restored.patternDetailsExpanded)
+    }
+
+    @Test func everyGaugeFormFieldMapsToItsMatchingNamedProperty() {
+        let cases: [
+            (
+                field: GaugeFormField,
+                expectedKeyPath: WritableKeyPath<GaugeFormValues, String>,
+                sentinel: String,
+                expectedClassification: GaugeFormField.StorageClassification
+            )
+        ] = [
+            (.patternStitches, \.patternStitches, "pattern-stitches-key-path-sentinel", .text),
+            (.patternRows, \.patternRows, "pattern-rows-key-path-sentinel", .text),
+            (.yourStitches, \.yourStitches, "your-stitches-key-path-sentinel", .text),
+            (.yourRows, \.yourRows, "your-rows-key-path-sentinel", .text),
+            (.patternCastOn, \.patternCastOn, "pattern-cast-on-key-path-sentinel", .text),
+            (.patternYoke, \.patternYoke, "pattern-yoke-key-path-sentinel", .centimeterLength),
+            (.patternBody, \.patternBody, "pattern-body-key-path-sentinel", .centimeterLength),
+            (.patternSleeve, \.patternSleeve, "pattern-sleeve-key-path-sentinel", .centimeterLength),
+            (.patternIncreases, \.patternIncreases, "pattern-increases-key-path-sentinel", .text),
+        ]
+
+        #expect(cases.map(\.field) == GaugeFormField.allCases)
+        for testCase in cases {
+            var actual = GaugeFormValues()
+            actual[keyPath: testCase.field.valueKeyPath] = testCase.sentinel
+            var expected = GaugeFormValues()
+            expected[keyPath: testCase.expectedKeyPath] = testCase.sentinel
+            #expect(actual == expected, "\(testCase.field)")
+            #expect(
+                testCase.field.storageClassification == testCase.expectedClassification,
+                "\(testCase.field)"
+            )
+        }
+    }
+
+    @Test func namedValuesRoundTripThroughResetAndRestoreWithoutFieldDrift() {
+        let original = GaugeFormValues(
+            patternStitches: "pattern-stitches-sentinel",
+            patternRows: "pattern-rows-sentinel",
+            yourStitches: "your-stitches-sentinel",
+            yourRows: "your-rows-sentinel",
+            patternCastOn: "pattern-cast-on-sentinel",
+            patternYoke: "pattern-yoke-sentinel",
+            patternBody: "pattern-body-sentinel",
+            patternSleeve: "pattern-sleeve-sentinel",
+            patternIncreases: "pattern-increases-sentinel"
+        )
+        var draft = GaugeFormDraft(
+            values: original,
+            unit: .inches,
+            patternDetailsExpanded: true,
+            focusedField: .patternSleeve
+        )
+
+        #expect(draft.formValues == original)
+        let snapshot = draft.reset()
+        #expect(draft.formValues == GaugeTextDefaults().values)
+        #expect(!draft.patternDetailsExpanded)
+        #expect(draft.focusedField == nil)
+
+        draft.restore(snapshot)
+        #expect(draft.formValues == original)
+        #expect(draft.unit == .inches)
+        #expect(draft.patternDetailsExpanded)
+        #expect(draft.focusedField == nil)
+    }
+
+    @Test func inchReconciliationChangesExactlyTheThreeCentimeterLengthFields() {
+        let storedYoke = MeasurementUnit.inches.centimeterStorageText(
+            from: "yoke-inch-sentinel",
+            cmRange: 5...100
+        )
+        let storedBody = MeasurementUnit.inches.centimeterStorageText(
+            from: "body-inch-sentinel",
+            cmRange: 5...100
+        )
+        let storedSleeve = MeasurementUnit.inches.centimeterStorageText(
+            from: "sleeve-inch-sentinel",
+            cmRange: 5...100
+        )
+        let original = GaugeFormValues(
+            patternStitches: "pattern-stitches-sentinel",
+            patternRows: "pattern-rows-sentinel",
+            yourStitches: "your-stitches-sentinel",
+            yourRows: "your-rows-sentinel",
+            patternCastOn: "pattern-cast-on-sentinel",
+            patternYoke: storedYoke,
+            patternBody: storedBody,
+            patternSleeve: storedSleeve,
+            patternIncreases: "pattern-increases-sentinel"
+        )
+
+        #expect(
+            SceneDraftStore.reconcileInvalidInchProvenance(in: original, for: .inches) == original
+        )
+        let reconciled = SceneDraftStore.reconcileInvalidInchProvenance(
+            in: original,
+            for: .centimeters
+        )
+        #expect(reconciled.patternYoke == "yoke-inch-sentinel")
+        #expect(reconciled.patternBody == "body-inch-sentinel")
+        #expect(reconciled.patternSleeve == "sleeve-inch-sentinel")
+        let changedFields = Set(GaugeFormField.allCases.filter {
+            original[keyPath: $0.valueKeyPath] != reconciled[keyPath: $0.valueKeyPath]
+        })
+        #expect(changedFields == [.patternYoke, .patternBody, .patternSleeve])
+    }
+
+    @Test func sceneStorageKeyLiteralsRemainStable() {
+        let keys: [(actual: String, expected: String)] = [
+            (SceneDraftStore.patternStitchesKey, "gauge.pattern-stitches"),
+            (SceneDraftStore.patternRowsKey, "gauge.pattern-rows"),
+            (SceneDraftStore.yourStitchesKey, "gauge.your-stitches"),
+            (SceneDraftStore.yourRowsKey, "gauge.your-rows"),
+            (SceneDraftStore.patternCastOnKey, "gauge.pattern-cast-on"),
+            (SceneDraftStore.patternYokeKey, "gauge.pattern-yoke"),
+            (SceneDraftStore.patternBodyKey, "gauge.pattern-body"),
+            (SceneDraftStore.patternSleeveKey, "gauge.pattern-sleeve"),
+            (SceneDraftStore.patternIncreasesKey, "gauge.pattern-increases"),
+            (SceneDraftStore.disclosureKey, "gauge.pattern-details-expanded"),
+        ]
+
+        for key in keys {
+            #expect(key.actual == key.expected)
+        }
+        #expect(Set(keys.map(\.actual)).count == keys.count)
     }
 
     @Test func sceneDraftRestorationPreservesExactCasesAndIsolation() {
         let cases = [
-            ["31", "23", "29", "21", "141", "19", "49", "44", "7"],
-            ["bad", "100", "-1", "nan", "39", "4", "101", "∞", "31"],
-            ["3.", "2e", "-", " ", "", "20.", ".", "", "7e"],
-            GaugeTextDefaults().resetSceneDraftValues,
+            GaugeFormValues(
+                patternStitches: "31",
+                patternRows: "23",
+                yourStitches: "29",
+                yourRows: "21",
+                patternCastOn: "141",
+                patternYoke: "19",
+                patternBody: "49",
+                patternSleeve: "44",
+                patternIncreases: "7"
+            ),
+            GaugeFormValues(
+                patternStitches: "bad",
+                patternRows: "100",
+                yourStitches: "-1",
+                yourRows: "nan",
+                patternCastOn: "39",
+                patternYoke: "4",
+                patternBody: "101",
+                patternSleeve: "∞",
+                patternIncreases: "31"
+            ),
+            GaugeFormValues(
+                patternStitches: "3.",
+                patternRows: "2e",
+                yourStitches: "-",
+                yourRows: " ",
+                patternYoke: "20.",
+                patternBody: ".",
+                patternIncreases: "7e"
+            ),
+            GaugeTextDefaults().values,
         ]
         for values in cases {
-            #expect(GaugeFormDraft(values: values).rawValues == values)
+            #expect(GaugeFormDraft(values: values).formValues == values)
         }
 
         var firstScene = GaugeFormDraft(values: cases[0], patternDetailsExpanded: true)
         let secondScene = GaugeFormDraft(values: cases[2])
         firstScene[.patternBody] = "changed"
-        #expect(secondScene.rawValues == cases[2])
+        #expect(secondScene.formValues == cases[2])
         #expect(!secondScene.patternDetailsExpanded)
 
         let snapshot = firstScene.reset()
@@ -727,20 +927,21 @@ struct GaugeMathTests {
 
     @MainActor
     @Test func requiredGaugeAccessibilityLabelsIncludeMeasurementBasis() {
-        let expectedLabels: [(GaugeFormField, String)] = [
-            (.patternStitches, "Pattern stitch gauge, per 10 centimeters"),
-            (.patternRows, "Pattern row gauge, per 10 centimeters"),
-            (.yourStitches, "Swatch stitch gauge, per 10 centimeters"),
-            (.yourRows, "Swatch row gauge, per 10 centimeters"),
+        let cases: [(MeasurementUnit, String)] = [
+            (.centimeters, "10 centimeters"),
+            (.inches, "4 inches"),
         ]
 
-        for (field, expectedLabel) in expectedLabels {
-            let label = GaugeInputsCard.accessibilityLabel(for: field)
-            #expect(label == expectedLabel)
-            #expect(
-                GaugeStepperField.pickerAccessibilityLabel(for: label)
-                    == "Open picker for \(expectedLabel)"
-            )
+        for (unit, basis) in cases {
+            for field in GaugeInputsCard.accessibilityFieldOrder {
+                let expectedLabel = "\(field.correctionName), per \(basis)"
+                let label = GaugeInputsCard.accessibilityLabel(for: field, unit: unit)
+                #expect(label == expectedLabel)
+                #expect(
+                    GaugeStepperField.pickerAccessibilityLabel(for: label)
+                        == "Open picker for \(expectedLabel)"
+                )
+            }
         }
     }
 
@@ -1039,6 +1240,71 @@ struct GaugeMathTests {
 // MARK: - MeasurementUnit conversion tests
 
 struct MeasurementUnitTests {
+    @Test func gaugeBasisLabelsCoverEveryMeasurementUnit() {
+        let cases: [(MeasurementUnit, label: String, spoken: String)] = [
+            (.centimeters, "10 cm", "10 centimeters"),
+            (.inches, "4 in", "4 inches"),
+        ]
+
+        #expect(cases.map { $0.0 } == MeasurementUnit.allCases)
+        for (unit, label, spoken) in cases {
+            #expect(unit.gaugeBasis == label)
+            #expect(unit.spokenGaugeBasis == spoken)
+        }
+    }
+
+    @Test func unitTogglePreservesCanonicalInputsAndUnitlessResults() throws {
+        var draft = GaugeFormDraft(
+            values: GaugeFormValues(
+                patternStitches: "32",
+                patternRows: "24",
+                yourStitches: "36",
+                yourRows: "32",
+                patternCastOn: "128",
+                patternYoke: "20",
+                patternBody: "50",
+                patternSleeve: "45",
+                patternIncreases: "6"
+            ),
+            unit: .centimeters,
+            patternDetailsExpanded: true
+        )
+        let centimeterInputs = try #require(draft.inputs)
+        let centimeterResult = GaugeMath.compute(centimeterInputs)
+
+        draft.unit = .inches
+        let inchInputs = try #require(draft.inputs)
+        let inchResult = GaugeMath.compute(inchInputs)
+        #expect(inchInputs == centimeterInputs)
+        #expect(inchResult == centimeterResult)
+
+        let centimeterSummary = ResultsExportSummary(
+            inputs: centimeterInputs,
+            result: centimeterResult,
+            unit: .centimeters
+        )
+        let inchSummary = ResultsExportSummary(
+            inputs: inchInputs,
+            result: inchResult,
+            unit: .inches
+        )
+        #expect(centimeterSummary.stitchMetric == inchSummary.stitchMetric)
+        #expect(centimeterSummary.rowMetric == inchSummary.rowMetric)
+        #expect(centimeterSummary.castOn == inchSummary.castOn)
+        #expect(centimeterSummary.sections.last == inchSummary.sections.last)
+
+        let gaugePairs = [
+            (centimeterSummary.patternGauge.stitches, inchSummary.patternGauge.stitches),
+            (centimeterSummary.patternGauge.rows, inchSummary.patternGauge.rows),
+            (centimeterSummary.swatchGauge.stitches, inchSummary.swatchGauge.stitches),
+            (centimeterSummary.swatchGauge.rows, inchSummary.swatchGauge.rows),
+        ]
+        for (centimeters, inches) in gaugePairs {
+            #expect(
+                centimeters.replacingOccurrences(of: "10 cm", with: "4 in") == inches
+            )
+        }
+    }
 
     // MARK: Display conversion (cm → in, rounded to nearest whole inch)
 

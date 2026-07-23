@@ -45,7 +45,7 @@ struct PatternInstructionsCard: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 0) {
                 castOnField
                 lengthFields
                 sleeveAndShapingFields

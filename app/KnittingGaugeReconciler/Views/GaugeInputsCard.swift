@@ -96,7 +96,7 @@ struct GaugeInputsCard: View {
                 sectionHeader(title: "Swatch Gauge", icon: "ruler.fill")
                 swatchFields
             }
-            .padding(.top, 24)
+            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardStyle()

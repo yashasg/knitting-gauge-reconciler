@@ -90,6 +90,13 @@ def lane_destination(options)
 end
 
 
+def system_unbundled(*command)
+  return system(*command) unless defined?(Bundler)
+
+  Bundler.with_unbundled_env { system(*command) }
+end
+
+
 def lane_test_options(options, extra_xcargs: nil)
   output_directory = options[:output_directory] || "../.build"
   result_bundle_path = File.expand_path(File.join(output_directory, "#{APP_SCHEME}.xcresult"))
@@ -132,7 +139,7 @@ def verify_test_diagnostics(output_directory, result_bundle_path)
   sh("xcrun xcresulttool export diagnostics --path #{Shellwords.escape(result_bundle_path)} --output-path #{Shellwords.escape(diagnostics_path)}")
 
   verifier_path = File.expand_path("diagnostics_verifier.rb", __dir__)
-  verified = system("/usr/bin/ruby", verifier_path, raw_log_path, diagnostics_path)
+  verified = system_unbundled("/usr/bin/ruby", verifier_path, raw_log_path, diagnostics_path)
   UI.user_error!("Test diagnostics verification failed") unless verified
 end
 

@@ -80,17 +80,21 @@ run_swiftlint() {
   swiftlint lint --strict --config "$REPO_ROOT/.swiftlint.yml" --reporter xcode
 }
 
-run_periphery() {
-  if ! command -v periphery >/dev/null 2>&1; then
-    # ponytail: repository_dispatch uses main's workflow, so the first guardrail MR must bootstrap itself.
+ensure_tool() {
+  local tool="$1"
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    # Mirror CD runners do not share CI's preinstalled tools.
     if [[ "${CI:-}" == "true" ]] && command -v brew >/dev/null 2>&1; then
-      brew install periphery
+      brew install "$tool"
     else
-      fail "periphery not found; install via: brew install periphery"
+      fail "$tool not found; install via: brew install $tool"
     fi
   fi
-  command -v periphery >/dev/null 2>&1 || fail "periphery install completed but the binary is unavailable"
+  command -v "$tool" >/dev/null 2>&1 || fail "$tool install completed but the binary is unavailable"
+}
 
+run_periphery() {
+  ensure_tool periphery
   local index_store_path="$DERIVED_DATA_PATH/Index.noindex/DataStore"
   [[ -d "$index_store_path" ]] || \
     fail "Periphery index store not found at '$index_store_path' after Xcode test build"
@@ -253,7 +257,7 @@ case "$MODE" in
 esac
 
 repository_hygiene_preflight
-command -v swiftlint >/dev/null 2>&1 || fail "swiftlint not found; install via: brew install swiftlint"
+ensure_tool swiftlint
 acquire_build_lock
 telemetry_preflight
 if [[ "$MODE" != "test" ]]; then

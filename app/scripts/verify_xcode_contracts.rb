@@ -409,6 +409,15 @@ end
 def assert_regression_fixtures(root)
   assert_metadata_regression_fixtures(root)
   assert_coverage_regression_fixtures
+
+  fastfile = File.read(File.join(root, "app/fastlane/Fastfile"))
+  system_ruby_fastfile = fastfile.sub(
+    "Bundler.with_unbundled_env { system(*command) }",
+    "system(*command)"
+  )
+  expect_contract_rejection("system Ruby under Bundler", /must isolate the system Ruby from Bundler/) do
+    verify_fastlane_contracts(root, contents: system_ruby_fastfile)
+  end
 end
 
 def target_source_paths(target, root)
@@ -505,10 +514,19 @@ def assert_metadata_regression_fixtures(root)
   end
 end
 
-def verify_fastlane_selection(root)
-  fastfile = File.read(File.join(root, "app/fastlane/Fastfile"))
-  expected = 'only_testing: ["KnittingGaugeReconcilerTests"]'
-  raise ContractError, "Fastlane must select only KnittingGaugeReconcilerTests" unless fastfile.include?(expected)
+def verify_fastlane_contracts(root, contents: nil)
+  fastfile = contents || File.read(File.join(root, "app/fastlane/Fastfile"))
+  test_selection = 'only_testing: ["KnittingGaugeReconcilerTests"]'
+  unless fastfile.include?(test_selection)
+    raise ContractError, "Fastlane must select only KnittingGaugeReconcilerTests"
+  end
+
+  unbundled_system = "Bundler.with_unbundled_env { system(*command) }"
+  verifier_invocation =
+    'system_unbundled("/usr/bin/ruby", verifier_path, raw_log_path, diagnostics_path)'
+  unless fastfile.include?(unbundled_system) && fastfile.include?(verifier_invocation)
+    raise ContractError, "Fastlane diagnostics verifier must isolate the system Ruby from Bundler"
+  end
 end
 
 def verify_repository(root)
@@ -552,7 +570,7 @@ def verify_repository(root)
     end
   end
   verify_scheme(root)
-  verify_fastlane_selection(root)
+  verify_fastlane_contracts(root)
   puts "Xcode contracts: tracked membership complete; UI-test and coverage regression fixtures passed"
   inventory
 end

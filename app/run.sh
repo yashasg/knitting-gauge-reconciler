@@ -6,7 +6,10 @@ BUILD_SCRIPT="$PROJECT_DIR/build.sh"
 BUILD_ROOT_DIR="${BUILD_DIR:-$PROJECT_DIR/.build}"
 RUN_BUILD_DIR="${RUN_BUILD_DIR:-$BUILD_ROOT_DIR/run-build}"
 DERIVED_DATA_DIR="$RUN_BUILD_DIR/derived-data"
-PRODUCTS_DIR="$DERIVED_DATA_DIR/Build/Products/Debug-iphonesimulator"
+CONFIGURATION="${CONFIGURATION:-Debug}"
+SDK="${SDK:-iphonesimulator}"
+PROJECT="$PROJECT_DIR/app.xcodeproj"
+SCHEME="KnittingGaugeReconciler"
 
 DEFAULT_SIMULATOR_NAME="$(sed -n 's/^SIMULATOR_NAME="${SIMULATOR_NAME:-\(.*\)}"$/\1/p' "$BUILD_SCRIPT" | head -n 1)"
 SIMULATOR_NAME="${SIMULATOR_NAME:-${DEFAULT_SIMULATOR_NAME:-iPhone 17 Pro}}"
@@ -58,12 +61,27 @@ resolve_simulator() {
   [[ -n "$SIMULATOR_UDID" ]] || fail "no available simulator named '$SIMULATOR_NAME'"
 }
 
-find_app_bundle() {
-  [[ -d "$PRODUCTS_DIR" ]] || fail "build products directory not found: $PRODUCTS_DIR"
+resolve_app_bundle() {
+  local settings target_build_dir wrapper_name
+  settings="$(
+    xcodebuild \
+      -project "$PROJECT" \
+      -scheme "$SCHEME" \
+      -configuration "$CONFIGURATION" \
+      -sdk "$SDK" \
+      -destination "$BUILD_DESTINATION" \
+      -derivedDataPath "$DERIVED_DATA_DIR" \
+      CODE_SIGNING_ALLOWED=NO \
+      COMPILER_INDEX_STORE_ENABLE=NO \
+      -showBuildSettings
+  )" || fail "could not resolve app build settings"
 
-  find "$PRODUCTS_DIR" -maxdepth 1 -type d -name '*.app' ! -name '*-Runner.app' -print |
-    sort |
-    head -n 1
+  target_build_dir="$(printf '%s\n' "$settings" | sed -n 's/^[[:space:]]*TARGET_BUILD_DIR = //p' | head -n 1)"
+  wrapper_name="$(printf '%s\n' "$settings" | sed -n 's/^[[:space:]]*WRAPPER_NAME = //p' | head -n 1)"
+  [[ -n "$target_build_dir" ]] || fail "TARGET_BUILD_DIR missing from Xcode build settings"
+  [[ "$wrapper_name" == *.app ]] || fail "invalid WRAPPER_NAME from Xcode build settings: $wrapper_name"
+
+  printf '%s/%s\n' "$target_build_dir" "$wrapper_name"
 }
 
 bundle_identifier() {
@@ -85,12 +103,12 @@ if [[ -z "$BUILD_DESTINATION" ]]; then
   BUILD_DESTINATION="platform=iOS Simulator,id=${SIMULATOR_UDID}"
 fi
 
-if ! BUILD_DIR="$RUN_BUILD_DIR" COMPILER_INDEX_STORE_ENABLE=NO DESTINATION="$BUILD_DESTINATION" "$BUILD_SCRIPT" build; then
+if ! BUILD_DIR="$RUN_BUILD_DIR" CONFIGURATION="$CONFIGURATION" SDK="$SDK" COMPILER_INDEX_STORE_ENABLE=NO DESTINATION="$BUILD_DESTINATION" "$BUILD_SCRIPT" build; then
   fail "build failed"
 fi
 
-APP_BUNDLE="$(find_app_bundle)"
-[[ -n "$APP_BUNDLE" ]] || fail "no built .app product found in $PRODUCTS_DIR"
+APP_BUNDLE="$(resolve_app_bundle)"
+[[ -d "$APP_BUNDLE" ]] || fail "built app bundle not found: $APP_BUNDLE"
 
 STAGED_DIR="$BUILD_ROOT_DIR/run"
 STAGED_APP="$STAGED_DIR/$(basename "$APP_BUNDLE")"

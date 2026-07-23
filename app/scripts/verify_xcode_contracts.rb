@@ -432,6 +432,14 @@ def assert_regression_fixtures(root)
   expect_contract_rejection("incremental Periphery index", /fresh dedicated index store/) do
     verify_periphery_index_contract(root, fastfile: non_clean_fastfile)
   end
+
+  ambiguous_destination = build_script.sub(
+    'DESTINATION="platform=iOS Simulator,arch=${SIMULATOR_ARCH},id=${SIMULATOR_UDID}"',
+    'DESTINATION="platform=iOS Simulator,id=${SIMULATOR_UDID}"'
+  )
+  expect_contract_rejection("ambiguous simulator architecture", /pin the simulator architecture/) do
+    verify_simulator_destination_contract(root, contents: ambiguous_destination)
+  end
 end
 
 def target_source_paths(target, root)
@@ -563,6 +571,18 @@ def verify_periphery_index_contract(root, build_script: nil, fastfile: nil)
   end
 end
 
+def verify_simulator_destination_contract(root, contents: nil)
+  build_script = contents || File.read(File.join(root, "app/build.sh"))
+  required = [
+    'SIMULATOR_ARCH="${SIMULATOR_ARCH:-$(uname -m)}"',
+    'DESTINATION="${DESTINATION},arch=${SIMULATOR_ARCH}"',
+    'DESTINATION="platform=iOS Simulator,arch=${SIMULATOR_ARCH},id=${SIMULATOR_UDID}"',
+  ]
+  unless required.all? { |contract| build_script.include?(contract) }
+    raise ContractError, "Simulator destinations must pin the simulator architecture"
+  end
+end
+
 def verify_repository(root)
   assert_regression_fixtures(root)
   project = Xcodeproj::Project.open(File.join(root, "app/app.xcodeproj"))
@@ -606,6 +626,7 @@ def verify_repository(root)
   verify_scheme(root)
   verify_fastlane_contracts(root)
   verify_periphery_index_contract(root)
+  verify_simulator_destination_contract(root)
   puts "Xcode contracts: tracked membership complete; UI-test and coverage regression fixtures passed"
   inventory
 end

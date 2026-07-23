@@ -6,6 +6,7 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$PROJECT_DIR/.." && pwd)"
 SIMULATOR_NAME="${SIMULATOR_NAME:-iPhone 17 Pro}"
 SIMULATOR_UDID="${SIMULATOR_UDID:-}"
+SIMULATOR_ARCH="${SIMULATOR_ARCH:-$(uname -m)}"
 DESTINATION="${DESTINATION:-}"
 BUILD_DIR="${BUILD_DIR:-$PROJECT_DIR/.build}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$BUILD_DIR/derived-data}"
@@ -150,6 +151,9 @@ resolve_simulator_context() {
     elif [[ "$MODE" == "test" ]]; then
       fail "DESTINATION must include an available simulator id or name for test"
     fi
+    if [[ -z "$(destination_value arch)" ]]; then
+      DESTINATION="${DESTINATION},arch=${SIMULATOR_ARCH}"
+    fi
   fi
 
   if [[ -z "$DESTINATION" ]]; then
@@ -160,7 +164,7 @@ resolve_simulator_context() {
     fi
     [[ -n "$SIMULATOR_UDID" && -n "$SIMULATOR_NAME" ]] || \
       fail "no available simulator matching SIMULATOR_NAME='$SIMULATOR_NAME' SIMULATOR_UDID='$SIMULATOR_UDID'"
-    DESTINATION="platform=iOS Simulator,id=${SIMULATOR_UDID}"
+    DESTINATION="platform=iOS Simulator,arch=${SIMULATOR_ARCH},id=${SIMULATOR_UDID}"
   fi
 
   FASTLANE_TEST_DEVICE="$SIMULATOR_NAME"

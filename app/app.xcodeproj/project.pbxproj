@@ -27,6 +27,7 @@
 		000000000000000000000135 /* AdjustmentRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000035 /* AdjustmentRow.swift */; };
 		000000000000000000000136 /* MeasurementUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000036 /* MeasurementUnit.swift */; };
 		000000000000000000000137 /* DeterministicUIContractsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000037 /* DeterministicUIContractsTests.swift */; };
+		000000000000000000000138 /* RegressionGuardrailTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000038 /* RegressionGuardrailTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,6 +63,7 @@
 		000000000000000000000035 /* AdjustmentRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdjustmentRow.swift; sourceTree = "<group>"; };
 		000000000000000000000036 /* MeasurementUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementUnit.swift; sourceTree = "<group>"; };
 		000000000000000000000037 /* DeterministicUIContractsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeterministicUIContractsTests.swift; sourceTree = "<group>"; };
+		000000000000000000000038 /* RegressionGuardrailTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegressionGuardrailTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -125,6 +127,7 @@
 				000000000000000000000004 /* GaugeMathTests.swift */,
 				000000000000000000000007 /* MetricKitSubscriberTests.swift */,
 				000000000000000000000037 /* DeterministicUIContractsTests.swift */,
+				000000000000000000000038 /* RegressionGuardrailTests.swift */,
 			);
 			path = KnittingGaugeReconcilerTests;
 			sourceTree = "<group>";
@@ -211,7 +214,7 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000129, 000000000000000000000132, 000000000000000000000134, 000000000000000000000135, 000000000000000000000136); runOnlyForDeploymentPostprocessing = 0; };
-		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107, 000000000000000000000137); runOnlyForDeploymentPostprocessing = 0; };
+		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107, 000000000000000000000137, 000000000000000000000138); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */

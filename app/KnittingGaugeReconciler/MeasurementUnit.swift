@@ -22,6 +22,22 @@ enum MeasurementUnit: String, CaseIterable {
         }
     }
 
+    /// Nominal gauge basis; craft convention treats 10 cm and 4 in as equivalent labels without density conversion.
+    var gaugeBasis: String {
+        switch self {
+        case .centimeters: return "10 cm"
+        case .inches: return "4 in"
+        }
+    }
+
+    /// Natural wording for spoken gauge-basis text.
+    var spokenGaugeBasis: String {
+        switch self {
+        case .centimeters: return "10 centimeters"
+        case .inches: return "4 inches"
+        }
+    }
+
     // MARK: - Display conversion
 
     // Converts a centimetre value to the nearest whole display-unit integer.

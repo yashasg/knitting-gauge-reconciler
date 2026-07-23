@@ -36,15 +36,31 @@ import UIKit
  */
 @MainActor
 struct DeterministicUIContractsTests {
+    private var uniqueFormValues: GaugeFormValues {
+        GaugeFormValues(
+            patternStitches: "31",
+            patternRows: "23",
+            yourStitches: "29",
+            yourRows: "21",
+            patternCastOn: "141",
+            patternYoke: "19",
+            patternBody: "49",
+            patternSleeve: "44",
+            patternIncreases: "7"
+        )
+    }
+
     @Test func contracts15And16FormDraftPreservesValidationRawValuesResetAndUndo() throws {
-        let original = ["31", "23", "29", "21", "141", "19", "49", "44", "7"]
+        let blankValues = GaugeFormValues()
+        let original = uniqueFormValues
+        #expect(GaugeFormDraft().formValues == blankValues)
         var draft = GaugeFormDraft(
             values: original,
             unit: .centimeters,
             patternDetailsExpanded: true
         )
 
-        #expect(draft.rawValues == original)
+        #expect(draft.formValues == original)
         #expect(draft.inputs != nil)
         #expect(draft.lengthFieldLabel(.patternYoke) == "Yoke depth (cm)")
         draft.unit = .inches
@@ -54,8 +70,8 @@ struct DeterministicUIContractsTests {
 
         draft[.patternStitches] = "0"
         draft[.patternRows] = "100"
-        #expect(draft.rawValues[0] == "0")
-        #expect(draft.rawValues[1] == "100")
+        #expect(draft.formValues.patternStitches == "0")
+        #expect(draft.formValues.patternRows == "100")
         #expect(draft.inputs == nil)
         #expect(
             draft.validationMessage(for: .patternStitches) ==
@@ -78,35 +94,35 @@ struct DeterministicUIContractsTests {
             patternDetailsExpanded: true
         )
         let snapshot = draft.reset()
-        #expect(draft.rawValues == GaugeTextDefaults().resetSceneDraftValues)
+        #expect(draft.formValues == blankValues)
         #expect(!draft.patternDetailsExpanded)
         draft.restore(snapshot)
-        #expect(draft.rawValues == original)
+        #expect(draft.formValues == original)
         #expect(draft.patternDetailsExpanded)
         #expect(draft.focusedField == nil)
     }
 
     @Test func contracts07And13PickerAccessibilityAndMismatchAreDeterministic() {
-        let contract = GaugeStepperField.accessibilityContract(
-            text: "32",
-            unit: "ro",
-            fieldLabel: "Swatch row gauge, per 10 centimeters",
-            mismatchLabel: "Row gauge mismatch detected",
-            mismatchDelta: 8
-        )
+        for unit in MeasurementUnit.allCases {
+            let fieldLabel = GaugeInputsCard.accessibilityLabel(for: .yourRows, unit: unit)
+            let contract = GaugeStepperField.accessibilityContract(
+                text: "32",
+                unit: "ro",
+                fieldLabel: fieldLabel,
+                mismatchLabel: "Row gauge mismatch detected",
+                mismatchDelta: 8
+            )
 
-        #expect(
-            contract.fieldValue ==
-                "32 rows, row gauge mismatch detected, +8"
-        )
-        #expect(contract.pickerLabel == "Open picker for Swatch row gauge, per 10 centimeters")
-        #expect(contract.pickerValue == "Warning")
-        #expect(contract.warningSummary == "Row gauge mismatch detected")
-        #expect(contract.actions == ["Increment", "Decrement"])
-        #expect(
-            contract.pickerHint ==
-                "Row gauge mismatch detected. Opens the wheel picker and warning details."
-        )
+            #expect(contract.fieldValue == "32 rows, row gauge mismatch detected, +8")
+            #expect(contract.pickerLabel == "Open picker for \(fieldLabel)")
+            #expect(contract.pickerValue == "Warning")
+            #expect(contract.warningSummary == "Row gauge mismatch detected")
+            #expect(contract.actions == ["Increment", "Decrement"])
+            #expect(
+                contract.pickerHint ==
+                    "Row gauge mismatch detected. Opens the wheel picker and warning details."
+            )
+        }
         #expect(
             GaugeStepperField.pickerSelection(
                 validationText: "32",
@@ -143,51 +159,37 @@ struct DeterministicUIContractsTests {
             Scenario(
                 name: "perfect match", yourStitches: 32, yourRows: 24,
                 stitchMismatch: false, rowMismatch: false,
-                stitchSummary: "Stitch-wise, horizontal. Pattern 32 st/10 cm · Swatch 32 st/10 cm. " +
-                    "100% of pattern width.",
-                rowSummary: "Row-wise, vertical. Pattern 24 rows/10 cm · Swatch 24 rows/10 cm. " +
-                    "100% of pattern row density."
+                stitchPercent: 100, rowPercent: 100
             ),
             Scenario(
                 name: "denser rows", yourStitches: 32, yourRows: 32,
                 stitchMismatch: false, rowMismatch: true,
-                stitchSummary: "Stitch-wise, horizontal. Pattern 32 st/10 cm · Swatch 32 st/10 cm. " +
-                    "100% of pattern width.",
-                rowSummary: "Row-wise, vertical. Pattern 24 rows/10 cm · Swatch 32 rows/10 cm. " +
-                    "133% of pattern row density."
+                stitchPercent: 100, rowPercent: 133
             ),
             Scenario(
                 name: "looser rows", yourStitches: 32, yourRows: 20,
                 stitchMismatch: false, rowMismatch: true,
-                stitchSummary: "Stitch-wise, horizontal. Pattern 32 st/10 cm · Swatch 32 st/10 cm. " +
-                    "100% of pattern width.",
-                rowSummary: "Row-wise, vertical. Pattern 24 rows/10 cm · Swatch 20 rows/10 cm. " +
-                    "83% of pattern row density."
+                stitchPercent: 100, rowPercent: 83
             ),
             Scenario(
                 name: "denser stitches", yourStitches: 36, yourRows: 24,
                 stitchMismatch: true, rowMismatch: false,
-                stitchSummary: "Stitch-wise, horizontal. Pattern 32 st/10 cm · Swatch 36 st/10 cm. " +
-                    "89% of pattern width.",
-                rowSummary: "Row-wise, vertical. Pattern 24 rows/10 cm · Swatch 24 rows/10 cm. " +
-                    "100% of pattern row density."
+                stitchPercent: 89, rowPercent: 100
             ),
             Scenario(
                 name: "looser stitches", yourStitches: 28, yourRows: 24,
                 stitchMismatch: true, rowMismatch: false,
-                stitchSummary: "Stitch-wise, horizontal. Pattern 32 st/10 cm · Swatch 28 st/10 cm. " +
-                    "114% of pattern width.",
-                rowSummary: "Row-wise, vertical. Pattern 24 rows/10 cm · Swatch 24 rows/10 cm. " +
-                    "100% of pattern row density."
+                stitchPercent: 114, rowPercent: 100
             ),
             Scenario(
                 name: "both denser", yourStitches: 36, yourRows: 32,
                 stitchMismatch: true, rowMismatch: true,
-                stitchSummary: "Stitch-wise, horizontal. Pattern 32 st/10 cm · Swatch 36 st/10 cm. " +
-                    "89% of pattern width.",
-                rowSummary: "Row-wise, vertical. Pattern 24 rows/10 cm · Swatch 32 rows/10 cm. " +
-                    "133% of pattern row density."
+                stitchPercent: 89, rowPercent: 133
             ),
+        ]
+        let unitCases: [(MeasurementUnit, basis: String, spokenBasis: String)] = [
+            (.centimeters, "10 cm", "10 centimeters"),
+            (.inches, "4 in", "4 inches"),
         ]
 
         for scenario in scenarios {
@@ -197,13 +199,39 @@ struct DeterministicUIContractsTests {
                 yourStitches: scenario.yourStitches,
                 yourRows: scenario.yourRows
             )
-            let semantics = ResultCardSemantics(inputs: inputs, result: GaugeMath.compute(inputs))
             #expect(inputs.stitchMismatch == scenario.stitchMismatch, "\(scenario.name): stitches")
             #expect(inputs.rowMismatch == scenario.rowMismatch, "\(scenario.name): rows")
-            #expect(semantics.stitchSummary.contains(semantics.stitchComparison), "\(scenario.name)")
-            #expect(semantics.rowSummary.contains(semantics.rowComparison), "\(scenario.name)")
-            #expect(semantics.stitchSummary == scenario.stitchSummary, "\(scenario.name)")
-            #expect(semantics.rowSummary == scenario.rowSummary, "\(scenario.name)")
+            for (unit, basis, spokenBasis) in unitCases {
+                let semantics = ResultCardSemantics(
+                    inputs: inputs,
+                    result: GaugeMath.compute(inputs),
+                    unit: unit
+                )
+                #expect(
+                    semantics.stitchComparison ==
+                        "Pattern 32 st/\(basis) · Swatch \(plain(scenario.yourStitches)) st/\(basis)",
+                    "\(scenario.name): \(unit) stitch comparison"
+                )
+                #expect(
+                    semantics.rowComparison ==
+                        "Pattern 24 rows/\(basis) · Swatch \(plain(scenario.yourRows)) rows/\(basis)",
+                    "\(scenario.name): \(unit) row comparison"
+                )
+                #expect(
+                    semantics.stitchSummary ==
+                        "Stitch-wise, horizontal. Pattern 32 stitches per \(spokenBasis). " +
+                        "Swatch \(plain(scenario.yourStitches)) stitches per \(spokenBasis). " +
+                        "\(scenario.stitchPercent)% of pattern width.",
+                    "\(scenario.name): \(unit) stitch summary"
+                )
+                #expect(
+                    semantics.rowSummary ==
+                        "Row-wise, vertical. Pattern 24 rows per \(spokenBasis). " +
+                        "Swatch \(plain(scenario.yourRows)) rows per \(spokenBasis). " +
+                        "\(scenario.rowPercent)% of pattern row density.",
+                    "\(scenario.name): \(unit) row summary"
+                )
+            }
         }
 
         let optionalMatrix = [
@@ -365,15 +393,13 @@ struct DeterministicUIContractsTests {
     }
 
     @Test func contracts11And12DynamicTypePairGeometryAndUnitLabelsRemainVisible() throws {
-        #expect(GaugeInputsCard.usesStackedLayout(at: .accessibility5))
-        #expect(!GaugeInputsCard.usesStackedLayout(at: .large))
         #expect(
             GaugeInputsCard.accessibilityFieldOrder ==
                 [.patternStitches, .patternRows, .yourStitches, .yourRows]
         )
 
         let gaugeValues = GaugeValueBindings()
-        let compact = HostedViewProbe(
+        let standardCard = HostedViewProbe(
             gaugeValues.gaugeCard
                 .environment(\.dynamicTypeSize, .large)
         )
@@ -381,20 +407,29 @@ struct DeterministicUIContractsTests {
             gaugeValues.gaugeCard
                 .environment(\.dynamicTypeSize, .accessibility5)
         )
-        #expect(accessibleCard.size.height > compact.size.height)
+        #expect(standardCard.containsNaturalSize)
         #expect(accessibleCard.containsNaturalSize)
-        let fieldLabels = GaugeInputsCard.accessibilityFieldOrder.map(
-            GaugeInputsCard.accessibilityLabel
-        )
-        #expect(
-            fieldLabels == [
-                "Pattern stitch gauge, per 10 centimeters",
-                "Pattern row gauge, per 10 centimeters",
-                "Swatch stitch gauge, per 10 centimeters",
-                "Swatch row gauge, per 10 centimeters",
-            ]
-        )
-        #expect(fieldLabels.map(GaugeStepperField.pickerAccessibilityLabel).count == 4)
+        #expect(accessibleCard.size.height > standardCard.size.height)
+        let basisCases: [(MeasurementUnit, String)] = [
+            (.centimeters, "10 centimeters"),
+            (.inches, "4 inches"),
+        ]
+        for (unit, basis) in basisCases {
+            gaugeValues.unit.value = unit
+            let fieldLabels = GaugeInputsCard.accessibilityFieldOrder.map {
+                GaugeInputsCard.accessibilityLabel(for: $0, unit: unit)
+            }
+            #expect(
+                fieldLabels == [
+                    "Pattern stitch gauge, per \(basis)",
+                    "Pattern row gauge, per \(basis)",
+                    "Swatch stitch gauge, per \(basis)",
+                    "Swatch row gauge, per \(basis)",
+                ]
+            )
+            #expect(fieldLabels.map(GaugeStepperField.pickerAccessibilityLabel).count == 4)
+            #expect(HostedViewProbe(gaugeValues.gaugeCard).size.height > 0)
+        }
 
         let collapsedCard = HostedViewProbe(
             gaugeValues.patternCard(expanded: false)
@@ -408,7 +443,6 @@ struct DeterministicUIContractsTests {
         )
         #expect(expandedCard.size.height > collapsedCard.size.height)
         #expect(expandedCard.containsNaturalSize)
-        #expect(PatternInstructionsCard.usesStackedLayout(at: .accessibility5))
         #expect(MeasurementUnit.allCases.map(\.label) == ["cm", "in"])
         let draft = GaugeFormDraft(unit: .centimeters)
         #expect(
@@ -429,7 +463,7 @@ struct DeterministicUIContractsTests {
         #expect(PatternInstructionsCard.disclosureLabel == "Pattern details (optional)")
         #expect(
             PatternInstructionsCard.disclosureHint ==
-                "Expands optional unit, cast-on, length, and shaping fields"
+                "Expands optional cast-on, length, and shaping fields"
         )
         #expect(PatternInstructionsCard.disclosureValue(isExpanded: false) == "Collapsed")
         #expect(PatternInstructionsCard.disclosureValue(isExpanded: true) == "Expanded")
@@ -459,6 +493,347 @@ struct DeterministicUIContractsTests {
         #expect(requiredResults.containsNaturalSize)
         #expect(semantics.sectionKinds == [.gaugeSummary, .actions])
         #expect(requiredResultLabels.count == 5)
+    }
+
+    @Test func requiredValidationReservesStableStepperHeight() {
+        let widths: [CGFloat] = [320, 390, 760]
+        let textSizes: [DynamicTypeSize] = [
+            .large, .xxxLarge, .accessibility1, .accessibility5,
+        ]
+
+        for width in widths {
+            for textSize in textSizes {
+                let pristine = HostedViewProbe(
+                    requiredStepper(validationMessage: nil)
+                        .environment(\.dynamicTypeSize, textSize),
+                    width: width
+                )
+                let revealed = HostedViewProbe(
+                    requiredStepper(validationMessage: "Pattern stitch gauge is required.")
+                        .environment(\.dynamicTypeSize, textSize),
+                    width: width
+                )
+
+                #expect(pristine.hasFiniteNaturalSize, "\(width), \(textSize): pristine")
+                #expect(revealed.hasFiniteNaturalSize, "\(width), \(textSize): revealed")
+                #expect(pristine.fits(proposedWidth: width), "\(width), \(textSize): pristine width")
+                #expect(revealed.fits(proposedWidth: width), "\(width), \(textSize): revealed width")
+                #expect(
+                    abs(pristine.size.height - revealed.size.height) <= 0.5,
+                    "\(width), \(textSize): \(pristine.size.height) vs \(revealed.size.height)"
+                )
+            }
+        }
+    }
+
+    @Test func adaptiveLayoutsHaveFiniteNaturalSizesAcrossWidthsAndTextSizes() throws {
+        let widths: [CGFloat] = [320, 390, 760]
+        let textSizes: [DynamicTypeSize] = [
+            .large, .xxxLarge, .accessibility1, .accessibility5,
+        ]
+        let values = GaugeValueBindings()
+        values.patternDetailsExpanded = true
+        let inputs = GaugeInputs(
+            patternStitches: 99,
+            patternRows: 24,
+            yourStitches: 4,
+            yourRows: 32,
+            patternYokeDepth: 20,
+            patternBodyLength: 50,
+            patternSleeveLength: 45,
+            patternIncreaseSpacing: 6,
+            patternCastOn: 41
+        )
+        let result = GaugeMath.compute(inputs)
+        let semantics = ResultCardSemantics(inputs: inputs, result: result)
+
+        let pairMeasurements = expectNaturalSizeMatrix(
+            "GaugeMeasurementPair",
+            widths: widths,
+            textSizes: textSizes
+        ) {
+            GaugeMeasurementPair {
+                LayoutFixtureTile(
+                    title: "Pattern stitch gauge",
+                    value: "99 stitches per 10 centimeters"
+                )
+            } trailing: {
+                LayoutFixtureTile(
+                    title: "Swatch stitch gauge",
+                    value: "4 stitches per 10 centimeters"
+                )
+            }
+        }
+        let gaugeMeasurements = expectNaturalSizeMatrix(
+            "GaugeInputsCard",
+            widths: widths,
+            textSizes: textSizes
+        ) {
+            values.gaugeCard
+        }
+        let patternMeasurements = expectNaturalSizeMatrix(
+            "PatternInstructionsCard",
+            widths: widths,
+            textSizes: textSizes
+        ) {
+            values.patternCard(expanded: true)
+        }
+        let heroMeasurements = expectNaturalSizeMatrix(
+            "HeroTilesView",
+            widths: widths,
+            textSizes: textSizes
+        ) {
+            HeroTilesView(result: result, semantics: semantics)
+        }
+        let liveMeasurements = expectNaturalSizeMatrix(
+            "LiveResultsView",
+            widths: widths,
+            textSizes: textSizes
+        ) {
+            LiveResultsView(
+                result: result,
+                inputs: inputs,
+                unit: .centimeters,
+                showFullMath: ValueBox(false).binding,
+                onShare: { _ in [] }
+            )
+        }
+        let resetMeasurements = expectNaturalSizeMatrix(
+            "Reset and undo actions",
+            widths: widths,
+            textSizes: textSizes
+        ) {
+            RequiredAdjustmentsCard(
+                result: nil,
+                inputs: nil,
+                correctionMessage: nil,
+                unit: .centimeters,
+                showFullMath: ValueBox(false).binding,
+                canUndoReset: true,
+                onCorrect: {},
+                onReset: {},
+                onUndoReset: {},
+                onShare: { _ in [] }
+            )
+        }
+        let driftMeasurements = expectNaturalSizeMatrix(
+            "Consecutive drift AdjustmentRows",
+            widths: widths,
+            textSizes: textSizes
+        ) {
+            VStack(spacing: 12) {
+                AdjustmentRow(
+                    name: "Cast-on stitches",
+                    pattern: "41 stitches",
+                    adjusted: "2 stitches",
+                    driftPill: "+21% width"
+                )
+                AdjustmentRow(
+                    name: "Increase-row spacing",
+                    pattern: "Every 6 rows",
+                    adjusted: "Every 8 rows",
+                    driftPill: "+33% rows"
+                )
+            }
+        }
+
+        for (name, measurements) in [
+            ("GaugeMeasurementPair", pairMeasurements),
+            ("GaugeInputsCard", gaugeMeasurements),
+            ("PatternInstructionsCard", patternMeasurements),
+            ("HeroTilesView", heroMeasurements),
+            ("LiveResultsView", liveMeasurements),
+            ("Reset and undo actions", resetMeasurements),
+            ("Consecutive drift AdjustmentRows", driftMeasurements),
+        ] {
+            let narrow = try #require(
+                measurements.measurement(width: 320, textSize: .xxxLarge)
+            )
+            let wide = try #require(
+                measurements.measurement(width: 760, textSize: .xxxLarge)
+            )
+            #expect(
+                narrow.size.height + 0.5 >= wide.size.height,
+                "\(name) should grow vertically at 320pt instead of overflowing"
+            )
+        }
+
+        for (name, measurements) in [
+            ("GaugeMeasurementPair", pairMeasurements),
+            ("GaugeInputsCard", gaugeMeasurements),
+            ("PatternInstructionsCard", patternMeasurements),
+            ("HeroTilesView", heroMeasurements),
+            ("LiveResultsView", liveMeasurements),
+            ("Consecutive drift AdjustmentRows", driftMeasurements),
+        ] {
+            let standard = try #require(
+                measurements.measurement(width: 760, textSize: .large)
+            )
+            let accessible = try #require(
+                measurements.measurement(width: 760, textSize: .accessibility5)
+            )
+            #expect(
+                accessible.size.height > standard.size.height,
+                "\(name) should grow vertically for Accessibility 5"
+            )
+        }
+
+        let resetStandard = try #require(
+            resetMeasurements.measurement(width: 320, textSize: .large)
+        )
+        let resetAccessible = try #require(
+            resetMeasurements.measurement(width: 320, textSize: .accessibility5)
+        )
+        #expect(resetAccessible.size.height >= resetStandard.size.height)
+    }
+
+    @Test func resetUndoActionsRemainWiredAndMeetTouchTargetContract() throws {
+        let expectedValues = uniqueFormValues
+        let values = GaugeValueBindings(values: expectedValues)
+        values.patternDetailsExpanded = true
+        let original = values.formView.formDraft
+        let view = values.formView
+
+        view.resetToDefaults()
+        #expect(view.formDraft.formValues == GaugeFormValues())
+        #expect(!view.formDraft.patternDetailsExpanded)
+        view.undoReset()
+        #expect(view.formDraft.formValues == expectedValues)
+        #expect(view.formDraft.formValues == original.formValues)
+        #expect(view.formDraft.patternDetailsExpanded)
+
+        let appDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: appDirectory.appendingPathComponent(
+                "KnittingGaugeReconciler/Views/RequiredAdjustmentsCard.swift"
+            ),
+            encoding: .utf8
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+
+        #expect(source.contains("Button(\"Resetvalues\",action:requestReset)"))
+        #expect(source.contains("Button(\"Resetvalues\",role:.destructive,action:onReset)"))
+        #expect(source.contains("Button(\"Undoreset\",action:onUndoReset)"))
+        #expect(
+            source.components(
+                separatedBy: ".frame(minWidth:44,minHeight:44,alignment:.leading)"
+            ).count == 3
+        )
+    }
+
+    @Test func globalNativeUnitMenuLivesInGaugeInputsAndBindsPersistedUnit() throws {
+        let appDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let contentSource = try String(
+            contentsOf: appDirectory.appendingPathComponent("KnittingGaugeReconciler/ContentView.swift"),
+            encoding: .utf8
+        )
+        let formStack = try #require(
+            contentSource.range(of: "VStack(alignment: .leading, spacing: cardSpacing) {")
+        )
+        let gaugeCard = try #require(
+            contentSource.range(
+                of: "GaugeInputsCard(",
+                range: formStack.upperBound..<contentSource.endIndex
+            )
+        )
+        let patternCard = try #require(
+            contentSource.range(
+                of: "PatternInstructionsCard(",
+                range: gaugeCard.upperBound..<contentSource.endIndex
+            )
+        )
+        let resultsCard = try #require(
+            contentSource.range(
+                of: "RequiredAdjustmentsCard(",
+                range: patternCard.upperBound..<contentSource.endIndex
+            )
+        )
+        let formPadding = try #require(
+            contentSource.range(
+                of: ".padding(.horizontal, 16)",
+                range: resultsCard.upperBound..<contentSource.endIndex
+            )
+        )
+        #expect(gaugeCard.lowerBound < patternCard.lowerBound)
+        #expect(patternCard.lowerBound < resultsCard.lowerBound)
+        #expect(
+            contentSource[gaugeCard.lowerBound..<patternCard.lowerBound]
+                .contains("unit: measurementUnitBinding")
+        )
+        #expect(
+            contentSource[patternCard.lowerBound..<resultsCard.lowerBound]
+                .contains("unit: measurementUnitBinding")
+        )
+        #expect(
+            contentSource[resultsCard.lowerBound..<formPadding.lowerBound]
+                .contains("unit: measurementUnit")
+        )
+        #expect(
+            contentSource.contains(
+                "@AppStorage(\"measurementUnit\") private var measurementUnit: MeasurementUnit"
+            )
+        )
+        #expect(!contentSource.contains("Picker(\"Measurement unit\""))
+        #expect(!contentSource.contains("UnitToggleView"))
+
+        let patternSource = try String(
+            contentsOf: appDirectory.appendingPathComponent(
+                "KnittingGaugeReconciler/Views/PatternInstructionsCard.swift"
+            ),
+            encoding: .utf8
+        )
+        #expect(!patternSource.contains("UnitToggleView"))
+        #expect(!patternSource.contains("Picker(\"Measurement unit\""))
+        #expect(!patternSource.contains(".pickerStyle(.segmented)"))
+        #expect(!PatternInstructionsCard.disclosureHint.localizedCaseInsensitiveContains("unit"))
+
+        let gaugeSource = try String(
+            contentsOf: appDirectory.appendingPathComponent(
+                "KnittingGaugeReconciler/Views/GaugeInputsCard.swift"
+            ),
+            encoding: .utf8
+        )
+        #expect(gaugeSource.components(separatedBy: "Picker(").count == 2)
+        #expect(
+            gaugeSource.components(
+                separatedBy: "Picker(\"Measurement unit\", selection: $unit)"
+            ).count == 2
+        )
+        #expect(gaugeSource.contains("Text(\"Centimeters\").tag(MeasurementUnit.centimeters)"))
+        #expect(gaugeSource.contains("Text(\"Inches\").tag(MeasurementUnit.inches)"))
+        #expect(gaugeSource.contains(".pickerStyle(.menu)"))
+        #expect(
+            gaugeSource.components(
+                separatedBy:
+                ".accessibilityHint(\"Changes gauge basis and dimensions throughout the calculator.\")"
+            ).count == 2
+        )
+        #expect(gaugeSource.contains("Text(unit == .centimeters ? \"PER 10 CM\" : \"PER 4 IN\")"))
+
+        let values = GaugeValueBindings(values: uniqueFormValues)
+        values[.patternYoke] = "20.32"
+        let globalUnit = values.formView.measurementUnitBinding
+        for unit in MeasurementUnit.allCases {
+            globalUnit.wrappedValue = unit
+            #expect(values.unit.value == unit)
+            #expect(values.formView.formDraft.unit == unit)
+            #expect(HostedViewProbe(values.gaugeCard).size.height > 0)
+            let basis = unit == .centimeters ? "10 centimeters" : "4 inches"
+            #expect(
+                GaugeInputsCard.accessibilityLabel(for: .patternStitches, unit: unit) ==
+                    "Pattern stitch gauge, per \(basis)"
+            )
+            let patternDetails = values.patternInstructionsCard(expanded: true)
+            #expect(
+                patternDetails.displayBinding(
+                    for: values.binding(for: .patternYoke),
+                    field: .patternYoke
+                ).wrappedValue == (unit == .centimeters ? "20.32" : "8")
+            )
+        }
     }
 
     @Test func contract17AssetColorsMeetContrastAndAppViewRenders() throws {
@@ -574,13 +949,20 @@ struct DeterministicUIContractsTests {
             #expect(draft.validationMessage(for: field) == message)
         }
         var messagesDraft = GaugeFormDraft()
+        messagesDraft[.patternStitches] = "32"
         messagesDraft[.patternRows] = ""
+        messagesDraft[.yourStitches] = "32"
+        messagesDraft[.yourRows] = "32"
         #expect(
             messagesDraft.validationMessages ==
                 [.patternRows: "Pattern row gauge is required."]
         )
 
         var detailDraft = GaugeFormDraft()
+        detailDraft[.patternStitches] = "32"
+        detailDraft[.patternRows] = "24"
+        detailDraft[.yourStitches] = "32"
+        detailDraft[.yourRows] = "32"
         detailDraft[.patternBody] = "bad"
         #expect(detailDraft.finishEditing() == "Enter body length as a number.")
         #expect(detailDraft.focusedField == .patternBody)
@@ -597,6 +979,145 @@ struct DeterministicUIContractsTests {
         #expect(committed[.patternSleeve] == "20.32")
     }
 
+    @Test func validationPresentationRevealsOnBlurOrViewResultsAndResetUndoRoundTrips() throws {
+        var draft = GaugeFormDraft()
+        var revealed = Set<GaugeFormField>()
+        let requiredFields: Set<GaugeFormField> = [
+            .patternStitches, .patternRows, .yourStitches, .yourRows,
+        ]
+
+        #expect(draft.focusedField == nil)
+        #expect(Set(draft.validationMessages.keys) == requiredFields)
+        #expect(draft.validationMessages.filter { revealed.contains($0.key) }.isEmpty)
+
+        revealed.insert(.patternRows)
+        #expect(
+            draft.validationMessages.filter { revealed.contains($0.key) } ==
+                [.patternRows: "Pattern row gauge is required."]
+        )
+        draft[.patternRows] = "24"
+        #expect(draft.validationMessages.filter { revealed.contains($0.key) }.isEmpty)
+
+        revealed.formUnion(draft.validationMessages.keys)
+        #expect(
+            Set(draft.validationMessages.filter { revealed.contains($0.key) }.keys) ==
+                requiredFields.subtracting([.patternRows])
+        )
+        #expect(draft.finishEditing() == "Pattern stitch gauge is required.")
+        #expect(draft.focusedField == .patternStitches)
+
+        let savedRevealed = revealed
+        let snapshot = draft.reset()
+        revealed.removeAll()
+        #expect(draft.formValues == GaugeFormValues())
+        #expect(draft.focusedField == nil)
+        #expect(draft.validationMessages.filter { revealed.contains($0.key) }.isEmpty)
+        draft.restore(snapshot)
+        revealed = savedRevealed
+        #expect(draft[.patternRows] == "24")
+        #expect(
+            Set(draft.validationMessages.filter { revealed.contains($0.key) }.keys) ==
+                requiredFields.subtracting([.patternRows])
+        )
+
+        for field in requiredFields {
+            draft[field] = "24"
+        }
+        #expect(draft.finishEditing() == nil)
+        #expect(draft.focusedField == nil)
+        #expect(draft.inputs != nil)
+
+        let appDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let contentSource = try String(
+            contentsOf: appDirectory.appendingPathComponent("KnittingGaugeReconciler/ContentView.swift"),
+            encoding: .utf8
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        #expect(contentSource.contains("@StateprivatevarrevealedValidationFields:Set<GaugeFormField>=[]"))
+        #expect(contentSource.contains(".onChange(of:focusedField,fieldFocusChanged)"))
+        #expect(!contentSource.contains(".onChange(of:validationMessages"))
+        #expect(!contentSource.contains(".onAppear(perform:finishEditing)"))
+        #expect(contentSource.contains("guardletpreviousField,previousField!=currentFieldelse{return}"))
+        #expect(contentSource.contains("revealedValidationFields.insert(previousField)"))
+        #expect(
+            contentSource.contains(
+                "formDraft.validationMessages.filter{revealedValidationFields.contains($0.key)}"
+            )
+        )
+        #expect(contentSource.contains("revealedValidationFields.formUnion(draft.validationMessages.keys)"))
+        #expect(contentSource.contains("Self.finishEditing(&draft)"))
+        #expect(contentSource.contains("focusedField=draft.focusedField"))
+        #expect(
+            contentSource.contains(
+                "ifletmessage{UIAccessibility.post(notification:.announcement,argument:message)}"
+            )
+        )
+        #expect(contentSource.contains("resetSnapshot.revealedValidationFields=revealedValidationFields"))
+        #expect(contentSource.contains("revealedValidationFields.removeAll()"))
+        #expect(contentSource.contains("revealedValidationFields=resetSnapshot.revealedValidationFields"))
+
+        let stepperSource = try String(
+            contentsOf: appDirectory.appendingPathComponent(
+                "KnittingGaugeReconciler/Components/GaugeStepperField.swift"
+            ),
+            encoding: .utf8
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        #expect(
+            stepperSource.contains(
+                "guardcase.failure(.required)=GaugeMath.validate(validationText,for:field.mathField)" +
+                    "else{returnvalidationMessage}return\"Required\""
+            )
+        )
+        #expect(
+            stepperSource.contains(
+                "Label(visibleValidationMessage??\"\",systemImage:\"exclamationmark.circle.fill\")"
+            )
+        )
+        #expect(stepperSource.contains(".opacity(visibleValidationMessage==nil?0:1)"))
+        #expect(stepperSource.contains(".accessibilityHidden(true)"))
+
+        let cardSource = try String(
+            contentsOf: appDirectory.appendingPathComponent(
+                "KnittingGaugeReconciler/Views/RequiredAdjustmentsCard.swift"
+            ),
+            encoding: .utf8
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        let viewResultsStart = try #require(
+            cardSource.range(
+                of: "VStack(alignment:.leading,spacing:10){" +
+                    "Button(action:requestCorrection){" +
+                    "Label(\"Viewresults\",systemImage:\"wand.and.stars\")"
+            )
+        )
+        let liveResultsStart = try #require(
+            cardSource.range(of: "ifletresult,letinputs{LiveResultsView(")
+        )
+        #expect(viewResultsStart.lowerBound < liveResultsStart.lowerBound)
+        let persistentAction = cardSource[
+            viewResultsStart.lowerBound..<liveResultsStart.lowerBound
+        ]
+        #expect(
+            [
+                ".font(.subheadline.weight(.semibold))",
+                ".foregroundStyle(AppTheme.cream)",
+                ".frame(minWidth:176,minHeight:44)",
+                ".background(AppTheme.sage)",
+                ".clipShape(Capsule())",
+                ".frame(maxWidth:.infinity,alignment:.center)",
+            ].allSatisfy { persistentAction.contains($0) }
+        )
+        #expect(
+            !persistentAction.contains(".disabled(")
+        )
+        #expect(cardSource.contains(".accessibilityValue(correctionMessage??\"\")"))
+        #expect(
+            cardSource.contains(
+                ".accessibilityHint(\"Validatestheformandfocusesthefirstfieldthatneedscorrection\")"
+            )
+        )
+    }
+
     @Test func invalidInchValidationAndPatternBindingsPreserveUserText() {
         var draft = GaugeFormDraft(unit: .inches)
         draft[.patternYoke] = MeasurementUnit.inches.centimeterStorageText(
@@ -608,55 +1129,58 @@ struct DeterministicUIContractsTests {
                 "Yoke depth must be a whole number between 2 and 39 in. Entered: 1."
         )
 
-        let values = GaugeValueBindings()
+        let values = GaugeValueBindings(values: uniqueFormValues)
         values.unit.value = .inches
         let card = values.patternInstructionsCard(expanded: true)
-        let yoke = card.displayBinding(for: values.value(at: 5).binding, field: .patternYoke)
+        let yoke = card.displayBinding(
+            for: values.binding(for: .patternYoke),
+            field: .patternYoke
+        )
         yoke.wrappedValue = GaugeStepperField.committedText(selection: 8)
-        #expect(values.value(at: 5).value == "20.32")
+        #expect(values[.patternYoke] == "20.32")
         #expect(yoke.wrappedValue == "8")
         yoke.wrappedValue = GaugeStepperField.adjustedText(
-            values.value(at: 5).value,
+            values[.patternYoke],
             by: 1,
             field: .patternYoke,
             displayUnit: .inches,
             range: 2...39
         )
-        #expect(values.value(at: 5).value == "22.86")
+        #expect(values[.patternYoke] == "22.86")
         yoke.wrappedValue = GaugeStepperField.adjustedText(
-            values.value(at: 5).value,
+            values[.patternYoke],
             by: -1,
             field: .patternYoke,
             displayUnit: .inches,
             range: 2...39
         )
-        #expect(values.value(at: 5).value == "20.32")
+        #expect(values[.patternYoke] == "20.32")
         let committedDraft = GaugeFormDraft(
-            values: (0..<GaugeFormField.allCases.count).map { values.value(at: $0).value },
+            values: values.formValues,
             unit: .inches,
             patternDetailsExpanded: true
         )
         #expect(committedDraft.inputs != nil)
 
         yoke.wrappedValue = "9"
-        #expect(values.value(at: 5).value == "22.86")
+        #expect(values[.patternYoke] == "22.86")
         yoke.wrappedValue = ""
-        #expect(values.value(at: 5).value == "")
+        #expect(values[.patternYoke] == "")
         #expect(yoke.wrappedValue == "")
 
-        values.value(at: 5).value = "not-a-number"
+        values[.patternYoke] = "not-a-number"
         #expect(yoke.wrappedValue == "not-a-number")
-        values.value(at: 5).value = MeasurementUnit.inches.centimeterStorageText(
+        values[.patternYoke] = MeasurementUnit.inches.centimeterStorageText(
             from: "1",
             cmRange: 5...100
         )
         #expect(yoke.wrappedValue == "1")
         values.unit.value = .centimeters
-        values.value(at: 5).value = "20"
+        values[.patternYoke] = "20"
         #expect(yoke.wrappedValue == "20")
     }
 
-    @Test func sceneDraftStoreUsesDistinctKeysAndReconcilesOnlyCompleteDrafts() {
+    @Test func sceneDraftStoreUsesDistinctKeysAndNamedValues() {
         let keys = [
             SceneDraftStore.patternStitchesKey,
             SceneDraftStore.patternRowsKey,
@@ -671,35 +1195,49 @@ struct DeterministicUIContractsTests {
         ]
         #expect(Set(keys).count == 10)
 
-        let values = GaugeTextDefaults().resetSceneDraftValues
+        let values = uniqueFormValues
         #expect(SceneDraftStore.reconcileInvalidInchProvenance(in: values, for: .inches) == values)
-        #expect(
-            SceneDraftStore.reconcileInvalidInchProvenance(
-                in: Array(values.dropLast()),
-                for: .centimeters
-            ) == Array(values.dropLast())
-        )
+        #expect(SceneDraftStore.reconcileInvalidInchProvenance(in: values, for: .centimeters) == values)
     }
 
     @Test func stepperHelpersCoverValidationUnitsAndWarnings() {
-        let contracts = [
-            GaugeStepperField.accessibilityContract(
-                text: " ",
-                unit: "st",
-                fieldLabel: "Pattern stitches"
-            ),
-            GaugeStepperField.accessibilityContract(
-                text: "24",
-                unit: "cm",
-                fieldLabel: "Yoke",
-                validationMessage: "Invalid"
-            ),
-        ]
-        #expect(contracts[0].fieldValue == "Empty")
-        #expect(contracts[0].fieldHint == "Double-tap to edit.")
-        #expect(contracts[0].pickerHint == "Double-tap to open wheel picker.")
-        #expect(contracts[1].fieldValue == "24 cm, Invalid")
-        #expect(contracts[1].fieldHint == "Correct this value before viewing results.")
+        let pristineRequired = GaugeStepperField.accessibilityContract(
+            text: " ",
+            unit: "st",
+            fieldLabel: "Pattern stitches",
+            isRequired: true
+        )
+        #expect(pristineRequired.fieldValue == "Empty, Required")
+        #expect(pristineRequired.fieldHint == "Double-tap to edit.")
+        #expect(pristineRequired.pickerHint == "Double-tap to open wheel picker.")
+        #expect(!pristineRequired.fieldValue.contains("is required"))
+
+        let revealedInvalid = GaugeStepperField.accessibilityContract(
+            text: " ",
+            unit: "st",
+            fieldLabel: "Pattern stitches",
+            isRequired: true,
+            validationMessage: "Pattern stitch gauge is required."
+        )
+        #expect(
+            revealedInvalid.fieldValue ==
+                "Empty, Required"
+        )
+        #expect(revealedInvalid.fieldHint == "Correct this value before viewing results.")
+        #expect(!revealedInvalid.fieldValue.contains("is required"))
+
+        let invalidNumber = GaugeStepperField.accessibilityContract(
+            text: "abc",
+            unit: "ro",
+            fieldLabel: "Pattern rows",
+            isRequired: true,
+            validationMessage: "Enter pattern row gauge as a number."
+        )
+        #expect(
+            invalidNumber.fieldValue ==
+                "abc rows, Required, Enter pattern row gauge as a number."
+        )
+        #expect(invalidNumber.fieldHint == "Correct this value before viewing results.")
 
         #expect(
             GaugeStepperField.pickerSelection(
@@ -739,10 +1277,24 @@ struct DeterministicUIContractsTests {
         )
     }
 
-    @Test func keyboardCoordinatorPropagatesTextFocusAndSubmit() async throws {
+    @Test func keyboardAccessoryDoneResignsWithoutSubmitting() async throws {
+        let appDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: appDirectory
+                .appendingPathComponent("KnittingGaugeReconciler/Components/GaugeStepperField.swift"),
+            encoding: .utf8
+        ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+        #expect(
+            source.contains("barButtonSystemItem:.flexibleSpace")
+                && source.contains("barButtonSystemItem:.done")
+                && source.contains("toolbar.items=[flexibleSpace,done]")
+        )
+
         let text = ValueBox("24")
         let focus = ValueBox<GaugeFormField?>(nil)
-        let recorder = ActionRecorder()
+        let textField = FocusRecordingTextField()
         let field = GaugeKeyboardTextField(
             text: text.binding,
             field: .yourRows,
@@ -750,11 +1302,9 @@ struct DeterministicUIContractsTests {
             label: "Rows",
             value: "24 rows",
             hint: "Double-tap to edit.",
-            showsCorrection: false,
-            onSubmit: recorder.record
+            showsCorrection: false
         )
         let coordinator = field.makeCoordinator()
-        let textField = FocusRecordingTextField()
 
         textField.text = "31"
         coordinator.textDidChange(textField)
@@ -812,9 +1362,8 @@ struct DeterministicUIContractsTests {
         coordinator.didTapDone()
         #expect(text.value == "31")
         #expect(textField.inputView == nil)
-        #expect(recorder.count == 1)
+        #expect(textField.resignedFirstResponder)
         coordinator.didTapDone()
-        #expect(recorder.count == 2)
 
         focus.value = nil
         await GaugeKeyboardTextField.updateFocusAfterUpdate(
@@ -824,10 +1373,28 @@ struct DeterministicUIContractsTests {
 
     }
 
+    @Test func gaugeLeafAndCardProductionSeamHasNoSubmitCallback() throws {
+        let appDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let paths = [
+            "KnittingGaugeReconciler/Components/GaugeStepperField.swift",
+            "KnittingGaugeReconciler/Views/GaugeInputsCard.swift",
+            "KnittingGaugeReconciler/Views/PatternInstructionsCard.swift",
+        ]
+
+        for path in paths {
+            let source = try String(
+                contentsOf: appDirectory.appendingPathComponent(path),
+                encoding: .utf8
+            )
+            #expect(!source.contains("onSubmit"), "\(path) retains a submit callback")
+        }
+    }
+
     @Test func accessibilityAdjustmentsUseCurrentValueAndPreserveActivePickerSelection() {
         let text = ValueBox("25")
         let focus = ValueBox<GaugeFormField?>(nil)
-        let recorder = ActionRecorder()
         func field() -> GaugeKeyboardTextField {
             GaugeKeyboardTextField(
                 text: text.binding,
@@ -836,8 +1403,7 @@ struct DeterministicUIContractsTests {
                 label: "Rows",
                 value: "\(text.value) rows",
                 hint: "Double-tap to edit.",
-                showsCorrection: false,
-                onSubmit: recorder.record
+                showsCorrection: false
             )
         }
 
@@ -872,7 +1438,6 @@ struct DeterministicUIContractsTests {
         coordinator.didTapDone()
         #expect(text.value == "51")
         #expect(textField.inputView == nil)
-        #expect(recorder.count == 1)
     }
 
     @Test func adjustmentRowsExposeLabelsAndAdaptiveLayouts() {
@@ -912,9 +1477,14 @@ struct DeterministicUIContractsTests {
 
     @Test func hostedCardsCoverInvalidRequiredOptionalFullMathAndStatusBranches() {
         let invalidValues = GaugeValueBindings()
+        invalidValues[.patternStitches] = ""
+        invalidValues[.patternRows] = "abc"
         let invalidCard = HostedViewProbe(
             invalidValues.gaugeCard(
-                validationMessages: [.patternRows: "Pattern row gauge is required."]
+                validationMessages: [
+                    .patternStitches: "Pattern stitch gauge is required.",
+                    .patternRows: "Enter pattern row gauge as a number.",
+                ]
             )
         )
         #expect(invalidCard.size.height > 0)
@@ -939,16 +1509,51 @@ struct DeterministicUIContractsTests {
             showFullMath: fullMath.binding,
             onShare: { _ in ["share"] }
         )
+        let centimeterMath = LiveResultsView(
+            result: result,
+            inputs: inputs,
+            unit: .centimeters,
+            showFullMath: fullMath.binding,
+            onShare: { _ in ["share"] }
+        ).fullMathBreakdown.components(separatedBy: "\n")
+        let inchMath = live.fullMathBreakdown.components(separatedBy: "\n")
         #expect(live.castOnDriftPill != nil)
-        #expect(live.fullMathBreakdown.contains("yoke:"))
-        #expect(live.fullMathBreakdown.contains("body:"))
-        #expect(live.fullMathBreakdown.contains("sleeve:"))
-        #expect(live.fullMathBreakdown.contains("increase spacing"))
-        #expect(live.fullMathBreakdown.contains("cast-on adjust"))
+        #expect(
+            centimeterMath[0] ==
+                "pattern: 99 st x 24 rows per 10 centimeters (aspect 4.12)"
+        )
+        #expect(
+            inchMath[0] ==
+                "pattern: 99 st x 24 rows per 4 inches (aspect 4.12)"
+        )
+        #expect(
+            centimeterMath[1] ==
+                "you:     4 st x 32 rows per 10 centimeters (aspect 0.12)"
+        )
+        #expect(
+            inchMath[1] ==
+                "you:     4 st x 32 rows per 4 inches (aspect 0.12)"
+        )
+        #expect(Array(centimeterMath[2...5]) == Array(inchMath[2...5]))
+        #expect(inchMath.contains { $0.hasPrefix("yoke:") })
+        #expect(inchMath.contains { $0.hasPrefix("body:") })
+        #expect(inchMath.contains { $0.hasPrefix("sleeve:") })
+        #expect(inchMath.contains { $0.hasPrefix("increase spacing") })
+        #expect(inchMath.contains { $0.hasPrefix("cast-on adjust") })
+        for prefix in ["increase spacing", "cast-on adjust"] {
+            #expect(
+                centimeterMath.first { $0.hasPrefix(prefix) } ==
+                    inchMath.first { $0.hasPrefix(prefix) }
+            )
+        }
         let liveProbe = HostedViewProbe(live.environment(\.dynamicTypeSize, .accessibility2))
         #expect(liveProbe.size.height > 0)
 
         let correctionDraft = ValueBox(GaugeFormDraft())
+        correctionDraft.value[.patternStitches] = "32"
+        correctionDraft.value[.patternRows] = "24"
+        correctionDraft.value[.yourStitches] = "32"
+        correctionDraft.value[.yourRows] = "32"
         correctionDraft.value[.patternBody] = "bad"
         let correctionCard = RequiredAdjustmentsCard(
             result: nil,
@@ -1150,8 +1755,7 @@ struct DeterministicUIContractsTests {
             label: "Rows",
             value: "32 rows",
             hint: "Edit",
-            showsCorrection: true,
-            onSubmit: {}
+            showsCorrection: true
         )
         #expect(HostedViewProbe(keyboard).size.height > 0)
 
@@ -1162,7 +1766,6 @@ struct DeterministicUIContractsTests {
             field: .yourRows,
             validationMessage: nil,
             focusedField: focus.binding,
-            onSubmit: {},
             hasMismatch: true,
             mismatchLabel: "Row gauge mismatch detected",
             mismatchDelta: 8
@@ -1256,49 +1859,59 @@ struct DeterministicUIContractsTests {
         #expect(HostedViewProbe(view.activityView(payload)).size.width > 0)
     }
 
-    @Test func contentAppearanceReconcilesDisconnectedSceneUnitsBeforeRestoringFocus() throws {
+    @Test func contentAppearanceReconcilesDisconnectedSceneUnitsWithoutFocusing() throws {
         let contentForm = try #require(
             ContentView(sceneStorageEnabled: false).body as? GaugeFormView
         )
         #expect(HostedViewProbe(contentForm).size.width > 0)
         contentForm.applySceneDraft(
-            values: GaugeTextDefaults().resetSceneDraftValues,
+            values: GaugeTextDefaults().values,
             disclosure: true
         )
         contentForm.measurementUnitBinding.wrappedValue = .inches
 
-        let inchScene = GaugeValueBindings()
+        let inchScene = GaugeValueBindings(values: uniqueFormValues)
+        let appliedSceneBindings = GaugeValueBindings()
+        let appliedSceneForm = appliedSceneBindings.formView
+        appliedSceneForm.applySceneDraft(values: uniqueFormValues, disclosure: true)
+        #expect(appliedSceneForm.formValues == uniqueFormValues)
+        #expect(appliedSceneForm.formDraft.patternDetailsExpanded)
         inchScene.unit.value = .inches
-        inchScene.value(at: 5).value = MeasurementUnit.inches.centimeterStorageText(
+        inchScene[.patternYoke] = MeasurementUnit.inches.centimeterStorageText(
             from: "40",
             cmRange: 5...100
         )
-        #expect(MeasurementUnit.invalidInchesText(from: inchScene.value(at: 5).value) == "40")
+        #expect(MeasurementUnit.invalidInchesText(from: inchScene[.patternYoke]) == "40")
 
         inchScene.unit.value = .centimeters
         let restoredCentimeterForm = inchScene.formView
         restoredCentimeterForm.sceneDidAppear()
-        #expect(inchScene.value(at: 5).value == "40")
+        var expectedCentimeterValues = uniqueFormValues
+        expectedCentimeterValues.patternYoke = "40"
+        #expect(inchScene.formValues == expectedCentimeterValues)
         #expect(restoredCentimeterForm.formDraft.validationMessages.isEmpty)
         #expect(restoredCentimeterForm.formDraft.focusedField == nil)
         #expect(
             GaugeStepperField.pickerSelection(
-                validationText: inchScene.value(at: 5).value,
+                validationText: inchScene[.patternYoke],
                 field: .patternYoke,
                 displayUnit: .centimeters,
                 range: 5...100
             ) == 40
         )
 
-        let centimeterScene = GaugeValueBindings()
-        centimeterScene.value(at: 5).value = "20.32"
+        let centimeterScene = GaugeValueBindings(values: uniqueFormValues)
+        centimeterScene[.patternYoke] = "20.32"
         centimeterScene.unit.value = .inches
         let restoredInchForm = centimeterScene.formView
         restoredInchForm.sceneDidAppear()
-        #expect(centimeterScene.value(at: 5).value == "20.32")
+        var expectedInchValues = uniqueFormValues
+        expectedInchValues.patternYoke = "20.32"
+        #expect(centimeterScene.formValues == expectedInchValues)
+        #expect(restoredInchForm.formDraft.focusedField == nil)
         #expect(
             GaugeStepperField.pickerSelection(
-                validationText: centimeterScene.value(at: 5).value,
+                validationText: centimeterScene[.patternYoke],
                 field: .patternYoke,
                 displayUnit: .inches,
                 range: 2...39
@@ -1307,7 +1920,7 @@ struct DeterministicUIContractsTests {
         let inchCard = centimeterScene.patternInstructionsCard(expanded: true)
         #expect(
             inchCard.displayBinding(
-                for: centimeterScene.value(at: 5).binding,
+                for: centimeterScene.binding(for: .patternYoke),
                 field: .patternYoke
             ).wrappedValue == "8"
         )
@@ -1317,14 +1930,13 @@ struct DeterministicUIContractsTests {
     }
 
     @Test func contentBindingsActionsLifecycleAndSharingAreDeterministic() async throws {
-        let values = GaugeValueBindings()
+        let values = GaugeValueBindings(values: uniqueFormValues)
         let view = values.formView
         #expect(HostedViewProbe(view).size.width > 0)
-        let text = ValueBox("32")
-        let draftBinding = view.draftBinding(text.binding, at: 0)
-        draftBinding.wrappedValue = "32"
-        draftBinding.wrappedValue = "31"
-        #expect(text.value == "31")
+        let draftBinding = view.draftBinding(for: .patternStitches)
+        draftBinding.wrappedValue = uniqueFormValues.patternStitches
+        draftBinding.wrappedValue = "37"
+        #expect(values[.patternStitches] == "37")
 
         let details = view.patternDetailsBinding
         details.wrappedValue = details.wrappedValue
@@ -1332,12 +1944,19 @@ struct DeterministicUIContractsTests {
         let unit = view.measurementUnitBinding
         unit.wrappedValue = unit.wrappedValue
         unit.wrappedValue = .inches
-        let rawInchDraft = MeasurementUnit.inches.centimeterStorageText(
+        var inchValues = view.formValues
+        inchValues.patternYoke = MeasurementUnit.inches.centimeterStorageText(
             from: "1",
             cmRange: 5...100
         )
-        var inchValues = view.rawTextValues
-        inchValues[5] = rawInchDraft
+        inchValues.patternBody = MeasurementUnit.inches.centimeterStorageText(
+            from: "40",
+            cmRange: 5...100
+        )
+        inchValues.patternSleeve = MeasurementUnit.inches.centimeterStorageText(
+            from: "sleeve-inch-sentinel",
+            cmRange: 5...100
+        )
         #expect(
             GaugeFormView.reconciledSceneDraft(
                 values: inchValues,
@@ -1352,21 +1971,20 @@ struct DeterministicUIContractsTests {
                 to: .centimeters
             )
         )
-        #expect(reconciledValues[5] == "1")
-        #expect(Array(reconciledValues[0...4]) == Array(inchValues[0...4]))
-        let unchangedValues = view.rawTextValues
+        var expectedReconciledValues = inchValues
+        expectedReconciledValues.patternYoke = "1"
+        expectedReconciledValues.patternBody = "40"
+        expectedReconciledValues.patternSleeve = "sleeve-inch-sentinel"
+        #expect(reconciledValues == expectedReconciledValues)
+        view.applySceneDraft(values: inchValues, disclosure: true)
+        #expect(view.formValues == inchValues)
         #expect(view.reconcileSceneDraft(from: .centimeters, to: .inches) == nil)
-        #expect(view.rawTextValues == unchangedValues)
+        #expect(view.formValues == inchValues)
         let appliedValues = try #require(
             view.reconcileSceneDraft(from: .inches, to: .centimeters)
         )
-        #expect(
-            appliedValues ==
-                SceneDraftStore.reconcileInvalidInchProvenance(
-                    in: unchangedValues,
-                    for: .centimeters
-                )
-        )
+        #expect(appliedValues == expectedReconciledValues)
+        #expect(view.formValues == expectedReconciledValues)
         unit.wrappedValue = .centimeters
         view.finishEditing()
         var invalidDraft = GaugeFormDraft()
@@ -1377,7 +1995,7 @@ struct DeterministicUIContractsTests {
         view.undoReset()
         view.resetToDefaults()
         view.undoReset()
-        #expect(view.formDraft.rawValues.count == GaugeFormField.allCases.count)
+        #expect(view.formDraft.formValues == expectedReconciledValues)
 
         let telemetryCases: [
             (decision: StaticString?, expected: String?, perform: () -> Void)
@@ -1408,48 +2026,15 @@ struct DeterministicUIContractsTests {
             #expect(testCase.decision?.description == testCase.expected)
         }
 
-        let valuesBeforeNoOpUnitChange = view.formDraft.rawValues
+        let valuesBeforeNoOpUnitChange = view.formDraft.formValues
         #expect(
             {
                 view.measurementUnitChanged(.centimeters, .inches)
-                return view.formDraft.rawValues == valuesBeforeNoOpUnitChange
+                return view.formDraft.formValues == valuesBeforeNoOpUnitChange
             }()
         )
-        let stitchError = "Pattern stitch gauge is required."
-        #expect(
-            view.validationMessagesChanged(
-                [:],
-                [.patternStitches: stitchError],
-                isVoiceOverRunning: false
-            ) == nil
-        )
-        #expect(
-            view.validationMessagesChanged(
-                [:],
-                [:],
-                isVoiceOverRunning: true
-            ) == nil
-        )
-        #expect(
-            {
-                view.validationMessagesChanged(
-                    [:],
-                    [.patternStitches: stitchError]
-                )
-                return GaugeFormView.validationAnnouncement(
-                    previous: [:],
-                    current: [.patternStitches: stitchError],
-                    isVoiceOverRunning: true
-                ) == stitchError
-            }()
-        )
-        #expect(
-            view.validationMessagesChanged(
-                [:],
-                [.patternStitches: stitchError],
-                isVoiceOverRunning: true
-            ) == stitchError
-        )
+        view.applySceneDraft(values: uniqueFormValues, disclosure: true)
+        view.fieldFocusChanged(.patternRows, nil)
         let aboutHelp = ValueBox(AboutHelpState(isPresented: true))
         #expect(
             HostedViewProbe(
@@ -1480,23 +2065,27 @@ struct DeterministicUIContractsTests {
         let fallback = await GaugeFormView.shareItems(
             for: result,
             inputs: inputs,
-            unit: .centimeters,
-            exportDirectory: URL(fileURLWithPath: "/dev/null/share-exports")
+            unit: .inches,
+            imageFactory: { _ in nil }
         )
-        #expect(fallback.first is String)
+        let fallbackText = try #require(fallback.first as? String)
+        #expect(fallbackText.contains("32 st / 4 in"))
+        #expect(fallbackText.contains("24 rows / 4 in"))
+        #expect(!fallbackText.contains("/ 10 cm"))
 
         let shared = await GaugeFormView.shareItems(
             for: result,
             inputs: inputs,
             unit: .centimeters
         )
-        let url = try #require(shared.first as? URL)
-        #expect(FileManager.default.fileExists(atPath: url.path))
-        try FileManager.default.removeItem(at: url)
+        let image = try #require(shared.first as? UIImage)
+        #expect(image.size.width > 0)
+        #expect(image.size.height > 0)
 
         let instanceItems = await view.shareItems(for: result)
-        let instanceURL = try #require(instanceItems.first as? URL)
-        try FileManager.default.removeItem(at: instanceURL)
+        let instanceImage = try #require(instanceItems.first as? UIImage)
+        #expect(instanceImage.size.width > 0)
+        #expect(instanceImage.size.height > 0)
     }
 }
 
@@ -1506,14 +2095,91 @@ private struct Scenario {
     let yourRows: Double
     let stitchMismatch: Bool
     let rowMismatch: Bool
-    let stitchSummary: String
-    let rowSummary: String
+    let stitchPercent: Int
+    let rowPercent: Int
 }
 
 private struct OptionalScenario {
     let name: String
     let inputs: GaugeInputs
     let kinds: [ResultSectionKind]
+}
+
+private struct LayoutMeasurement {
+    let proposedWidth: CGFloat
+    let textSize: DynamicTypeSize
+    let size: CGSize
+}
+
+private extension Array where Element == LayoutMeasurement {
+    func measurement(
+        width: CGFloat,
+        textSize: DynamicTypeSize
+    ) -> LayoutMeasurement? {
+        first {
+            abs($0.proposedWidth - width) <= 0.5 &&
+                $0.textSize == textSize
+        }
+    }
+}
+
+private struct LayoutFixtureTile: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.headline)
+            Text(value)
+                .font(.body)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+    }
+}
+
+@MainActor
+private func requiredStepper(validationMessage: String?) -> some View {
+    let text = ValueBox("")
+    let focus = ValueBox<GaugeFormField?>(nil)
+    return GaugeStepperField(
+        title: "Stitches",
+        text: text.binding,
+        unit: "st",
+        field: .patternStitches,
+        validationMessage: validationMessage,
+        focusedField: focus.binding
+    )
+}
+
+@MainActor
+private func expectNaturalSizeMatrix<Content: View>(
+    _ name: String,
+    widths: [CGFloat],
+    textSizes: [DynamicTypeSize],
+    view: () -> Content
+) -> [LayoutMeasurement] {
+    var measurements: [LayoutMeasurement] = []
+    for width in widths {
+        for textSize in textSizes {
+            let probe = HostedViewProbe(
+                view().environment(\.dynamicTypeSize, textSize),
+                width: width
+            )
+            #expect(probe.hasFiniteNaturalSize, "\(name), \(width), \(textSize): finite size")
+            #expect(probe.fits(proposedWidth: width), "\(name), \(width), \(textSize): width")
+            measurements.append(
+                LayoutMeasurement(
+                    proposedWidth: width,
+                    textSize: textSize,
+                    size: probe.size
+                )
+            )
+        }
+    }
+    return measurements
 }
 
 @MainActor
@@ -1568,34 +2234,91 @@ private final class ActionRecorder {
 
 @MainActor
 private final class GaugeValueBindings {
-    private let values = [
-        ValueBox("32"), ValueBox("24"), ValueBox("32"), ValueBox("32"),
-        ValueBox(""), ValueBox(""), ValueBox(""), ValueBox(""), ValueBox(""),
-    ]
+    private let patternStitches: ValueBox<String>
+    private let patternRows: ValueBox<String>
+    private let yourStitches: ValueBox<String>
+    private let yourRows: ValueBox<String>
+    private let patternCastOn: ValueBox<String>
+    private let patternYoke: ValueBox<String>
+    private let patternBody: ValueBox<String>
+    private let patternSleeve: ValueBox<String>
+    private let patternIncreases: ValueBox<String>
     private let focus = ValueBox<GaugeFormField?>(nil)
     private let details = ValueBox(false)
     let unit = ValueBox(MeasurementUnit.centimeters)
+
+    init(
+        values: GaugeFormValues = GaugeFormValues(
+            patternStitches: "32",
+            patternRows: "24",
+            yourStitches: "32",
+            yourRows: "32"
+        )
+    ) {
+        patternStitches = ValueBox(values.patternStitches)
+        patternRows = ValueBox(values.patternRows)
+        yourStitches = ValueBox(values.yourStitches)
+        yourRows = ValueBox(values.yourRows)
+        patternCastOn = ValueBox(values.patternCastOn)
+        patternYoke = ValueBox(values.patternYoke)
+        patternBody = ValueBox(values.patternBody)
+        patternSleeve = ValueBox(values.patternSleeve)
+        patternIncreases = ValueBox(values.patternIncreases)
+    }
 
     var patternDetailsExpanded: Bool {
         get { details.value }
         set { details.value = newValue }
     }
 
-    func value(at index: Int) -> ValueBox<String> {
-        values[index]
+    var formValues: GaugeFormValues {
+        GaugeFormValues(
+            patternStitches: patternStitches.value,
+            patternRows: patternRows.value,
+            yourStitches: yourStitches.value,
+            yourRows: yourRows.value,
+            patternCastOn: patternCastOn.value,
+            patternYoke: patternYoke.value,
+            patternBody: patternBody.value,
+            patternSleeve: patternSleeve.value,
+            patternIncreases: patternIncreases.value
+        )
+    }
+
+    subscript(field: GaugeFormField) -> String {
+        get { formValues[keyPath: field.valueKeyPath] }
+        set { valueBox(for: field).value = newValue }
+    }
+
+    func binding(for field: GaugeFormField) -> Binding<String> {
+        valueBox(for: field).binding
+    }
+
+    private func valueBox(for field: GaugeFormField) -> ValueBox<String> {
+        switch field {
+        case .patternStitches: return patternStitches
+        case .patternRows: return patternRows
+        case .yourStitches: return yourStitches
+        case .yourRows: return yourRows
+        case .patternCastOn: return patternCastOn
+        case .patternYoke: return patternYoke
+        case .patternBody: return patternBody
+        case .patternSleeve: return patternSleeve
+        case .patternIncreases: return patternIncreases
+        }
     }
 
     var formView: GaugeFormView {
         GaugeFormView(
-            patternStitches: values[0].binding,
-            patternRows: values[1].binding,
-            yourStitches: values[2].binding,
-            yourRows: values[3].binding,
-            patternCastOn: values[4].binding,
-            patternYoke: values[5].binding,
-            patternBody: values[6].binding,
-            patternSleeve: values[7].binding,
-            patternIncreases: values[8].binding,
+            patternStitches: binding(for: .patternStitches),
+            patternRows: binding(for: .patternRows),
+            yourStitches: binding(for: .yourStitches),
+            yourRows: binding(for: .yourRows),
+            patternCastOn: binding(for: .patternCastOn),
+            patternYoke: binding(for: .patternYoke),
+            patternBody: binding(for: .patternBody),
+            patternSleeve: binding(for: .patternSleeve),
+            patternIncreases: binding(for: .patternIncreases),
             patternDetailsExpanded: details.binding,
             measurementUnit: unit.binding
         )
@@ -1607,17 +2330,17 @@ private final class GaugeValueBindings {
 
     func gaugeCard(validationMessages: [GaugeFormField: String]) -> some View {
         GaugeInputsCard(
-            patternStitches: values[0].binding,
-            patternRows: values[1].binding,
-            yourStitches: values[2].binding,
-            yourRows: values[3].binding,
+            patternStitches: binding(for: .patternStitches),
+            patternRows: binding(for: .patternRows),
+            yourStitches: binding(for: .yourStitches),
+            yourRows: binding(for: .yourRows),
+            unit: unit.binding,
             stitchMismatch: false,
             rowMismatch: true,
             stitchDelta: 0,
             rowDelta: 8,
             validationMessages: validationMessages,
-            focusedField: focus.binding,
-            onSubmit: {}
+            focusedField: focus.binding
         )
     }
 
@@ -1627,16 +2350,15 @@ private final class GaugeValueBindings {
 
     func patternInstructionsCard(expanded: Bool) -> PatternInstructionsCard {
         PatternInstructionsCard(
-            patternCastOn: values[4].binding,
-            patternYoke: values[5].binding,
-            patternBody: values[6].binding,
-            patternSleeve: values[7].binding,
-            patternIncreases: values[8].binding,
+            patternCastOn: binding(for: .patternCastOn),
+            patternYoke: binding(for: .patternYoke),
+            patternBody: binding(for: .patternBody),
+            patternSleeve: binding(for: .patternSleeve),
+            patternIncreases: binding(for: .patternIncreases),
             unit: unit.binding,
             isExpanded: ValueBox(expanded).binding,
             validationMessages: [:],
-            focusedField: focus.binding,
-            onSubmit: {}
+            focusedField: focus.binding
         )
     }
 }
@@ -1651,6 +2373,17 @@ private final class HostedViewProbe<Content: View> {
             controller.view.bounds.height >= size.height &&
             size.width.isFinite &&
             size.height.isFinite
+    }
+
+    var hasFiniteNaturalSize: Bool {
+        size.width.isFinite &&
+            size.height.isFinite &&
+            size.width > 0 &&
+            size.height > 0
+    }
+
+    func fits(proposedWidth: CGFloat) -> Bool {
+        hasFiniteNaturalSize && size.width <= proposedWidth + 0.5
     }
 
     init(

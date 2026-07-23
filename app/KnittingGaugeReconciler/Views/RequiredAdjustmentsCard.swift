@@ -33,7 +33,11 @@ struct ResultCardSemantics: Equatable {
     let rowSummary: String
     let castOnGuidance: String?
 
-    init(inputs: GaugeInputs, result: GaugeMathResult) {
+    init(
+        inputs: GaugeInputs,
+        result: GaugeMathResult,
+        unit: MeasurementUnit = .centimeters
+    ) {
         var kinds: [ResultSectionKind] = [.gaugeSummary]
         if inputs.patternYokeDepth != nil, result.adjustedYokeDepth != nil {
             kinds.append(.yokeDepth)
@@ -49,17 +53,23 @@ struct ResultCardSemantics: Equatable {
         }
         kinds.append(.actions)
         sectionKinds = kinds
+        let gaugeBasis = unit == .centimeters ? "10 cm" : "4 in"
+        let spokenGaugeBasis = unit == .centimeters ? "per 10 centimeters" : "per 4 inches"
         let stitchGaugeComparison =
-            "Pattern \(plain(inputs.patternStitches)) st/10 cm · Swatch \(plain(inputs.yourStitches)) st/10 cm"
+            "Pattern \(plain(inputs.patternStitches)) st/\(gaugeBasis) · " +
+            "Swatch \(plain(inputs.yourStitches)) st/\(gaugeBasis)"
         let rowGaugeComparison =
-            "Pattern \(plain(inputs.patternRows)) rows/10 cm · Swatch \(plain(inputs.yourRows)) rows/10 cm"
+            "Pattern \(plain(inputs.patternRows)) rows/\(gaugeBasis) · " +
+            "Swatch \(plain(inputs.yourRows)) rows/\(gaugeBasis)"
         stitchComparison = stitchGaugeComparison
         rowComparison = rowGaugeComparison
         stitchSummary =
-            "Stitch-wise, horizontal. \(stitchGaugeComparison). " +
+            "Stitch-wise, horizontal. Pattern \(plain(inputs.patternStitches)) stitches \(spokenGaugeBasis). " +
+            "Swatch \(plain(inputs.yourStitches)) stitches \(spokenGaugeBasis). " +
             "\(GaugeMath.fmtPct(result.stitchWidthScale))% of pattern width."
         rowSummary =
-            "Row-wise, vertical. \(rowGaugeComparison). " +
+            "Row-wise, vertical. Pattern \(plain(inputs.patternRows)) rows \(spokenGaugeBasis). " +
+            "Swatch \(plain(inputs.yourRows)) rows \(spokenGaugeBasis). " +
             "\(GaugeMath.fmtPct(result.rowCountScale))% of pattern row density."
         castOnGuidance = castOnGuidanceText(inputs: inputs, result: result)
     }
@@ -143,6 +153,23 @@ struct RequiredAdjustmentsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            Button(action: requestCorrection) {
+                Label("View results", systemImage: "wand.and.stars")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.cream)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(minWidth: 176, minHeight: 44)
+                    .padding(.horizontal, 18)
+                    .contentShape(Capsule())
+                    .background(AppTheme.sage)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .accessibilityLabel("View results")
+            .accessibilityValue(correctionMessage ?? "")
+            .accessibilityHint("Validates the form and focuses the first field that needs correction")
+
             if let result, let inputs {
                 LiveResultsView(
                     result: result,
@@ -151,45 +178,60 @@ struct RequiredAdjustmentsCard: View {
                     showFullMath: $showFullMath,
                     onShare: onShare
                 )
-            } else if let correctionMessage {
-                Button(action: requestCorrection) {
-                    Text(correctionMessage)
-                        .font(.caption)
-                        .foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint("Reveals and focuses the first field that needs correction")
             }
 
-            HStack(alignment: .center, spacing: 16) {
-                Button("Reset values", action: requestReset)
-                .buttonStyle(.plain)
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.ink)
-                .accessibilityHint("Opens a confirmation before replacing every entry")
-
-                if canUndoReset {
-                    Spacer()
-                    Button("Undo reset", action: onUndoReset)
-                        .buttonStyle(.plain)
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .accessibilityHint("Restores every value from before the last reset")
-                }
-            }
+            resetActions
         }
         .alert("Reset all values?", isPresented: $showResetConfirmation) {
             Button("Reset values", role: .destructive, action: onReset)
             Button("Keep editing", role: .cancel, action: keepEditing)
         } message: {
-            Text("This replaces every entry with the sample gauge values.")
+            Text("This clears every entry.")
         }
+    }
+
+    @ViewBuilder
+    private var resetActions: some View {
+        if canUndoReset {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 16) {
+                    resetButton
+                        .fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 0)
+                    undoResetButton
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    resetButton
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    undoResetButton
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        } else {
+            resetButton
+        }
+    }
+
+    private var resetButton: some View {
+        Button("Reset values", action: requestReset)
+            .buttonStyle(.plain)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(AppTheme.ink)
+            .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+            .accessibilityHint("Opens a confirmation before replacing every entry")
+    }
+
+    private var undoResetButton: some View {
+        Button("Undo reset", action: onUndoReset)
+            .buttonStyle(.plain)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.primary)
+            .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+            .accessibilityHint("Restores every value from before the last reset")
     }
 }
 
@@ -324,7 +366,7 @@ struct LiveResultsView: View {
     }
 
     private var semantics: ResultCardSemantics {
-        ResultCardSemantics(inputs: inputs, result: result)
+        ResultCardSemantics(inputs: inputs, result: result, unit: unit)
     }
 
     func activityView(_ payload: ShareSheetPayload) -> some View {
@@ -432,7 +474,7 @@ struct LiveResultsView: View {
                         .foregroundStyle(AppTheme.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
-                        .background(AppTheme.oatmeal)
+                        .background(AppTheme.accentSoft)
                         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 }
             }
@@ -441,9 +483,10 @@ struct LiveResultsView: View {
 
     // swiftlint:disable line_length
     var fullMathBreakdown: String {
+        let gaugeBasis = unit == .centimeters ? "10 centimeters" : "4 inches"
         var lines = [
-            "pattern: \(plain(inputs.patternStitches)) st x \(plain(inputs.patternRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.patternStitches / inputs.patternRows)))",
-            "you:     \(plain(inputs.yourStitches)) st x \(plain(inputs.yourRows)) rows per 10cm (aspect \(String(format: "%.2f", inputs.yourStitches / inputs.yourRows)))",
+            "pattern: \(plain(inputs.patternStitches)) st x \(plain(inputs.patternRows)) rows per \(gaugeBasis) (aspect \(String(format: "%.2f", inputs.patternStitches / inputs.patternRows)))",
+            "you:     \(plain(inputs.yourStitches)) st x \(plain(inputs.yourRows)) rows per \(gaugeBasis) (aspect \(String(format: "%.2f", inputs.yourStitches / inputs.yourRows)))",
             "stitch width scale = pattern_st / your_st = \(plain(inputs.patternStitches)) / \(plain(inputs.yourStitches)) = \(String(format: "%.3f", result.stitchWidthScale))",
             "row density ratio  = your_row / pattern_row = \(plain(inputs.yourRows)) / \(plain(inputs.patternRows)) = \(String(format: "%.3f", result.rowCountScale))",
             "section rows       = section cm x your_row / 10",
@@ -535,14 +578,7 @@ private struct HeroTile: View {
             Text(value)
                 .font(.system(.title2, design: .monospaced).weight(.bold))
                 .foregroundStyle(AppTheme.ink)
-            Text(status)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(colorScheme == .dark && status != "Match" ? .black : .white)
-                .padding(.horizontal, 10)
-                .padding(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-                .frame(minHeight: 44)
-                .background(tileBackground(status))
-                .clipShape(Capsule())
+            statusBadge
             Text(detail)
                 .font(.caption2)
                 .foregroundStyle(AppTheme.muted)
@@ -555,6 +591,29 @@ private struct HeroTile: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(status)
+    }
+
+    private var statusBadge: some View {
+        ViewThatFits(in: .horizontal) {
+            statusText
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .clipShape(Capsule())
+
+            statusText
+                .fixedSize(horizontal: false, vertical: true)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private var statusText: some View {
+        Text(status)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(colorScheme == .dark && status != "Match" ? .black : .white)
+            .padding(.horizontal, 10)
+            .padding(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+            .frame(minHeight: 44)
+            .background(tileBackground(status))
     }
 
     // swiftlint:disable:next identifier_name

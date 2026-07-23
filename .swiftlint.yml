@@ -8,6 +8,7 @@ excluded:
 opt_in_rules:
   - accessibility_label_for_image
   - accessibility_trait_for_button
+  - force_unwrapping
 
 # Disable noisy rules that don't apply
 disabled_rules:
@@ -60,4 +61,23 @@ custom_rules:
     name: "dynamicTypeSize partial-range ceiling"
     message: 'dynamicTypeSize cap clamps Dynamic Type growth — banned per accessibility decision; reflow with ViewThatFits instead. In a #Preview use .environment(\.dynamicTypeSize, .accessibilityN) not a view modifier.'
     regex: '\.dynamicTypeSize\(\.\.\.' # PartialRangeThrough ceiling pattern
+    severity: error
+
+  no_share_exports:
+    name: "Legacy ShareExports type"
+    message: "ShareExports is retired; use the current share/export model instead."
+    regex: '\bShareExports\b'
+    severity: error
+
+  no_user_defaults_synchronize:
+    name: "UserDefaults synchronize"
+    message: "UserDefaults.standard.synchronize() is unnecessary and must not be used."
+    regex: 'UserDefaults\.standard\.synchronize\s*\(\s*\)'
+    severity: error
+
+  no_positional_form_values:
+    name: "Positional draft/form value access"
+    message: "Use GaugeFormField/key-path access instead of numeric positions in draft or form values."
+    included: '.*/ContentView(?:Helpers)?\.swift'
+    regex: '\b(?:draft(?:\.[A-Za-z_][A-Za-z0-9_]*)?|(?:rawText|form)?[Vv]alues)\s*\[\s*[0-9]+\s*\]|\bdraftBinding\s*\([^,\n]+,\s*at:\s*[0-9]+\s*\)'
     severity: error

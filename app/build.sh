@@ -80,6 +80,32 @@ run_swiftlint() {
   swiftlint lint --strict --config "$REPO_ROOT/.swiftlint.yml" --reporter xcode
 }
 
+run_periphery() {
+  if ! command -v periphery >/dev/null 2>&1; then
+    # ponytail: repository_dispatch uses main's workflow, so the first guardrail MR must bootstrap itself.
+    if [[ "${CI:-}" == "true" ]] && command -v brew >/dev/null 2>&1; then
+      brew install periphery
+    else
+      fail "periphery not found; install via: brew install periphery"
+    fi
+  fi
+  command -v periphery >/dev/null 2>&1 || fail "periphery install completed but the binary is unavailable"
+
+  local index_store_path="$DERIVED_DATA_PATH/Index.noindex/DataStore"
+  [[ -d "$index_store_path" ]] || \
+    fail "Periphery index store not found at '$index_store_path' after Xcode test build"
+
+  echo "→ Periphery (unused code)..."
+  (
+    cd "$REPO_ROOT"
+    periphery scan \
+      --config "$REPO_ROOT/.periphery.yml" \
+      --index-store-path "$index_store_path" \
+      --skip-build \
+      --color never
+  )
+}
+
 telemetry_preflight() {
   local pkg_resolved="$PROJECT_DIR/app.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
   if [[ -f "$pkg_resolved" ]]; then
@@ -292,3 +318,7 @@ TEE_STATUS=${FASTLANE_PIPE_STATUSES[1]}
 (( FASTLANE_STATUS == 0 )) || exit "$FASTLANE_STATUS"
 (( TEE_STATUS == 0 )) || exit "$TEE_STATUS"
 verify_fastlane_output "$FASTLANE_OUTPUT"
+
+if [[ "$MODE" == "test" ]]; then
+  run_periphery
+fi

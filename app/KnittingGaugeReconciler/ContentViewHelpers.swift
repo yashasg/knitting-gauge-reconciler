@@ -1,18 +1,7 @@
 // Issue #134 keeps the small form/help contracts beside the state helpers they exercise.
 import SwiftUI
 
-func newValidationAnnouncement(
-    previous: [GaugeFormField: String],
-    current: [GaugeFormField: String]
-) -> String? {
-    GaugeFormField.allCases.first(where: {
-        previous[$0] != current[$0] && current[$0] != nil
-    }).flatMap { current[$0] }
-}
-
 enum SceneDraftStore {
-    private static let rawValueCount = GaugeFormField.allCases.count
-
     static let patternStitchesKey = "gauge.pattern-stitches"
     static let patternRowsKey = "gauge.pattern-rows"
     static let yourStitchesKey = "gauge.your-stitches"
@@ -25,19 +14,29 @@ enum SceneDraftStore {
     static let disclosureKey = "gauge.pattern-details-expanded"
 
     static func reconcileInvalidInchProvenance(
-        in values: [String],
+        in values: GaugeFormValues,
         for unit: MeasurementUnit
-    ) -> [String] {
-        guard unit == .centimeters, values.count == rawValueCount else { return values }
+    ) -> GaugeFormValues {
+        guard unit == .centimeters else { return values }
         var reconciled = values
-        for index in 5...7 {
-            reconciled[index] = MeasurementUnit.inches.storageText(
-                values[index],
-                transitioningTo: unit
-            )
-        }
+        reconcileInvalidInchProvenance(for: .patternYoke, in: &reconciled, unit: unit)
+        reconcileInvalidInchProvenance(for: .patternBody, in: &reconciled, unit: unit)
+        reconcileInvalidInchProvenance(for: .patternSleeve, in: &reconciled, unit: unit)
         return reconciled
     }
+
+    private static func reconcileInvalidInchProvenance(
+        for field: GaugeFormField,
+        in values: inout GaugeFormValues,
+        unit: MeasurementUnit
+    ) {
+        guard field.storageClassification == .centimeterLength else { return }
+        values[keyPath: field.valueKeyPath] = MeasurementUnit.inches.storageText(
+            values[keyPath: field.valueKeyPath],
+            transitioningTo: unit
+        )
+    }
+
 }
 
 // MARK: - ActivityView
@@ -55,29 +54,23 @@ struct ActivityView: UIViewControllerRepresentable {
 // MARK: - GaugeTextDefaults
 
 struct GaugeTextDefaults {
-    let patternStitches = "32"
-    let patternRows = "24"
-    let yourStitches = "32"
-    let yourRows = "32"
+    let values = GaugeFormValues()
 
-    var resetSceneDraftValues: [String] {
-        [
-            patternStitches,
-            patternRows,
-            yourStitches,
-            yourRows,
-            "",
-            "",
-            "",
-            "",
-            "",
-        ]
-    }
+    var patternStitches: String { values.patternStitches }
+    var patternRows: String { values.patternRows }
+    var yourStitches: String { values.yourStitches }
+    var yourRows: String { values.yourRows }
+
 }
 
 // MARK: - GaugeFormField
 
 enum GaugeFormField: CaseIterable, Hashable {
+    enum StorageClassification: Equatable {
+        case text
+        case centimeterLength
+    }
+
     case patternStitches
     case patternRows
     case yourStitches
@@ -87,6 +80,30 @@ enum GaugeFormField: CaseIterable, Hashable {
     case patternBody
     case patternSleeve
     case patternIncreases
+
+    var valueKeyPath: WritableKeyPath<GaugeFormValues, String> {
+        switch self {
+        case .patternStitches: return \.patternStitches
+        case .patternRows: return \.patternRows
+        case .yourStitches: return \.yourStitches
+        case .yourRows: return \.yourRows
+        case .patternCastOn: return \.patternCastOn
+        case .patternYoke: return \.patternYoke
+        case .patternBody: return \.patternBody
+        case .patternSleeve: return \.patternSleeve
+        case .patternIncreases: return \.patternIncreases
+        }
+    }
+
+    var storageClassification: StorageClassification {
+        switch self {
+        case .patternYoke, .patternBody, .patternSleeve:
+            return .centimeterLength
+        case .patternStitches, .patternRows, .yourStitches, .yourRows,
+             .patternCastOn, .patternIncreases:
+            return .text
+        }
+    }
 
     var mathField: GaugeMath.Field {
         switch self {
@@ -124,31 +141,76 @@ enum GaugeFormField: CaseIterable, Hashable {
             return true
         }
     }
+
+    var isRequired: Bool {
+        !isPatternDetail
+    }
+}
+
+// MARK: - GaugeFormValues
+
+struct GaugeFormValues: Equatable {
+    var patternStitches: String
+    var patternRows: String
+    var yourStitches: String
+    var yourRows: String
+    var patternCastOn: String
+    var patternYoke: String
+    var patternBody: String
+    var patternSleeve: String
+    var patternIncreases: String
+
+    init(
+        patternStitches: String = "",
+        patternRows: String = "",
+        yourStitches: String = "",
+        yourRows: String = "",
+        patternCastOn: String = "",
+        patternYoke: String = "",
+        patternBody: String = "",
+        patternSleeve: String = "",
+        patternIncreases: String = ""
+    ) {
+        self.patternStitches = patternStitches
+        self.patternRows = patternRows
+        self.yourStitches = yourStitches
+        self.yourRows = yourRows
+        self.patternCastOn = patternCastOn
+        self.patternYoke = patternYoke
+        self.patternBody = patternBody
+        self.patternSleeve = patternSleeve
+        self.patternIncreases = patternIncreases
+    }
+
+    subscript(field: GaugeFormField) -> String {
+        get { self[keyPath: field.valueKeyPath] }
+        set { self[keyPath: field.valueKeyPath] = newValue }
+    }
+
 }
 
 // MARK: - GaugeFormDraft
 
 struct GaugeFormDraft: Equatable {
-    private var values: [GaugeFormField: String]
+    private var values: GaugeFormValues
     var unit: MeasurementUnit
     var patternDetailsExpanded: Bool
     var focusedField: GaugeFormField?
 
     init(
-        values: [String] = GaugeTextDefaults().resetSceneDraftValues,
+        values: GaugeFormValues = GaugeTextDefaults().values,
         unit: MeasurementUnit = .centimeters,
         patternDetailsExpanded: Bool = false,
         focusedField: GaugeFormField? = nil
     ) {
-        precondition(values.count == GaugeFormField.allCases.count)
-        self.values = Dictionary(uniqueKeysWithValues: zip(GaugeFormField.allCases, values))
+        self.values = values
         self.unit = unit
         self.patternDetailsExpanded = patternDetailsExpanded
         self.focusedField = focusedField
     }
 
-    var rawValues: [String] {
-        GaugeFormField.allCases.map { values[$0]! }
+    var formValues: GaugeFormValues {
+        values
     }
 
     var inputs: GaugeInputs? {
@@ -187,7 +249,7 @@ struct GaugeFormDraft: Equatable {
     }
 
     subscript(field: GaugeFormField) -> String {
-        get { values[field]! }
+        get { values[field] }
         set { values[field] = newValue }
     }
 
@@ -235,9 +297,7 @@ struct GaugeFormDraft: Equatable {
 
     mutating func reset() -> GaugeFormDraft {
         let snapshot = self
-        values = Dictionary(
-            uniqueKeysWithValues: zip(GaugeFormField.allCases, GaugeTextDefaults().resetSceneDraftValues)
-        )
+        values = GaugeTextDefaults().values
         patternDetailsExpanded = false
         focusedField = nil
         return snapshot

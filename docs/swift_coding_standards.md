@@ -180,12 +180,27 @@ These rules catch Human Interface Guideline violations before review. All are en
 | `navigation_stack_in_sheet` | error | `NavigationStack` inside `.sheet` — competing gestures suppress swipe-to-dismiss (HIG §Navigation) |
 | `color_literal_rgb` | error | `Color(red:green:blue:)` — use Color Assets for dark mode (HIG §Color) |
 | `missing_min_touch_target` | error | `.padding(.vertical, N)` where N < 12 — may drop below 44 pt hit target (HIG §Buttons) |
-| `no_minimum_scale_factor` | error | `.minimumScaleFactor(…)` — shrinks text below the user's chosen Dynamic Type size (see §3.3) |
-| `no_dynamic_type_cap` | error | `.dynamicTypeSize(…DynamicTypeSize.xxx)` — PartialRangeThrough ceiling caps Dynamic Type growth (see §3.3) |
+| `no_minimum_scale_factor` | error | `.minimumScaleFactor(…)` — shrinks text below the user's chosen Dynamic Type size (see §3.4) |
+| `no_dynamic_type_cap` | error | `.dynamicTypeSize(…DynamicTypeSize.xxx)` — PartialRangeThrough ceiling caps Dynamic Type growth (see §3.4) |
 
-Also enabled: `accessibility_label_for_image` (opt-in built-in rule).
+Also enabled: `accessibility_label_for_image`, `accessibility_trait_for_button`, and
+`force_unwrapping` (opt-in built-in rules).
 
-### 3.3 Dynamic Type accessibility rules (banned modifiers)
+### 3.3 Regression and dead-code gates
+
+Production Swift also rejects these regressions:
+
+| Rule ID | What it catches |
+|---|---|
+| `no_share_exports` | Persistent `ShareExports` file plumbing; share images stay in memory. |
+| `no_user_defaults_synchronize` | Forced `UserDefaults.standard.synchronize()` calls. |
+| `no_positional_form_values` | Numeric indexing into persisted form/draft values. |
+
+`./app/build.sh test` runs strict Periphery after the test build using its index
+store. Any unused declaration or parameter fails the command; fix the dead code
+instead of adding a baseline or broad exclusion.
+
+### 3.4 Dynamic Type accessibility rules (banned modifiers)
 
 **Decision date:** 2026-06-02. **Background:** MR !43 removed all Dynamic Type caps from the codebase and replaced them with `ViewThatFits` reflow. These two SwiftLint rules guard against regression.
 

@@ -75,7 +75,6 @@ struct GaugeStepperField: View {
     private let accessibilityLabel: String
     private let displayUnit: MeasurementUnit?
     private let focusedField: Binding<GaugeFormField?>
-    private let onSubmit: () -> Void
     private let range: ClosedRange<Int>
     private let hasMismatch: Bool
     private let mismatchLabel: String?
@@ -91,6 +90,7 @@ struct GaugeStepperField: View {
         text: String,
         unit: String,
         fieldLabel: String,
+        isRequired: Bool = false,
         validationMessage: String? = nil,
         mismatchLabel: String? = nil,
         mismatchDelta: Double? = nil
@@ -106,13 +106,16 @@ struct GaugeStepperField: View {
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         var valueParts = [trimmed.isEmpty ? "Empty" : "\(trimmed) \(spokenUnit)"]
+        if isRequired {
+            valueParts.append("Required")
+        }
         if let mismatchLabel, let firstCharacter = mismatchLabel.first {
             valueParts.append(firstCharacter.lowercased() + String(mismatchLabel.dropFirst()))
         }
         if let mismatchDelta {
             valueParts.append(fmtGaugeDelta(mismatchDelta))
         }
-        if let validationMessage {
+        if let validationMessage, !(isRequired && trimmed.isEmpty) {
             valueParts.append(validationMessage)
         }
         let fieldHint: String
@@ -184,7 +187,6 @@ struct GaugeStepperField: View {
         accessibilityLabel: String? = nil,
         displayUnit: MeasurementUnit? = nil,
         focusedField: Binding<GaugeFormField?>,
-        onSubmit: @escaping () -> Void,
         range: ClosedRange<Int> = 1...99,
         hasMismatch: Bool = false,
         mismatchLabel: String? = nil,
@@ -199,7 +201,6 @@ struct GaugeStepperField: View {
         self.accessibilityLabel = accessibilityLabel ?? title
         self.displayUnit = displayUnit
         self.focusedField = focusedField
-        self.onSubmit = onSubmit
         self.range = range
         self.hasMismatch = hasMismatch
         self.mismatchLabel = mismatchLabel
@@ -232,6 +233,7 @@ struct GaugeStepperField: View {
             text: text,
             unit: unit,
             fieldLabel: accessibilityLabel,
+            isRequired: field.isRequired,
             validationMessage: validationMessage,
             mismatchLabel: mismatchSentence,
             mismatchDelta: mismatchDelta
@@ -241,6 +243,14 @@ struct GaugeStepperField: View {
     private var mismatchDeltaText: String? {
         guard hasMismatch, let mismatchDelta else { return nil }
         return fmtGaugeDelta(mismatchDelta)
+    }
+
+    private var visibleValidationMessage: String? {
+        guard let validationMessage else { return nil }
+        guard case .failure(.required) = GaugeMath.validate(validationText, for: field.mathField) else {
+            return validationMessage
+        }
+        return "Required"
     }
 
     private func mismatchBadge(_ text: String) -> some View {
@@ -286,21 +296,32 @@ struct GaugeStepperField: View {
                         }
                     }
                 } else {
-                    HStack(alignment: .center, spacing: 8) {
-                        Text(title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppTheme.muted)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .center, spacing: 8) {
+                            Text(title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppTheme.muted)
+                                .fixedSize(horizontal: true, vertical: false)
 
-                        if let mismatchDeltaText {
-                            mismatchBadge(mismatchDeltaText)
+                            if let mismatchDeltaText {
+                                mismatchBadge(mismatchDeltaText)
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppTheme.muted)
+
+                            if let mismatchDeltaText {
+                                mismatchBadge(mismatchDeltaText)
+                            }
                         }
                     }
                 }
             }
-            // Pin the title row height so the delta pill (caption2 + capsule
-            // padding) cannot push the field downward when mismatch toggles.
-            // Both states (with and without pill) occupy identical vertical
-            // space, keeping paired fields aligned.
+            // Keep the horizontal title row stable when mismatch toggles;
+            // adaptive stacked layouts remain free to expand vertically.
             .frame(minHeight: 22, alignment: .leading)
             .padding(.bottom, 8)
 
@@ -316,8 +337,7 @@ struct GaugeStepperField: View {
                     validationText: validationText,
                     displayUnit: displayUnit,
                     range: range,
-                    pickerRequest: pickerRequest,
-                    onSubmit: onSubmit
+                    pickerRequest: pickerRequest
                 )
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .padding(.horizontal, 12)
@@ -357,14 +377,18 @@ struct GaugeStepperField: View {
             )
             .accessibilityElement(children: .contain)
 
-            if let validationMessage {
-                Text(validationMessage)
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.mismatchText)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            Label(
+                visibleValidationMessage ?? " ",
+                systemImage: "exclamationmark.circle.fill"
+            )
+            .font(.caption)
+            .imageScale(.small)
+            .foregroundStyle(AppTheme.mismatchText)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .opacity(visibleValidationMessage == nil ? 0 : 1)
+            .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -397,7 +421,6 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
     private let displayUnit: MeasurementUnit?
     private let range: ClosedRange<Int>
     private let pickerRequest: Int
-    private let onSubmit: () -> Void
 
     init(
         text: Binding<String>,
@@ -410,8 +433,7 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         validationText: String? = nil,
         displayUnit: MeasurementUnit? = nil,
         range: ClosedRange<Int> = 1...99,
-        pickerRequest: Int = 0,
-        onSubmit: @escaping () -> Void
+        pickerRequest: Int = 0
     ) {
         self._text = text
         self.field = field
@@ -424,7 +446,6 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         self.displayUnit = displayUnit
         self.range = range
         self.pickerRequest = pickerRequest
-        self.onSubmit = onSubmit
     }
 
     func makeCoordinator() -> Coordinator {
@@ -456,13 +477,17 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
 
         let toolbar = UIToolbar()
         toolbar.autoresizingMask = [.flexibleWidth]
+        let flexibleSpace = UIBarButtonItem(
+            barButtonSystemItem: .flexibleSpace,
+            target: nil,
+            action: nil
+        )
         let done = UIBarButtonItem(
-            title: "Done",
-            style: .done,
+            barButtonSystemItem: .done,
             target: context.coordinator,
             action: #selector(Coordinator.didTapDone)
         )
-        toolbar.items = [done]
+        toolbar.items = [flexibleSpace, done]
         toolbar.sizeToFit()
         textField.inputAccessoryView = toolbar
         return textField
@@ -575,7 +600,7 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
             }
             textField?.inputView = nil
             textField?.reloadInputViews()
-            parent.onSubmit()
+            textField?.resignFirstResponder()
         }
 
         func adjust(by adjustment: Int) {

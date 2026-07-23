@@ -199,12 +199,12 @@ struct ResultsExportSummary: Equatable {
 
     init(inputs: GaugeInputs, result: GaugeMathResult, unit: MeasurementUnit = .centimeters) {
         patternGauge = GaugePair(
-            stitches: "\(plain(inputs.patternStitches)) st / 10 cm",
-            rows: "\(plain(inputs.patternRows)) rows / 10 cm"
+            stitches: "\(plain(inputs.patternStitches)) st / \(unit.gaugeBasis)",
+            rows: "\(plain(inputs.patternRows)) rows / \(unit.gaugeBasis)"
         )
         swatchGauge = GaugePair(
-            stitches: "\(plain(inputs.yourStitches)) st / 10 cm",
-            rows: "\(plain(inputs.yourRows)) rows / 10 cm"
+            stitches: "\(plain(inputs.yourStitches)) st / \(unit.gaugeBasis)",
+            rows: "\(plain(inputs.yourRows)) rows / \(unit.gaugeBasis)"
         )
         stitchMetric = Metric(
             title: "Stitch-wise",

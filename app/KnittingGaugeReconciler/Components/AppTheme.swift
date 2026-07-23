@@ -34,6 +34,11 @@ enum AppTheme {
             background: "app-theme-sage",
             minimumRatio: 4.5
         ),
+        ContrastPair(
+            foreground: "app-theme-muted",
+            background: "app-theme-accent-soft",
+            minimumRatio: 4.5
+        ),
     ]
 
     static let background       = Color("app-theme-background", bundle: appResourceBundle)

@@ -107,6 +107,7 @@ def lane_test_options(options, extra_xcargs: nil)
     scheme: APP_SCHEME,
     configuration: options[:configuration] || "Debug",
     derived_data_path: lane_derived_data_path(options),
+    clean: true,
     code_coverage: true,
     result_bundle_path: result_bundle_path,
     xcargs: [

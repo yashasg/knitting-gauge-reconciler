@@ -123,6 +123,8 @@ struct GaugeFormView: View {
     @Binding private var patternDetailsExpanded: Bool
     @Binding private var measurementUnit: MeasurementUnit
 
+    private let navigationTitle: String
+
     @State private var showFullMath = false
     @State private var aboutHelp = AboutHelpState()
     @State private var resetSnapshot = ResetSnapshot()
@@ -141,7 +143,8 @@ struct GaugeFormView: View {
         patternSleeve: Binding<String>,
         patternIncreases: Binding<String>,
         patternDetailsExpanded: Binding<Bool>,
-        measurementUnit: Binding<MeasurementUnit>
+        measurementUnit: Binding<MeasurementUnit>,
+        navigationTitle: String = "Stitchwise"
     ) {
         _patternStitches = patternStitches
         _patternRows = patternRows
@@ -154,6 +157,7 @@ struct GaugeFormView: View {
         _patternIncreases = patternIncreases
         _patternDetailsExpanded = patternDetailsExpanded
         _measurementUnit = measurementUnit
+        self.navigationTitle = navigationTitle
     }
 
     // MARK: - Derived
@@ -196,17 +200,20 @@ struct GaugeFormView: View {
 
     // MARK: - Body
 
+    @ViewBuilder
     var body: some View {
         let currentInputs = inputs
         let currentResult = Self.computeResult(currentInputs)
-        return navigationContent(
-            currentInputs: currentInputs,
-            currentResult: currentResult
-        )
+        NavigationStack {
+            workspaceContent(
+                currentInputs: currentInputs,
+                currentResult: currentResult
+            )
+        }
     }
 
     // swiftlint:disable:next function_body_length
-    private func navigationContent(
+    private func workspaceContent(
         currentInputs: GaugeInputs?,
         currentResult: GaugeMathResult?
     ) -> some View {
@@ -214,82 +221,80 @@ struct GaugeFormView: View {
         let aboutSheet = SheetContentProvider(
             content: Self.aboutHelpSheet(state: $aboutHelp)
         )
-        return NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: cardSpacing) {
-                    GaugeInputsCard(
-                        patternStitches: draftBinding(for: .patternStitches),
-                        patternRows: draftBinding(for: .patternRows),
-                        yourStitches: draftBinding(for: .yourStitches),
-                        yourRows: draftBinding(for: .yourRows),
-                        unit: measurementUnitBinding,
-                        stitchMismatch: inputPresentation.stitchMismatch,
-                        rowMismatch: inputPresentation.rowMismatch,
-                        stitchDelta: inputPresentation.stitchDelta,
-                        rowDelta: inputPresentation.rowDelta,
-                        validationMessages: validationMessages,
-                        focusedField: $focusedField,
-                    )
-                    PatternInstructionsCard(
-                        patternCastOn: draftBinding(for: .patternCastOn),
-                        patternYoke: draftBinding(for: .patternYoke),
-                        patternBody: draftBinding(for: .patternBody),
-                        patternSleeve: draftBinding(for: .patternSleeve),
-                        patternIncreases: draftBinding(for: .patternIncreases),
-                        unit: measurementUnitBinding,
-                        isExpanded: patternDetailsBinding,
-                        validationMessages: validationMessages,
-                        focusedField: $focusedField,
-                    )
-                    RequiredAdjustmentsCard(
-                        result: currentResult,
-                        inputs: currentInputs,
-                        correctionMessage: firstValidationMessage,
-                        unit: measurementUnit,
-                        showFullMath: $showFullMath,
-                        canUndoReset: canUndoReset,
-                        onCorrect: finishEditing,
-                        onReset: resetToDefaults,
-                        onUndoReset: undoReset,
-                        onShare: shareItems
-                    )
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 16)
-                .frame(maxWidth: 760)
-                .frame(maxWidth: .infinity)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: cardSpacing) {
+                GaugeInputsCard(
+                    patternStitches: draftBinding(for: .patternStitches),
+                    patternRows: draftBinding(for: .patternRows),
+                    yourStitches: draftBinding(for: .yourStitches),
+                    yourRows: draftBinding(for: .yourRows),
+                    unit: measurementUnitBinding,
+                    stitchMismatch: inputPresentation.stitchMismatch,
+                    rowMismatch: inputPresentation.rowMismatch,
+                    stitchDelta: inputPresentation.stitchDelta,
+                    rowDelta: inputPresentation.rowDelta,
+                    validationMessages: validationMessages,
+                    focusedField: $focusedField,
+                )
+                PatternInstructionsCard(
+                    patternCastOn: draftBinding(for: .patternCastOn),
+                    patternYoke: draftBinding(for: .patternYoke),
+                    patternBody: draftBinding(for: .patternBody),
+                    patternSleeve: draftBinding(for: .patternSleeve),
+                    patternIncreases: draftBinding(for: .patternIncreases),
+                    unit: measurementUnitBinding,
+                    isExpanded: patternDetailsBinding,
+                    validationMessages: validationMessages,
+                    focusedField: $focusedField,
+                )
+                RequiredAdjustmentsCard(
+                    result: currentResult,
+                    inputs: currentInputs,
+                    correctionMessage: firstValidationMessage,
+                    unit: measurementUnit,
+                    showFullMath: $showFullMath,
+                    canUndoReset: canUndoReset,
+                    onCorrect: finishEditing,
+                    onReset: resetToDefaults,
+                    onUndoReset: undoReset,
+                    onShare: shareItems
+                )
             }
-            // While a help sheet is presented, the underlying view is still rendered
-            // (dimmed) behind the sheet. Apple's accessibility audit traverses every
-            // visible element — including bare body paragraphs that legitimately
-            // render in full width. Mark the main content inert to a11y while a
-            // *help* sheet is up so the audit focuses on the sheet itself.
-            //
-            // Modal sheets own accessibility focus while presented. Their roots
-            // explicitly opt back in below so underlying controls are not audited
-            // through the system dimming layer.
-            .accessibilityHidden(aboutHelp.isPresented)
-            .navigationTitle("Stitchwise")
-            .background(
-                ZStack {
-                    AppTheme.background
-                    TexturedBackground()
-                }
-                .ignoresSafeArea()
-            )
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    AboutHelpToolbarButton(state: $aboutHelp)
-                }
-            }
-            .sheet(isPresented: $aboutHelp.isPresented, content: aboutSheet.contentView)
-            .onChange(of: aboutHelp.isPresented, helpPresentationChanged)
-            .onChange(of: measurementUnit, measurementUnitChanged)
-            .onChange(of: focusedField, fieldFocusChanged)
-            .onChange(of: Self.hasCastOnDrift(currentResult), castOnDriftChanged)
-            .onAppear(perform: sceneDidAppear)
+            .padding(.horizontal, Spacing.margin)
+            .padding(.top, Spacing.inner)
+            .padding(.bottom, Spacing.margin)
+            .frame(maxWidth: Sizing.maximumCalculatorWidth)
+            .frame(maxWidth: .infinity)
         }
+        // While a help sheet is presented, the underlying view is still rendered
+        // (dimmed) behind the sheet. Apple's accessibility audit traverses every
+        // visible element — including bare body paragraphs that legitimately
+        // render in full width. Mark the main content inert to a11y while a
+        // *help* sheet is up so the audit focuses on the sheet itself.
+        //
+        // Modal sheets own accessibility focus while presented. Their roots
+        // explicitly opt back in below so underlying controls are not audited
+        // through the system dimming layer.
+        .accessibilityHidden(aboutHelp.isPresented)
+        .navigationTitle(navigationTitle)
+        .background(
+            ZStack {
+                AppTheme.background
+                TexturedBackground()
+            }
+            .ignoresSafeArea()
+        )
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                AboutHelpToolbarButton(state: $aboutHelp)
+            }
+        }
+        .sheet(isPresented: $aboutHelp.isPresented, content: aboutSheet.contentView)
+        .onChange(of: aboutHelp.isPresented, helpPresentationChanged)
+        .onChange(of: measurementUnit, measurementUnitChanged)
+        .onChange(of: focusedField, fieldFocusChanged)
+        .onChange(of: Self.hasCastOnDrift(currentResult), castOnDriftChanged)
+        .onAppear(perform: sceneDidAppear)
     }
 
     static func aboutHelpSheet(state: Binding<AboutHelpState>) -> some View {
@@ -557,24 +562,24 @@ struct AboutHelpSheet: View {
 
 struct AboutHelpContent: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: Spacing.roomy) {
             Text(AboutHelpContract.openLabel)
-                .font(.title3.weight(.bold))
+                .font(.satoshiTitle3.weight(.bold))
                 .foregroundStyle(AppTheme.sage)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             Text(AboutHelpContract.explanation)
-                .font(.body)
+                .font(.satoshiBody)
                 .lineSpacing(4)
                 .foregroundStyle(AppTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Text(AboutHelpContract.math)
-                .font(.body)
+                .font(.satoshiBody)
                 .lineSpacing(4)
                 .foregroundStyle(AppTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Text(AboutHelpContract.scope)
-                .font(.body.weight(.semibold))
+                .font(.satoshiBody.weight(.semibold))
                 .lineSpacing(4)
                 .foregroundStyle(AppTheme.warningText)
                 .fixedSize(horizontal: false, vertical: true)
@@ -583,23 +588,23 @@ struct AboutHelpContent: View {
                 .background(AppTheme.warningBackground)
                 .overlay(alignment: .leading) {
                     Rectangle()
-                        .frame(width: 3)
+                        .frame(width: Sizing.emphasisBarWidth)
                         .foregroundStyle(AppTheme.warningAccent)
                         .accessibilityHidden(true)
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.extraSmall, style: .continuous))
             Text(AboutHelpContract.nonAffiliation)
-                .font(.footnote.italic())
+                .font(.satoshiFootnote.italic())
                 .lineSpacing(3)
                 .foregroundStyle(AppTheme.muted)
                 .fixedSize(horizontal: false, vertical: true)
             Text(AboutHelpContract.privacyHeading)
-                .font(.title3.weight(.bold))
+                .font(.satoshiTitle3.weight(.bold))
                 .foregroundStyle(AppTheme.sage)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             Text(AboutHelpContract.privacy)
-                .font(.body)
+                .font(.satoshiBody)
                 .lineSpacing(4)
                 .foregroundStyle(AppTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -624,14 +629,14 @@ struct HelpSheetHeader: View {
             Button(action: onClose) {
                 Image(systemName: "xmark")
                     .imageScale(.medium)
-                    .font(.body.weight(.semibold))
+                    .font(.satoshiBody.weight(.semibold))
                     .foregroundStyle(AppTheme.sage)
                     .frame(width: AboutHelpContract.closeHitTarget, height: AboutHelpContract.closeHitTarget)
                     .contentShape(Rectangle())
             }
             .accessibilityLabel(AboutHelpContract.closeLabel)
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 4)
+        .padding(.horizontal, Spacing.inner)
+        .padding(.top, Spacing.tight)
     }
 }

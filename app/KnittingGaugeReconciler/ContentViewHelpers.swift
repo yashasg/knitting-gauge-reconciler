@@ -149,7 +149,7 @@ enum GaugeFormField: CaseIterable, Hashable {
 
 // MARK: - GaugeFormValues
 
-struct GaugeFormValues: Equatable {
+struct GaugeFormValues: Codable, Equatable {
     var patternStitches: String
     var patternRows: String
     var yourStitches: String

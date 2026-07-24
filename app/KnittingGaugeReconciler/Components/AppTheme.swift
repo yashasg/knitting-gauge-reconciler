@@ -4,6 +4,43 @@ private final class AppResourceBundleToken {}
 
 let appResourceBundle = Bundle(for: AppResourceBundleToken.self)
 
+enum Spacing {
+    static let hairline: CGFloat = 2
+    static let tight: CGFloat = 4
+    static let compact: CGFloat = 6
+    static let inner: CGFloat = 8
+    static let control: CGFloat = 12
+    static let margin: CGFloat = 16
+    static let roomy: CGFloat = 20
+}
+
+enum Radius {
+    static let extraSmall: CGFloat = 6
+    static let small: CGFloat = 12
+    static let medium: CGFloat = 16
+    static let large: CGFloat = 18
+    static let extraLarge: CGFloat = 24
+}
+
+enum Sizing {
+    static let separator: CGFloat = 1
+    static let stepBadge: CGFloat = 32
+    static let colorSwatch: CGFloat = 36
+    static let minimumTouchTarget: CGFloat = 44
+    static let textFieldMinimumHeight: CGFloat = 48
+    static let resetActionMinimumWidth: CGFloat = 176
+    static let projectRowSymbol: CGFloat = 48
+    static let projectCardSymbol: CGFloat = 64
+    static let projectHeroSymbol: CGFloat = 88
+    static let resultCardMinimumHeight: CGFloat = 110
+    static let shareSummaryMinimumHeight: CGFloat = 118
+    static let shareCardWidth: CGFloat = 390
+    static let maximumContentWidth: CGFloat = 640
+    static let maximumCalculatorWidth: CGFloat = 760
+    static let emphasisBarWidth: CGFloat = 3
+    static let fieldLabelMinimumHeight: CGFloat = 22
+}
+
 // MARK: - AppTheme
 
 enum AppTheme {
@@ -73,10 +110,10 @@ enum AppTheme {
 
 extension View {
     func cardStyle() -> some View {
-        padding(12)
+        padding(Spacing.control)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(AppTheme.card)
-            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Radius.medium, style: .continuous))
             .shadow(color: AppTheme.sage.opacity(0.08), radius: 34, x: 0, y: 16)
     }
 }

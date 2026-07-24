@@ -51,7 +51,7 @@ struct MetricKitGuardTests {
         )
         let navigationStart = try #require(
             source.range(
-                of: "    private func navigationContent(",
+                of: "    private func workspaceContent(",
                 range: bodyStart.upperBound..<source.endIndex
             )
         )

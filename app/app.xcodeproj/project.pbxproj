@@ -28,6 +28,13 @@
 		000000000000000000000136 /* MeasurementUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000036 /* MeasurementUnit.swift */; };
 		000000000000000000000137 /* DeterministicUIContractsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000037 /* DeterministicUIContractsTests.swift */; };
 		000000000000000000000138 /* RegressionGuardrailTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000038 /* RegressionGuardrailTests.swift */; };
+		000000000000000000000139 /* Projects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000039 /* Projects.swift */; };
+		000000000000000000000140 /* ProjectLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000040 /* ProjectLibraryView.swift */; };
+		000000000000000000000141 /* CreateProjectFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000041 /* CreateProjectFlow.swift */; };
+		000000000000000000000142 /* ProjectTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000042 /* ProjectTests.swift */; };
+		000000000000000000000144 /* Font+Satoshi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000044 /* Font+Satoshi.swift */; };
+		000000000000000000000145 /* Satoshi-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000045 /* Satoshi-Variable.ttf */; };
+		000000000000000000000146 /* Satoshi-VariableItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000046 /* Satoshi-VariableItalic.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -64,6 +71,14 @@
 		000000000000000000000036 /* MeasurementUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementUnit.swift; sourceTree = "<group>"; };
 		000000000000000000000037 /* DeterministicUIContractsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeterministicUIContractsTests.swift; sourceTree = "<group>"; };
 		000000000000000000000038 /* RegressionGuardrailTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegressionGuardrailTests.swift; sourceTree = "<group>"; };
+		000000000000000000000039 /* Projects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Projects.swift; sourceTree = "<group>"; };
+		000000000000000000000040 /* ProjectLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectLibraryView.swift; sourceTree = "<group>"; };
+		000000000000000000000041 /* CreateProjectFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateProjectFlow.swift; sourceTree = "<group>"; };
+		000000000000000000000042 /* ProjectTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectTests.swift; sourceTree = "<group>"; };
+		000000000000000000000044 /* Font+Satoshi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Font+Satoshi.swift"; sourceTree = "<group>"; };
+		000000000000000000000045 /* Satoshi-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.ttf"; sourceTree = "<group>"; };
+		000000000000000000000046 /* Satoshi-VariableItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-VariableItalic.ttf"; sourceTree = "<group>"; };
+		000000000000000000000047 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,9 +103,12 @@
 				000000000000000000000002 /* ContentView.swift */,
 				000000000000000000000034 /* ContentViewHelpers.swift */,
 				000000000000000000000003 /* GaugeMath.swift */,
-			000000000000000000000036 /* MeasurementUnit.swift */,
+				000000000000000000000036 /* MeasurementUnit.swift */,
+				000000000000000000000039 /* Projects.swift */,
 				000000000000000000000006 /* PrivacyInfo.xcprivacy */,
+				000000000000000000000047 /* Info.plist */,
 				000000000000000000000033 /* Assets.xcassets */,
+				000000000000000000000730 /* Fonts */,
 				000000000000000000000710 /* Views */,
 				000000000000000000000720 /* Components */,
 			);
@@ -106,6 +124,8 @@
 				000000000000000000000023 /* RequiredAdjustmentsCard.swift */,
 				000000000000000000000035 /* AdjustmentRow.swift */,
 				000000000000000000000032 /* ShareableView.swift */,
+				000000000000000000000040 /* ProjectLibraryView.swift */,
+				000000000000000000000041 /* CreateProjectFlow.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -114,11 +134,21 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000024 /* AppTheme.swift */,
+				000000000000000000000044 /* Font+Satoshi.swift */,
 				000000000000000000000025 /* TexturedBackground.swift */,
 				000000000000000000000026 /* GaugeStepperField.swift */,
 				000000000000000000000029 /* GaugeMeasurementPair.swift */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		000000000000000000000730 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000045 /* Satoshi-Variable.ttf */,
+				000000000000000000000046 /* Satoshi-VariableItalic.ttf */,
+			);
+			path = Fonts;
 			sourceTree = "<group>";
 		};
 		000000000000000000000702 /* KnittingGaugeReconcilerTests */ = {
@@ -128,6 +158,7 @@
 				000000000000000000000007 /* MetricKitSubscriberTests.swift */,
 				000000000000000000000037 /* DeterministicUIContractsTests.swift */,
 				000000000000000000000038 /* RegressionGuardrailTests.swift */,
+				000000000000000000000042 /* ProjectTests.swift */,
 			);
 			path = KnittingGaugeReconcilerTests;
 			sourceTree = "<group>";
@@ -208,13 +239,13 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		000000000000000000000904 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000106 /* PrivacyInfo.xcprivacy in Resources */, 000000000000000000000133 /* Assets.xcassets in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
+		000000000000000000000904 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000106 /* PrivacyInfo.xcprivacy in Resources */, 000000000000000000000133 /* Assets.xcassets in Resources */, 000000000000000000000145 /* Satoshi-Variable.ttf in Resources */, 000000000000000000000146 /* Satoshi-VariableItalic.ttf in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
 		000000000000000000000905 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000129, 000000000000000000000132, 000000000000000000000134, 000000000000000000000135, 000000000000000000000136); runOnlyForDeploymentPostprocessing = 0; };
-		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107, 000000000000000000000137, 000000000000000000000138); runOnlyForDeploymentPostprocessing = 0; };
+		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000129, 000000000000000000000132, 000000000000000000000134, 000000000000000000000135, 000000000000000000000136, 000000000000000000000139, 000000000000000000000140, 000000000000000000000141, 000000000000000000000144); runOnlyForDeploymentPostprocessing = 0; };
+		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107, 000000000000000000000137, 000000000000000000000138, 000000000000000000000142); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -293,6 +324,7 @@
 				ENABLE_DEBUG_DYLIB = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = KnittingGaugeReconciler/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Stitchwise;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -322,6 +354,7 @@
 				"ENABLE_DEBUG_DYLIB[sdk=iphonesimulator*]" = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = KnittingGaugeReconciler/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Stitchwise;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;

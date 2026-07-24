@@ -5,7 +5,7 @@ import SwiftUI
 struct GaugeMeasurementPair<Leading: View, Trailing: View>: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    var spacing: CGFloat = 12
+    var spacing: CGFloat = Spacing.control
     @ViewBuilder var leading: () -> Leading
     @ViewBuilder var trailing: () -> Trailing
 

@@ -693,7 +693,9 @@ struct CreateProjectConstructionStep: View {
                 .font(.satoshiHeadline)
                 .foregroundStyle(AppTheme.ink)
             Picker("Crown Shape", selection: $draft.crownShape) {
-                ForEach(ProjectCrownShape.allCases, content: crownShapeOption)
+                ForEach(ProjectCrownShape.allCases) { shape in
+                    Text(shape.label)
+                }
             }
             .pickerStyle(.segmented)
 
@@ -721,10 +723,6 @@ struct CreateProjectConstructionStep: View {
 
     func constructionCard(_ construction: ProjectConstruction) -> some View {
         CreateProjectConstructionCard(draft: $draft, construction: construction)
-    }
-
-    func crownShapeOption(_ shape: ProjectCrownShape) -> some View {
-        Text(shape.label).tag(shape)
     }
 
     func keepSelection() {}

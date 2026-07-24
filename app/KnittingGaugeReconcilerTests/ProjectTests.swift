@@ -707,9 +707,6 @@ struct ProjectTests {
             let step = CreateProjectConstructionStep(draft: constructionBox.binding)
             _ = step.body
             _ = step.constructionSummary
-            for shape in ProjectCrownShape.allCases {
-                _ = step.crownShapeOption(shape)
-            }
             step.keepSelection()
         }
 

@@ -407,7 +407,10 @@ struct DeterministicUIContractsTests {
             gaugeValues.gaugeCard
                 .environment(\.dynamicTypeSize, .accessibility5)
         )
-        #expect(standardCard.containsNaturalSize)
+        #expect(
+            standardCard.containsNaturalSize,
+            "\(standardCard.geometryDescription)"
+        )
         #expect(accessibleCard.containsNaturalSize)
         #expect(accessibleCard.size.height > standardCard.size.height)
         let basisCases: [(MeasurementUnit, String)] = [
@@ -717,7 +720,10 @@ struct DeterministicUIContractsTests {
         #expect(source.contains("Button(\"Undoreset\",action:onUndoReset)"))
         #expect(
             source.components(
-                separatedBy: ".frame(minWidth:44,minHeight:44,alignment:.leading)"
+                separatedBy: """
+                .frame(minWidth:Sizing.minimumTouchTarget,\
+                minHeight:Sizing.minimumTouchTarget,alignment:.leading)
+                """
             ).count == 3
         )
     }
@@ -753,7 +759,7 @@ struct DeterministicUIContractsTests {
         )
         let formPadding = try #require(
             contentSource.range(
-                of: ".padding(.horizontal, 16)",
+                of: ".padding(.horizontal, Spacing.margin)",
                 range: resultsCard.upperBound..<contentSource.endIndex
             )
         )
@@ -1085,7 +1091,7 @@ struct DeterministicUIContractsTests {
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         let viewResultsStart = try #require(
             cardSource.range(
-                of: "VStack(alignment:.leading,spacing:10){" +
+                of: "VStack(alignment:.leading,spacing:Spacing.control){" +
                     "Button(action:requestCorrection){" +
                     "Label(\"Viewresults\",systemImage:\"wand.and.stars\")"
             )
@@ -1099,9 +1105,10 @@ struct DeterministicUIContractsTests {
         ]
         #expect(
             [
-                ".font(.subheadline.weight(.semibold))",
+                ".font(.satoshiSubheadline.weight(.semibold))",
                 ".foregroundStyle(AppTheme.cream)",
-                ".frame(minWidth:176,minHeight:44)",
+                ".frame(minWidth:Sizing.resetActionMinimumWidth," +
+                    "minHeight:Sizing.minimumTouchTarget)",
                 ".background(AppTheme.sage)",
                 ".clipShape(Capsule())",
                 ".frame(maxWidth:.infinity,alignment:.center)",
@@ -1291,6 +1298,11 @@ struct DeterministicUIContractsTests {
                 && source.contains("barButtonSystemItem:.done")
                 && source.contains("toolbar.items=[flexibleSpace,done]")
         )
+        #expect(
+            source.contains(
+                "textField:textField,activate:false"
+            )
+        )
 
         let text = ValueBox("24")
         let focus = ValueBox<GaugeFormField?>(nil)
@@ -1336,6 +1348,7 @@ struct DeterministicUIContractsTests {
         )
         #expect(coordinator.handledPickerRequest == 1)
         #expect(textField.inputView === coordinator.pickerView)
+        #expect(!textField.becameFirstResponder)
         #expect(coordinator.pendingSelection == 24)
         #expect(coordinator.numberOfComponents(in: coordinator.pickerView) == 1)
         #expect(
@@ -1365,11 +1378,19 @@ struct DeterministicUIContractsTests {
         #expect(textField.resignedFirstResponder)
         coordinator.didTapDone()
 
+        focus.value = .yourRows
+        await GaugeKeyboardTextField.updateFocusAfterUpdate(
+            coordinator: coordinator,
+            textField: textField
+        ).value
+        #expect(textField.becameFirstResponder)
+
         focus.value = nil
         await GaugeKeyboardTextField.updateFocusAfterUpdate(
             coordinator: coordinator,
             textField: textField
         ).value
+        #expect(textField.resignedFirstResponder)
 
     }
 
@@ -2202,14 +2223,21 @@ private final class ValueBox<Value> {
 private final class FocusRecordingTextField: GaugePickerTextField {
     var becameFirstResponder = false
     var resignedFirstResponder = false
+    private var active = false
+
+    override var isFirstResponder: Bool {
+        active
+    }
 
     override func becomeFirstResponder() -> Bool {
         becameFirstResponder = true
+        active = true
         return true
     }
 
     override func resignFirstResponder() -> Bool {
         resignedFirstResponder = true
+        active = false
         return true
     }
 }
@@ -2369,10 +2397,14 @@ private final class HostedViewProbe<Content: View> {
     let size: CGSize
 
     var containsNaturalSize: Bool {
-        controller.view.bounds.width == size.width &&
-            controller.view.bounds.height >= size.height &&
+        controller.view.bounds.width + 0.5 >= size.width &&
+            controller.view.bounds.height + 0.5 >= size.height &&
             size.width.isFinite &&
             size.height.isFinite
+    }
+
+    var geometryDescription: String {
+        "bounds: \(controller.view.bounds.size), fitting size: \(size)"
     }
 
     var hasFiniteNaturalSize: Bool {

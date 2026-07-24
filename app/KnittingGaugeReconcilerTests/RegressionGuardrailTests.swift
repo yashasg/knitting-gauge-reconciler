@@ -197,6 +197,26 @@ private let forbiddenProductionContracts = [
         name: "positional numeric draft indexing",
         pattern: #"\b(?:\w*Draft\w*|formValues|fieldValues|rawValues|values)\s*\[\s*\d+\s*\]"#
     ),
+    SourceContract(
+        name: "unbranded semantic SwiftUI fonts",
+        pattern: #"\.font\s*\(\s*\.(?:largeTitle|title[23]?|headline|body|callout|subheadline|footnote|caption2?)\b"#
+    ),
+    SourceContract(
+        name: "unscaled UIKit preferred fonts",
+        pattern: #"UIFont\s*\.\s*preferredFont\s*\("#
+    ),
+    SourceContract(
+        name: "raw spacing and padding literals",
+        pattern: #"\bpadding\(\s*(?:\.[A-Za-z]+,\s*)?[1-9][0-9]*\b|(?:VStack|HStack|LazyVStack|LazyHStack)\([^)]*spacing:\s*[1-9][0-9]*|Spacer\(minLength:\s*[1-9][0-9]*"#
+    ),
+    SourceContract(
+        name: "raw corner radii",
+        pattern: #"cornerRadius:\s*[1-9][0-9]*\b"#
+    ),
+    SourceContract(
+        name: "raw fixed frame dimensions",
+        pattern: #"\.frame\([^)]*(?:width|height|minWidth|minHeight|maxWidth|maxHeight):\s*[1-9][0-9]*\b"#
+    ),
 ]
 
 private let sceneStorageKeys = [

@@ -21,12 +21,12 @@ struct DeltaPillBadge: View {
 
     var body: some View {
         Text(text)
-            .font(.caption2.weight(.semibold))
+            .font(.satoshiCaption2.weight(.semibold))
             .foregroundStyle(AppTheme.card)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 8)
-            .padding(EdgeInsets(top: 3, leading: 0, bottom: 3, trailing: 0))
+            .padding(.horizontal, Spacing.inner)
+            .padding(EdgeInsets(top: Spacing.tight, leading: 0, bottom: Spacing.tight, trailing: 0))
             .background(AppTheme.deltaPill)
             .clipShape(Capsule())
             // Pill is purely decorative — adjacent value tile carries the
@@ -56,8 +56,8 @@ struct GaugeStepperOpenPickerAction {
     let pickerRequest: Binding<Int>
 
     @MainActor func perform() {
-        focusedField.wrappedValue = field
         pickerRequest.wrappedValue += 1
+        focusedField.wrappedValue = field
     }
 }
 
@@ -65,6 +65,8 @@ struct GaugeStepperOpenPickerAction {
 // swiftlint:disable:next type_body_length
 struct GaugeStepperField: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var controlMinimumHeight =
+        Sizing.minimumTouchTarget
 
     private let title: String
     @Binding private var text: String
@@ -286,9 +288,9 @@ struct GaugeStepperField: View {
         return VStack(alignment: .leading, spacing: 0) {
             Group {
                 if dynamicTypeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: Spacing.tight) {
                         Text(title)
-                            .font(.subheadline.weight(.semibold))
+                            .font(.satoshiSubheadline.weight(.semibold))
                             .foregroundStyle(AppTheme.muted)
 
                         if let mismatchDeltaText {
@@ -297,9 +299,9 @@ struct GaugeStepperField: View {
                     }
                 } else {
                     ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .center, spacing: 8) {
+                        HStack(alignment: .center, spacing: Spacing.inner) {
                             Text(title)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.satoshiSubheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.muted)
                                 .fixedSize(horizontal: true, vertical: false)
 
@@ -308,9 +310,9 @@ struct GaugeStepperField: View {
                             }
                         }
 
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: Spacing.tight) {
                             Text(title)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.satoshiSubheadline.weight(.semibold))
                                 .foregroundStyle(AppTheme.muted)
 
                             if let mismatchDeltaText {
@@ -322,8 +324,8 @@ struct GaugeStepperField: View {
             }
             // Keep the horizontal title row stable when mismatch toggles;
             // adaptive stacked layouts remain free to expand vertically.
-            .frame(minHeight: 22, alignment: .leading)
-            .padding(.bottom, 8)
+            .frame(minHeight: Sizing.fieldLabelMinimumHeight, alignment: .leading)
+            .padding(.bottom, Spacing.inner)
 
             HStack(spacing: 0) {
                 GaugeKeyboardTextField(
@@ -339,21 +341,21 @@ struct GaugeStepperField: View {
                     range: range,
                     pickerRequest: pickerRequest
                 )
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, minHeight: controlMinimumHeight)
+                    .padding(.horizontal, Spacing.control)
 
                 Rectangle()
                     .fill(AppTheme.outline)
-                    .frame(width: 1)
-                    .padding(.top, 8)
-                    .padding(.bottom, 8)
-                    .frame(minHeight: 44)
+                    .frame(width: Sizing.separator)
+                    .padding(.top, Spacing.inner)
+                    .padding(.bottom, Spacing.inner)
+                    .frame(minHeight: controlMinimumHeight)
 
                 Button(action: openPicker.perform) {
                     Image(systemName: "chevron.up.chevron.down")
-                        .font(.caption.weight(.medium))
+                        .font(.satoshiCaption.weight(.medium))
                         .foregroundStyle(AppTheme.muted)
-                        .frame(width: 44, height: 44)
+                        .frame(width: controlMinimumHeight, height: controlMinimumHeight)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -363,11 +365,11 @@ struct GaugeStepperField: View {
                 .accessibilityAction(named: "Increment", increment)
                 .accessibilityAction(named: "Decrement", decrement)
             }
-            .frame(minHeight: 44)
+            .frame(minHeight: controlMinimumHeight)
             .background(AppTheme.card)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Radius.small, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: Radius.small, style: .continuous)
                     .stroke(
                         (hasMismatch || validationMessage != nil
                             ? AppTheme.mismatchText
@@ -381,11 +383,11 @@ struct GaugeStepperField: View {
                 visibleValidationMessage ?? " ",
                 systemImage: "exclamationmark.circle.fill"
             )
-            .font(.caption)
+            .font(.satoshiCaption)
             .imageScale(.small)
             .foregroundStyle(AppTheme.mismatchText)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.top, 6)
+            .padding(.top, Spacing.compact)
             .frame(maxWidth: .infinity, alignment: .leading)
             .opacity(visibleValidationMessage == nil ? 0 : 1)
             .accessibilityHidden(true)
@@ -459,11 +461,11 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         textField.textAlignment = .center
         textField.borderStyle = .none
         textField.adjustsFontForContentSizeCategory = true
-        let preferredFont = UIFont.preferredFont(forTextStyle: .title2)
-        let descriptor = preferredFont.fontDescriptor.addingAttributes([
-            .traits: [UIFontDescriptor.TraitKey.weight: UIFont.Weight.semibold]
-        ])
-        textField.font = UIFont(descriptor: descriptor, size: 0)
+        textField.font = SatoshiVariableFont.scaledFont(
+            size: 22,
+            textStyle: .title2,
+            weight: .semibold
+        )
         textField.setContentHuggingPriority(.defaultLow, for: .horizontal)
         textField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textField.addTarget(
@@ -507,7 +509,8 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         Self.handlePickerRequest(
             pickerRequest,
             coordinator: coordinator,
-            textField: textField
+            textField: textField,
+            activate: false
         )
         Self.updateFocusAfterUpdate(coordinator: coordinator, textField: textField)
     }

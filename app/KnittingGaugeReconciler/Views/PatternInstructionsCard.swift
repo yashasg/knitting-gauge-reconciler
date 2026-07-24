@@ -50,20 +50,20 @@ struct PatternInstructionsCard: View {
                 lengthFields
                 sleeveAndShapingFields
             }
-            .padding(.top, 14)
+            .padding(.top, Spacing.margin)
         } label: {
-            HStack(alignment: .center, spacing: 8) {
+            HStack(alignment: .center, spacing: Spacing.inner) {
                 Image(systemName: "list.bullet.clipboard.fill")
-                    .font(.title3.weight(.semibold))
+                    .font(.satoshiTitle3.weight(.semibold))
                     .foregroundStyle(AppTheme.secondary)
                     .accessibilityHidden(true)
                 Text(Self.disclosureLabel)
-                    .font(.title3.weight(.bold))
+                    .font(.satoshiTitle3.weight(.bold))
                     .foregroundStyle(AppTheme.ink)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
             }
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: Sizing.minimumTouchTarget, alignment: .leading)
             .contentShape(Rectangle())
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isButton)
@@ -87,7 +87,7 @@ struct PatternInstructionsCard: View {
     }
 
     private var lengthFields: some View {
-        GaugeMeasurementPair(spacing: 12) {
+        GaugeMeasurementPair(spacing: Spacing.control) {
             yokeField
         } trailing: {
             bodyField
@@ -95,7 +95,7 @@ struct PatternInstructionsCard: View {
     }
 
     private var sleeveAndShapingFields: some View {
-        GaugeMeasurementPair(spacing: 12) {
+        GaugeMeasurementPair(spacing: Spacing.control) {
             sleeveField
         } trailing: {
             shapingField

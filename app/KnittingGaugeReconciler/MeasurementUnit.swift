@@ -8,7 +8,7 @@ import Foundation
 ///
 /// Entries remain whole numbers in the selected unit. Adjusted result text
 /// preserves one decimal place when needed.
-enum MeasurementUnit: String, CaseIterable {
+enum MeasurementUnit: String, CaseIterable, Codable {
     case centimeters
     case inches
 

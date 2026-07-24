@@ -6,8 +6,8 @@ struct ShareableView: View {
 
     private var columns: [GridItem] {
         [
-            GridItem(.flexible(minimum: 0), spacing: 12),
-            GridItem(.flexible(minimum: 0), spacing: 12),
+            GridItem(.flexible(minimum: 0), spacing: Spacing.control),
+            GridItem(.flexible(minimum: 0), spacing: Spacing.control),
         ]
     }
 
@@ -25,16 +25,16 @@ struct ShareableView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.margin) {
             header
 
-            LazyVGrid(columns: columns, spacing: 12) {
+            LazyVGrid(columns: columns, spacing: Spacing.control) {
                 ShareableGaugeCard(title: "Pattern Gauge", gauge: summary.patternGauge)
                 ShareableGaugeCard(title: "Your Gauge", gauge: summary.swatchGauge)
             }
 
             shareableSection(title: "Estimated Reconciliation") {
-                LazyVGrid(columns: columns, spacing: 12) {
+                LazyVGrid(columns: columns, spacing: Spacing.control) {
                     ShareableMetricCard(metric: summary.stitchMetric)
                     ShareableMetricCard(metric: summary.rowMetric)
                 }
@@ -42,7 +42,7 @@ struct ShareableView: View {
 
             if summary.castOn != nil || !summary.sections.isEmpty {
                 shareableSection(title: "Gauge Guidance") {
-                    VStack(spacing: 10) {
+                    VStack(spacing: Spacing.control) {
                         if let castOn = summary.castOn {
                             ShareableAdjustmentRow(
                                 title: "Cast-on stitches",
@@ -62,49 +62,49 @@ struct ShareableView: View {
                 }
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.inner) {
                 Image(systemName: "wand.and.stars")
-                    .font(.caption.weight(.semibold))
+                    .font(.satoshiCaption.weight(.semibold))
                     .accessibilityHidden(true)
                 Text("Stitchwise")
-                    .font(.caption.weight(.semibold))
+                    .font(.satoshiCaption.weight(.semibold))
                 Spacer()
                 Text("knitting gauge snapshot")
-                    .font(.caption)
+                    .font(.satoshiCaption)
             }
             .foregroundStyle(AppTheme.muted)
         }
-        .padding(20)
-        .frame(width: 390, alignment: .leading)
+        .padding(Spacing.roomy)
+        .frame(width: Sizing.shareCardWidth, alignment: .leading)
         .background(AppTheme.background)
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Spacing.compact) {
             Text(summary.title)
-                .font(.system(.title2, design: .serif).weight(.bold))
+                .font(.satoshiTitle2.weight(.bold))
                 .foregroundStyle(AppTheme.ink)
             Text("Your pattern and swatch gauge comparison in one shareable card.")
-                .font(.subheadline)
+                .font(.satoshiSubheadline)
                 .foregroundStyle(AppTheme.muted)
         }
-        .padding(18)
+        .padding(Spacing.roomy)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AppTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.extraLarge, style: .continuous))
     }
 
     private func shareableSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.control) {
             Text(title)
-                .font(.headline.weight(.bold))
+                .font(.satoshiHeadline.weight(.bold))
                 .foregroundStyle(AppTheme.sage)
             content()
         }
-        .padding(18)
+        .padding(Spacing.roomy)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AppTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.extraLarge, style: .continuous))
     }
 }
 
@@ -113,21 +113,25 @@ private struct ShareableGaugeCard: View {
     var gauge: ResultsExportSummary.GaugePair
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.inner) {
             Text(title)
-                .font(.caption.weight(.bold))
+                .font(.satoshiCaption.weight(.bold))
                 .foregroundStyle(AppTheme.sage)
             Text(gauge.stitches)
-                .font(.subheadline.weight(.semibold))
+                .font(.satoshiSubheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.ink)
             Text(gauge.rows)
-                .font(.subheadline.weight(.semibold))
+                .font(.satoshiSubheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.ink)
         }
-        .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
-        .padding(14)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: Sizing.resultCardMinimumHeight,
+            alignment: .topLeading
+        )
+        .padding(Spacing.margin)
         .background(AppTheme.oatmeal)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.large, style: .continuous))
     }
 }
 
@@ -135,27 +139,31 @@ private struct ShareableMetricCard: View {
     var metric: ResultsExportSummary.Metric
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.inner) {
             Text(metric.title)
-                .font(.caption.weight(.bold))
+                .font(.satoshiCaption.weight(.bold))
                 .foregroundStyle(AppTheme.muted)
             Text(metric.value)
-                .font(.system(.title3, design: .monospaced).weight(.bold))
+                .font(.satoshiTitle3.monospaced().weight(.bold))
                 .foregroundStyle(AppTheme.ink)
             Text(metric.status)
-                .font(.caption.weight(.semibold))
+                .font(.satoshiCaption.weight(.semibold))
                 .foregroundStyle(.white)
-                .padding(.horizontal, 10)
-                .padding(.top, 6)
-                .padding(.bottom, 6)
-                .frame(minHeight: 44)
+                .padding(.horizontal, Spacing.control)
+                .padding(.top, Spacing.compact)
+                .padding(.bottom, Spacing.compact)
+                .frame(minHeight: Sizing.minimumTouchTarget)
                 .background(shareMetricBackground(metric.status))
                 .clipShape(Capsule())
         }
-        .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
-        .padding(14)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: Sizing.shareSummaryMinimumHeight,
+            alignment: .topLeading
+        )
+        .padding(Spacing.margin)
         .background(AppTheme.oatmeal)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.large, style: .continuous))
     }
 }
 
@@ -165,21 +173,21 @@ private struct ShareableAdjustmentRow: View {
     var adjusted: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Spacing.compact) {
             Text(title)
-                .font(.subheadline.weight(.bold))
+                .font(.satoshiSubheadline.weight(.bold))
                 .foregroundStyle(AppTheme.ink)
             Text(pattern)
-                .font(.caption)
+                .font(.satoshiCaption)
                 .foregroundStyle(AppTheme.muted)
             Text(adjusted)
-                .font(.system(.body, design: .monospaced).weight(.bold))
+                .font(.satoshiBody.monospaced().weight(.bold))
                 .foregroundStyle(AppTheme.sage)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(Spacing.margin)
         .background(AppTheme.oatmeal)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.large, style: .continuous))
     }
 }
 

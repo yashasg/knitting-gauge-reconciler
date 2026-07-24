@@ -152,14 +152,17 @@ struct RequiredAdjustmentsCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Spacing.control) {
             Button(action: requestCorrection) {
                 Label("View results", systemImage: "wand.and.stars")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.satoshiSubheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.cream)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(minWidth: 176, minHeight: 44)
-                    .padding(.horizontal, 18)
+                    .frame(
+                        minWidth: Sizing.resetActionMinimumWidth,
+                        minHeight: Sizing.minimumTouchTarget
+                    )
+                    .padding(.horizontal, Spacing.roomy)
                     .contentShape(Capsule())
                     .background(AppTheme.sage)
                     .clipShape(Capsule())
@@ -194,7 +197,7 @@ struct RequiredAdjustmentsCard: View {
     private var resetActions: some View {
         if canUndoReset {
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 16) {
+                HStack(alignment: .center, spacing: Spacing.margin) {
                     resetButton
                         .fixedSize(horizontal: true, vertical: false)
                     Spacer(minLength: 0)
@@ -202,7 +205,7 @@ struct RequiredAdjustmentsCard: View {
                         .fixedSize(horizontal: true, vertical: false)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Spacing.tight) {
                     resetButton
                         .frame(maxWidth: .infinity, alignment: .leading)
                     undoResetButton
@@ -217,9 +220,13 @@ struct RequiredAdjustmentsCard: View {
     private var resetButton: some View {
         Button("Reset values", action: requestReset)
             .buttonStyle(.plain)
-            .font(.subheadline.weight(.semibold))
+            .font(.satoshiSubheadline.weight(.semibold))
             .foregroundStyle(AppTheme.ink)
-            .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+            .frame(
+                minWidth: Sizing.minimumTouchTarget,
+                minHeight: Sizing.minimumTouchTarget,
+                alignment: .leading
+            )
             .contentShape(Rectangle())
             .accessibilityHint("Opens a confirmation before replacing every entry")
     }
@@ -227,9 +234,13 @@ struct RequiredAdjustmentsCard: View {
     private var undoResetButton: some View {
         Button("Undo reset", action: onUndoReset)
             .buttonStyle(.plain)
-            .font(.subheadline.weight(.semibold))
+            .font(.satoshiSubheadline.weight(.semibold))
             .foregroundStyle(.primary)
-            .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+            .frame(
+                minWidth: Sizing.minimumTouchTarget,
+                minHeight: Sizing.minimumTouchTarget,
+                alignment: .leading
+            )
             .contentShape(Rectangle())
             .accessibilityHint("Restores every value from before the last reset")
     }
@@ -260,9 +271,9 @@ struct LiveResultsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.control) {
             Text("Reconciliation — both axes")
-                .font(.title2.weight(.bold))
+                .font(.satoshiTitle2.weight(.bold))
                 .foregroundStyle(AppTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
@@ -286,7 +297,7 @@ struct LiveResultsView: View {
 
             if semantics.sectionKinds.contains(.bodyAndSleeves) {
                 sectionCard(title: "Body & Sleeves", subtitle: "Rows at your gauge") {
-                    VStack(spacing: 12) {
+                    VStack(spacing: Spacing.control) {
                         if let patternLength = inputs.patternBodyLength,
                            let adjustedLength = result.adjustedBodyLength,
                            let patternRows = result.patternBodyRows,
@@ -336,7 +347,7 @@ struct LiveResultsView: View {
                     : "To preserve pattern width"
                 sectionCard(title: "Cast-on", subtitle: castOnSubtitle) {
                     if let adjustedCastOn {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: Spacing.inner) {
                             AdjustmentRow(
                                 name: "Cast-on stitches",
                                 pattern: "\(plain(patternCastOn)) stitches",
@@ -344,13 +355,13 @@ struct LiveResultsView: View {
                                 driftPill: castOnDriftPill
                             )
                             Text("Reconcile this rounded stitch count with your pattern's stitch-repeat multiple.")
-                                .font(.caption)
+                                .font(.satoshiCaption)
                                 .foregroundStyle(AppTheme.muted)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     } else if let guidance = semantics.castOnGuidance {
                         Text(guidance)
-                            .font(.callout)
+                            .font(.satoshiCallout)
                             .foregroundStyle(AppTheme.warningText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -400,16 +411,16 @@ struct LiveResultsView: View {
         subtitle: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Spacing.margin) {
+            VStack(alignment: .leading, spacing: Spacing.hairline) {
                 Text(title)
-                    .font(.title3.weight(.bold))
+                    .font(.satoshiTitle3.weight(.bold))
                     .foregroundStyle(AppTheme.ink)
                     .lineLimit(nil)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityAddTraits(.isHeader)
                 Text(subtitle)
-                    .font(.caption)
+                    .font(.satoshiCaption)
                     .foregroundStyle(AppTheme.muted)
                     .lineLimit(nil)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -421,7 +432,7 @@ struct LiveResultsView: View {
     }
 
     private var actionsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.control) {
             ForEach(ResultActionKind.allCases, id: \.self) { action in
                 actionView(action)
             }
@@ -440,16 +451,16 @@ struct LiveResultsView: View {
                     Image(systemName: "square.and.arrow.up")
                         .accessibilityHidden(true)
                 }
-                .frame(minHeight: 44)
+                .frame(minHeight: Sizing.minimumTouchTarget)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .font(.subheadline.weight(.semibold))
+            .font(.satoshiSubheadline.weight(.semibold))
             .foregroundStyle(AppTheme.ink)
             .disabled(sharePreparation.isPreparing)
             .accessibilityHint("Opens the share sheet with an image of the current results")
         case .fullMath:
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Spacing.control) {
                 Button(
                     action: toggleFullMath,
                     label: {
@@ -457,25 +468,25 @@ struct LiveResultsView: View {
                         Text(action.label(isExpanded: showFullMath))
                         Spacer()
                         Image(systemName: showFullMath ? "chevron.up" : "chevron.down")
-                            .font(.caption.weight(.bold))
+                            .font(.satoshiCaption.weight(.bold))
                     }
-                    .frame(minHeight: 44)
+                    .frame(minHeight: Sizing.minimumTouchTarget)
                     .contentShape(Rectangle())
                     }
                 )
                 .buttonStyle(.plain)
-                .font(.subheadline.weight(.semibold))
+                .font(.satoshiSubheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.ink)
                 .accessibilityLabel(action.label(isExpanded: showFullMath))
 
                 if showFullMath {
                     Text(fullMathBreakdown)
-                        .font(.system(.caption, design: .monospaced))
+                        .font(.satoshiCaption.monospaced())
                         .foregroundStyle(AppTheme.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
+                        .padding(Spacing.control)
                         .background(AppTheme.accentSoft)
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: Radius.extraLarge, style: .continuous))
                 }
             }
         }
@@ -540,7 +551,7 @@ struct HeroTilesView: View {
     var semantics: ResultCardSemantics
 
     var body: some View {
-        GaugeMeasurementPair(spacing: 12) {
+        GaugeMeasurementPair(spacing: Spacing.control) {
             HeroTile(
                 label: "Stitch-wise (horizontal)",
                 value: "\(GaugeMath.fmtPct(result.stitchWidthScale))%",
@@ -571,23 +582,27 @@ private struct HeroTile: View {
     var accessibilityLabel: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.inner) {
             Text(label)
-                .font(.caption.weight(.bold))
+                .font(.satoshiCaption.weight(.bold))
                 .foregroundStyle(AppTheme.muted)
             Text(value)
-                .font(.system(.title2, design: .monospaced).weight(.bold))
+                .font(.satoshiTitle2.monospaced().weight(.bold))
                 .foregroundStyle(AppTheme.ink)
             statusBadge
             Text(detail)
-                .font(.caption2)
+                .font(.satoshiCaption2)
                 .foregroundStyle(AppTheme.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
-        .padding(14)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: Sizing.resultCardMinimumHeight,
+            alignment: .topLeading
+        )
+        .padding(Spacing.margin)
         .background(AppTheme.oatmeal)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.large, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(status)
@@ -602,17 +617,17 @@ private struct HeroTile: View {
 
             statusText
                 .fixedSize(horizontal: false, vertical: true)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.small, style: .continuous))
         }
     }
 
     private var statusText: some View {
         Text(status)
-            .font(.caption.weight(.semibold))
+            .font(.satoshiCaption.weight(.semibold))
             .foregroundStyle(colorScheme == .dark && status != "Match" ? .black : .white)
-            .padding(.horizontal, 10)
-            .padding(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-            .frame(minHeight: 44)
+            .padding(.horizontal, Spacing.control)
+            .padding(EdgeInsets(top: Spacing.compact, leading: 0, bottom: Spacing.compact, trailing: 0))
+            .frame(minHeight: Sizing.minimumTouchTarget)
             .background(tileBackground(status))
     }
 

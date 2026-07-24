@@ -31,7 +31,7 @@ struct AdjustmentRow: View {
     }
 
     var body: some View {
-        GaugeMeasurementPair(spacing: 10) {
+        GaugeMeasurementPair(spacing: Spacing.control) {
             patternTile
         } trailing: {
             adjustedTile
@@ -39,52 +39,52 @@ struct AdjustmentRow: View {
     }
 
     private var patternTile: some View {
-        VStack(alignment: .center, spacing: 4) {
+        VStack(alignment: .center, spacing: Spacing.tight) {
             Text(name)
-                .font(.caption.weight(.semibold))
+                .font(.satoshiCaption.weight(.semibold))
                 .foregroundStyle(AppTheme.muted)
                 .multilineTextAlignment(.center)
             Text(pattern)
-                .font(.system(.body, design: .monospaced).weight(.bold))
+                .font(.satoshiBody.monospaced().weight(.bold))
                 .foregroundStyle(AppTheme.muted)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(14)
+        .padding(Spacing.margin)
         .background(AppTheme.oatmeal)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.medium, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(name) in pattern: \(pattern)")
     }
 
     private var adjustedTile: some View {
         ZStack(alignment: .topTrailing) {
-            VStack(alignment: .center, spacing: 4) {
+            VStack(alignment: .center, spacing: Spacing.tight) {
                 Text("Adjusted")
-                    .font(.caption.weight(.semibold))
+                    .font(.satoshiCaption.weight(.semibold))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                 Text(adjusted)
-                    .font(.system(.body, design: .monospaced).weight(.bold))
+                    .font(.satoshiBody.monospaced().weight(.bold))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
-            .padding(14)
+            .padding(Spacing.margin)
             .padding(.top, driftPill != nil ? 16 : 0)
 
             if let pill = driftPill {
                 Text(pill)
-                    .font(.caption.weight(.semibold))
+                    .font(.satoshiCaption.weight(.semibold))
                     .foregroundStyle(AppTheme.card)
                     .lineLimit(1)
-                    .padding(.horizontal, 8)
-                    .padding(.top, 4)
-                    .padding(.bottom, 4)
+                    .padding(.horizontal, Spacing.inner)
+                    .padding(.top, Spacing.tight)
+                    .padding(.bottom, Spacing.tight)
                     .background(AppTheme.deltaPill)
                     .clipShape(Capsule())
-                    .padding(.top, 4)
-                    .padding(.trailing, 4)
+                    .padding(.top, Spacing.tight)
+                    .padding(.trailing, Spacing.tight)
                     // Decorative drift indicator — adjacent adjusted tile
                     // carries the semantic information.
                     .accessibilityHidden(true)
@@ -92,7 +92,7 @@ struct AdjustmentRow: View {
         }
         .frame(maxWidth: .infinity)
         .background(AppTheme.sage)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.medium, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(adjustedTileAccessibilityLabel)
     }

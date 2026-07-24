@@ -19,8 +19,38 @@ disabled_rules:
 custom_rules:
   no_hardcoded_font_size:
     name: "Hardcoded font size"
-    message: "Use semantic font styles (.headline, .body, etc.) instead of .font(.system(size:)). Hardcoded sizes don't scale with Dynamic Type. (HIG §Typography)"
+    message: "Use a Satoshi semantic font role instead of .font(.system(size:)). Hardcoded sizes don't scale with Dynamic Type. (HIG §Typography)"
     regex: '\.font\(\.system\(size:'
+    severity: error
+
+  no_system_semantic_font:
+    name: "System font bypasses Satoshi"
+    message: "Use the matching Satoshi semantic role (.satoshiHeadline, .satoshiBody, etc.) so typography stays branded and Dynamic Type-aware."
+    regex: '\.font\(\.(?:largeTitle|title[23]?|headline|body|callout|subheadline|footnote|caption2?)\b'
+    severity: error
+
+  no_raw_padding_number:
+    name: "No raw padding number"
+    message: "Use a Spacing.* design token instead of a raw padding value."
+    regex: '\bpadding\(\s*[1-9][0-9]*\b|\bpadding\(\.[a-zA-Z]+,\s*[1-9][0-9]*\b'
+    severity: error
+
+  no_raw_spacing_literal:
+    name: "No raw spacing literal"
+    message: "Use a Spacing.* design token for stack, inset, and spacer geometry."
+    regex: '(?:VStack|HStack|LazyVStack|LazyHStack)\([^)]*spacing:\s*[1-9][0-9]*|EdgeInsets\([^)]*(?:top|bottom|leading|trailing):\s*[1-9][0-9]*|Spacer\(minLength:\s*[1-9][0-9]*'
+    severity: error
+
+  no_raw_corner_radius:
+    name: "No raw corner radius"
+    message: "Use a semantic Radius.* design token instead of a raw corner radius."
+    regex: '\.cornerRadius\(\s*[1-9][0-9]*\b|RoundedRectangle\(cornerRadius:\s*[1-9][0-9]*\b|\.clipShape\(\s*RoundedRectangle\(cornerRadius:\s*[1-9][0-9]*\b|\.rect\(cornerRadius:\s*[1-9][0-9]*\b'
+    severity: error
+
+  no_fixed_frame_dimension:
+    name: "No raw fixed frame dimension"
+    message: "Use flexible layout, @ScaledMetric, or a Sizing.* design token instead of a raw frame dimension."
+    regex: '\.frame\([^)]*(?:width|height|minWidth|minHeight|maxWidth|maxHeight):\s*[1-9][0-9]*\b'
     severity: error
 
   no_uppercased_in_code:

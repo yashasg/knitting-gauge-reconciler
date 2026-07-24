@@ -58,45 +58,45 @@ struct GaugeInputsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Spacing.tight) {
                     measurementUnitLabel
                     measurementUnitPicker
                 }
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: Sizing.minimumTouchTarget, alignment: .leading)
             } else {
                 ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    HStack(alignment: .firstTextBaseline, spacing: Spacing.control) {
                         measurementUnitLabel
                             .fixedSize(horizontal: true, vertical: false)
                         Spacer(minLength: 0)
                         measurementUnitPicker
                             .fixedSize(horizontal: true, vertical: false)
                     }
-                    .frame(minHeight: 44)
+                    .frame(minHeight: Sizing.minimumTouchTarget)
 
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: Spacing.tight) {
                         measurementUnitLabel
                         measurementUnitPicker
                     }
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: Sizing.minimumTouchTarget, alignment: .leading)
                 }
             }
 
             Divider()
                 .overlay(AppTheme.outline)
-                .padding(.top, 4)
+                .padding(.top, Spacing.tight)
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Spacing.margin) {
                 sectionHeader(title: "Pattern Gauge", icon: "book.fill")
                 patternFields
             }
-            .padding(.top, 20)
+            .padding(.top, Spacing.roomy)
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Spacing.margin) {
                 sectionHeader(title: "Swatch Gauge", icon: "ruler.fill")
                 swatchFields
             }
-            .padding(.top, 4)
+            .padding(.top, Spacing.tight)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardStyle()
@@ -104,7 +104,7 @@ struct GaugeInputsCard: View {
 
     private var measurementUnitLabel: some View {
         Text("Measurement unit")
-            .font(.subheadline.weight(.semibold))
+            .font(.satoshiSubheadline.weight(.semibold))
             .foregroundStyle(AppTheme.muted)
             .accessibilityHidden(true)
     }
@@ -116,7 +116,7 @@ struct GaugeInputsCard: View {
         }
         .labelsHidden()
         .pickerStyle(.menu)
-        .font(.subheadline.weight(.semibold))
+        .font(.satoshiSubheadline.weight(.semibold))
         .tint(AppTheme.ink)
         .accessibilityHint("Changes gauge basis and dimensions throughout the calculator.")
     }
@@ -194,13 +194,13 @@ struct GaugeInputsCard: View {
     @ViewBuilder
     private func sectionHeader(title: String, icon: String) -> some View {
         if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Spacing.compact) {
                 sectionTitle(title: title, icon: icon)
                 perTag
             }
         } else {
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 8) {
+                HStack(alignment: .center, spacing: Spacing.inner) {
                     sectionTitle(title: title, icon: icon)
                         .fixedSize(horizontal: true, vertical: false)
                     Spacer()
@@ -208,7 +208,7 @@ struct GaugeInputsCard: View {
                         .fixedSize(horizontal: true, vertical: false)
                 }
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: Spacing.compact) {
                     sectionTitle(title: title, icon: icon)
                     perTag
                 }
@@ -217,14 +217,14 @@ struct GaugeInputsCard: View {
     }
 
     private func sectionTitle(title: String, icon: String) -> some View {
-        HStack(alignment: .center, spacing: 8) {
+        HStack(alignment: .center, spacing: Spacing.inner) {
             Image(systemName: icon)
-                .font(.title3.weight(.semibold))
+                .font(.satoshiTitle3.weight(.semibold))
                 .foregroundStyle(AppTheme.secondary)
                 .accessibilityLabel("\(title) gauge")
                 .accessibilityHidden(true)
             Text(title)
-                .font(.title2.weight(.bold))
+                .font(.satoshiTitle2.weight(.bold))
                 .foregroundStyle(AppTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
@@ -233,7 +233,7 @@ struct GaugeInputsCard: View {
 
     private var perTag: some View {
         Text(unit == .centimeters ? "PER 10 CM" : "PER 4 IN")
-            .font(.caption2.weight(.bold))
+            .font(.satoshiCaption2.weight(.bold))
             .tracking(0.5)
             .foregroundStyle(AppTheme.muted)
             .lineLimit(1)

@@ -626,14 +626,16 @@ struct HelpSheetHeader: View {
     var body: some View {
         HStack {
             Spacer()
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .imageScale(.medium)
-                    .font(.satoshiBody.weight(.semibold))
-                    .foregroundStyle(AppTheme.sage)
-                    .frame(width: AboutHelpContract.closeHitTarget, height: AboutHelpContract.closeHitTarget)
-                    .contentShape(Rectangle())
-            }
+            Button(AboutHelpContract.closeLabel, systemImage: "xmark", action: onClose)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.circle)
+                .controlSize(.regular)
+                .tint(AppTheme.sage)
+                .frame(
+                    minWidth: AboutHelpContract.closeHitTarget,
+                    minHeight: AboutHelpContract.closeHitTarget
+                )
             .accessibilityLabel(AboutHelpContract.closeLabel)
         }
         .padding(.horizontal, Spacing.inner)

@@ -1,4 +1,5 @@
 import CoreText
+import SwiftData
 import SwiftUI
 import Testing
 import UIKit
@@ -472,13 +473,13 @@ struct ProjectTests {
     }
 
     @Test func storeLoadsPersistsUpdatesDeletesAndResets() throws {
-        let defaults = isolatedDefaults()
+        let container = try inMemoryProjectContainer()
         let project = try #require(validDraft(type: .footwear).makeProject())
-        let store = ProjectStore(defaults: defaults)
+        let store = ProjectStore(modelContainer: container)
 
         #expect(store.add(project))
         #expect(store.project(id: project.id) == project)
-        let reloaded = ProjectStore(defaults: defaults)
+        let reloaded = ProjectStore(modelContainer: container)
         #expect(reloaded.projects == [project])
 
         var values = project.gaugeValues
@@ -518,31 +519,17 @@ struct ProjectTests {
         reloaded.delete(at: IndexSet(integer: 0))
         #expect(reloaded.projects.isEmpty)
         reloaded.resetArchive()
-        #expect(defaults.data(forKey: ProjectStore.archiveKey) == nil)
         #expect(reloaded.issue == nil)
     }
 
     @Test func storeSurfacesCorruptionUnsupportedSchemasAndRollsBackFailedWrites() throws {
-        let corruptDefaults = isolatedDefaults()
-        corruptDefaults.set(Data([0xFF]), forKey: ProjectStore.archiveKey)
-        let corrupt = ProjectStore(defaults: corruptDefaults)
-        #expect(corrupt.projects.isEmpty)
-        #expect(corrupt.issue?.kind == .load)
-        #expect(corrupt.issue?.id.contains("load") == true)
-
-        let unsupportedDefaults = isolatedDefaults()
-        unsupportedDefaults.set(
-            Data(#"{"schemaVersion":2,"projects":[]}"#.utf8),
-            forKey: ProjectStore.archiveKey
-        )
-        let unsupported = ProjectStore(defaults: unsupportedDefaults)
-        #expect(unsupported.projects.isEmpty)
-        #expect(unsupported.issue?.kind == .load)
-
-        let defaults = isolatedDefaults()
+        let container = try inMemoryProjectContainer()
         let project = try #require(validDraft(type: .other).makeProject())
-        #expect(ProjectStore(defaults: defaults).add(project))
-        let failing = ProjectStore(defaults: defaults) { _ in throw StubError.failed }
+        #expect(ProjectStore(modelContainer: container).add(project))
+        let failing = ProjectStore(
+            modelContainer: container,
+            beforeSave: { throw StubError.failed }
+        )
 
         var values = project.gaugeValues
         values.patternRows = "40"
@@ -556,19 +543,89 @@ struct ProjectTests {
         failing.delete(at: IndexSet(integer: 0))
         #expect(failing.projects == [project])
         #expect(failing.issue?.kind == .save)
+        failing.resetArchive()
+        #expect(failing.projects == [project])
 
         var shouldFail = true
-        let recovering = ProjectStore(defaults: isolatedDefaults()) { projects in
-            if shouldFail {
-                shouldFail = false
-                throw StubError.failed
+        let recoveringContainer = try inMemoryProjectContainer()
+        _ = ProjectStore(modelContainer: recoveringContainer)
+        let recovering = ProjectStore(
+            modelContainer: recoveringContainer,
+            beforeSave: {
+                if shouldFail {
+                    shouldFail = false
+                    throw StubError.failed
+                }
             }
-            return try JSONEncoder().encode(projects)
-        }
+        )
         #expect(!recovering.add(project))
         #expect(recovering.issue?.kind == .save)
         #expect(recovering.add(project))
         #expect(recovering.issue == nil)
+    }
+
+    @Test func storeRejectsInvalidSwiftDataRowsAndUnavailableContainers() throws {
+        let project = try #require(validDraft(type: .other).makeProject())
+        let payload = try JSONEncoder().encode(project)
+
+        let corruptContainer = try inMemoryProjectContainer()
+        let corruptContext = ModelContext(corruptContainer)
+        corruptContext.insert(
+            StoredProjectRecord(
+                key: project.id.uuidString,
+                payload: Data([0xFF]),
+                payloadVersion: ProjectStore.schemaVersion,
+                createdAt: project.createdAt
+            )
+        )
+        try corruptContext.save()
+        let corrupt = ProjectStore(modelContainer: corruptContainer)
+        #expect(corrupt.projects.isEmpty)
+        #expect(corrupt.issue?.kind == .load)
+        #expect(corrupt.issue?.id.contains("load") == true)
+
+        let unsupportedContainer = try inMemoryProjectContainer()
+        let unsupportedContext = ModelContext(unsupportedContainer)
+        unsupportedContext.insert(
+            StoredProjectRecord(
+                key: project.id.uuidString,
+                payload: payload,
+                payloadVersion: ProjectStore.schemaVersion + 1,
+                createdAt: project.createdAt
+            )
+        )
+        try unsupportedContext.save()
+        let unsupported = ProjectStore(
+            modelContainer: unsupportedContainer
+        )
+        #expect(unsupported.projects.isEmpty)
+        #expect(unsupported.issue?.kind == .load)
+
+        let mismatchedContainer = try inMemoryProjectContainer()
+        let mismatchedContext = ModelContext(mismatchedContainer)
+        mismatchedContext.insert(
+            StoredProjectRecord(
+                key: UUID().uuidString,
+                payload: payload,
+                payloadVersion: ProjectStore.schemaVersion,
+                createdAt: project.createdAt
+            )
+        )
+        try mismatchedContext.save()
+        let mismatched = ProjectStore(
+            modelContainer: mismatchedContainer
+        )
+        #expect(mismatched.projects.isEmpty)
+        #expect(mismatched.issue?.kind == .load)
+
+        let unavailable = ProjectStore(
+            makeModelContainer: { throw StubError.failed }
+        )
+        #expect(unavailable.issue?.kind == .load)
+        #expect(!unavailable.add(project))
+        unavailable.delete(at: [])
+        unavailable.resetArchive()
+        #expect(unavailable.issue?.kind == .save)
     }
 
     @Test func projectViewsHaveFiniteLayoutsAcrossWizardBranches() throws {
@@ -601,13 +658,13 @@ struct ProjectTests {
         }
 
         let project = try #require(drafts[0].makeProject())
-        let store = ProjectStore(defaults: isolatedDefaults())
+        let store = try projectStore()
         #expect(store.add(project))
         expectFinite(ProjectRow(project: project))
         expectFinite(ProjectSymbol(symbolName: project.symbolName, color: .yellow, size: 48))
         expectFinite(ProjectResultsView(projectID: project.id, store: store))
         expectSceneRoot(ProjectLibraryView(store: store))
-        expectSceneRoot(ProjectLibraryView(store: ProjectStore(defaults: isolatedDefaults())))
+        expectSceneRoot(ProjectLibraryView(store: try projectStore()))
         expectFinite(ProjectOverviewCard(project: project))
         var skippableDraft = drafts[0]
         skippableDraft.measurementValues = [:]
@@ -634,7 +691,7 @@ struct ProjectTests {
     }
 
     @Test func wizardActionsAndBindingsCoverEveryBranch() throws {
-        let store = ProjectStore(defaults: isolatedDefaults())
+        let store = try projectStore()
         let valid = validDraft(type: .tops, construction: .circularYokeRaglan)
 
         for step in CreateProjectFlow.Step.allCases {
@@ -695,12 +752,14 @@ struct ProjectTests {
         )
         #expect(measurementsState.canAdvance)
         #expect(measurementsState.primaryActionLabel == "Skip")
+        #expect(measurementsState.primaryActionSystemImage == "chevron.forward")
         measurementsState.step = .notes
         #expect(measurementsState.primaryActionLabel == "Skip")
         measurementsState.draft.notes = "Keep this."
         #expect(measurementsState.primaryActionLabel == "Next")
         measurementsState.step = .review
         #expect(measurementsState.primaryActionLabel == "View Results")
+        #expect(measurementsState.primaryActionSystemImage == "checkmark")
 
         let blankState = CreateProjectFlowState(
             store: store,
@@ -755,9 +814,7 @@ struct ProjectTests {
         #expect(dismissCount > 0)
         CreateProjectFlowState(store: store, onCreated: { _ in }).discard()
 
-        let failingStore = ProjectStore(defaults: isolatedDefaults()) { _ in
-            throw StubError.failed
-        }
+        let failingStore = try projectStore(beforeSave: { throw StubError.failed })
         let failingState = CreateProjectFlowState(
             store: failingStore,
             onCreated: { _ in },
@@ -875,7 +932,7 @@ struct ProjectTests {
     }
 
     @Test func libraryActionsBindingsAndDestinationsCoverEveryBranch() throws {
-        let store = ProjectStore(defaults: isolatedDefaults())
+        let store = try projectStore()
         let project = try #require(validDraft(type: .other).makeProject())
         #expect(store.add(project))
         let state = ProjectLibraryState(store: store)
@@ -894,11 +951,18 @@ struct ProjectTests {
         state.searchText = "No matching project"
         #expect(state.visibleProjects.isEmpty)
         expectSceneRoot(ProjectLibraryView(state: state))
+        expectSceneRoot(ProjectLibraryView(state: ProjectLibraryState(
+            store: store,
+            isSearchPresented: true
+        )))
         state.searchText = "birthday"
         state.deleteVisibleProjects(at: IndexSet(integer: 0))
         #expect(store.project(id: searchableProject.id) == nil)
         #expect(store.project(id: project.id) != nil)
         state.searchText = ""
+        #expect(!state.isSearchPresented)
+        state.presentSearch()
+        #expect(state.isSearchPresented)
         #expect(!state.isSettingsPresented)
         state.presentSettings()
         #expect(state.isSettingsPresented)
@@ -1037,11 +1101,20 @@ struct ProjectTests {
         return draft
     }
 
-    private func isolatedDefaults() -> UserDefaults {
-        let suite = "ProjectTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
-        return defaults
+    private func inMemoryProjectContainer() throws -> ModelContainer {
+        try ModelContainer(
+            for: StoredProjectRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+    }
+
+    private func projectStore(
+        beforeSave: @escaping () throws -> Void = {}
+    ) throws -> ProjectStore {
+        ProjectStore(
+            modelContainer: try inMemoryProjectContainer(),
+            beforeSave: beforeSave
+        )
     }
 
     private func expectFinite<Content: View>(

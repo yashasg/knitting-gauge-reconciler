@@ -10,6 +10,7 @@ final class ProjectLibraryState {
     var createdProjectID: KnittingProject.ID?
     var navigationPath: [KnittingProject.ID]
     var searchText: String
+    var isSearchPresented: Bool
     var isSettingsPresented: Bool
 
     init(
@@ -18,6 +19,7 @@ final class ProjectLibraryState {
         createdProjectID: KnittingProject.ID? = nil,
         navigationPath: [KnittingProject.ID] = [],
         searchText: String = "",
+        isSearchPresented: Bool = false,
         isSettingsPresented: Bool = false
     ) {
         self.store = store
@@ -25,6 +27,7 @@ final class ProjectLibraryState {
         self.createdProjectID = createdProjectID
         self.navigationPath = navigationPath
         self.searchText = searchText
+        self.isSearchPresented = isSearchPresented
         self.isSettingsPresented = isSettingsPresented
     }
 
@@ -77,6 +80,10 @@ final class ProjectLibraryState {
         isSettingsPresented = false
     }
 
+    func presentSearch() {
+        isSearchPresented = true
+    }
+
     func deleteVisibleProjects(at offsets: IndexSet) {
         let ids = Set(offsets.map { visibleProjects[$0].id })
         let storeOffsets = IndexSet(store.projects.indices.filter {
@@ -116,30 +123,29 @@ struct ProjectLibraryView: View {
         @Bindable var state = state
 
         NavigationStack(path: $state.navigationPath) {
-            projectList
-                .searchable(
-                    text: $state.searchText,
-                    placement: .navigationBarDrawer(displayMode: .always),
-                    prompt: "Search Projects"
-                )
+            searchableProjectList(
+                text: $state.searchText,
+                isPresented: $state.isSearchPresented
+            )
+                .overlay(alignment: .bottomTrailing) {
+                    floatingCreateButton
+                }
             .navigationTitle("Projects")
-            .safeAreaInset(edge: .bottom) {
-                Button(
-                    "New Project",
-                    systemImage: "plus",
-                    action: state.presentProjectCreator
-                )
-                .labelStyle(.iconOnly)
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.circle)
-                .controlSize(.large)
-                .tint(AppTheme.sage)
-                .padding(Spacing.inner)
-                .frame(maxWidth: .infinity)
-                .background(.bar)
-            }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button(action: state.presentSearch) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(.title3, design: .default, weight: .bold))
+                            .foregroundStyle(AppTheme.sage)
+                            .frame(
+                                minWidth: Sizing.minimumTouchTarget,
+                                minHeight: Sizing.minimumTouchTarget
+                            )
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Search Projects")
+                    .accessibilityHint("Shows project search")
+
                     SettingsToolbarButton(isPresented: $state.isSettingsPresented)
                 }
             }
@@ -148,6 +154,7 @@ struct ProjectLibraryView: View {
                 destination: projectDestination
             )
         }
+        .tint(AppTheme.sage)
         .sheet(
             isPresented: $state.isCreatingProject,
             onDismiss: state.openCreatedProject,
@@ -164,6 +171,41 @@ struct ProjectLibraryView: View {
         )
     }
 
+    @ViewBuilder
+    private func searchableProjectList(
+        text: Binding<String>,
+        isPresented: Binding<Bool>
+    ) -> some View {
+        if isPresented.wrappedValue {
+            projectList
+                .searchable(
+                    text: text,
+                    isPresented: isPresented,
+                    placement: .navigationBarDrawer(displayMode: .automatic),
+                    prompt: "Search Projects"
+                )
+        } else {
+            projectList
+        }
+    }
+
+    private var floatingCreateButton: some View {
+        Button(
+            "New Project",
+            systemImage: "plus",
+            action: state.presentProjectCreator
+        )
+        .labelStyle(.iconOnly)
+        .font(.system(.title3, design: .default, weight: .bold))
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
+        .controlSize(.large)
+        .tint(AppTheme.sage)
+        .shadow(color: AppTheme.ink.opacity(0.18), radius: 12, x: 0, y: 6)
+        .padding(.trailing, Spacing.margin)
+        .padding(.bottom, Spacing.inner)
+    }
+
     private var projectList: some View {
         List {
             ForEach(state.visibleProjects, content: projectLink)
@@ -171,6 +213,11 @@ struct ProjectLibraryView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .contentMargins(
+            .bottom,
+            Sizing.minimumTouchTarget + Spacing.roomy,
+            for: .scrollContent
+        )
         .background(AppTheme.background)
         .overlay {
             if state.store.projects.isEmpty {
@@ -322,7 +369,13 @@ struct ProjectResultsView: View {
             )
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Edit", action: startEditing)
+                    Button(
+                        "Edit Project",
+                        systemImage: "square.and.pencil",
+                        action: startEditing
+                    )
+                    .labelStyle(.iconOnly)
+                    .accessibilityLabel("Edit Project")
                 }
             }
             .sheet(isPresented: $isEditing, content: editSheet)

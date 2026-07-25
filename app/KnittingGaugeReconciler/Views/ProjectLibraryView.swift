@@ -290,35 +290,22 @@ struct ProjectResultsView: View {
     let projectID: KnittingProject.ID
     let store: ProjectStore
     @State private var isEditing = false
-    @State private var showFullMath = false
 
     init(
         projectID: KnittingProject.ID,
         store: ProjectStore,
-        isEditing: Bool = false,
-        showFullMath: Bool = false
+        isEditing: Bool = false
     ) {
         self.projectID = projectID
         self.store = store
         _isEditing = State(initialValue: isEditing)
-        _showFullMath = State(initialValue: showFullMath)
     }
 
     var body: some View {
         if let project = store.project(id: projectID),
-           let inputs = project.gaugeInputs,
-           let result = project.gaugeResult {
+           project.gaugeInputs != nil {
             ScrollView {
-                VStack(alignment: .leading, spacing: Spacing.control) {
-                    ProjectOverviewCard(project: project)
-                    LiveResultsView(
-                        result: result,
-                        inputs: inputs,
-                        unit: project.measurementUnit,
-                        showFullMath: $showFullMath,
-                        onShare: shareItems
-                    )
-                }
+                ProjectOverviewCard(project: project)
                 .padding(.horizontal, Spacing.margin)
                 .padding(.top, Spacing.inner)
                 .padding(.bottom, Spacing.margin)
@@ -380,15 +367,6 @@ struct ProjectResultsView: View {
         }
     }
 
-    func shareItems(for result: GaugeMathResult) async -> [Any] {
-        guard let project = store.project(id: projectID),
-              let inputs = project.gaugeInputs else { return [] }
-        return await GaugeFormView.shareItems(
-            for: result,
-            inputs: inputs,
-            unit: project.measurementUnit
-        )
-    }
 }
 
 struct ProjectOverviewCard: View {
@@ -429,19 +407,6 @@ struct ProjectOverviewCard: View {
                 }
             }
 
-            Divider()
-                .overlay(AppTheme.outline)
-
-            VStack(alignment: .leading, spacing: Spacing.control) {
-                sectionTitle("Optional Measurements & Results")
-                if project.measurementResults.isEmpty {
-                    Text("No optional measurements added.")
-                        .font(.satoshiBody)
-                        .foregroundStyle(AppTheme.muted)
-                }
-                ForEach(project.measurementResults, content: measurementRow)
-            }
-
             if let notes = project.notes, !notes.isEmpty {
                 Divider()
                     .overlay(AppTheme.outline)
@@ -452,8 +417,56 @@ struct ProjectOverviewCard: View {
                         .foregroundStyle(AppTheme.ink)
                 }
             }
+
+            Divider()
+                .overlay(AppTheme.outline)
+
+            VStack(alignment: .leading, spacing: Spacing.control) {
+                sectionTitle("Gauge Inputs")
+                Text("Counts per \(gaugeBasis)")
+                    .font(.satoshiCaption)
+                    .foregroundStyle(AppTheme.muted)
+                detailRow(
+                    "Pattern gauge",
+                    value: gaugeValue(
+                        stitches: project.gaugeValues.patternStitches,
+                        rows: project.gaugeValues.patternRows
+                    )
+                )
+                detailRow(
+                    "Swatch gauge",
+                    value: gaugeValue(
+                        stitches: project.gaugeValues.yourStitches,
+                        rows: project.gaugeValues.yourRows
+                    )
+                )
+            }
+
+            Divider()
+                .overlay(AppTheme.outline)
+
+            VStack(alignment: .leading, spacing: Spacing.control) {
+                sectionTitle("Reconciled Counts")
+                Text((project.countRules ?? .wholeNumber).summary)
+                    .font(.satoshiCaption)
+                    .foregroundStyle(AppTheme.muted)
+                if project.measurementResults.isEmpty {
+                    Text("Add measurements to calculate required stitch and row counts.")
+                        .font(.satoshiBody)
+                        .foregroundStyle(AppTheme.muted)
+                }
+                ForEach(project.measurementResults, content: measurementRow)
+            }
         }
         .cardStyle()
+    }
+
+    var gaugeBasis: String {
+        project.measurementUnit == .centimeters ? "10 cm" : "4 in"
+    }
+
+    func gaugeValue(stitches: String, rows: String) -> String {
+        "\(stitches) stitches · \(rows) rows"
     }
 
     private func sectionTitle(_ title: String) -> some View {
@@ -471,34 +484,15 @@ struct ProjectOverviewCard: View {
 
     private func measurementRow(_ result: ProjectMeasurementResult) -> some View {
         let measurement = result.measurement
-        return VStack(alignment: .leading, spacing: Spacing.tight) {
-            LabeledContent {
-                Text(displayValue(measurement.centimeters))
-                    .font(.satoshiBody.monospacedDigit())
-                    .foregroundStyle(AppTheme.ink)
-            } label: {
-                Text(measurement.kind.label)
-                    .font(.satoshiBody.weight(.semibold))
-                    .foregroundStyle(AppTheme.ink)
-            }
-            Text(landmarks(for: measurement.kind))
-                .font(.satoshiCaption)
-                .foregroundStyle(AppTheme.muted)
-            detailRow(
-                "Pattern \(result.resultLabel)",
-                value: "\(result.patternCount)"
-            )
-            detailRow(
-                "\(result.resultLabel.capitalized) at your gauge",
-                value: "\(result.adjustedCount)"
-            )
-                .fontWeight(.semibold)
-                .foregroundStyle(project.color.color)
-        }
-        .accessibilityElement(children: .combine)
+        return ProjectMeasurementComparisonRow(
+            result: result,
+            measurementValue: displayValue(measurement.centimeters),
+            landmarks: landmarks(for: measurement.kind),
+            projectColor: project.color.color
+        )
     }
 
-    private func displayValue(_ centimeters: String) -> String {
+    func displayValue(_ centimeters: String) -> String {
         guard let value = Double(centimeters) else { return centimeters }
         return project.measurementUnit.formatMeasurement(value)
     }
@@ -509,5 +503,90 @@ struct ProjectOverviewCard: View {
             return project.customLandmarks
         }
         return kind.landmarks
+    }
+}
+
+private struct ProjectMeasurementComparisonRow: View {
+    let result: ProjectMeasurementResult
+    let measurementValue: String
+    let landmarks: String
+    let projectColor: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.inner) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.control) {
+                Text(result.measurement.kind.label)
+                    .font(.satoshiBody.weight(.semibold))
+                    .foregroundStyle(AppTheme.ink)
+                Spacer(minLength: Spacing.inner)
+                Text(measurementValue)
+                    .font(.satoshiCaption.monospacedDigit())
+                    .foregroundStyle(AppTheme.muted)
+            }
+
+            Text(landmarks)
+                .font(.satoshiCaption)
+                .foregroundStyle(AppTheme.muted)
+
+            comparisonLayout
+        }
+        .padding(.vertical, Spacing.tight)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(result.measurement.kind.label), \(measurementValue), " +
+                "before reconciliation \(result.patternCount) \(result.resultLabel), " +
+                "after reconciliation \(result.requiredCount) \(result.resultLabel), " +
+                landmarks
+        )
+    }
+
+    private var comparisonLayout: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: Spacing.control) {
+                comparisonValue("Before reconciliation", count: result.patternCount)
+                comparisonArrow("arrow.right")
+                comparisonValue(
+                    "After reconciliation",
+                    count: result.requiredCount,
+                    isTrailing: true,
+                    color: projectColor
+                )
+            }
+
+            VStack(alignment: .leading, spacing: Spacing.inner) {
+                comparisonValue("Before reconciliation", count: result.patternCount)
+                comparisonArrow("arrow.down")
+                comparisonValue(
+                    "After reconciliation",
+                    count: result.requiredCount,
+                    color: projectColor
+                )
+            }
+        }
+    }
+
+    private func comparisonValue(
+        _ caption: String,
+        count: Int,
+        isTrailing: Bool = false,
+        color: Color = AppTheme.ink
+    ) -> some View {
+        VStack(alignment: isTrailing ? .trailing : .leading, spacing: Spacing.tight) {
+            Text(caption)
+                .font(.satoshiCaption)
+                .foregroundStyle(AppTheme.muted)
+            Text("\(count) \(result.resultLabel)")
+                .font(.satoshiHeadline.weight(.bold))
+                .foregroundStyle(color)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: isTrailing ? .trailing : .leading)
+    }
+
+    private func comparisonArrow(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.satoshiCaption.weight(.bold))
+            .foregroundStyle(AppTheme.muted)
+            .accessibilityHidden(true)
     }
 }

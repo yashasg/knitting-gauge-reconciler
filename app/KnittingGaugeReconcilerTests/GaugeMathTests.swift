@@ -993,10 +993,10 @@ struct GaugeMathTests {
             to: ".accessibilityElement(children: .ignore)",
             appDirectory: appDirectory
         )
-        for source in [stepper, adjustment] {
-            #expect(source.contains(".foregroundStyle(AppTheme.card)"))
-            #expect(source.contains(".background(AppTheme.deltaPill)"))
-        }
+        #expect(stepper.contains(".foregroundStyle(AppTheme.cream)"))
+        #expect(stepper.contains(".background(AppTheme.sage)"))
+        #expect(adjustment.contains(".foregroundStyle(AppTheme.card)"))
+        #expect(adjustment.contains(".background(AppTheme.deltaPill)"))
 
         let themeURL = appDirectory
             .appendingPathComponent("KnittingGaugeReconciler/Components/AppTheme.swift")
@@ -1005,11 +1005,19 @@ struct GaugeMathTests {
 
         let ink = try themeColors(named: "app-theme-ink", appDirectory: appDirectory)
         let card = try themeColors(named: "app-theme-card", appDirectory: appDirectory)
+        let cream = try themeColors(named: "app-theme-cream", appDirectory: appDirectory)
+        let sage = try themeColors(named: "app-theme-sage", appDirectory: appDirectory)
         for appearance in ["light", "dark"] {
             #expect(
                 contrastRatio(
                     try #require(card[appearance]),
                     try #require(ink[appearance])
+                ) >= 4.5
+            )
+            #expect(
+                contrastRatio(
+                    try #require(cream[appearance]),
+                    try #require(sage[appearance])
                 ) >= 4.5
             )
         }

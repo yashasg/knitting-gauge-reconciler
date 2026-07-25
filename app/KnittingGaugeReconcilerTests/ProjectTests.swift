@@ -329,6 +329,9 @@ struct ProjectTests {
         draft.crownShape = .faceted
         draft.crownSections = 6
         draft.notes = "  Use the blue yarn.  "
+        draft.countConstraint = .patternRepeat
+        draft.stitchRepeat = "6"
+        draft.rowRepeat = "8"
         let project = try #require(draft.makeProject(id: id, now: now))
 
         #expect(project.name == "Trail Hat")
@@ -341,12 +344,19 @@ struct ProjectTests {
         #expect(project.gaugeInputs != nil)
         #expect(project.gaugeResult != nil)
         #expect(project.measurements.first?.id == .hatCircumference)
-        #expect(project.measurementResults.first?.patternCount == 40)
-        #expect(project.measurementResults.first?.adjustedCount == 44)
+        #expect(project.countRules?.constraint == .patternRepeat)
+        #expect(project.countRules?.stitchRepeat == 6)
+        #expect(project.countRules?.rowRepeat == 8)
+        #expect(project.measurementResults.first?.patternCount == 42)
+        #expect(project.measurementResults.first?.requiredCount == 48)
         #expect(project.measurementResults.first?.resultLabel == "stitches")
         #expect(project.measurementResults.last?.patternCount == 48)
-        #expect(project.measurementResults.last?.adjustedCount == 52)
+        #expect(project.measurementResults.last?.requiredCount == 56)
         #expect(project.measurementResults.last?.resultLabel == "rows")
+        let restoredDraft = ProjectDraft(project: project)
+        #expect(restoredDraft.countConstraint == .patternRepeat)
+        #expect(restoredDraft.stitchRepeat == "6")
+        #expect(restoredDraft.rowRepeat == "8")
         #expect(try JSONDecoder().decode(
             KnittingProject.self,
             from: JSONEncoder().encode(project)
@@ -357,11 +367,17 @@ struct ProjectTests {
             ) as? [String: Any]
         )
         legacyObject.removeValue(forKey: "notes")
+        legacyObject.removeValue(forKey: "countRules")
         let legacyProject = try JSONDecoder().decode(
             KnittingProject.self,
             from: JSONSerialization.data(withJSONObject: legacyObject)
         )
         #expect(legacyProject.notes == nil)
+        #expect(legacyProject.countRules == nil)
+        #expect(legacyProject.measurementResults.first?.patternCount == 40)
+        #expect(legacyProject.measurementResults.first?.requiredCount == 44)
+        #expect(ProjectDraft(project: legacyProject).countConstraint == .wholeNumber)
+        expectFinite(ProjectOverviewCard(project: legacyProject))
 
         var top = try #require(
             validDraft(type: .tops, construction: .dropShoulder).makeProject()
@@ -369,6 +385,90 @@ struct ProjectTests {
         #expect(top.subtitle == "Tops · Drop Shoulder")
         top.construction = nil
         #expect(top.subtitle == "Tops")
+    }
+
+    @Test func countConstraintsAlwaysRoundUpAcrossBothAxes() {
+        for constraint in ProjectCountConstraint.allCases {
+            #expect(constraint.id == constraint)
+            #expect(!constraint.label.isEmpty)
+            #expect(!constraint.pickerLabel.isEmpty)
+            #expect(!constraint.explanation.isEmpty)
+        }
+
+        let whole = ProjectCountRules.wholeNumber
+        #expect(whole.requiredCount(for: 44, axis: .horizontal) == 44)
+        #expect(whole.requiredCount(for: 44.01, axis: .vertical) == 45)
+
+        let even = ProjectCountRules(
+            constraint: .evenNumber,
+            stitchRepeat: nil,
+            rowRepeat: nil
+        )
+        #expect(even.requiredCount(for: 44, axis: .horizontal) == 44)
+        #expect(even.requiredCount(for: 44.01, axis: .vertical) == 46)
+        #expect(even.summary == "Rounded up to even numbers")
+
+        let repeatRules = ProjectCountRules(
+            constraint: .patternRepeat,
+            stitchRepeat: 6,
+            rowRepeat: 8
+        )
+        #expect(repeatRules.requiredCount(for: 44.01, axis: .horizontal) == 48)
+        #expect(repeatRules.requiredCount(for: 52.01, axis: .vertical) == 56)
+        let missingRepeats = ProjectCountRules(
+            constraint: .patternRepeat,
+            stitchRepeat: nil,
+            rowRepeat: nil
+        )
+        #expect(missingRepeats.summary == "Rounded up to 1-stitch and 1-row repeats")
+        #expect(missingRepeats.requiredCount(for: 2.1, axis: .horizontal) == 3)
+        #expect(missingRepeats.requiredCount(for: 2.1, axis: .vertical) == 3)
+        #expect(ProjectCountRules.wholeNumber.requiredCount(
+            for: 25 * 17.6 / 10,
+            axis: .horizontal
+        ) == 44)
+        #expect(ProjectCountRules(
+            constraint: .evenNumber,
+            stitchRepeat: nil,
+            rowRepeat: nil
+        ).requiredCount(for: 25 * 17.6 / 10, axis: .horizontal) == 44)
+        #expect(ProjectCountRules(
+            constraint: .patternRepeat,
+            stitchRepeat: 4,
+            rowRepeat: 4
+        ).requiredCount(for: 25 * 17.6 / 10, axis: .horizontal) == 44)
+
+        guard var invalidProject = validDraft(type: .headwear).makeProject() else {
+            Issue.record("Expected the valid draft to create a project")
+            return
+        }
+        invalidProject.gaugeValues.yourStitches = "bad"
+        #expect(invalidProject.measurementResults.isEmpty)
+        guard let freshProject = validDraft(type: .headwear).makeProject() else {
+            Issue.record("Expected the valid draft to create a project")
+            return
+        }
+        invalidProject = freshProject
+        invalidProject.measurements[0].centimeters = "bad"
+        #expect(invalidProject.measurementResults.count == 1)
+    }
+
+    @Test func patternRepeatRequiresBothValidMultiples() {
+        var draft = validDraft(type: .headwear)
+        draft.countConstraint = .patternRepeat
+        #expect(!draft.isMeasurementsValid)
+        #expect(draft.makeProject() == nil)
+
+        draft.stitchRepeat = "6"
+        #expect(!draft.isMeasurementsValid)
+        draft.rowRepeat = "8"
+        #expect(draft.isMeasurementsValid)
+        #expect(draft.validatedCountRules?.summary == "Rounded up to 6-stitch and 8-row repeats")
+
+        draft.stitchRepeat = "0"
+        #expect(!draft.isMeasurementsValid)
+        draft.stitchRepeat = "1000"
+        #expect(!draft.isMeasurementsValid)
     }
 
     @Test func storeLoadsPersistsUpdatesDeletesAndResets() throws {
@@ -640,6 +740,9 @@ struct ProjectTests {
         #expect(!editingState.hasChanges)
         editingState.draft.name = "Updated"
         #expect(editingState.hasChanges)
+        #expect(store.add(editingProject))
+        editingState.saveProject()
+        #expect(store.project(id: editingProject.id)?.name == "Updated")
 
         let environmentState = CreateProjectFlowState(
             store: store,
@@ -737,6 +840,16 @@ struct ProjectTests {
         measurements.measurementDisplayBinding(for: .customDepth).wrappedValue = "bad"
         #expect(measurements.measurementDisplayValue(for: .customDepth) == "bad")
         #expect(measurements.measurementValidationMessage(for: .customDepth).contains("leave this blank"))
+        measurementsBox.value.countConstraint = .wholeNumber
+        expectFinite(measurements)
+        measurementsBox.value.countConstraint = .evenNumber
+        expectFinite(measurements)
+        measurementsBox.value.countConstraint = .patternRepeat
+        #expect(measurementsBox.value.validatedCountRules == nil)
+        expectFinite(measurements)
+        measurementsBox.value.stitchRepeat = "6"
+        measurementsBox.value.rowRepeat = "8"
+        #expect(measurementsBox.value.validatedCountRules != nil)
         expectFinite(measurements)
 
         let notes = CreateProjectNotesStep(draft: measurementsBox.binding)
@@ -755,9 +868,13 @@ struct ProjectTests {
         #expect(review.gaugeSummary(pattern: true).contains("20 stitches"))
         #expect(review.gaugeSummary(pattern: false).contains("22 stitches"))
         #expect(review.measurementReviewValue(for: .yokeRaglanDepth).isEmpty)
+        #expect(review.countRulesSummary == "Rounded up to whole numbers")
+        incomplete.countConstraint = .patternRepeat
+        let invalidReview = CreateProjectReviewStep(draft: incomplete)
+        #expect(invalidReview.countRulesSummary == "Pattern Repeat")
     }
 
-    @Test func libraryActionsBindingsAndDestinationsCoverEveryBranch() async throws {
+    @Test func libraryActionsBindingsAndDestinationsCoverEveryBranch() throws {
         let store = ProjectStore(defaults: isolatedDefaults())
         let project = try #require(validDraft(type: .other).makeProject())
         #expect(store.add(project))
@@ -851,26 +968,25 @@ struct ProjectTests {
         results.projectUpdated(project.id)
         results.stopEditing()
         _ = results.editSheet()
-        let result = try #require(project.gaugeResult)
-        #expect(!(await results.shareItems(for: result)).isEmpty)
         let unavailableResults = ProjectResultsView(
             projectID: UUID(),
             store: store
         )
         _ = unavailableResults.editSheet()
-        #expect((await unavailableResults.shareItems(for: result)).isEmpty)
         expectFinite(results)
         expectFinite(unavailableResults)
-        expectFinite(ProjectResultsView(
-            projectID: project.id,
-            store: store,
-            showFullMath: true
-        ))
 
         let overview = ProjectOverviewCard(project: project)
         #expect(overview.landmarks(for: .customDepth) == "Top edge to bottom edge")
         #expect(overview.landmarks(for: .customWidth) == "Top edge to bottom edge")
         #expect(overview.landmarks(for: .heelDepth) == ProjectMeasurementKind.heelDepth.landmarks)
+        #expect(overview.displayValue("bad") == "bad")
+        #expect(overview.gaugeBasis == "10 cm")
+        #expect(overview.gaugeValue(stitches: "20", rows: "24") == "20 stitches · 24 rows")
+
+        var inchProject = project
+        inchProject.measurementUnit = .inches
+        #expect(ProjectOverviewCard(project: inchProject).gaugeBasis == "4 in")
     }
 
     private var allMeasurementKinds: [ProjectMeasurementKind] {

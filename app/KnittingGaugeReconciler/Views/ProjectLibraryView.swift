@@ -407,6 +407,41 @@ struct ProjectOverviewCard: View {
                 }
             }
 
+            if let notes = project.notes, !notes.isEmpty {
+                Divider()
+                    .overlay(AppTheme.outline)
+                VStack(alignment: .leading, spacing: Spacing.control) {
+                    sectionTitle("Notes")
+                    Text(notes)
+                        .font(.satoshiBody)
+                        .foregroundStyle(AppTheme.ink)
+                }
+            }
+
+            Divider()
+                .overlay(AppTheme.outline)
+
+            VStack(alignment: .leading, spacing: Spacing.control) {
+                sectionTitle("Gauge Inputs")
+                Text("Counts per \(gaugeBasis)")
+                    .font(.satoshiCaption)
+                    .foregroundStyle(AppTheme.muted)
+                detailRow(
+                    "Pattern gauge",
+                    value: gaugeValue(
+                        stitches: project.gaugeValues.patternStitches,
+                        rows: project.gaugeValues.patternRows
+                    )
+                )
+                detailRow(
+                    "Swatch gauge",
+                    value: gaugeValue(
+                        stitches: project.gaugeValues.yourStitches,
+                        rows: project.gaugeValues.yourRows
+                    )
+                )
+            }
+
             Divider()
                 .overlay(AppTheme.outline)
 
@@ -422,19 +457,16 @@ struct ProjectOverviewCard: View {
                 }
                 ForEach(project.measurementResults, content: measurementRow)
             }
-
-            if let notes = project.notes, !notes.isEmpty {
-                Divider()
-                    .overlay(AppTheme.outline)
-                VStack(alignment: .leading, spacing: Spacing.control) {
-                    sectionTitle("Notes")
-                    Text(notes)
-                        .font(.satoshiBody)
-                        .foregroundStyle(AppTheme.ink)
-                }
-            }
         }
         .cardStyle()
+    }
+
+    var gaugeBasis: String {
+        project.measurementUnit == .centimeters ? "10 cm" : "4 in"
+    }
+
+    func gaugeValue(stitches: String, rows: String) -> String {
+        "\(stitches) stitches · \(rows) rows"
     }
 
     private func sectionTitle(_ title: String) -> some View {

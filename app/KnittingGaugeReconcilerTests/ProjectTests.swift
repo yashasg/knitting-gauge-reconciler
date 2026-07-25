@@ -978,6 +978,12 @@ struct ProjectTests {
         #expect(overview.landmarks(for: .customWidth) == "Top edge to bottom edge")
         #expect(overview.landmarks(for: .heelDepth) == ProjectMeasurementKind.heelDepth.landmarks)
         #expect(overview.displayValue("bad") == "bad")
+        #expect(overview.gaugeBasis == "10 cm")
+        #expect(overview.gaugeValue(stitches: "20", rows: "24") == "20 stitches · 24 rows")
+
+        var inchProject = project
+        inchProject.measurementUnit = .inches
+        #expect(ProjectOverviewCard(project: inchProject).gaugeBasis == "4 in")
     }
 
     private var allMeasurementKinds: [ProjectMeasurementKind] {

@@ -894,11 +894,18 @@ struct ProjectTests {
         state.searchText = "No matching project"
         #expect(state.visibleProjects.isEmpty)
         expectSceneRoot(ProjectLibraryView(state: state))
+        expectSceneRoot(ProjectLibraryView(state: ProjectLibraryState(
+            store: store,
+            isSearchPresented: true
+        )))
         state.searchText = "birthday"
         state.deleteVisibleProjects(at: IndexSet(integer: 0))
         #expect(store.project(id: searchableProject.id) == nil)
         #expect(store.project(id: project.id) != nil)
         state.searchText = ""
+        #expect(!state.isSearchPresented)
+        state.presentSearch()
+        #expect(state.isSearchPresented)
         #expect(!state.isSettingsPresented)
         state.presentSettings()
         #expect(state.isSettingsPresented)

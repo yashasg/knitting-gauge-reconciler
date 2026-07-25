@@ -302,6 +302,7 @@ struct ProjectMeasurementValue: Codable, Equatable, Identifiable {
 
 struct ProjectMeasurementResult: Equatable, Identifiable {
     let measurement: ProjectMeasurementValue
+    let patternCount: Int
     let requiredCount: Int
 
     var id: ProjectMeasurementKind { measurement.kind }
@@ -470,11 +471,18 @@ struct KnittingProject: Codable, Equatable, Identifiable {
         let rules = countRules ?? .wholeNumber
         return measurements.compactMap { measurement in
             guard let centimeters = Double(measurement.centimeters) else { return nil }
+            let patternGauge = measurement.kind.axis == .horizontal
+                ? inputs.patternStitches
+                : inputs.patternRows
             let swatchGauge = measurement.kind.axis == .horizontal
                 ? inputs.yourStitches
                 : inputs.yourRows
             return ProjectMeasurementResult(
                 measurement: measurement,
+                patternCount: rules.requiredCount(
+                    for: centimeters * patternGauge / 10,
+                    axis: measurement.kind.axis
+                ),
                 requiredCount: rules.requiredCount(
                     for: centimeters * swatchGauge / 10,
                     axis: measurement.kind.axis

@@ -446,7 +446,7 @@ struct ProjectOverviewCard: View {
                 .overlay(AppTheme.outline)
 
             VStack(alignment: .leading, spacing: Spacing.control) {
-                sectionTitle("Required Counts")
+                sectionTitle("Reconciled Counts")
                 Text((project.countRules ?? .wholeNumber).summary)
                     .font(.satoshiCaption)
                     .foregroundStyle(AppTheme.muted)
@@ -484,25 +484,12 @@ struct ProjectOverviewCard: View {
 
     private func measurementRow(_ result: ProjectMeasurementResult) -> some View {
         let measurement = result.measurement
-        return LabeledContent {
-            Text("\(result.requiredCount) \(result.resultLabel)")
-                .font(.satoshiHeadline.weight(.bold))
-                .foregroundStyle(project.color.color)
-                .monospacedDigit()
-        } label: {
-            VStack(alignment: .leading, spacing: Spacing.tight) {
-                Text(measurement.kind.label)
-                    .font(.satoshiBody.weight(.semibold))
-                    .foregroundStyle(AppTheme.ink)
-                Text(displayValue(measurement.centimeters))
-                    .font(.satoshiCaption.monospacedDigit())
-                    .foregroundStyle(AppTheme.muted)
-                Text(landmarks(for: measurement.kind))
-                    .font(.satoshiCaption)
-                    .foregroundStyle(AppTheme.muted)
-            }
-        }
-        .accessibilityElement(children: .combine)
+        return ProjectMeasurementComparisonRow(
+            result: result,
+            measurementValue: displayValue(measurement.centimeters),
+            landmarks: landmarks(for: measurement.kind),
+            projectColor: project.color.color
+        )
     }
 
     func displayValue(_ centimeters: String) -> String {
@@ -516,5 +503,90 @@ struct ProjectOverviewCard: View {
             return project.customLandmarks
         }
         return kind.landmarks
+    }
+}
+
+private struct ProjectMeasurementComparisonRow: View {
+    let result: ProjectMeasurementResult
+    let measurementValue: String
+    let landmarks: String
+    let projectColor: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.inner) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.control) {
+                Text(result.measurement.kind.label)
+                    .font(.satoshiBody.weight(.semibold))
+                    .foregroundStyle(AppTheme.ink)
+                Spacer(minLength: Spacing.inner)
+                Text(measurementValue)
+                    .font(.satoshiCaption.monospacedDigit())
+                    .foregroundStyle(AppTheme.muted)
+            }
+
+            Text(landmarks)
+                .font(.satoshiCaption)
+                .foregroundStyle(AppTheme.muted)
+
+            comparisonLayout
+        }
+        .padding(.vertical, Spacing.tight)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(result.measurement.kind.label), \(measurementValue), " +
+                "before reconciliation \(result.patternCount) \(result.resultLabel), " +
+                "after reconciliation \(result.requiredCount) \(result.resultLabel), " +
+                landmarks
+        )
+    }
+
+    private var comparisonLayout: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: Spacing.control) {
+                comparisonValue("Before reconciliation", count: result.patternCount)
+                comparisonArrow("arrow.right")
+                comparisonValue(
+                    "After reconciliation",
+                    count: result.requiredCount,
+                    isTrailing: true,
+                    color: projectColor
+                )
+            }
+
+            VStack(alignment: .leading, spacing: Spacing.inner) {
+                comparisonValue("Before reconciliation", count: result.patternCount)
+                comparisonArrow("arrow.down")
+                comparisonValue(
+                    "After reconciliation",
+                    count: result.requiredCount,
+                    color: projectColor
+                )
+            }
+        }
+    }
+
+    private func comparisonValue(
+        _ caption: String,
+        count: Int,
+        isTrailing: Bool = false,
+        color: Color = AppTheme.ink
+    ) -> some View {
+        VStack(alignment: isTrailing ? .trailing : .leading, spacing: Spacing.tight) {
+            Text(caption)
+                .font(.satoshiCaption)
+                .foregroundStyle(AppTheme.muted)
+            Text("\(count) \(result.resultLabel)")
+                .font(.satoshiHeadline.weight(.bold))
+                .foregroundStyle(color)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: isTrailing ? .trailing : .leading)
+    }
+
+    private func comparisonArrow(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.satoshiCaption.weight(.bold))
+            .foregroundStyle(AppTheme.muted)
+            .accessibilityHidden(true)
     }
 }

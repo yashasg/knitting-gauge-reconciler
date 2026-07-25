@@ -22,12 +22,12 @@ struct DeltaPillBadge: View {
     var body: some View {
         Text(text)
             .font(.satoshiCaption2.weight(.semibold))
-            .foregroundStyle(AppTheme.card)
+            .foregroundStyle(AppTheme.cream)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, Spacing.inner)
             .padding(EdgeInsets(top: Spacing.tight, leading: 0, bottom: Spacing.tight, trailing: 0))
-            .background(AppTheme.deltaPill)
+            .background(AppTheme.sage)
             .clipShape(Capsule())
             // Pill is purely decorative — adjacent value tile carries the
             // semantic value (e.g. "Knit 64 rows, +16 from pattern").

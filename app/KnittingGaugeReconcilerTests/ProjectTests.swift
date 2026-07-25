@@ -142,8 +142,6 @@ struct ProjectTests {
         }
         for kind in allMeasurementKinds {
             #expect(!kind.label.isEmpty)
-            #expect(!kind.landmarks.isEmpty)
-            #expect(kind.valueRange == 1...500)
             #expect(!kind.axis.resultLabel.isEmpty)
         }
         for color in ProjectColor.allCases {
@@ -258,13 +256,17 @@ struct ProjectTests {
             #expect(!draft.isMeasurementsValid)
             #expect(draft.makeProject() == nil)
             draft.measurementValues[expected[0]] = "501"
-            #expect(!draft.isMeasurementsValid)
+            #expect(draft.isMeasurementsValid)
             draft.measurementValues[expected[0]] = "20.5"
+            #expect(draft.isMeasurementsValid)
+            draft.measurementValues[expected[0]] = "0"
+            #expect(!draft.isMeasurementsValid)
+            draft.measurementValues[expected[0]] = "-0.1"
             #expect(!draft.isMeasurementsValid)
         }
     }
 
-    @Test func draftValidationRejectsInvalidIdentityGaugeConstructionAndLandmarks() {
+    @Test func draftValidationRejectsInvalidIdentityGaugeAndConstruction() {
         var draft = ProjectDraft()
         #expect(!draft.isIdentityValid)
         draft.name = "Hat"
@@ -299,12 +301,10 @@ struct ProjectTests {
     @Test func selectingTypeResetsIncompatibleIcons() {
         var draft = ProjectDraft()
         draft.measurementValues[.yokeRaglanDepth] = "20"
-        draft.customLandmarks = "Old landmarks"
         draft.selectType(.bottoms)
         #expect(draft.type == .bottoms)
         #expect(draft.construction == .skirt)
         #expect(draft.measurementValues.isEmpty)
-        #expect(draft.customLandmarks.isEmpty)
         #expect(draft.symbolName == ProjectType.bottoms.defaultSymbolName)
 
         draft = ProjectDraft()
@@ -470,6 +470,157 @@ struct ProjectTests {
         #expect(!draft.isMeasurementsValid)
         draft.stitchRepeat = "1000"
         #expect(!draft.isMeasurementsValid)
+    }
+
+    @Test func optionalMeasurementsPreservePositiveDecimalsAcrossUnits() {
+        let acceptedInches = [
+            (display: "0.1", stored: "0.254"),
+            (display: "25", stored: "63.5"),
+            (display: "25.5", stored: "64.77"),
+            (display: "500.125", stored: "1270.3175"),
+            (display: "1000000.25", stored: "2540000.635"),
+        ]
+        let acceptedCentimeters = ["0.1", "25.5", "500.125", "1000000.25"]
+        let rejected = ["0", "-0.1", "bad"]
+
+        for kind in allMeasurementKinds {
+            let inchBox = DraftBox(ProjectDraft())
+            inchBox.value.measurementUnit = .inches
+            let inchStep = CreateProjectMeasurementsStep(draft: inchBox.binding)
+            #expect(
+                inchStep.measurementValidationMessage(for: kind) ==
+                    "Enter a number greater than 0 in, or leave this blank."
+            )
+
+            for testCase in acceptedInches {
+                inchStep.measurementDisplayBinding(for: kind).wrappedValue = testCase.display
+                #expect(
+                    inchBox.value.measurementValues[kind] == testCase.stored,
+                    "\(kind) stores \(testCase.display) inches canonically"
+                )
+                #expect(
+                    inchStep.measurementDisplayValue(for: kind) == testCase.display,
+                    "\(kind) displays \(testCase.display) inches"
+                )
+                #expect(
+                    inchBox.value.isMeasurementValid(kind),
+                    "\(kind) accepts \(testCase.display) inches"
+                )
+            }
+
+            for value in rejected {
+                inchStep.measurementDisplayBinding(for: kind).wrappedValue = value
+                #expect(
+                    inchStep.measurementDisplayValue(for: kind) == value,
+                    "\(kind) preserves invalid input \(value)"
+                )
+                #expect(
+                    !inchBox.value.isMeasurementValid(kind),
+                    "\(kind) rejects \(value) inches"
+                )
+            }
+
+            let centimeterBox = DraftBox(ProjectDraft())
+            let centimeterStep = CreateProjectMeasurementsStep(draft: centimeterBox.binding)
+            for value in acceptedCentimeters {
+                centimeterStep.measurementDisplayBinding(for: kind).wrappedValue = value
+                #expect(centimeterBox.value.measurementValues[kind] == value)
+                #expect(centimeterStep.measurementDisplayValue(for: kind) == value)
+                #expect(centimeterBox.value.isMeasurementValid(kind))
+            }
+            for value in rejected {
+                centimeterStep.measurementDisplayBinding(for: kind).wrappedValue = value
+                #expect(centimeterStep.measurementDisplayValue(for: kind) == value)
+                #expect(!centimeterBox.value.isMeasurementValid(kind))
+            }
+        }
+
+        let germanLocale = Locale(identifier: "de_DE")
+        #expect(
+            MeasurementUnit.inches.positiveMeasurementStorageText(
+                from: "25,5",
+                locale: germanLocale
+            ) == "64.77"
+        )
+        #expect(
+            MeasurementUnit.centimeters.positiveMeasurementStorageText(
+                from: "25,5",
+                locale: germanLocale
+            ) == "25.5"
+        )
+        #expect(
+            MeasurementUnit.inches.positiveMeasurementDisplayText(from: "64.77") == "25.5"
+        )
+    }
+
+    @Test func decimalMeasurementsRoundTripThroughSwiftData() throws {
+        let container = try inMemoryProjectContainer()
+        var draft = validDraft(type: .other)
+        draft.measurementUnit = .inches
+        let box = DraftBox(draft)
+        let step = CreateProjectMeasurementsStep(draft: box.binding)
+        step.measurementDisplayBinding(for: .customWidth).wrappedValue = "25.5"
+        step.measurementDisplayBinding(for: .customDepth).wrappedValue = "12.125"
+        let project = try #require(box.value.makeProject())
+        let store = ProjectStore(modelContainer: container)
+
+        #expect(store.add(project))
+        let reloaded = try #require(
+            ProjectStore(modelContainer: container).project(id: project.id)
+        )
+        #expect(reloaded.measurementValue(for: .customWidth) == "64.77")
+        #expect(reloaded.measurementValue(for: .customDepth) == "30.7975")
+
+        let reloadedBox = DraftBox(ProjectDraft(project: reloaded))
+        let reloadedStep = CreateProjectMeasurementsStep(draft: reloadedBox.binding)
+        #expect(reloadedStep.measurementDisplayValue(for: .customWidth) == "25.5")
+        #expect(reloadedStep.measurementDisplayValue(for: .customDepth) == "12.125")
+        #expect(reloadedBox.value.isMeasurementsValid)
+        #expect(
+            reloaded.measurementResults.allSatisfy {
+                $0.patternCount > 0 && $0.requiredCount > 0
+            }
+        )
+    }
+
+    @Test(arguments: [
+        Double.greatestFiniteMagnitude,
+        Double.infinity,
+        Double.nan,
+    ])
+    func countRoundingRejectsValuesOutsideIntRange(_ rawCount: Double) {
+        #expect(
+            ProjectCountRules.wholeNumber.requiredCount(
+                for: rawCount,
+                axis: .horizontal
+            ) == nil
+        )
+    }
+
+    @Test func decimalMeasurementBoundsNeverReachTrappingIntConversion() throws {
+        let extreme = NSDecimalNumber(decimal: Decimal.greatestFiniteMagnitude).stringValue
+        let inchBox = DraftBox(validDraft(type: .other))
+        inchBox.value.measurementUnit = .inches
+        let inchStep = CreateProjectMeasurementsStep(draft: inchBox.binding)
+        inchStep.measurementDisplayBinding(for: .customWidth).wrappedValue = extreme
+        #expect(inchStep.measurementDisplayValue(for: .customWidth) == extreme)
+        #expect(!inchBox.value.isMeasurementValid(.customWidth))
+
+        let centimeterBox = DraftBox(validDraft(type: .other))
+        let centimeterStep = CreateProjectMeasurementsStep(draft: centimeterBox.binding)
+        centimeterStep.measurementDisplayBinding(for: .customWidth).wrappedValue = extreme
+        #expect(
+            centimeterStep.measurementValidationMessage(for: .customWidth) ==
+                "This measurement is too large to calculate."
+        )
+        #expect(!centimeterBox.value.isMeasurementValid(.customWidth))
+        #expect(centimeterBox.value.makeProject() == nil)
+
+        var persisted = try #require(validDraft(type: .other).makeProject())
+        persisted.measurements = [
+            ProjectMeasurementValue(kind: .customWidth, centimeters: extreme),
+        ]
+        #expect(persisted.measurementResults.isEmpty)
     }
 
     @Test func storeLoadsPersistsUpdatesDeletesAndResets() throws {
@@ -893,7 +1044,10 @@ struct ProjectTests {
         measurements.measurementDisplayBinding(for: .customDepth).wrappedValue = "30"
         measurementsBox.value.measurementUnit = .inches
         measurements = CreateProjectMeasurementsStep(draft: measurementsBox.binding)
-        #expect(measurements.measurementDisplayValue(for: .customDepth) == "12")
+        let displayedInches = try #require(
+            GaugeMath.parsedNumber(measurements.measurementDisplayValue(for: .customDepth))
+        )
+        #expect(abs(displayedInches - (30 / 2.54)) < 0.000_000_1)
         measurements.measurementDisplayBinding(for: .customDepth).wrappedValue = "bad"
         #expect(measurements.measurementDisplayValue(for: .customDepth) == "bad")
         #expect(measurements.measurementValidationMessage(for: .customDepth).contains("leave this blank"))
@@ -1041,9 +1195,6 @@ struct ProjectTests {
         expectFinite(unavailableResults)
 
         let overview = ProjectOverviewCard(project: project)
-        #expect(overview.landmarks(for: .customDepth) == "Top edge to bottom edge")
-        #expect(overview.landmarks(for: .customWidth) == "Top edge to bottom edge")
-        #expect(overview.landmarks(for: .heelDepth) == ProjectMeasurementKind.heelDepth.landmarks)
         #expect(overview.displayValue("bad") == "bad")
         #expect(overview.gaugeBasis == "10 cm")
         #expect(overview.gaugeValue(stitches: "20", rows: "24") == "20 stitches · 24 rows")
@@ -1087,9 +1238,6 @@ struct ProjectTests {
         }
         for kind in draft.measurementKinds {
             draft.measurementValues[kind] = "20"
-        }
-        if type == .other {
-            draft.customLandmarks = "Top edge to bottom edge"
         }
         return draft
     }

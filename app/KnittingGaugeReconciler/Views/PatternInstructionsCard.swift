@@ -19,7 +19,7 @@ struct PatternInstructionsCard: View {
     private let validationMessages: [GaugeFormField: String]
     private let focusedField: Binding<GaugeFormField?>
 
-    private static let lengthCmRange: ClosedRange<Int> = 5...100
+    private static let lengthCmRange: ClosedRange<Double> = 5...100
 
     init(
         patternCastOn: Binding<String>,
@@ -75,7 +75,7 @@ struct PatternInstructionsCard: View {
     }
 
     private var castOnField: some View {
-        GaugeStepperField(
+        GaugeInputField(
             title: "Cast-on stitches",
             text: $patternCastOn,
             unit: "stitches",
@@ -103,49 +103,46 @@ struct PatternInstructionsCard: View {
     }
 
     private var yokeField: some View {
-        GaugeStepperField(
+        GaugeInputField(
             title: GaugeFormDraft(unit: unit).lengthFieldLabel(.patternYoke),
-            text: displayBinding(for: $patternYoke, field: .patternYoke),
+            text: displayBinding(for: $patternYoke),
             unit: unit.label,
             field: .patternYoke,
             validationMessage: validationMessages[.patternYoke],
             validationText: patternYoke,
-            displayUnit: unit,
             focusedField: focusedField,
-            range: unit.displayRange(from: Self.lengthCmRange)
+            range: unit.displayDecimalRange(from: Self.lengthCmRange)
         )
     }
 
     private var bodyField: some View {
-        GaugeStepperField(
+        GaugeInputField(
             title: GaugeFormDraft(unit: unit).lengthFieldLabel(.patternBody),
-            text: displayBinding(for: $patternBody, field: .patternBody),
+            text: displayBinding(for: $patternBody),
             unit: unit.label,
             field: .patternBody,
             validationMessage: validationMessages[.patternBody],
             validationText: patternBody,
-            displayUnit: unit,
             focusedField: focusedField,
-            range: unit.displayRange(from: Self.lengthCmRange)
+            range: unit.displayDecimalRange(from: Self.lengthCmRange)
         )
     }
 
     private var sleeveField: some View {
-        GaugeStepperField(
+        GaugeInputField(
             title: GaugeFormDraft(unit: unit).lengthFieldLabel(.patternSleeve),
-            text: displayBinding(for: $patternSleeve, field: .patternSleeve),
+            text: displayBinding(for: $patternSleeve),
             unit: unit.label,
             field: .patternSleeve,
             validationMessage: validationMessages[.patternSleeve],
             validationText: patternSleeve,
-            displayUnit: unit,
             focusedField: focusedField,
-            range: unit.displayRange(from: Self.lengthCmRange)
+            range: unit.displayDecimalRange(from: Self.lengthCmRange)
         )
     }
 
     private var shapingField: some View {
-        GaugeStepperField(
+        GaugeInputField(
             title: "Increase every (rows)",
             text: $patternIncreases,
             unit: "rows",
@@ -156,31 +153,13 @@ struct PatternInstructionsCard: View {
         )
     }
 
-    func displayBinding(
-        for centimeters: Binding<String>,
-        field: GaugeFormField
-    ) -> Binding<String> {
+    func displayBinding(for centimeters: Binding<String>) -> Binding<String> {
         Binding(
             get: {
-                let rawText = centimeters.wrappedValue
-                if let invalidInches = MeasurementUnit.invalidInchesText(from: rawText) {
-                    return invalidInches
-                }
-                guard unit == .inches else { return rawText }
-                switch GaugeMath.validate(rawText, for: field.mathField) {
-                case .success(let value?):
-                    return "\(unit.cmToDisplayInt(value))"
-                case .success(nil):
-                    return ""
-                case .failure:
-                    return rawText
-                }
+                unit.positiveMeasurementDisplayText(from: centimeters.wrappedValue)
             },
             set: { newValue in
-                centimeters.wrappedValue = unit.centimeterStorageText(
-                    from: newValue,
-                    cmRange: Self.lengthCmRange
-                )
+                centimeters.wrappedValue = unit.positiveMeasurementStorageText(from: newValue)
             }
         )
     }

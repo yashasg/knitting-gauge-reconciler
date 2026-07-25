@@ -6,13 +6,13 @@ import Foundation
 /// INTERNAL MODEL IS ALWAYS CENTIMETRES — this type is a display/entry concern only.
 /// Conversion: 1 inch = 2.54 cm (exact).
 ///
-/// Entries remain whole numbers in the selected unit. Adjusted result text
-/// preserves one decimal place when needed.
+/// Adjusted result text preserves one decimal place when needed.
 enum MeasurementUnit: String, CaseIterable, Codable {
     case centimeters
     case inches
 
     private static let invalidInchesPrefix = "gauge.invalid-inches:"
+    private static let centimetersPerInch = Decimal(254) / 100
 
     /// Short label used in field titles and unit toggle.
     var label: String {
@@ -40,41 +40,26 @@ enum MeasurementUnit: String, CaseIterable, Codable {
 
     // MARK: - Display conversion
 
-    // Converts a centimetre value to the nearest whole display-unit integer.
-    // Used for text-field and wheel-picker display.
-    // swiftlint:disable:next identifier_name
-    func cmToDisplayInt(_ cm: Double) -> Int {
-        switch self {
-        case .centimeters: return Int(cm.rounded())
-        case .inches: return Int((cm / 2.54).rounded())
-        }
-    }
-
-    // Converts a user-entered whole display-unit integer back to a centimetre string.
-    func displayIntToCmString(_ displayInt: Int) -> String? {
-        switch self {
-        case .centimeters: return "\(displayInt)"
-        case .inches:
-            let (hundredths, overflow) = displayInt.multipliedReportingOverflow(by: 254)
-            guard !overflow else { return nil }
-            return NSDecimalNumber(decimal: Decimal(hundredths) / 100).stringValue
-        }
-    }
-
-    func centimeterStorageText(
+    func positiveMeasurementStorageText(
         from displayText: String,
-        cmRange: ClosedRange<Int>
+        locale: Locale = .current
     ) -> String {
-        guard self == .inches else { return displayText }
         let trimmed = displayText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return displayText }
-        let displayRange = displayRange(from: cmRange)
-        guard let displayValue = Int(trimmed),
-              displayRange.contains(displayValue),
-              let centimeters = displayIntToCmString(displayValue) else {
+        guard let displayValue = Self.decimal(from: trimmed, locale: locale),
+              displayValue > 0 else {
+            return self == .inches ? Self.invalidInchesPrefix + displayText : displayText
+        }
+        guard self == .inches else {
+            return NSDecimalNumber(decimal: displayValue).stringValue
+        }
+        var inches = displayValue
+        var conversion = Self.centimetersPerInch
+        var centimeters = Decimal()
+        guard NSDecimalMultiply(&centimeters, &inches, &conversion, .plain) == .noError else {
             return Self.invalidInchesPrefix + displayText
         }
-        return centimeters
+        return NSDecimalNumber(decimal: centimeters).stringValue
     }
 
     static func invalidInchesText(from storedText: String) -> String? {
@@ -87,6 +72,59 @@ enum MeasurementUnit: String, CaseIterable, Codable {
         return Self.invalidInchesText(from: storedText) ?? storedText
     }
 
+    func positiveMeasurementDisplayText(from storedText: String) -> String {
+        if let invalidInches = Self.invalidInchesText(from: storedText) {
+            return invalidInches
+        }
+        guard self == .inches,
+              let centimeters = Decimal(
+                  string: storedText,
+                  locale: Locale(identifier: "en_US_POSIX")
+              ) else {
+            return storedText
+        }
+        let inches = centimeters / Self.centimetersPerInch
+        return NSDecimalNumber(decimal: inches).stringValue
+    }
+
+    func isValidStoredPositiveMeasurement(_ storedText: String) -> Bool {
+        let trimmed = storedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || positiveStoredMeasurementValue(storedText) != nil
+    }
+
+    func positiveStoredMeasurementValue(_ storedText: String) -> Double? {
+        guard Self.invalidInchesText(from: storedText) == nil else { return nil }
+        guard let value = GaugeMath.parsedNumber(storedText),
+              value.isFinite, value > 0 else {
+            return nil
+        }
+        return value
+    }
+
+    private static func decimal(from text: String, locale: Locale) -> Decimal? {
+        let separator = locale.decimalSeparator
+        var normalized = ""
+        var hasDigit = false
+        var hasSeparator = false
+
+        for (index, character) in text.enumerated() {
+            if character.isWholeNumber {
+                hasDigit = true
+                normalized.append(character)
+            } else if String(character) == separator || character == "." {
+                guard !hasSeparator else { return nil }
+                hasSeparator = true
+                normalized.append(".")
+            } else if (character == "-" || character == "+") && index == 0 {
+                normalized.append(character)
+            } else {
+                return nil
+            }
+        }
+        guard hasDigit else { return nil }
+        return Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX"))
+    }
+
     // Returns the equivalent display-unit range for a cm-calibrated closed range.
     func displayRange(from cmRange: ClosedRange<Int>) -> ClosedRange<Int> {
         switch self {
@@ -95,6 +133,15 @@ enum MeasurementUnit: String, CaseIterable, Codable {
             let lowerInches = max(1, Int((Double(cmRange.lowerBound) / 2.54).rounded()))
             let upperInches = max(lowerInches, Int((Double(cmRange.upperBound) / 2.54).rounded()))
             return lowerInches...upperInches
+        }
+    }
+
+    func displayDecimalRange(from cmRange: ClosedRange<Double>) -> ClosedRange<Double> {
+        switch self {
+        case .centimeters:
+            cmRange
+        case .inches:
+            (cmRange.lowerBound / 2.54)...(cmRange.upperBound / 2.54)
         }
     }
 

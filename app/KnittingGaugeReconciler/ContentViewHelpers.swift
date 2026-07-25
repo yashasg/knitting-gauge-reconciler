@@ -259,9 +259,9 @@ struct GaugeFormDraft: Equatable {
 
     func validationMessage(for field: GaugeFormField) -> String? {
         if let invalidInches = MeasurementUnit.invalidInchesText(from: self[field]) {
-            let range = MeasurementUnit.inches.displayRange(from: 5...100)
-            return "\(field.correctionName) must be a whole number between \(range.lowerBound) and " +
-                "\(range.upperBound) in. Entered: \(invalidInches)."
+            let range = MeasurementUnit.inches.displayDecimalRange(from: 5.0...100.0)
+            return "\(field.correctionName) must be between \(plain(range.lowerBound)) and " +
+                "\(plain(range.upperBound)) in. Entered: \(invalidInches)."
         }
         guard case let .failure(error) = validationResult(for: field) else { return nil }
         switch error {
@@ -272,9 +272,7 @@ struct GaugeFormDraft: Equatable {
         case .wholeNumberRequired:
             return "Enter \(field.correctionName.lowercased()) as a whole number."
         case .outOfRange:
-            let bounds = displayedBounds(for: field)
-            return "\(field.correctionName) must be between \(bounds.range.lowerBound) and " +
-                "\(bounds.range.upperBound) \(bounds.unit)."
+            return outOfRangeMessage(for: field)
         }
     }
 
@@ -284,15 +282,6 @@ struct GaugeFormDraft: Equatable {
             patternDetailsExpanded = true
         }
         return focusedField.flatMap { validationMessage(for: $0) }
-    }
-
-    mutating func commitPicker(_ value: Int, for field: GaugeFormField) {
-        switch field {
-        case .patternYoke, .patternBody, .patternSleeve:
-            self[field] = unit.centimeterStorageText(from: "\(value)", cmRange: 5...100)
-        default:
-            self[field] = "\(value)"
-        }
     }
 
     mutating func reset() -> GaugeFormDraft {
@@ -312,18 +301,20 @@ struct GaugeFormDraft: Equatable {
         "\(field.correctionName) (\(unit.label))"
     }
 
-    private func displayedBounds(for field: GaugeFormField) -> (range: ClosedRange<Int>, unit: String) {
+    private func outOfRangeMessage(for field: GaugeFormField) -> String {
         switch field {
         case .patternStitches, .yourStitches:
-            return (1...99, "stitches")
+            return "\(field.correctionName) must be between 1 and 99 stitches."
         case .patternRows, .yourRows:
-            return (1...99, "rows")
+            return "\(field.correctionName) must be between 1 and 99 rows."
         case .patternCastOn:
-            return (40...400, "stitches")
+            return "Cast-on stitches must be between 40 and 400 stitches."
         case .patternYoke, .patternBody, .patternSleeve:
-            return (unit.displayRange(from: 5...100), unit.label)
+            let range = unit.displayDecimalRange(from: 5.0...100.0)
+            return "\(field.correctionName) must be between \(plain(range.lowerBound)) and " +
+                "\(plain(range.upperBound)) \(unit.label)."
         case .patternIncreases:
-            return (1...30, "rows")
+            return "Increase spacing must be between 1 and 30 rows."
         }
     }
 }

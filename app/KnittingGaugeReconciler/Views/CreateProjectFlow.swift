@@ -410,6 +410,22 @@ struct CreateProjectIdentityStep: View {
     }
 
     private var projectTypePicker: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Spacing.control) {
+                projectTypeHeading
+                Spacer(minLength: Spacing.inner)
+                projectTypeMenu
+            }
+            VStack(alignment: .leading, spacing: Spacing.control) {
+                projectTypeHeading
+                projectTypeMenu
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+        .projectSetupCard()
+    }
+
+    private var projectTypeHeading: some View {
         HStack(spacing: Spacing.control) {
             ProjectIconImage(symbolName: draft.type.defaultSymbolName)
                 .font(.satoshiBody.weight(.semibold))
@@ -421,18 +437,21 @@ struct CreateProjectIdentityStep: View {
             Text("Project Type")
                 .font(.satoshiHeadline)
                 .foregroundStyle(AppTheme.ink)
-            Spacer(minLength: Spacing.inner)
-            Picker("Project Type", selection: projectTypeBinding) {
-                ForEach(ProjectType.allCases) { type in
-                    Text(type.label).tag(type)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .tint(AppTheme.ink)
-            .accessibilityHint(draft.type.description)
+                .fixedSize(horizontal: true, vertical: false)
         }
-        .projectSetupCard()
+    }
+
+    private var projectTypeMenu: some View {
+        Picker("Project Type", selection: projectTypeBinding) {
+            ForEach(ProjectType.allCases) { type in
+                Text(type.label).tag(type)
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .tint(AppTheme.ink)
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityHint(draft.type.description)
     }
 
     private var projectColorPicker: some View {
@@ -723,7 +742,7 @@ struct CreateProjectConstructionStep: View {
         case .footwear:
             "Heel depth captures the shaping around the heel turn."
         case .other:
-            "Define a useful depth and name its start and end landmarks."
+            "Define useful horizontal and vertical dimensions."
         case .headwear, .tops, .bottoms:
             draft.type.description
         }
@@ -846,24 +865,6 @@ struct CreateProjectMeasurementsStep: View {
 
             ForEach(draft.measurementKinds, content: measurementField)
 
-            if draft.type == .other {
-                VStack(alignment: .leading, spacing: Spacing.compact) {
-                    Text("Landmarks")
-                        .font(.satoshiHeadline)
-                        .foregroundStyle(AppTheme.ink)
-                    TextField(
-                        "For example, edge to edge",
-                        text: $draft.customLandmarks,
-                        axis: .vertical
-                    )
-                    .lineLimit(2...4)
-                    Text("Optionally describe the landmarks for your custom dimensions.")
-                        .font(.satoshiCaption)
-                        .foregroundStyle(AppTheme.muted)
-                }
-                .projectSetupCard()
-            }
-
             countConstraint
         }
     }
@@ -928,13 +929,6 @@ struct CreateProjectMeasurementsStep: View {
                     .font(.satoshiBody.monospacedDigit())
                     .foregroundStyle(AppTheme.muted)
             }
-            Text(
-                kind == .customWidth || kind == .customDepth
-                    ? "Use your own landmarks below."
-                    : kind.landmarks
-            )
-                .font(.satoshiCaption)
-                .foregroundStyle(AppTheme.muted)
             if !draft.isMeasurementValid(kind) {
                 Text(measurementValidationMessage(for: kind))
                     .font(.satoshiCaption)
@@ -955,29 +949,24 @@ struct CreateProjectMeasurementsStep: View {
 
     func measurementDisplayValue(for kind: ProjectMeasurementKind) -> String {
         let stored = draft.measurementValues[kind] ?? ""
-        if let invalidInches = MeasurementUnit.invalidInchesText(from: stored) {
-            return invalidInches
-        }
-        guard draft.measurementUnit == .inches, let value = Double(stored) else {
-            return stored
-        }
-        return "\(draft.measurementUnit.cmToDisplayInt(value))"
+        return draft.measurementUnit.positiveMeasurementDisplayText(from: stored)
     }
 
     func setMeasurementDisplayValue(
         _ value: String,
         for kind: ProjectMeasurementKind
     ) {
-        draft.measurementValues[kind] = draft.measurementUnit.centimeterStorageText(
-            from: value,
-            cmRange: kind.valueRange
-        )
+        draft.measurementValues[kind] =
+            draft.measurementUnit.positiveMeasurementStorageText(from: value)
     }
 
     func measurementValidationMessage(for kind: ProjectMeasurementKind) -> String {
-        let range = draft.measurementUnit.displayRange(from: kind.valueRange)
-        return "Enter a whole number from \(range.lowerBound) to \(range.upperBound) " +
-            "\(draft.measurementUnit.label), or leave this blank."
+        let storedValue = draft.measurementValue(for: kind)
+        if !storedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           draft.measurementUnit.isValidStoredPositiveMeasurement(storedValue) {
+            return "This measurement is too large to calculate."
+        }
+        return "Enter a number greater than 0 \(draft.measurementUnit.label), or leave this blank."
     }
 }
 
@@ -1040,9 +1029,6 @@ struct CreateProjectReviewStep: View {
                         .foregroundStyle(AppTheme.muted)
                 }
                 ForEach(draft.enteredMeasurementKinds, content: measurementReviewRow)
-                if draft.type == .other, !draft.customLandmarks.isEmpty {
-                    reviewRow("Landmarks", value: draft.customLandmarks)
-                }
                 reviewRow("Count rounding", value: countRulesSummary)
             }
             .projectSetupCard()

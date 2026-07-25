@@ -540,7 +540,6 @@ struct ProjectOverviewCard: View {
         return ProjectMeasurementComparisonRow(
             result: result,
             measurementValue: displayValue(measurement.centimeters),
-            landmarks: landmarks(for: measurement.kind),
             projectColor: project.color.color
         )
     }
@@ -550,19 +549,11 @@ struct ProjectOverviewCard: View {
         return project.measurementUnit.formatMeasurement(value)
     }
 
-    func landmarks(for kind: ProjectMeasurementKind) -> String {
-        if kind == .customWidth || kind == .customDepth,
-           !project.customLandmarks.isEmpty {
-            return project.customLandmarks
-        }
-        return kind.landmarks
-    }
 }
 
 private struct ProjectMeasurementComparisonRow: View {
     let result: ProjectMeasurementResult
     let measurementValue: String
-    let landmarks: String
     let projectColor: Color
 
     var body: some View {
@@ -577,10 +568,6 @@ private struct ProjectMeasurementComparisonRow: View {
                     .foregroundStyle(AppTheme.muted)
             }
 
-            Text(landmarks)
-                .font(.satoshiCaption)
-                .foregroundStyle(AppTheme.muted)
-
             comparisonLayout
         }
         .padding(.vertical, Spacing.tight)
@@ -588,8 +575,7 @@ private struct ProjectMeasurementComparisonRow: View {
         .accessibilityLabel(
             "\(result.measurement.kind.label), \(measurementValue), " +
                 "before reconciliation \(result.patternCount) \(result.resultLabel), " +
-                "after reconciliation \(result.requiredCount) \(result.resultLabel), " +
-                landmarks
+                "after reconciliation \(result.requiredCount) \(result.resultLabel)"
         )
     }
 

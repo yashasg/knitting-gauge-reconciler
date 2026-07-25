@@ -6,9 +6,6 @@ import UIKit
 
 /*
  Retired UI contract traceability:
- - testStepperFieldOpensWheelAndKeyboard
-   → contracts07And13PickerAccessibilityAndMismatchAreDeterministic,
-     accessibilityAdjustmentsUseCurrentValueAndPreserveActivePickerSelection
  - testAboutHelpButtonOpensPullUpSheet → contract08HostedAboutHelpHasExactCopyAndAccessibleCloseAction
  - testVerdictHelpButtonOpensPullUpSheet → contract09ResultActionsContainNoVerdictHelp
  - testHelpSheetsExposeAccessibleCloseButton → contract08HostedAboutHelpHasExactCopyAndAccessibleCloseAction
@@ -81,8 +78,8 @@ struct DeterministicUIContractsTests {
         #expect(draft.focusedField == .patternStitches)
         #expect(announcement == "Pattern stitch gauge must be between 1 and 99 stitches.")
 
-        draft.commitPicker(1, for: .patternStitches)
-        draft.commitPicker(99, for: .patternRows)
+        draft[.patternStitches] = "1"
+        draft[.patternRows] = "99"
         #expect(draft[.patternStitches] == "1")
         #expect(draft[.patternRows] == "99")
         #expect(draft.inputs != nil)
@@ -102,56 +99,22 @@ struct DeterministicUIContractsTests {
         #expect(draft.focusedField == nil)
     }
 
-    @Test func contracts07And13PickerAccessibilityAndMismatchAreDeterministic() {
+    @Test func directEntryAccessibilityAndMismatchAreDeterministic() {
         for unit in MeasurementUnit.allCases {
-            let fieldLabel = GaugeInputsCard.accessibilityLabel(for: .yourRows, unit: unit)
-            let contract = GaugeStepperField.accessibilityContract(
-                text: "32",
-                unit: "ro",
-                fieldLabel: fieldLabel,
-                mismatchLabel: "Row gauge mismatch detected",
-                mismatchDelta: 8
-            )
-
-            #expect(contract.fieldValue == "32 rows, row gauge mismatch detected, +8")
-            #expect(contract.pickerLabel == "Open picker for \(fieldLabel)")
-            #expect(contract.pickerValue == "Warning")
-            #expect(contract.warningSummary == "Row gauge mismatch detected")
-            #expect(contract.actions == ["Increment", "Decrement"])
-            #expect(
-                contract.pickerHint ==
-                    "Row gauge mismatch detected. Opens the wheel picker and warning details."
-            )
+            #expect(!GaugeInputsCard.accessibilityLabel(for: .yourRows, unit: unit).isEmpty)
         }
-        #expect(
-            GaugeStepperField.pickerSelection(
-                validationText: "32",
-                field: .yourRows,
-                displayUnit: nil,
-                range: 1...99
-            ) == 32
+        let contract = GaugeInputField.accessibilityContract(
+            text: "32",
+            unit: "ro",
+            mismatchLabel: "Row gauge mismatch detected",
+            mismatchDelta: 8
         )
-        #expect(
-            GaugeStepperField.adjustedText(
-                "32",
-                by: 1,
-                field: .yourRows,
-                displayUnit: nil,
-                range: 1...99
-            ) == "33"
-        )
-        #expect(
-            GaugeStepperField.adjustedText(
-                "1",
-                by: -1,
-                field: .yourRows,
-                displayUnit: nil,
-                range: 1...99
-            ) == "1"
-        )
-        #expect(
-            GaugeStepperField.committedText(selection: 8) == "8"
-        )
+        #expect(contract.fieldValue == "32 rows, row gauge mismatch detected, +8")
+        #expect(contract.fieldHint == "Double-tap to edit.")
+        #expect(GaugeKeyboardTextField.keyboardType(for: .yourRows) == .decimalPad)
+        #expect(GaugeKeyboardTextField.keyboardType(for: .patternYoke) == .decimalPad)
+        #expect(GaugeKeyboardTextField.keyboardType(for: .patternCastOn) == .numberPad)
+        #expect(GaugeKeyboardTextField.keyboardType(for: .patternIncreases) == .numberPad)
     }
 
     @Test func contracts01Through06JacquardAnd14OptionalSectionsRemainExplicit() {
@@ -430,7 +393,6 @@ struct DeterministicUIContractsTests {
                     "Swatch row gauge, per \(basis)",
                 ]
             )
-            #expect(fieldLabels.map(GaugeStepperField.pickerAccessibilityLabel).count == 4)
             #expect(HostedViewProbe(gaugeValues.gaugeCard).size.height > 0)
         }
 
@@ -498,7 +460,7 @@ struct DeterministicUIContractsTests {
         #expect(requiredResultLabels.count == 5)
     }
 
-    @Test func requiredValidationReservesStableStepperHeight() {
+    @Test func requiredValidationReservesStableInputHeight() {
         let widths: [CGFloat] = [320, 390, 760]
         let textSizes: [DynamicTypeSize] = [
             .large, .xxxLarge, .accessibility1, .accessibility5,
@@ -507,12 +469,12 @@ struct DeterministicUIContractsTests {
         for width in widths {
             for textSize in textSizes {
                 let pristine = HostedViewProbe(
-                    requiredStepper(validationMessage: nil)
+                    requiredInput(validationMessage: nil)
                         .environment(\.dynamicTypeSize, textSize),
                     width: width
                 )
                 let revealed = HostedViewProbe(
-                    requiredStepper(validationMessage: "Pattern stitch gauge is required.")
+                    requiredInput(validationMessage: "Pattern stitch gauge is required.")
                         .environment(\.dynamicTypeSize, textSize),
                     width: width
                 )
@@ -835,8 +797,7 @@ struct DeterministicUIContractsTests {
             let patternDetails = values.patternInstructionsCard(expanded: true)
             #expect(
                 patternDetails.displayBinding(
-                    for: values.binding(for: .patternYoke),
-                    field: .patternYoke
+                    for: values.binding(for: .patternYoke)
                 ).wrappedValue == (unit == .centimeters ? "20.32" : "8")
             )
         }
@@ -976,13 +937,13 @@ struct DeterministicUIContractsTests {
 
         var committed = GaugeFormDraft(unit: .inches)
         for field in GaugeFormField.allCases {
-            committed.commitPicker(8, for: field)
+            committed[field] = "8"
         }
         #expect(committed[.patternStitches] == "8")
         #expect(committed[.patternCastOn] == "8")
-        #expect(committed[.patternYoke] == "20.32")
-        #expect(committed[.patternBody] == "20.32")
-        #expect(committed[.patternSleeve] == "20.32")
+        #expect(committed[.patternYoke] == "8")
+        #expect(committed[.patternBody] == "8")
+        #expect(committed[.patternSleeve] == "8")
     }
 
     @Test func validationPresentationRevealsOnBlurOrViewResultsAndResetUndoRoundTrips() throws {
@@ -1063,25 +1024,25 @@ struct DeterministicUIContractsTests {
         #expect(contentSource.contains("revealedValidationFields.removeAll()"))
         #expect(contentSource.contains("revealedValidationFields=resetSnapshot.revealedValidationFields"))
 
-        let stepperSource = try String(
+        let inputSource = try String(
             contentsOf: appDirectory.appendingPathComponent(
-                "KnittingGaugeReconciler/Components/GaugeStepperField.swift"
+                "KnittingGaugeReconciler/Components/GaugeInputField.swift"
             ),
             encoding: .utf8
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         #expect(
-            stepperSource.contains(
+            inputSource.contains(
                 "guardcase.failure(.required)=GaugeMath.validate(validationText,for:field.mathField)" +
                     "else{returnvalidationMessage}return\"Required\""
             )
         )
         #expect(
-            stepperSource.contains(
+            inputSource.contains(
                 "Label(visibleValidationMessage??\"\",systemImage:\"exclamationmark.circle.fill\")"
             )
         )
-        #expect(stepperSource.contains(".opacity(visibleValidationMessage==nil?0:1)"))
-        #expect(stepperSource.contains(".accessibilityHidden(true)"))
+        #expect(inputSource.contains(".opacity(visibleValidationMessage==nil?0:1)"))
+        #expect(inputSource.contains(".accessibilityHidden(true)"))
 
         let cardSource = try String(
             contentsOf: appDirectory.appendingPathComponent(
@@ -1127,41 +1088,19 @@ struct DeterministicUIContractsTests {
 
     @Test func invalidInchValidationAndPatternBindingsPreserveUserText() {
         var draft = GaugeFormDraft(unit: .inches)
-        draft[.patternYoke] = MeasurementUnit.inches.centimeterStorageText(
-            from: "1",
-            cmRange: 5...100
-        )
+        draft[.patternYoke] = MeasurementUnit.inches.positiveMeasurementStorageText(from: "bad")
         #expect(
             draft.validationMessage(for: .patternYoke) ==
-                "Yoke depth must be a whole number between 2 and 39 in. Entered: 1."
+                "Yoke depth must be between 1.97 and 39.37 in. Entered: bad."
         )
 
         let values = GaugeValueBindings(values: uniqueFormValues)
         values.unit.value = .inches
         let card = values.patternInstructionsCard(expanded: true)
-        let yoke = card.displayBinding(
-            for: values.binding(for: .patternYoke),
-            field: .patternYoke
-        )
-        yoke.wrappedValue = GaugeStepperField.committedText(selection: 8)
-        #expect(values[.patternYoke] == "20.32")
-        #expect(yoke.wrappedValue == "8")
-        yoke.wrappedValue = GaugeStepperField.adjustedText(
-            values[.patternYoke],
-            by: 1,
-            field: .patternYoke,
-            displayUnit: .inches,
-            range: 2...39
-        )
-        #expect(values[.patternYoke] == "22.86")
-        yoke.wrappedValue = GaugeStepperField.adjustedText(
-            values[.patternYoke],
-            by: -1,
-            field: .patternYoke,
-            displayUnit: .inches,
-            range: 2...39
-        )
-        #expect(values[.patternYoke] == "20.32")
+        let yoke = card.displayBinding(for: values.binding(for: .patternYoke))
+        yoke.wrappedValue = "8.5"
+        #expect(values[.patternYoke] == "21.59")
+        #expect(yoke.wrappedValue == "8.5")
         let committedDraft = GaugeFormDraft(
             values: values.formValues,
             unit: .inches,
@@ -1177,11 +1116,8 @@ struct DeterministicUIContractsTests {
 
         values[.patternYoke] = "not-a-number"
         #expect(yoke.wrappedValue == "not-a-number")
-        values[.patternYoke] = MeasurementUnit.inches.centimeterStorageText(
-            from: "1",
-            cmRange: 5...100
-        )
-        #expect(yoke.wrappedValue == "1")
+        values[.patternYoke] = MeasurementUnit.inches.positiveMeasurementStorageText(from: "bad")
+        #expect(yoke.wrappedValue == "bad")
         values.unit.value = .centimeters
         values[.patternYoke] = "20"
         #expect(yoke.wrappedValue == "20")
@@ -1207,22 +1143,19 @@ struct DeterministicUIContractsTests {
         #expect(SceneDraftStore.reconcileInvalidInchProvenance(in: values, for: .centimeters) == values)
     }
 
-    @Test func stepperHelpersCoverValidationUnitsAndWarnings() {
-        let pristineRequired = GaugeStepperField.accessibilityContract(
+    @Test func directInputHelpersCoverValidationUnitsAndKeyboardTypes() {
+        let pristineRequired = GaugeInputField.accessibilityContract(
             text: " ",
             unit: "st",
-            fieldLabel: "Pattern stitches",
             isRequired: true
         )
         #expect(pristineRequired.fieldValue == "Empty, Required")
         #expect(pristineRequired.fieldHint == "Double-tap to edit.")
-        #expect(pristineRequired.pickerHint == "Double-tap to open wheel picker.")
         #expect(!pristineRequired.fieldValue.contains("is required"))
 
-        let revealedInvalid = GaugeStepperField.accessibilityContract(
+        let revealedInvalid = GaugeInputField.accessibilityContract(
             text: " ",
             unit: "st",
-            fieldLabel: "Pattern stitches",
             isRequired: true,
             validationMessage: "Pattern stitch gauge is required."
         )
@@ -1233,10 +1166,9 @@ struct DeterministicUIContractsTests {
         #expect(revealedInvalid.fieldHint == "Correct this value before viewing results.")
         #expect(!revealedInvalid.fieldValue.contains("is required"))
 
-        let invalidNumber = GaugeStepperField.accessibilityContract(
+        let invalidNumber = GaugeInputField.accessibilityContract(
             text: "abc",
             unit: "ro",
-            fieldLabel: "Pattern rows",
             isRequired: true,
             validationMessage: "Enter pattern row gauge as a number."
         )
@@ -1246,42 +1178,15 @@ struct DeterministicUIContractsTests {
         )
         #expect(invalidNumber.fieldHint == "Correct this value before viewing results.")
 
-        #expect(
-            GaugeStepperField.pickerSelection(
-                validationText: "",
-                field: .patternYoke,
-                displayUnit: .inches,
-                range: 2...39
-            ) == 2
-        )
-        #expect(
-            GaugeStepperField.pickerSelection(
-                validationText: "100",
-                field: .patternYoke,
-                displayUnit: .inches,
-                range: 2...39
-            ) == 39
-        )
-        #expect(
-            GaugeStepperField.pickerSelection(
-                validationText: "50",
-                field: .yourRows,
-                displayUnit: nil,
-                range: 1...10
-            ) == 1
-        )
-        #expect(
-            GaugeStepperField.committedText(selection: 7) == "7"
-        )
-        #expect(
-            GaugeStepperField.adjustedText(
-                "99",
-                by: 1,
-                field: .yourStitches,
-                displayUnit: nil,
-                range: 1...99
-            ) == "99"
-        )
+        for field in [
+            GaugeFormField.patternStitches, .patternRows, .yourStitches, .yourRows,
+            .patternYoke, .patternBody, .patternSleeve,
+        ] {
+            #expect(GaugeKeyboardTextField.keyboardType(for: field) == .decimalPad)
+        }
+        for field in [GaugeFormField.patternCastOn, .patternIncreases] {
+            #expect(GaugeKeyboardTextField.keyboardType(for: field) == .numberPad)
+        }
     }
 
     @Test func keyboardAccessoryDoneResignsWithoutSubmitting() async throws {
@@ -1290,18 +1195,13 @@ struct DeterministicUIContractsTests {
             .deletingLastPathComponent()
         let source = try String(
             contentsOf: appDirectory
-                .appendingPathComponent("KnittingGaugeReconciler/Components/GaugeStepperField.swift"),
+                .appendingPathComponent("KnittingGaugeReconciler/Components/GaugeInputField.swift"),
             encoding: .utf8
         ).replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
         #expect(
             source.contains("barButtonSystemItem:.flexibleSpace")
                 && source.contains("barButtonSystemItem:.done")
-                && source.contains("toolbar.items=[flexibleSpace,done]")
-        )
-        #expect(
-            source.contains(
-                "textField:textField,activate:false"
-            )
+                && source.contains("textField.inputAccessoryView=toolbar")
         )
 
         let text = ValueBox("24")
@@ -1350,47 +1250,8 @@ struct DeterministicUIContractsTests {
         coordinator.textFieldDidEndEditing(textField)
         #expect(focus.value == nil)
 
-        GaugeKeyboardTextField.handlePickerRequest(
-            1,
-            coordinator: coordinator,
-            textField: textField,
-            activate: false
-        )
-        GaugeKeyboardTextField.handlePickerRequest(
-            1,
-            coordinator: coordinator,
-            textField: textField,
-            activate: false
-        )
-        #expect(coordinator.handledPickerRequest == 1)
-        #expect(textField.inputView === coordinator.pickerView)
-        #expect(!textField.becameFirstResponder)
-        #expect(coordinator.pendingSelection == 24)
-        #expect(coordinator.numberOfComponents(in: coordinator.pickerView) == 1)
-        #expect(
-            coordinator.pickerView(
-                coordinator.pickerView,
-                numberOfRowsInComponent: 0
-            ) == 99
-        )
-        #expect(
-            coordinator.pickerView(
-                coordinator.pickerView,
-                titleForRow: 0,
-                forComponent: 0
-            ) == "1"
-        )
-        coordinator.adjust(by: 1)
-        #expect(text.value == "25")
-        #expect(coordinator.pendingSelection == 25)
-        coordinator.pickerView(
-            coordinator.pickerView,
-            didSelectRow: 30,
-            inComponent: 0
-        )
+        coordinator.textField = textField
         coordinator.didTapDone()
-        #expect(text.value == "31")
-        #expect(textField.inputView == nil)
         #expect(textField.resignedFirstResponder)
         coordinator.didTapDone()
 
@@ -1475,7 +1336,7 @@ struct DeterministicUIContractsTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
         let paths = [
-            "KnittingGaugeReconciler/Components/GaugeStepperField.swift",
+            "KnittingGaugeReconciler/Components/GaugeInputField.swift",
             "KnittingGaugeReconciler/Views/GaugeInputsCard.swift",
             "KnittingGaugeReconciler/Views/PatternInstructionsCard.swift",
         ]
@@ -1489,52 +1350,33 @@ struct DeterministicUIContractsTests {
         }
     }
 
-    @Test func accessibilityAdjustmentsUseCurrentValueAndPreserveActivePickerSelection() {
-        let text = ValueBox("25")
-        let focus = ValueBox<GaugeFormField?>(nil)
-        func field() -> GaugeKeyboardTextField {
-            GaugeKeyboardTextField(
-                text: text.binding,
-                field: .yourRows,
-                focusedField: focus.binding,
-                label: "Rows",
-                value: "\(text.value) rows",
-                hint: "Double-tap to edit.",
-                showsCorrection: false
-            )
+    @Test func directInputFieldsUseNativeKeyboardTypesWithoutPickerSemantics() throws {
+        let decimalFields: [GaugeFormField] = [
+            .patternStitches, .patternRows, .patternYoke, .patternBody,
+            .patternSleeve, .yourStitches, .yourRows,
+        ]
+        let integerFields: [GaugeFormField] = [.patternCastOn, .patternIncreases]
+
+        for field in decimalFields {
+            #expect(GaugeKeyboardTextField.keyboardType(for: field) == .decimalPad)
+        }
+        for field in integerFields {
+            #expect(GaugeKeyboardTextField.keyboardType(for: field) == .numberPad)
         }
 
-        let coordinator = field().makeCoordinator()
-        let textField = GaugePickerTextField()
-        coordinator.textField = textField
-        textField.coordinator = coordinator
-
-        text.value = "31"
-        coordinator.parent = field()
-        textField.accessibilityIncrement()
-        #expect(text.value == "32")
-        #expect(coordinator.pendingSelection == 32)
-
-        text.value = "40"
-        coordinator.parent = field()
-        textField.accessibilityDecrement()
-        #expect(text.value == "39")
-        #expect(coordinator.pendingSelection == 39)
-
-        coordinator.parent = field()
-        coordinator.showPicker(in: textField, activate: false)
-        coordinator.pickerView(
-            coordinator.pickerView,
-            didSelectRow: 49,
-            inComponent: 0
+        let appDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: appDirectory.appendingPathComponent(
+                "KnittingGaugeReconciler/Components/GaugeInputField.swift"
+            ),
+            encoding: .utf8
         )
-        text.value = "31"
-        coordinator.parent = field()
-        textField.accessibilityIncrement()
-        #expect(coordinator.pendingSelection == 51)
-        coordinator.didTapDone()
-        #expect(text.value == "51")
-        #expect(textField.inputView == nil)
+        #expect(!source.contains("UIPickerView"))
+        #expect(!source.contains("accessibilityAdjustableAction"))
+        #expect(!source.contains("Increment"))
+        #expect(!source.contains("Decrement"))
     }
 
     @Test func adjustmentRowsExposeLabelsAndAdaptiveLayouts() {
@@ -1831,19 +1673,9 @@ struct DeterministicUIContractsTests {
         #expect(HostedViewProbe(provider.contentView()).size.width > 0)
     }
 
-    @Test func pickerInputViewAndKeyboardFieldsHostBothWarningLayouts() {
+    @Test func directKeyboardFieldsHostBothWarningLayouts() {
         let text = ValueBox("32")
         let focus = ValueBox<GaugeFormField?>(nil)
-        let actionFocus = ValueBox<GaugeFormField?>(nil)
-        let pickerRequest = ValueBox(0)
-        let openPicker = GaugeStepperOpenPickerAction(
-            field: .yourRows,
-            focusedField: actionFocus.binding,
-            pickerRequest: pickerRequest.binding
-        )
-        openPicker.perform()
-        #expect(actionFocus.value == .yourRows)
-        #expect(pickerRequest.value == 1)
 
         let keyboard = GaugeKeyboardTextField(
             text: text.binding,
@@ -1856,7 +1688,7 @@ struct DeterministicUIContractsTests {
         )
         #expect(HostedViewProbe(keyboard).size.height > 0)
 
-        let stepper = GaugeStepperField(
+        let inputField = GaugeInputField(
             title: "Rows",
             text: text.binding,
             unit: "ro",
@@ -1868,12 +1700,8 @@ struct DeterministicUIContractsTests {
             mismatchDelta: 8
         )
         text.value = "32"
-        let stepperProbe = HostedViewProbe(stepper)
-        stepper.increment()
-        #expect(text.value == "33")
-        stepper.decrement()
-        #expect(text.value == "31")
-        #expect(stepperProbe.size.height > 0)
+        #expect(HostedViewProbe(inputField).size.height > 0)
+        #expect(text.value == "32")
     }
 
     @Test func defaultPairPayloadAndAccessiblePatternLeavesAreLive() {
@@ -1974,28 +1802,20 @@ struct DeterministicUIContractsTests {
         #expect(appliedSceneForm.formValues == uniqueFormValues)
         #expect(appliedSceneForm.formDraft.patternDetailsExpanded)
         inchScene.unit.value = .inches
-        inchScene[.patternYoke] = MeasurementUnit.inches.centimeterStorageText(
-            from: "40",
-            cmRange: 5...100
-        )
-        #expect(MeasurementUnit.invalidInchesText(from: inchScene[.patternYoke]) == "40")
+        inchScene[.patternYoke] = MeasurementUnit.inches.positiveMeasurementStorageText(from: "bad")
+        #expect(MeasurementUnit.invalidInchesText(from: inchScene[.patternYoke]) == "bad")
 
         inchScene.unit.value = .centimeters
         let restoredCentimeterForm = inchScene.formView
         restoredCentimeterForm.sceneDidAppear()
         var expectedCentimeterValues = uniqueFormValues
-        expectedCentimeterValues.patternYoke = "40"
+        expectedCentimeterValues.patternYoke = "bad"
         #expect(inchScene.formValues == expectedCentimeterValues)
-        #expect(restoredCentimeterForm.formDraft.validationMessages.isEmpty)
-        #expect(restoredCentimeterForm.formDraft.focusedField == nil)
         #expect(
-            GaugeStepperField.pickerSelection(
-                validationText: inchScene[.patternYoke],
-                field: .patternYoke,
-                displayUnit: .centimeters,
-                range: 5...100
-            ) == 40
+            restoredCentimeterForm.formDraft.validationMessage(for: .patternYoke) ==
+                "Enter yoke depth as a number."
         )
+        #expect(restoredCentimeterForm.formDraft.focusedField == nil)
 
         let centimeterScene = GaugeValueBindings(values: uniqueFormValues)
         centimeterScene[.patternYoke] = "20.32"
@@ -2006,19 +1826,10 @@ struct DeterministicUIContractsTests {
         expectedInchValues.patternYoke = "20.32"
         #expect(centimeterScene.formValues == expectedInchValues)
         #expect(restoredInchForm.formDraft.focusedField == nil)
-        #expect(
-            GaugeStepperField.pickerSelection(
-                validationText: centimeterScene[.patternYoke],
-                field: .patternYoke,
-                displayUnit: .inches,
-                range: 2...39
-            ) == 8
-        )
         let inchCard = centimeterScene.patternInstructionsCard(expanded: true)
         #expect(
             inchCard.displayBinding(
-                for: centimeterScene.binding(for: .patternYoke),
-                field: .patternYoke
+                for: centimeterScene.binding(for: .patternYoke)
             ).wrappedValue == "8"
         )
 
@@ -2042,18 +1853,12 @@ struct DeterministicUIContractsTests {
         unit.wrappedValue = unit.wrappedValue
         unit.wrappedValue = .inches
         var inchValues = view.formValues
-        inchValues.patternYoke = MeasurementUnit.inches.centimeterStorageText(
-            from: "1",
-            cmRange: 5...100
-        )
-        inchValues.patternBody = MeasurementUnit.inches.centimeterStorageText(
-            from: "40",
-            cmRange: 5...100
-        )
-        inchValues.patternSleeve = MeasurementUnit.inches.centimeterStorageText(
-            from: "sleeve-inch-sentinel",
-            cmRange: 5...100
-        )
+        inchValues.patternYoke =
+            MeasurementUnit.inches.positiveMeasurementStorageText(from: "bad")
+        inchValues.patternBody =
+            MeasurementUnit.inches.positiveMeasurementStorageText(from: "8.5")
+        inchValues.patternSleeve =
+            MeasurementUnit.inches.positiveMeasurementStorageText(from: "sleeve-inch-sentinel")
         #expect(
             GaugeFormView.reconciledSceneDraft(
                 values: inchValues,
@@ -2069,8 +1874,7 @@ struct DeterministicUIContractsTests {
             )
         )
         var expectedReconciledValues = inchValues
-        expectedReconciledValues.patternYoke = "1"
-        expectedReconciledValues.patternBody = "40"
+        expectedReconciledValues.patternYoke = "bad"
         expectedReconciledValues.patternSleeve = "sleeve-inch-sentinel"
         #expect(reconciledValues == expectedReconciledValues)
         view.applySceneDraft(values: inchValues, disclosure: true)
@@ -2238,10 +2042,10 @@ private struct LayoutFixtureTile: View {
 }
 
 @MainActor
-private func requiredStepper(validationMessage: String?) -> some View {
+private func requiredInput(validationMessage: String?) -> some View {
     let text = ValueBox("")
     let focus = ValueBox<GaugeFormField?>(nil)
-    return GaugeStepperField(
+    return GaugeInputField(
         title: "Stitches",
         text: text.binding,
         unit: "st",
@@ -2296,7 +2100,7 @@ private final class ValueBox<Value> {
 }
 
 @MainActor
-private final class FocusRecordingTextField: GaugePickerTextField {
+private final class FocusRecordingTextField: UITextField {
     var becameFirstResponder = false
     var resignedFirstResponder = false
     private var active = false

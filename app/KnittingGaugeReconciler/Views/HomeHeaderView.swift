@@ -43,7 +43,7 @@ struct SettingsToolbarButton: View {
     var body: some View {
         Button(action: open) {
             Image(systemName: "gearshape")
-                .font(.satoshiBody.weight(.medium))
+                .font(.system(.title3, design: .default, weight: .bold))
                 .foregroundStyle(AppTheme.sage)
                 .frame(
                     minWidth: Sizing.minimumTouchTarget,
@@ -110,7 +110,13 @@ struct SettingsView: View {
             .tint(AppTheme.sage)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", action: dismiss.callAsFunction)
+                    Button(
+                        "Done",
+                        systemImage: "checkmark",
+                        action: dismiss.callAsFunction
+                    )
+                    .labelStyle(.iconOnly)
+                    .accessibilityLabel("Done")
                 }
             }
         }

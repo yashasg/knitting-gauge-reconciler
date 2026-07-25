@@ -99,10 +99,47 @@ struct RegressionGuardrailTests {
         )
     }
 
+    @Test func navigationControlsKeepHIGRolesSymbolsAndShapes() throws {
+        let createFlow = try productionSource(
+            "Views/CreateProjectFlow.swift"
+        )
+        #expect(createFlow.contains("ToolbarItem(placement: .cancellationAction"))
+        #expect(createFlow.contains(#"Button("Close", systemImage: "xmark""#))
+        #expect(
+            createFlow.components(
+                separatedBy: ".buttonBorderShape(.roundedRectangle(radius: Radius.small))"
+            ).count == 3
+        )
+        #expect(createFlow.contains(#"step == .review ? "checkmark" : "chevron.forward""#))
+
+        let settings = try productionSource("Views/HomeHeaderView.swift")
+        #expect(settings.contains("ToolbarItem(placement: .confirmationAction)"))
+        #expect(settings.contains(#"systemImage: "checkmark""#))
+
+        let library = try productionSource("Views/ProjectLibraryView.swift")
+        #expect(library.contains(#"systemImage: "square.and.pencil""#))
+        #expect(library.contains(".tint(AppTheme.sage)"))
+
+        let content = try productionSource("ContentView.swift")
+        #expect(content.contains(#"Button(AboutHelpContract.closeLabel, systemImage: "xmark""#))
+        #expect(content.contains(".buttonBorderShape(.circle)"))
+        #expect(content.contains("minWidth: AboutHelpContract.closeHitTarget"))
+        #expect(content.contains("minHeight: AboutHelpContract.closeHitTarget"))
+    }
+
     private var appDirectory: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
+    }
+
+    private func productionSource(_ relativePath: String) throws -> String {
+        try String(
+            contentsOf: appDirectory
+                .appendingPathComponent("KnittingGaugeReconciler")
+                .appendingPathComponent(relativePath),
+            encoding: .utf8
+        )
     }
 
     private func productionSwiftSources() throws -> [SourceFile] {

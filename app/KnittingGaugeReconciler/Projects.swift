@@ -2,6 +2,7 @@
 import Foundation
 import Observation
 import SwiftUI
+import SwiftData
 enum ProjectType: String, CaseIterable, Codable, Identifiable {
     case headwear, tops, bottoms, footwear, other
     var id: Self { self }
@@ -717,45 +718,142 @@ struct ProjectStoreIssue: Identifiable, Equatable {
     var id: String { "\(kind)-\(message)" }
 }
 
+@Model
+final class StoredProjectRecord {
+    @Attribute(.unique) var key: String
+    var payload: Data
+    var payloadVersion: Int
+    var createdAt: Date
+
+    init(key: String, payload: Data, payloadVersion: Int, createdAt: Date) {
+        self.key = key
+        self.payload = payload
+        self.payloadVersion = payloadVersion
+        self.createdAt = createdAt
+    }
+}
+
+private enum ProjectStorageError: Error {
+    case unsupportedPayloadVersion
+    case mismatchedKey
+}
+
+@MainActor
+private final class ProjectDatabase {
+    private let context: ModelContext
+    private let beforeSave: () throws -> Void
+    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
+
+    init(container: ModelContainer, beforeSave: @escaping () throws -> Void) {
+        context = ModelContext(container)
+        self.beforeSave = beforeSave
+    }
+
+    func load() throws -> [KnittingProject] {
+        let descriptor = FetchDescriptor<StoredProjectRecord>(
+            sortBy: [
+                SortDescriptor(\.createdAt, order: .reverse),
+                SortDescriptor(\.key),
+            ]
+        )
+        return try context.fetch(descriptor).map(decode)
+    }
+
+    func upsert(_ project: KnittingProject) throws {
+        let payload = try encoder.encode(project)
+        let key = project.id.uuidString
+        let descriptor = FetchDescriptor<StoredProjectRecord>(
+            predicate: #Predicate { $0.key == key }
+        )
+        if let record = try context.fetch(descriptor).first {
+            record.payload = payload
+            record.payloadVersion = ProjectStore.schemaVersion
+            record.createdAt = project.createdAt
+        } else {
+            context.insert(
+                StoredProjectRecord(
+                    key: key,
+                    payload: payload,
+                    payloadVersion: ProjectStore.schemaVersion,
+                    createdAt: project.createdAt
+                )
+            )
+        }
+        try save()
+    }
+
+    func delete(ids: Set<KnittingProject.ID>) throws {
+        let records = try context.fetch(FetchDescriptor<StoredProjectRecord>())
+        for record in records where UUID(uuidString: record.key).map(ids.contains) == true {
+            context.delete(record)
+        }
+        try save()
+    }
+
+    func deleteAll() throws {
+        try deleteAllWithoutSaving()
+        try save()
+    }
+
+    private func decode(_ record: StoredProjectRecord) throws -> KnittingProject {
+        guard record.payloadVersion == ProjectStore.schemaVersion else {
+            throw ProjectStorageError.unsupportedPayloadVersion
+        }
+        let project = try decoder.decode(KnittingProject.self, from: record.payload)
+        guard record.key == project.id.uuidString else {
+            throw ProjectStorageError.mismatchedKey
+        }
+        return project
+    }
+
+    private func deleteAllWithoutSaving() throws {
+        for record in try context.fetch(FetchDescriptor<StoredProjectRecord>()) {
+            context.delete(record)
+        }
+    }
+
+    private func save() throws {
+        do {
+            try beforeSave()
+            try context.save()
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class ProjectStore {
-    static let archiveKey = "stitchwise.projects.archive"
     static let schemaVersion = 1
 
-    private struct Archive: Codable {
-        var schemaVersion: Int
-        var projects: [KnittingProject]
-    }
-
-    private let defaults: UserDefaults
-    private let archiveKey: String
-    private let encodeArchive: ([KnittingProject]) throws -> Data
+    private var database: ProjectDatabase?
     private(set) var projects: [KnittingProject] = []
     var issue: ProjectStoreIssue?
 
     init(
-        defaults: UserDefaults = .standard,
-        archiveKey: String = ProjectStore.archiveKey,
-        encodeArchive: @escaping ([KnittingProject]) throws -> Data = {
-            try JSONEncoder().encode(Archive(schemaVersion: schemaVersion, projects: $0))
-        }
+        modelContainer: ModelContainer? = nil,
+        makeModelContainer: () throws -> ModelContainer = {
+            try ModelContainer(for: StoredProjectRecord.self)
+        },
+        beforeSave: @escaping () throws -> Void = {}
     ) {
-        self.defaults = defaults
-        self.archiveKey = archiveKey
-        self.encodeArchive = encodeArchive
-        load()
+        do {
+            let container = try modelContainer ?? makeModelContainer()
+            database = ProjectDatabase(container: container, beforeSave: beforeSave)
+            load()
+        } catch {
+            issue = Self.loadIssue
+        }
     }
     func project(id: KnittingProject.ID) -> KnittingProject? { projects.first { $0.id == id } }
 
     @discardableResult
     func add(_ project: KnittingProject) -> Bool {
-        let previous = projects
+        guard persist(project) else { return false }
         projects.insert(project, at: 0)
-        guard persist() else {
-            projects = previous
-            return false
-        }
         return true
     }
     @discardableResult
@@ -763,12 +861,8 @@ final class ProjectStore {
         guard let index = projects.firstIndex(where: { $0.id == project.id }) else {
             return false
         }
-        let previous = projects[index]
+        guard persist(project) else { return false }
         projects[index] = project
-        guard persist() else {
-            projects[index] = previous
-            return false
-        }
         return true
     }
 
@@ -789,47 +883,73 @@ final class ProjectStore {
         return update(project)
     }
     func delete(at offsets: IndexSet) {
-        let previous = projects
-        projects.remove(atOffsets: offsets)
-        if !persist() { projects = previous }
+        let ids = Set(offsets.map { projects[$0].id })
+        guard let database else {
+            issue = Self.saveIssue
+            return
+        }
+        do {
+            try database.delete(ids: ids)
+            projects.remove(atOffsets: offsets)
+            clearSaveIssue()
+        } catch {
+            issue = Self.saveIssue
+        }
     }
     func resetArchive() {
-        defaults.removeObject(forKey: archiveKey)
-        projects = []
-        issue = nil
+        guard let database else {
+            issue = Self.saveIssue
+            return
+        }
+        do {
+            try database.deleteAll()
+            projects = []
+            issue = nil
+        } catch {
+            issue = Self.saveIssue
+        }
     }
 
     private func load() {
-        guard let data = defaults.data(forKey: archiveKey) else { return }
+        guard let database else { return }
         do {
-            let archive = try JSONDecoder().decode(Archive.self, from: data)
-            guard archive.schemaVersion == Self.schemaVersion else {
-                issue = ProjectStoreIssue(
-                    kind: .load,
-                    message: "These projects were saved by an unsupported data version."
-                )
-                return
-            }
-            projects = archive.projects
+            projects = try database.load()
+        } catch ProjectStorageError.unsupportedPayloadVersion {
+            issue = Self.unsupportedVersionIssue
         } catch {
-            issue = ProjectStoreIssue(
-                kind: .load,
-                message: "Saved projects could not be read. Your stored data has not been replaced."
-            )
+            issue = Self.loadIssue
         }
     }
 
-    private func persist() -> Bool {
+    private func persist(_ project: KnittingProject) -> Bool {
+        guard let database else {
+            issue = Self.saveIssue
+            return false
+        }
         do {
-            defaults.set(try encodeArchive(projects), forKey: archiveKey)
-            if issue?.kind == .save { issue = nil }
+            try database.upsert(project)
+            clearSaveIssue()
             return true
         } catch {
-            issue = ProjectStoreIssue(
-                kind: .save,
-                message: "Your latest project changes could not be saved."
-            )
+            issue = Self.saveIssue
             return false
         }
     }
+
+    private func clearSaveIssue() {
+        if issue?.kind == .save { issue = nil }
+    }
+
+    private static let unsupportedVersionIssue = ProjectStoreIssue(
+        kind: .load,
+        message: "These projects were saved by an unsupported data version."
+    )
+    private static let loadIssue = ProjectStoreIssue(
+        kind: .load,
+        message: "Saved projects could not be read. Your stored data has not been replaced."
+    )
+    private static let saveIssue = ProjectStoreIssue(
+        kind: .save,
+        message: "Your latest project changes could not be saved."
+    )
 }

@@ -100,7 +100,9 @@ struct CreateProjectFlow: View {
     }
 
     func cancelButton() -> some View {
-        Button("Cancel", action: state.cancel)
+        Button("Close", systemImage: "xmark", action: state.cancel)
+            .labelStyle(.iconOnly)
+            .accessibilityLabel("Close")
     }
 
     func actionBarContent() -> some View {
@@ -148,24 +150,26 @@ struct CreateProjectFlow: View {
     var actionBar: some View {
         HStack(spacing: Spacing.control) {
             if state.step != .identity {
-                Button(
-                    "Back",
-                    systemImage: "chevron.backward",
-                    action: state.moveBack
-                )
+                Button(action: state.moveBack) {
+                    Label("Back", systemImage: "chevron.backward")
+                }
                     .font(.satoshiBody.weight(.semibold))
                     .buttonStyle(.bordered)
+                    .buttonBorderShape(.roundedRectangle(radius: Radius.small))
                     .controlSize(.large)
                     .tint(AppTheme.sage)
             }
             Spacer()
-            Button(
-                state.primaryActionLabel,
-                systemImage: "chevron.forward",
-                action: state.advance
-            )
+            Button(action: state.advance) {
+                HStack(spacing: Spacing.inner) {
+                    Text(state.primaryActionLabel)
+                    Image(systemName: state.primaryActionSystemImage)
+                        .accessibilityHidden(true)
+                }
+            }
                 .font(.satoshiBody.weight(.semibold))
                 .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.roundedRectangle(radius: Radius.small))
                 .controlSize(.large)
                 .tint(AppTheme.sage)
                 .disabled(!state.canAdvance)
@@ -242,6 +246,10 @@ final class CreateProjectFlowState {
         case .identity, .construction, .gauge, .measurements, .notes:
             "Next"
         }
+    }
+
+    var primaryActionSystemImage: String {
+        step == .review ? "checkmark" : "chevron.forward"
     }
 
     var navigationTitle: String {

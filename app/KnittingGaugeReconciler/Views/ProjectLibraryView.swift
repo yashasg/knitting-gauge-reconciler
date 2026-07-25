@@ -135,7 +135,7 @@ struct ProjectLibraryView: View {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button(action: state.presentSearch) {
                         Image(systemName: "magnifyingglass")
-                            .font(.satoshiBody.weight(.medium))
+                            .font(.system(.title3, design: .default, weight: .bold))
                             .foregroundStyle(AppTheme.sage)
                             .frame(
                                 minWidth: Sizing.minimumTouchTarget,
@@ -154,6 +154,7 @@ struct ProjectLibraryView: View {
                 destination: projectDestination
             )
         }
+        .tint(AppTheme.sage)
         .sheet(
             isPresented: $state.isCreatingProject,
             onDismiss: state.openCreatedProject,
@@ -195,6 +196,7 @@ struct ProjectLibraryView: View {
             action: state.presentProjectCreator
         )
         .labelStyle(.iconOnly)
+        .font(.system(.title3, design: .default, weight: .bold))
         .buttonStyle(.borderedProminent)
         .buttonBorderShape(.circle)
         .controlSize(.large)
@@ -367,7 +369,13 @@ struct ProjectResultsView: View {
             )
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Edit", action: startEditing)
+                    Button(
+                        "Edit Project",
+                        systemImage: "square.and.pencil",
+                        action: startEditing
+                    )
+                    .labelStyle(.iconOnly)
+                    .accessibilityLabel("Edit Project")
                 }
             }
             .sheet(isPresented: $isEditing, content: editSheet)

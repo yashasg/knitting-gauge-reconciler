@@ -784,17 +784,14 @@ struct GaugeMathTests {
     }
 
     @Test func inchReconciliationChangesExactlyTheThreeCentimeterLengthFields() {
-        let storedYoke = MeasurementUnit.inches.centimeterStorageText(
-            from: "yoke-inch-sentinel",
-            cmRange: 5...100
+        let storedYoke = MeasurementUnit.inches.positiveMeasurementStorageText(
+            from: "yoke-inch-sentinel"
         )
-        let storedBody = MeasurementUnit.inches.centimeterStorageText(
-            from: "body-inch-sentinel",
-            cmRange: 5...100
+        let storedBody = MeasurementUnit.inches.positiveMeasurementStorageText(
+            from: "body-inch-sentinel"
         )
-        let storedSleeve = MeasurementUnit.inches.centimeterStorageText(
-            from: "sleeve-inch-sentinel",
-            cmRange: 5...100
+        let storedSleeve = MeasurementUnit.inches.positiveMeasurementStorageText(
+            from: "sleeve-inch-sentinel"
         )
         let original = GaugeFormValues(
             patternStitches: "pattern-stitches-sentinel",
@@ -937,10 +934,6 @@ struct GaugeMathTests {
                 let expectedLabel = "\(field.correctionName), per \(basis)"
                 let label = GaugeInputsCard.accessibilityLabel(for: field, unit: unit)
                 #expect(label == expectedLabel)
-                #expect(
-                    GaugeStepperField.pickerAccessibilityLabel(for: label)
-                        == "Open picker for \(expectedLabel)"
-                )
             }
         }
     }
@@ -981,10 +974,10 @@ struct GaugeMathTests {
         let appDirectory = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        let stepper = try sourceSection(
-            "KnittingGaugeReconciler/Components/GaugeStepperField.swift",
+        let inputField = try sourceSection(
+            "KnittingGaugeReconciler/Components/GaugeInputField.swift",
             from: "struct DeltaPillBadge",
-            to: "struct GaugeStepperField",
+            to: "struct GaugeInputField",
             appDirectory: appDirectory
         )
         let adjustment = try sourceSection(
@@ -993,8 +986,8 @@ struct GaugeMathTests {
             to: ".accessibilityElement(children: .ignore)",
             appDirectory: appDirectory
         )
-        #expect(stepper.contains(".foregroundStyle(AppTheme.cream)"))
-        #expect(stepper.contains(".background(AppTheme.sage)"))
+        #expect(inputField.contains(".foregroundStyle(AppTheme.cream)"))
+        #expect(inputField.contains(".background(AppTheme.sage)"))
         #expect(adjustment.contains(".foregroundStyle(AppTheme.card)"))
         #expect(adjustment.contains(".background(AppTheme.deltaPill)"))
 
@@ -1023,19 +1016,28 @@ struct GaugeMathTests {
         }
     }
 
-    @Test func gaugeStepperBoundariesMeetNonTextContrastInLightAndDark() throws {
+    @Test func gaugeInputBoundariesMeetNonTextContrastInLightAndDark() throws {
         let appDirectory = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
         let boundary = try sourceSection(
-            "KnittingGaugeReconciler/Components/GaugeStepperField.swift",
+            "KnittingGaugeReconciler/Components/GaugeInputField.swift",
             from: ".background(AppTheme.card)",
-            to: ".accessibilityElement(children: .contain)",
+            to: "private var fieldLabel",
             appDirectory: appDirectory
+        )
+        let source = try String(
+            contentsOf: appDirectory.appendingPathComponent(
+                "KnittingGaugeReconciler/Components/GaugeInputField.swift"
+            ),
+            encoding: .utf8
         )
         #expect(boundary.contains("? AppTheme.mismatchText"))
         #expect(boundary.contains(": AppTheme.muted"))
         #expect(boundary.contains(").opacity(0.7)"))
+        #expect(!boundary.contains("hasMismatch"))
+        #expect(source.contains("showsCorrection: validationMessage != nil"))
+        #expect(!source.contains("showsCorrection: hasMismatch || validationMessage != nil"))
 
         let muted = try themeColors(named: "app-theme-muted", appDirectory: appDirectory)
         let mismatch = try themeColors(
@@ -1314,48 +1316,10 @@ struct MeasurementUnitTests {
         }
     }
 
-    // MARK: Display conversion (cm → in, rounded to nearest whole inch)
-
-    @Test func cmToDisplayIntCentimetres() {
-        // cm mode returns same value rounded
-        #expect(MeasurementUnit.centimeters.cmToDisplayInt(20) == 20)
-        #expect(MeasurementUnit.centimeters.cmToDisplayInt(50.4) == 50)
-        #expect(MeasurementUnit.centimeters.cmToDisplayInt(50.6) == 51)
-    }
-
-    @Test func cmToDisplayIntInches() {
-        // 20 cm = 7.87 in → rounds to 8
-        #expect(MeasurementUnit.inches.cmToDisplayInt(20) == 8)
-        // 50 cm = 19.69 in → rounds to 20
-        #expect(MeasurementUnit.inches.cmToDisplayInt(50) == 20)
-        // 45 cm = 17.72 in → rounds to 18
-        #expect(MeasurementUnit.inches.cmToDisplayInt(45) == 18)
-        // 5 cm = 1.97 in → rounds to 2
-        #expect(MeasurementUnit.inches.cmToDisplayInt(5) == 2)
-        // 100 cm = 39.37 in → rounds to 39
-        #expect(MeasurementUnit.inches.cmToDisplayInt(100) == 39)
-    }
-
-    // MARK: Write-back conversion (display int → cm string)
-
-    @Test func displayIntToCmStringCentimetres() {
-        #expect(MeasurementUnit.centimeters.displayIntToCmString(20) == "20")
-        #expect(MeasurementUnit.centimeters.displayIntToCmString(50) == "50")
-    }
-
-    @Test func displayIntToCmStringInches() {
-        #expect(MeasurementUnit.inches.displayIntToCmString(8) == "20.32")
-        #expect(MeasurementUnit.inches.displayIntToCmString(20) == "50.8")
-        #expect(MeasurementUnit.inches.displayIntToCmString(18) == "45.72")
-        #expect(MeasurementUnit.inches.displayIntToCmString(1) == "2.54")
-        #expect(MeasurementUnit.inches.displayIntToCmString(Int.max) == nil)
-    }
+    // MARK: Exact decimal display conversion
 
     @Test func matchingGaugePreservesWholeInchLengthInResults() throws {
-        let storedDepthText = MeasurementUnit.inches.centimeterStorageText(
-            from: "8",
-            cmRange: 5...100
-        )
+        let storedDepthText = MeasurementUnit.inches.positiveMeasurementStorageText(from: "8")
         let storedDepth = try #require(Double(storedDepthText))
         let inputs = GaugeInputs(
             patternStitches: 32,
@@ -1394,104 +1358,51 @@ struct MeasurementUnitTests {
     }
 
     @Test func invalidInchInputIsPreservedWithoutConversion() {
-        let decimal = MeasurementUnit.inches.centimeterStorageText(from: "8.5", cmRange: 5...100)
-        let oversized = MeasurementUnit.inches.centimeterStorageText(
-            from: "\(Int.max)",
-            cmRange: 5...100
+        let malformed = MeasurementUnit.inches.positiveMeasurementStorageText(from: "8..5")
+        let negative = MeasurementUnit.inches.positiveMeasurementStorageText(from: "-8.5")
+        let separatorOnly = MeasurementUnit.inches.positiveMeasurementStorageText(from: ".")
+
+        #expect(MeasurementUnit.invalidInchesText(from: malformed) == "8..5")
+        #expect(MeasurementUnit.invalidInchesText(from: negative) == "-8.5")
+        #expect(MeasurementUnit.invalidInchesText(from: separatorOnly) == ".")
+        #expect(GaugeMath.validate(malformed, for: .patternYokeDepth) == .failure(.invalidNumber))
+        #expect(GaugeMath.validate(negative, for: .patternYokeDepth) == .failure(.invalidNumber))
+        #expect(GaugeMath.validate(separatorOnly, for: .patternYokeDepth) == .failure(.invalidNumber))
+    }
+
+    @Test func inchStorageAcceptsLocaleAndInvariantDecimalSeparators() {
+        let german = Locale(identifier: "de_DE")
+
+        #expect(
+            MeasurementUnit.inches.positiveMeasurementStorageText(from: "8,5", locale: german) ==
+                "21.59"
         )
-
-        #expect(MeasurementUnit.invalidInchesText(from: decimal) == "8.5")
-        #expect(MeasurementUnit.invalidInchesText(from: oversized) == "\(Int.max)")
-        #expect(GaugeMath.validate(decimal, for: .patternYokeDepth) == .failure(.invalidNumber))
-        #expect(GaugeMath.validate(oversized, for: .patternYokeDepth) == .failure(.invalidNumber))
+        #expect(
+            MeasurementUnit.inches.positiveMeasurementStorageText(from: "8.5", locale: german) ==
+                "21.59"
+        )
     }
 
-    @Test func invalidInchTextIsRevalidatedUnderCentimeterRulesForEveryLength() {
-        let fields: [GaugeMath.Field] = [
-            .patternYokeDepth,
-            .patternBodyLength,
-            .patternSleeveLength,
-        ]
-        let cases: [
-            (
-                name: String,
-                text: String,
-                expected: Result<Double?, GaugeMath.ValidationError>,
-                hasInvalidInchesSuffix: Bool
-            )
-        ] = [
-            ("decimal valid in cm", "8.5", .success(8.5), true),
-            ("inch upper overflow valid in cm", "40", .success(40), true),
-            ("spelling and whitespace", " 8.50 ", .success(8.5), true),
-            ("malformed", "8..5", .failure(.invalidNumber), true),
-            ("below cm range", "4.9", .failure(.outOfRange(5...100)), true),
-            ("above cm range", "100.1", .failure(.outOfRange(5...100)), true),
-            ("blank", "", .success(nil), false),
-            ("whitespace blank", " \n\t ", .success(nil), false),
-        ]
-
-        for field in fields {
-            for testCase in cases {
-                let stored = MeasurementUnit.inches.centimeterStorageText(
-                    from: testCase.text,
-                    cmRange: 5...100
-                )
-                let transitioned = MeasurementUnit.inches.storageText(
-                    stored,
-                    transitioningTo: .centimeters
-                )
-
-                #expect(
-                    (MeasurementUnit.invalidInchesText(from: stored) != nil)
-                        == testCase.hasInvalidInchesSuffix,
-                    "\(field) \(testCase.name): invalid-inch suffix"
-                )
-                #expect(transitioned == testCase.text, "\(field) \(testCase.name): visible text")
-                #expect(
-                    GaugeMath.validate(transitioned, for: field) == testCase.expected,
-                    "\(field) \(testCase.name): centimeter validation"
-                )
-            }
-        }
-    }
-
-    @Test func acceptedWholeInchesKeepExactCanonicalStorageAcrossToggles() {
+    @Test func acceptedDecimalInchesKeepExactCanonicalStorageAcrossToggles() {
         let cases = [
-            (inches: 2, centimeters: "5.08"),
-            (inches: 8, centimeters: "20.32"),
-            (inches: 39, centimeters: "99.06"),
+            (inches: "2.5", centimeters: "6.35"),
+            (inches: "8", centimeters: "20.32"),
+            (inches: "39.25", centimeters: "99.695"),
         ]
 
         for testCase in cases {
-            let stored = MeasurementUnit.inches.centimeterStorageText(
-                from: "\(testCase.inches)",
-                cmRange: 5...100
+            let stored = MeasurementUnit.inches.positiveMeasurementStorageText(
+                from: testCase.inches
             )
 
             #expect(stored == testCase.centimeters)
+            #expect(
+                MeasurementUnit.inches.positiveMeasurementDisplayText(from: stored)
+                    == testCase.inches
+            )
             #expect(MeasurementUnit.invalidInchesText(from: stored) == nil)
             #expect(MeasurementUnit.inches.storageText(stored, transitioningTo: .centimeters) == stored)
             #expect(MeasurementUnit.centimeters.storageText(stored, transitioningTo: .inches) == stored)
-        }
-    }
-
-    // MARK: Round-trip: toggle cm → in → cm must not corrupt the cm model
-
-    /// Toggling the unit does NOT alter the stored cm value — only the display
-    /// binding converts. The stored strings are never written unless the user edits.
-    @Test func roundTripToggleDoesNotCorruptCmStore() {
-        // Simulate: start with "20" cm stored, toggle to in and back.
-        // The stored value ("20") should be unchanged because the conversion binding
-        // only reads for display; it only writes on user edit (Done tap).
-        // This test validates that cmToDisplayInt then displayIntToCmString is
-        // "close" (within 1 cm rounding) for expected knitting values.
-        let cmValues: [Double] = [20, 50, 45, 25, 30, 60]
-        for cm in cmValues {
-            let displayInt = MeasurementUnit.inches.cmToDisplayInt(cm)
-            let recoveredCmStr = MeasurementUnit.inches.displayIntToCmString(displayInt)
-            let recoveredCm = recoveredCmStr.flatMap(Double.init) ?? 0
-            // Allow up to 2 cm rounding error (one in cm→in, one in in→cm)
-            #expect(abs(recoveredCm - cm) <= 2, "cm=\(cm) → \(displayInt) in → \(recoveredCmStr) cm")
         }
     }
 
@@ -1507,6 +1418,12 @@ struct MeasurementUnitTests {
         // 5 cm → 2 in, 100 cm → 39 in
         #expect(range.lowerBound == 2)
         #expect(range.upperBound == 39)
+    }
+
+    @Test func decimalDisplayRangePreservesExactInchLimits() {
+        let range = MeasurementUnit.inches.displayDecimalRange(from: 5.0...100.0)
+        #expect(range.lowerBound == 5 / 2.54)
+        #expect(range.upperBound == 100 / 2.54)
     }
 
     // MARK: formatMeasurement

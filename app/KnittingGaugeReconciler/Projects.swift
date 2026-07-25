@@ -93,12 +93,6 @@ enum ProjectMeasurementAxis: String, Codable {
 }
 
 enum ProjectMeasurementKind: String, Codable, Identifiable {
-    private struct Metadata {
-        let label: String
-        let landmarks: String
-        let axis: ProjectMeasurementAxis
-    }
-
     case neckOpeningCircumference, chestCircumference, upperSleeveCircumference
     case cuffCircumference, crossBackWidth, upperArmCircumference
     case waistCircumference, hipCircumference, hemCircumference
@@ -110,187 +104,56 @@ enum ProjectMeasurementKind: String, Codable, Identifiable {
     case footLength, sockHeight, heelDepth, customDepth
 
     var id: Self { self }
-    var label: String { metadata.label }
-    var landmarks: String { metadata.landmarks }
-    var axis: ProjectMeasurementAxis { metadata.axis }
-    var valueRange: ClosedRange<Int> { 1...500 }
 
-    private var metadata: Metadata {
+    var label: String {
         switch self {
-        case .neckOpeningCircumference:
-            Metadata(
-                label: "Neck Opening",
-                landmarks: "Finished opening circumference",
-                axis: .horizontal
-            )
-        case .chestCircumference:
-            Metadata(
-                label: "Chest / Body",
-                landmarks: "Finished circumference at the underarm",
-                axis: .horizontal
-            )
-        case .upperSleeveCircumference:
-            Metadata(
-                label: "Upper Sleeve",
-                landmarks: "Finished sleeve circumference at the underarm",
-                axis: .horizontal
-            )
-        case .cuffCircumference:
-            Metadata(
-                label: "Cuff",
-                landmarks: "Finished sleeve-opening circumference",
-                axis: .horizontal
-            )
-        case .crossBackWidth:
-            Metadata(
-                label: "Cross-back Width",
-                landmarks: "Armhole to armhole across the back",
-                axis: .horizontal
-            )
-        case .upperArmCircumference:
-            Metadata(
-                label: "Upper Arm",
-                landmarks: "Finished circumference at the widest upper arm",
-                axis: .horizontal
-            )
-        case .waistCircumference:
-            Metadata(
-                label: "Waist",
-                landmarks: "Finished circumference at the wearing waist",
-                axis: .horizontal
-            )
-        case .hipCircumference:
-            Metadata(
-                label: "Hip / Seat",
-                landmarks: "Finished circumference at the fullest hip",
-                axis: .horizontal
-            )
-        case .hemCircumference:
-            Metadata(
-                label: "Hem",
-                landmarks: "Finished lower-edge circumference",
-                axis: .horizontal
-            )
-        case .thighCircumference:
-            Metadata(
-                label: "Upper Thigh",
-                landmarks: "Finished circumference for one leg",
-                axis: .horizontal
-            )
-        case .legOpeningCircumference:
-            Metadata(
-                label: "Leg Opening",
-                landmarks: "Finished circumference for one leg opening",
-                axis: .horizontal
-            )
-        case .hatCircumference:
-            Metadata(
-                label: "Hat Circumference",
-                landmarks: "Finished unstretched circumference after blocking",
-                axis: .horizontal
-            )
-        case .footCircumference:
-            Metadata(
-                label: "Foot Circumference",
-                landmarks: "Finished circumference at the ball of the foot",
-                axis: .horizontal
-            )
-        case .sockCuffCircumference:
-            Metadata(
-                label: "Cuff / Leg Circumference",
-                landmarks: "Finished circumference at the sock opening",
-                axis: .horizontal
-            )
-        case .customWidth:
-            Metadata(
-                label: "Width / Circumference",
-                landmarks: "Your chosen horizontal dimension",
-                axis: .horizontal
-            )
-        case .yokeRaglanDepth:
-            Metadata(
-                label: "Yoke / Raglan Depth",
-                landmarks: "Neckline to underarm or body-sleeve split",
-                axis: .vertical
-            )
-        case .armholeDepthSetIn, .armholeDepthDrop:
-            Metadata(
-                label: "Armhole Depth",
-                landmarks: "Shoulder to underarm",
-                axis: .vertical
-            )
-        case .bodyLength:
-            Metadata(
-                label: "Body Length",
-                landmarks: "Underarm or waist to hem",
-                axis: .vertical
-            )
-        case .sleeveLength:
-            Metadata(
-                label: "Sleeve Length",
-                landmarks: "Underarm to cuff",
-                axis: .vertical
-            )
-        case .sleeveCapDepth:
-            Metadata(
-                label: "Sleeve-cap Depth",
-                landmarks: "Top of sleeve cap to underarm",
-                axis: .vertical
-            )
-        case .shoulderToCuffLength:
-            Metadata(
-                label: "Shoulder to Cuff",
-                landmarks: "Dropped shoulder seam to cuff",
-                axis: .vertical
-            )
-        case .waistToHipDepth:
-            Metadata(
-                label: "Waist-to-hip Depth",
-                landmarks: "Waist to the fullest hip",
-                axis: .vertical
-            )
-        case .rise:
-            Metadata(
-                label: "Rise",
-                landmarks: "Waist to crotch split",
-                axis: .vertical
-            )
-        case .legLength:
-            Metadata(
-                label: "Leg Length",
-                landmarks: "Crotch split to hem",
-                axis: .vertical
-            )
-        case .crownDepth:
-            Metadata(
-                label: "Hat Depth",
-                landmarks: "Lower edge to crown top",
-                axis: .vertical
-            )
-        case .footLength:
-            Metadata(
-                label: "Foot Length",
-                landmarks: "Heel to finished toe",
-                axis: .vertical
-            )
-        case .sockHeight:
-            Metadata(
-                label: "Sock Height",
-                landmarks: "Heel landmark to top of cuff",
-                axis: .vertical
-            )
-        case .heelDepth:
-            Metadata(
-                label: "Heel Depth",
-                landmarks: "Depth to and through the heel turn",
-                axis: .vertical
-            )
-        case .customDepth:
-            Metadata(
-                label: "Length / Depth",
-                landmarks: "Your chosen vertical dimension",
-                axis: .vertical
-            )
+        case .neckOpeningCircumference: "Neck Opening"
+        case .chestCircumference: "Chest / Body"
+        case .upperSleeveCircumference: "Upper Sleeve"
+        case .cuffCircumference: "Cuff"
+        case .crossBackWidth: "Cross-back Width"
+        case .upperArmCircumference: "Upper Arm"
+        case .waistCircumference: "Waist"
+        case .hipCircumference: "Hip / Seat"
+        case .hemCircumference: "Hem"
+        case .thighCircumference: "Upper Thigh"
+        case .legOpeningCircumference: "Leg Opening"
+        case .hatCircumference: "Hat Circumference"
+        case .footCircumference: "Foot Circumference"
+        case .sockCuffCircumference: "Cuff / Leg Circumference"
+        case .customWidth: "Width / Circumference"
+        case .yokeRaglanDepth: "Yoke / Raglan Depth"
+        case .armholeDepthSetIn, .armholeDepthDrop: "Armhole Depth"
+        case .bodyLength: "Body Length"
+        case .sleeveLength: "Sleeve Length"
+        case .sleeveCapDepth: "Sleeve-cap Depth"
+        case .shoulderToCuffLength: "Shoulder to Cuff"
+        case .waistToHipDepth: "Waist-to-hip Depth"
+        case .rise: "Rise"
+        case .legLength: "Leg Length"
+        case .crownDepth: "Hat Depth"
+        case .footLength: "Foot Length"
+        case .sockHeight: "Sock Height"
+        case .heelDepth: "Heel Depth"
+        case .customDepth: "Length / Depth"
+        }
+    }
+
+    var axis: ProjectMeasurementAxis {
+        switch self {
+        case .neckOpeningCircumference, .chestCircumference,
+             .upperSleeveCircumference, .cuffCircumference,
+             .crossBackWidth, .upperArmCircumference,
+             .waistCircumference, .hipCircumference, .hemCircumference,
+             .thighCircumference, .legOpeningCircumference,
+             .hatCircumference, .footCircumference,
+             .sockCuffCircumference, .customWidth:
+            .horizontal
+        case .yokeRaglanDepth, .armholeDepthSetIn, .armholeDepthDrop,
+             .bodyLength, .sleeveLength, .sleeveCapDepth,
+             .shoulderToCuffLength, .waistToHipDepth, .rise, .legLength,
+             .crownDepth, .footLength, .sockHeight, .heelDepth, .customDepth:
+            .vertical
         }
     }
 }
@@ -365,7 +228,8 @@ struct ProjectCountRules: Codable, Equatable {
         }
     }
 
-    func requiredCount(for rawCount: Double, axis: ProjectMeasurementAxis) -> Int {
+    func requiredCount(for rawCount: Double, axis: ProjectMeasurementAxis) -> Int? {
+        guard rawCount.isFinite, rawCount > 0 else { return nil }
         let multiple: Int
         switch constraint {
         case .wholeNumber:
@@ -381,6 +245,10 @@ struct ProjectCountRules: Codable, Equatable {
         let roundedRepeat = abs(repeatCount - nearestRepeat) <= tolerance
             ? nearestRepeat
             : repeatCount.rounded(.up)
+        guard roundedRepeat.isFinite,
+              roundedRepeat <= Double(Int.max / multiple).nextDown else {
+            return nil
+        }
         return max(multiple, Int(roundedRepeat) * multiple)
     }
 }
@@ -437,7 +305,6 @@ struct KnittingProject: Codable, Equatable, Identifiable {
     var construction: ProjectConstruction?
     var crownShape: ProjectCrownShape?
     var crownSections: Int?
-    var customLandmarks: String
     var gaugeValues: GaugeFormValues
     var measurementUnit: MeasurementUnit
     var measurements: [ProjectMeasurementValue]
@@ -478,16 +345,19 @@ struct KnittingProject: Codable, Equatable, Identifiable {
             let swatchGauge = measurement.kind.axis == .horizontal
                 ? inputs.yourStitches
                 : inputs.yourRows
+            guard let patternCount = rules.requiredCount(
+                for: centimeters * patternGauge / 10,
+                axis: measurement.kind.axis
+            ), let requiredCount = rules.requiredCount(
+                for: centimeters * swatchGauge / 10,
+                axis: measurement.kind.axis
+            ) else {
+                return nil
+            }
             return ProjectMeasurementResult(
                 measurement: measurement,
-                patternCount: rules.requiredCount(
-                    for: centimeters * patternGauge / 10,
-                    axis: measurement.kind.axis
-                ),
-                requiredCount: rules.requiredCount(
-                    for: centimeters * swatchGauge / 10,
-                    axis: measurement.kind.axis
-                )
+                patternCount: patternCount,
+                requiredCount: requiredCount
             )
         }
     }
@@ -501,7 +371,6 @@ struct ProjectDraft: Equatable {
     var construction: ProjectConstruction? = .circularYokeRaglan
     var crownShape: ProjectCrownShape = .round
     var crownSections = 5
-    var customLandmarks = ""
     var notes = ""
     var gaugeValues = GaugeFormValues()
     var measurementUnit: MeasurementUnit = .centimeters
@@ -522,7 +391,6 @@ struct ProjectDraft: Equatable {
         construction = project.construction
         crownShape = project.crownShape ?? .round
         crownSections = project.crownSections ?? 5
-        customLandmarks = project.customLandmarks
         notes = project.notes ?? ""
         gaugeValues = project.gaugeValues
         measurementUnit = project.measurementUnit
@@ -645,23 +513,36 @@ struct ProjectDraft: Equatable {
     }
 
     func isMeasurementValid(_ kind: ProjectMeasurementKind) -> Bool {
-        let value = measurementValue(for: kind)
-        guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        let storedValue = measurementValue(for: kind)
+        guard !storedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return true
         }
-        guard MeasurementUnit.invalidInchesText(from: value) == nil,
-              let number = Double(value) else {
+        guard let centimeters = measurementUnit.positiveStoredMeasurementValue(storedValue) else {
             return false
         }
-        return number.rounded(.towardZero) == number &&
-            Double(kind.valueRange.lowerBound)...Double(kind.valueRange.upperBound) ~= number
+        guard let inputs = GaugeFormDraft(values: gaugeValues, unit: measurementUnit).inputs,
+              let rules = validatedCountRules else {
+            return true
+        }
+        let patternGauge = kind.axis == .horizontal
+            ? inputs.patternStitches
+            : inputs.patternRows
+        let swatchGauge = kind.axis == .horizontal
+            ? inputs.yourStitches
+            : inputs.yourRows
+        return rules.requiredCount(
+            for: centimeters * patternGauge / 10,
+            axis: kind.axis
+        ) != nil && rules.requiredCount(
+            for: centimeters * swatchGauge / 10,
+            axis: kind.axis
+        ) != nil
     }
 
     mutating func selectType(_ newType: ProjectType) {
         type = newType
         construction = newType.constructions.first
         measurementValues = [:]
-        customLandmarks = ""
         if !ProjectIcons.symbols(for: newType).contains(symbolName) {
             symbolName = newType.defaultSymbolName
         }
@@ -686,7 +567,6 @@ struct ProjectDraft: Equatable {
             construction: construction,
             crownShape: type == .headwear ? crownShape : nil,
             crownSections: type == .headwear && crownShape == .faceted ? crownSections : nil,
-            customLandmarks: customLandmarks.trimmingCharacters(in: .whitespacesAndNewlines),
             gaugeValues: gaugeValues,
             measurementUnit: measurementUnit,
             measurements: enteredMeasurementKinds.map {

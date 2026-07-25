@@ -127,6 +127,28 @@ struct RegressionGuardrailTests {
         #expect(content.contains("minHeight: AboutHelpContract.closeHitTarget"))
     }
 
+    @Test func projectTypePickerReflowsWithoutWrappingLabels() throws {
+        let createFlow = try productionSource("Views/CreateProjectFlow.swift")
+        let start = try #require(
+            createFlow.range(of: "private var projectTypePicker: some View")?.lowerBound
+        )
+        let end = try #require(
+            createFlow.range(
+                of: "private var projectColorPicker: some View",
+                range: start..<createFlow.endIndex
+            )?.lowerBound
+        )
+        let picker = createFlow[start..<end]
+
+        #expect(picker.contains("ViewThatFits(in: .horizontal)"))
+        #expect(picker.contains("VStack(alignment: .leading"))
+        #expect(
+            picker.components(
+                separatedBy: ".fixedSize(horizontal: true, vertical: false)"
+            ).count == 3
+        )
+    }
+
     private var appDirectory: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -272,7 +294,7 @@ private let sceneStorageKeys = [
 private let sharedLayoutGuards = [
     SourceContract(
         name: "validation-height stability",
-        pattern: #"(?s)func\s+requiredValidationReservesStableStepperHeight\(\).*?abs\(pristine\.size\.height\s*-\s*revealed\.size\.height\)\s*<=\s*0\.5"#
+        pattern: #"(?s)func\s+requiredValidationReservesStableInputHeight\(\).*?abs\(pristine\.size\.height\s*-\s*revealed\.size\.height\)\s*<=\s*0\.5"#
     ),
     SourceContract(
         name: "the 320/390/760 width matrix",

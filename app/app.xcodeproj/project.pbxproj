@@ -19,7 +19,7 @@
 		000000000000000000000123 /* RequiredAdjustmentsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000023 /* RequiredAdjustmentsCard.swift */; };
 		000000000000000000000124 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000024 /* AppTheme.swift */; };
 		000000000000000000000125 /* TexturedBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000025 /* TexturedBackground.swift */; };
-		000000000000000000000126 /* GaugeStepperField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000026 /* GaugeStepperField.swift */; };
+		000000000000000000000126 /* GaugeInputField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000026 /* GaugeInputField.swift */; };
 		000000000000000000000129 /* GaugeMeasurementPair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000029 /* GaugeMeasurementPair.swift */; };
 		000000000000000000000132 /* ShareableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000032 /* ShareableView.swift */; };
 		000000000000000000000133 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000033 /* Assets.xcassets */; };
@@ -62,7 +62,7 @@
 		000000000000000000000023 /* RequiredAdjustmentsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequiredAdjustmentsCard.swift; sourceTree = "<group>"; };
 		000000000000000000000024 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		000000000000000000000025 /* TexturedBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TexturedBackground.swift; sourceTree = "<group>"; };
-		000000000000000000000026 /* GaugeStepperField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeStepperField.swift; sourceTree = "<group>"; };
+		000000000000000000000026 /* GaugeInputField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeInputField.swift; sourceTree = "<group>"; };
 		000000000000000000000029 /* GaugeMeasurementPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeMeasurementPair.swift; sourceTree = "<group>"; };
 		000000000000000000000032 /* ShareableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareableView.swift; sourceTree = "<group>"; };
 		000000000000000000000033 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -136,7 +136,7 @@
 				000000000000000000000024 /* AppTheme.swift */,
 				000000000000000000000044 /* Font+Satoshi.swift */,
 				000000000000000000000025 /* TexturedBackground.swift */,
-				000000000000000000000026 /* GaugeStepperField.swift */,
+				000000000000000000000026 /* GaugeInputField.swift */,
 				000000000000000000000029 /* GaugeMeasurementPair.swift */,
 			);
 			path = Components;

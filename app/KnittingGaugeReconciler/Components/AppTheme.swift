@@ -23,7 +23,6 @@ enum Radius {
 }
 
 enum Sizing {
-    static let separator: CGFloat = 1
     static let stepBadge: CGFloat = 32
     static let colorSwatch: CGFloat = 36
     static let minimumTouchTarget: CGFloat = 44
@@ -91,8 +90,7 @@ enum AppTheme {
     static let warningText      = Color("app-theme-warning-text", bundle: appResourceBundle)
     static let warningBackground = Color("app-theme-warning-background", bundle: appResourceBundle)
     static let warningAccent    = Color("app-theme-warning-accent", bundle: appResourceBundle)
-    /// Red for inline gauge mismatch indicators. Semantically "this IS different
-    /// from the pattern" — distinct from warningText (warm amber, "might be wrong").
+    /// Red for inline values that must be corrected before continuing.
     static let mismatchText     = Color("app-theme-mismatch-text", bundle: appResourceBundle)
     /// Cream text for use on dark backgrounds (e.g. the Calculate CTA button).
     static let cream            = Color("app-theme-cream", bundle: appResourceBundle)

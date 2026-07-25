@@ -138,7 +138,7 @@ struct GaugeInputsCard: View {
     }
 
     private var patternStitchesField: some View {
-        GaugeStepperField(
+        GaugeInputField(
             title: "Stitches",
             text: $patternStitches,
             unit: "st",
@@ -150,7 +150,7 @@ struct GaugeInputsCard: View {
     }
 
     private var patternRowsField: some View {
-        GaugeStepperField(
+        GaugeInputField(
             title: "Rows",
             text: $patternRows,
             unit: "ro",
@@ -162,7 +162,7 @@ struct GaugeInputsCard: View {
     }
 
     private var yourStitchesField: some View {
-        GaugeStepperField(
+        GaugeInputField(
             title: "Stitches",
             text: $yourStitches,
             unit: "st",
@@ -177,7 +177,7 @@ struct GaugeInputsCard: View {
     }
 
     private var yourRowsField: some View {
-        GaugeStepperField(
+        GaugeInputField(
             title: "Rows",
             text: $yourRows,
             unit: "ro",

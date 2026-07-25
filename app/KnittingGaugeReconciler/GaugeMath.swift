@@ -91,8 +91,7 @@ enum GaugeMath {
         guard !trimmed.isEmpty else {
             return field.isRequired ? .failure(.required) : .success(nil)
         }
-        let localizedValue = locale.decimalSeparator.flatMap { Double(trimmed.replacingOccurrences(of: $0, with: ".")) }
-        guard let value = Double(trimmed) ?? localizedValue, value.isFinite else {
+        guard let value = parsedNumber(trimmed, locale: locale), value.isFinite else {
             return .failure(.invalidNumber)
         }
         guard field.range.contains(value) else {
@@ -107,6 +106,10 @@ enum GaugeMath {
             break
         }
         return .success(value)
+    }
+    static func parsedNumber(_ text: String, locale: Locale = .current) -> Double? {
+        let localizedValue = locale.decimalSeparator.flatMap { Double(text.replacingOccurrences(of: $0, with: ".")) }
+        return Double(text) ?? localizedValue
     }
 
     /// Computes gauge corrections from values accepted by `validate(_:for:)`.

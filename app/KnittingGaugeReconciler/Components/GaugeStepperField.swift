@@ -454,6 +454,21 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
         Coordinator(parent: self)
     }
 
+    static func permitsChange(
+        currentText: String,
+        range: NSRange,
+        replacement: String,
+        upperBound: Int,
+        locale: Locale = .current
+    ) -> Bool {
+        guard let stringRange = Range(range, in: currentText) else { return false }
+        let proposedText = currentText.replacingCharacters(in: stringRange, with: replacement)
+        guard let proposedValue = GaugeMath.parsedNumber(proposedText, locale: locale) else {
+            return true
+        }
+        return proposedValue <= Double(upperBound)
+    }
+
     func makeUIView(context: Context) -> UITextField {
         let textField = GaugePickerTextField()
         textField.delegate = context.coordinator
@@ -563,6 +578,19 @@ struct GaugeKeyboardTextField: UIViewRepresentable {
 
         @objc func textDidChange(_ textField: UITextField) {
             parent.text = textField.text ?? ""
+        }
+
+        func textField(
+            _ textField: UITextField,
+            shouldChangeCharactersIn range: NSRange,
+            replacementString string: String
+        ) -> Bool {
+            GaugeKeyboardTextField.permitsChange(
+                currentText: textField.text ?? "",
+                range: range,
+                replacement: string,
+                upperBound: parent.range.upperBound
+            )
         }
 
         func textFieldDidBeginEditing(_ textField: UITextField) {

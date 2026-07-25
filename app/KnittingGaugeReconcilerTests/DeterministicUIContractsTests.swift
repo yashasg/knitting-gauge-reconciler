@@ -1326,6 +1326,22 @@ struct DeterministicUIContractsTests {
         #expect(text.value == "")
         coordinator.textDidChange(NilTextField())
         #expect(text.value == "")
+        textField.text = "10"
+        #expect(
+            !coordinator.textField(
+                textField,
+                shouldChangeCharactersIn: NSRange(location: 2, length: 0),
+                replacementString: "0"
+            )
+        )
+        #expect(
+            coordinator.textField(
+                NilTextField(),
+                shouldChangeCharactersIn: NSRange(location: 0, length: 0),
+                replacementString: "9"
+            )
+        )
+        #expect(text.value == "")
 
         coordinator.textFieldDidBeginEditing(textField)
         coordinator.textFieldDidBeginEditing(textField)
@@ -1392,6 +1408,66 @@ struct DeterministicUIContractsTests {
         ).value
         #expect(textField.resignedFirstResponder)
 
+    }
+
+    @Test func directGaugeEntryRejectsOnlyValuesAboveTheFieldRange() {
+        #expect(
+            GaugeKeyboardTextField.permitsChange(
+                currentText: "10",
+                range: NSRange(location: 2, length: 0),
+                replacement: ".5",
+                upperBound: 99
+            )
+        )
+        #expect(
+            !GaugeKeyboardTextField.permitsChange(
+                currentText: "10",
+                range: NSRange(location: 2, length: 0),
+                replacement: "0",
+                upperBound: 99
+            )
+        )
+        #expect(
+            !GaugeKeyboardTextField.permitsChange(
+                currentText: "99",
+                range: NSRange(location: 2, length: 0),
+                replacement: ",5",
+                upperBound: 99,
+                locale: Locale(identifier: "de_DE")
+            )
+        )
+        #expect(
+            GaugeKeyboardTextField.permitsChange(
+                currentText: "400",
+                range: NSRange(location: 0, length: 3),
+                replacement: "250",
+                upperBound: 400
+            )
+        )
+        #expect(
+            GaugeKeyboardTextField.permitsChange(
+                currentText: "99",
+                range: NSRange(location: 1, length: 1),
+                replacement: "",
+                upperBound: 99
+            )
+        )
+        #expect(
+            GaugeKeyboardTextField.permitsChange(
+                currentText: "",
+                range: NSRange(location: 0, length: 0),
+                replacement: ".",
+                upperBound: 99
+            )
+        )
+        #expect(
+            !GaugeKeyboardTextField.permitsChange(
+                currentText: "9",
+                range: NSRange(location: 4, length: 0),
+                replacement: "0",
+                upperBound: 99
+            )
+        )
     }
 
     @Test func gaugeLeafAndCardProductionSeamHasNoSubmitCallback() throws {

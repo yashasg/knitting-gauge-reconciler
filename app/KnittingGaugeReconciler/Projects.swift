@@ -302,11 +302,85 @@ struct ProjectMeasurementValue: Codable, Equatable, Identifiable {
 
 struct ProjectMeasurementResult: Equatable, Identifiable {
     let measurement: ProjectMeasurementValue
-    let patternCount: Int
-    let adjustedCount: Int
+    let requiredCount: Int
 
     var id: ProjectMeasurementKind { measurement.kind }
     var resultLabel: String { measurement.kind.axis.resultLabel }
+}
+
+enum ProjectCountConstraint: String, CaseIterable, Codable, Identifiable {
+    case wholeNumber
+    case evenNumber
+    case patternRepeat
+
+    var id: Self { self }
+    var label: String {
+        switch self {
+        case .wholeNumber: "Whole Number"
+        case .evenNumber: "Even Number"
+        case .patternRepeat: "Pattern Repeat"
+        }
+    }
+    var pickerLabel: String {
+        switch self {
+        case .wholeNumber: "Whole"
+        case .evenNumber: "Even"
+        case .patternRepeat: "Repeat"
+        }
+    }
+    var explanation: String {
+        switch self {
+        case .wholeNumber:
+            "Rounds each result up to the next whole stitch or row."
+        case .evenNumber:
+            "Rounds each result up to the next even stitch or row."
+        case .patternRepeat:
+            "Rounds stitches and rows up to the next repeat multiple."
+        }
+    }
+}
+
+struct ProjectCountRules: Codable, Equatable {
+    static let repeatRange = 1...999
+    static let wholeNumber = ProjectCountRules(
+        constraint: .wholeNumber,
+        stitchRepeat: nil,
+        rowRepeat: nil
+    )
+
+    var constraint: ProjectCountConstraint
+    var stitchRepeat: Int?
+    var rowRepeat: Int?
+
+    var summary: String {
+        switch constraint {
+        case .wholeNumber:
+            "Rounded up to whole numbers"
+        case .evenNumber:
+            "Rounded up to even numbers"
+        case .patternRepeat:
+            "Rounded up to \(stitchRepeat ?? 1)-stitch and \(rowRepeat ?? 1)-row repeats"
+        }
+    }
+
+    func requiredCount(for rawCount: Double, axis: ProjectMeasurementAxis) -> Int {
+        let multiple: Int
+        switch constraint {
+        case .wholeNumber:
+            multiple = 1
+        case .evenNumber:
+            multiple = 2
+        case .patternRepeat:
+            multiple = axis == .horizontal ? stitchRepeat ?? 1 : rowRepeat ?? 1
+        }
+        let repeatCount = rawCount / Double(multiple)
+        let nearestRepeat = repeatCount.rounded()
+        let tolerance = max(1, abs(repeatCount)) * Double.ulpOfOne * 16
+        let roundedRepeat = abs(repeatCount - nearestRepeat) <= tolerance
+            ? nearestRepeat
+            : repeatCount.rounded(.up)
+        return max(multiple, Int(roundedRepeat) * multiple)
+    }
 }
 
 enum ProjectColor: String, CaseIterable, Codable, Identifiable {
@@ -365,6 +439,7 @@ struct KnittingProject: Codable, Equatable, Identifiable {
     var gaugeValues: GaugeFormValues
     var measurementUnit: MeasurementUnit
     var measurements: [ProjectMeasurementValue]
+    var countRules: ProjectCountRules?
     var notes: String?
     var patternDetailsExpanded: Bool
     var createdAt: Date
@@ -392,18 +467,18 @@ struct KnittingProject: Codable, Equatable, Identifiable {
 
     var measurementResults: [ProjectMeasurementResult] {
         guard let inputs = gaugeInputs else { return [] }
+        let rules = countRules ?? .wholeNumber
         return measurements.compactMap { measurement in
             guard let centimeters = Double(measurement.centimeters) else { return nil }
-            let patternGauge = measurement.kind.axis == .horizontal
-                ? inputs.patternStitches
-                : inputs.patternRows
             let swatchGauge = measurement.kind.axis == .horizontal
                 ? inputs.yourStitches
                 : inputs.yourRows
             return ProjectMeasurementResult(
                 measurement: measurement,
-                patternCount: GaugeMath.fmtRows(centimeters * patternGauge / 10),
-                adjustedCount: GaugeMath.fmtRows(centimeters * swatchGauge / 10)
+                requiredCount: rules.requiredCount(
+                    for: centimeters * swatchGauge / 10,
+                    axis: measurement.kind.axis
+                )
             )
         }
     }
@@ -422,6 +497,9 @@ struct ProjectDraft: Equatable {
     var gaugeValues = GaugeFormValues()
     var measurementUnit: MeasurementUnit = .centimeters
     var measurementValues: [ProjectMeasurementKind: String] = [:]
+    var countConstraint: ProjectCountConstraint = .wholeNumber
+    var stitchRepeat = ""
+    var rowRepeat = ""
 
     init() {}
 
@@ -442,6 +520,10 @@ struct ProjectDraft: Equatable {
         measurementValues = Dictionary(
             uniqueKeysWithValues: project.measurements.map { ($0.kind, $0.centimeters) }
         )
+        let countRules = project.countRules ?? .wholeNumber
+        countConstraint = countRules.constraint
+        stitchRepeat = countRules.stitchRepeat.map(String.init) ?? ""
+        rowRepeat = countRules.rowRepeat.map(String.init) ?? ""
     }
 
     var measurementKinds: [ProjectMeasurementKind] {
@@ -531,7 +613,26 @@ struct ProjectDraft: Equatable {
     }
 
     var isMeasurementsValid: Bool {
-        enteredMeasurementKinds.allSatisfy(isMeasurementValid)
+        enteredMeasurementKinds.allSatisfy(isMeasurementValid) && validatedCountRules != nil
+    }
+
+    var validatedCountRules: ProjectCountRules? {
+        guard countConstraint == .patternRepeat else {
+            return ProjectCountRules(
+                constraint: countConstraint,
+                stitchRepeat: nil,
+                rowRepeat: nil
+            )
+        }
+        guard let stitchRepeat = validRepeat(stitchRepeat),
+              let rowRepeat = validRepeat(rowRepeat) else {
+            return nil
+        }
+        return ProjectCountRules(
+            constraint: countConstraint,
+            stitchRepeat: stitchRepeat,
+            rowRepeat: rowRepeat
+        )
     }
 
     func isMeasurementValid(_ kind: ProjectMeasurementKind) -> Bool {
@@ -563,7 +664,8 @@ struct ProjectDraft: Equatable {
         patternDetailsExpanded: Bool = false,
         now: Date = Date()
     ) -> KnittingProject? {
-        guard isIdentityValid, isConstructionValid, isGaugeValid, isMeasurementsValid else {
+        guard isIdentityValid, isConstructionValid, isGaugeValid, isMeasurementsValid,
+              let countRules = validatedCountRules else {
             return nil
         }
         return KnittingProject(
@@ -581,6 +683,7 @@ struct ProjectDraft: Equatable {
             measurements: enteredMeasurementKinds.map {
                 ProjectMeasurementValue(kind: $0, centimeters: measurementValue(for: $0))
             },
+            countRules: countRules,
             notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
             patternDetailsExpanded: patternDetailsExpanded,
             createdAt: createdAt ?? now,
@@ -591,6 +694,12 @@ struct ProjectDraft: Equatable {
     func measurementValue(for kind: ProjectMeasurementKind) -> String { measurementValues[kind] ?? "" }
     var trimmedNotes: String { notes.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private func validRepeat(_ text: String) -> Int? {
+        guard let value = Int(text), ProjectCountRules.repeatRange.contains(value) else {
+            return nil
+        }
+        return value
+    }
 }
 struct ProjectStoreIssue: Identifiable, Equatable {
     enum Kind: Equatable { case load, save }

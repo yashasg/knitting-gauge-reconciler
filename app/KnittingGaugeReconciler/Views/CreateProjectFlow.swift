@@ -855,7 +855,53 @@ struct CreateProjectMeasurementsStep: View {
                 }
                 .projectSetupCard()
             }
+
+            countConstraint
         }
+    }
+
+    private var countConstraint: some View {
+        VStack(alignment: .leading, spacing: Spacing.control) {
+            Text("Required Count Rounding")
+                .font(.satoshiHeadline)
+                .foregroundStyle(AppTheme.ink)
+            Picker("Required count rounding", selection: $draft.countConstraint) {
+                ForEach(ProjectCountConstraint.allCases) { constraint in
+                    Text(constraint.pickerLabel)
+                }
+            }
+            .pickerStyle(.segmented)
+            Text(draft.countConstraint.explanation)
+                .font(.satoshiCaption)
+                .foregroundStyle(AppTheme.muted)
+
+            if draft.countConstraint == .patternRepeat {
+                repeatField("Stitch repeat", text: $draft.stitchRepeat)
+                repeatField("Row repeat", text: $draft.rowRepeat)
+                if draft.validatedCountRules == nil {
+                    Text(
+                        "Enter both repeat multiples from " +
+                            "\(ProjectCountRules.repeatRange.lowerBound) to " +
+                            "\(ProjectCountRules.repeatRange.upperBound)."
+                    )
+                    .font(.satoshiCaption)
+                    .foregroundStyle(AppTheme.mismatchText)
+                }
+            }
+        }
+        .projectSetupCard()
+    }
+
+    private func repeatField(_ label: String, text: Binding<String>) -> some View {
+        LabeledContent(label) {
+            TextField(label, text: text)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .textFieldStyle(.roundedBorder)
+                .frame(minWidth: Sizing.minimumTouchTarget)
+        }
+        .font(.satoshiBody)
+        .foregroundStyle(AppTheme.ink)
     }
 
     func measurementField(for kind: ProjectMeasurementKind) -> some View {
@@ -989,6 +1035,7 @@ struct CreateProjectReviewStep: View {
                 if draft.type == .other, !draft.customLandmarks.isEmpty {
                     reviewRow("Landmarks", value: draft.customLandmarks)
                 }
+                reviewRow("Count rounding", value: countRulesSummary)
             }
             .projectSetupCard()
 
@@ -1041,6 +1088,10 @@ struct CreateProjectReviewStep: View {
         let stored = draft.measurementValues[kind] ?? ""
         guard let value = Double(stored) else { return stored }
         return draft.measurementUnit.formatMeasurement(value)
+    }
+
+    var countRulesSummary: String {
+        draft.validatedCountRules?.summary ?? draft.countConstraint.label
     }
 }
 

@@ -182,7 +182,7 @@ final class StitchwiseProStore {
         purchaseState = nil
     }
 
-#if DEBUG
+#if DEBUG || TESTING
     func setEntitlementForTesting(_ entitlement: StitchwiseProEntitlement) {
         self.entitlement = entitlement
     }

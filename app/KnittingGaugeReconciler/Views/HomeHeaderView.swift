@@ -56,6 +56,38 @@ struct SettingsToolbarButton: View {
     }
 }
 
+struct StitchwiseProToolbarButton: View {
+    let isUnlocked: Bool
+    let isChecking: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button("Pro", action: action)
+            .font(.satoshiHeadline.weight(.bold))
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
+            .tint(AppTheme.terracotta)
+            .frame(
+                minWidth: Sizing.minimumTouchTarget,
+                minHeight: Sizing.minimumTouchTarget
+            )
+            .accessibilityLabel("Stitchwise Pro")
+            .accessibilityHint("Opens Stitchwise Pro details")
+            .accessibilityValue(accessibilityValue)
+    }
+
+    private var accessibilityValue: Text {
+        if isChecking {
+            Text("Checking")
+        } else if isUnlocked {
+            Text("Unlocked")
+        } else {
+            Text("")
+        }
+    }
+}
+
 enum SettingsRoute: Hashable {
     case pro
     case about
@@ -64,13 +96,18 @@ enum SettingsRoute: Hashable {
 
 struct SettingsView: View {
     static let proTitle = "Stitchwise Pro"
-    static let proSubtitle = "One-time lifetime unlock"
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(StitchwiseProStore.self) private var proStore
     private let version: String
+    private let proStoreOverride: StitchwiseProStore?
 
-    init(version: String = Self.currentVersion) {
+    init(
+        version: String = Self.currentVersion,
+        proStore: StitchwiseProStore? = nil
+    ) {
         self.version = version
+        proStoreOverride = proStore
     }
 
     var body: some View {
@@ -81,7 +118,7 @@ struct SettingsView: View {
                         Label {
                             VStack(alignment: .leading, spacing: Spacing.hairline) {
                                 Text(Self.proTitle)
-                                Text(Self.proSubtitle)
+                                Text(proSubtitle)
                                     .font(.satoshiCaption)
                                     .foregroundStyle(AppTheme.muted)
                             }
@@ -90,8 +127,6 @@ struct SettingsView: View {
                                 .foregroundStyle(AppTheme.sage)
                         }
                     }
-                } footer: {
-                    Text("Features and pricing are still being finalized.")
                 }
 
                 Section("Information") {
@@ -126,12 +161,26 @@ struct SettingsView: View {
     func destination(_ route: SettingsRoute) -> some View {
         switch route {
         case .pro:
-            StitchwiseProView()
+            StitchwiseProView(context: .general)
         case .about:
             AboutSettingsView()
         case .privacy:
             PrivacySettingsView()
         }
+    }
+
+    var proSubtitle: String {
+        if activeProStore.isChecking {
+            "Checking access"
+        } else if activeProStore.isUnlocked {
+            "Unlocked"
+        } else {
+            "One-time purchase. No subscription."
+        }
+    }
+
+    private var activeProStore: StitchwiseProStore {
+        proStoreOverride ?? proStore
     }
 
     static var currentVersion: String {
@@ -156,22 +205,6 @@ struct SettingsView: View {
         case (nil, nil):
             "Unavailable"
         }
-    }
-}
-
-struct StitchwiseProView: View {
-    var body: some View {
-        ContentUnavailableView {
-            Label(SettingsView.proTitle, systemImage: "sparkles")
-        } description: {
-            Text(
-                "A one-time lifetime upgrade is planned. " +
-                    "Features and pricing are still being finalized."
-            )
-        }
-        .navigationTitle(SettingsView.proTitle)
-        .navigationBarTitleDisplayMode(.inline)
-        .background(AppTheme.background)
     }
 }
 

@@ -889,7 +889,7 @@ struct ProjectTests {
             _ = state.hasChanges
             state.moveBack()
             state.step = step
-            state.advance()
+            state.advance { .unlocked }
         }
         #expect(createdID != nil)
 
@@ -921,7 +921,8 @@ struct ProjectTests {
         #expect(!blankState.hasChanges)
         blankState.cancel()
         blankState.moveBack()
-        blankState.saveProject()
+        blankState.step = .review
+        blankState.advance { .unlocked }
         blankState.discard()
         blankState.showDiscardConfirmation = true
         blankState.keepEditing()
@@ -948,10 +949,13 @@ struct ProjectTests {
         )
         #expect(editingState.navigationTitle == "Edit Project")
         #expect(!editingState.hasChanges)
+        #expect(editingState.isEditing)
+        #expect(editingState.originalProjectType == editingProject.type)
         editingState.draft.name = "Updated"
         #expect(editingState.hasChanges)
         #expect(store.add(editingProject))
-        editingState.saveProject()
+        editingState.step = .review
+        editingState.advance { .locked }
         #expect(store.project(id: editingProject.id)?.name == "Updated")
 
         let environmentState = CreateProjectFlowState(
@@ -972,7 +976,7 @@ struct ProjectTests {
             draft: valid,
             step: .review
         )
-        failingState.saveProject()
+        failingState.advance { .unlocked }
         #expect(failingState.showSaveFailure)
 
         let identityBox = DraftBox(valid)
@@ -1122,6 +1126,10 @@ struct ProjectTests {
         #expect(state.isSettingsPresented)
         state.dismissSettings()
         #expect(!state.isSettingsPresented)
+        state.presentPro()
+        #expect(state.isProPresented)
+        state.dismissPro()
+        #expect(!state.isProPresented)
         let settingsButton = SettingsToolbarButton(isPresented: Binding(
             get: { state.isSettingsPresented },
             set: { state.isSettingsPresented = $0 }
@@ -1271,7 +1279,9 @@ struct ProjectTests {
     ) {
         let controller = UIHostingController(
             rootView: VStack {
-                content.environment(\.dynamicTypeSize, .accessibility1)
+                content
+                    .environment(\.dynamicTypeSize, .accessibility1)
+                    .environment(StitchwiseProStore(startsTransactionListener: false))
             }
         )
         controller.loadViewIfNeeded()
@@ -1297,7 +1307,11 @@ struct ProjectTests {
         _ content: Content,
         cleanup: (() -> Void)? = nil
     ) {
-        let controller = UIHostingController(rootView: content)
+        let controller = UIHostingController(
+            rootView: content.environment(
+                StitchwiseProStore(startsTransactionListener: false)
+            )
+        )
         controller.loadViewIfNeeded()
         controller.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
         Self.sceneHost?.1.addChild(controller)

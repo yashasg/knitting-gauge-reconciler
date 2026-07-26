@@ -7,6 +7,7 @@ enum ProjectType: String, CaseIterable, Codable, Identifiable {
     case headwear, tops, bottoms, footwear, other
     var id: Self { self }
     var label: String { rawValue.capitalized }
+    var isProOnly: Bool { self != .headwear }
     var description: String {
         switch self {
         case .headwear: "Beanies, toques, slouchy hats, and sun hats"
@@ -36,6 +37,23 @@ enum ProjectType: String, CaseIterable, Codable, Identifiable {
         case .headwear, .footwear, .other:
             []
         }
+    }
+}
+
+enum ProjectAccess {
+    static let freeProjectLimit = 3
+
+    static func requiresPro(
+        type: ProjectType,
+        savedProjectCount: Int,
+        originalType: ProjectType?,
+        isUnlocked: Bool
+    ) -> Bool {
+        guard !isUnlocked else { return false }
+        if let originalType {
+            return !originalType.isProOnly && type.isProOnly
+        }
+        return type.isProOnly || savedProjectCount >= freeProjectLimit
     }
 }
 

@@ -35,6 +35,8 @@
 		000000000000000000000144 /* Font+Satoshi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000044 /* Font+Satoshi.swift */; };
 		000000000000000000000145 /* Satoshi-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000045 /* Satoshi-Variable.ttf */; };
 		000000000000000000000146 /* Satoshi-VariableItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000046 /* Satoshi-VariableItalic.ttf */; };
+		000000000000000000000147 /* StitchwisePro.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000048 /* StitchwisePro.swift */; };
+		000000000000000000000148 /* StitchwiseProTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000049 /* StitchwiseProTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,6 +81,9 @@
 		000000000000000000000045 /* Satoshi-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-Variable.ttf"; sourceTree = "<group>"; };
 		000000000000000000000046 /* Satoshi-VariableItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Satoshi-VariableItalic.ttf"; sourceTree = "<group>"; };
 		000000000000000000000047 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		000000000000000000000048 /* StitchwisePro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StitchwisePro.swift; sourceTree = "<group>"; };
+		000000000000000000000049 /* StitchwiseProTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StitchwiseProTests.swift; sourceTree = "<group>"; };
+		000000000000000000000050 /* Configuration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Configuration.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -100,6 +105,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000001 /* KnittingGaugeReconcilerApp.swift */,
+				000000000000000000000048 /* StitchwisePro.swift */,
 				000000000000000000000002 /* ContentView.swift */,
 				000000000000000000000034 /* ContentViewHelpers.swift */,
 				000000000000000000000003 /* GaugeMath.swift */,
@@ -107,6 +113,7 @@
 				000000000000000000000039 /* Projects.swift */,
 				000000000000000000000006 /* PrivacyInfo.xcprivacy */,
 				000000000000000000000047 /* Info.plist */,
+				000000000000000000000050 /* Configuration.storekit */,
 				000000000000000000000033 /* Assets.xcassets */,
 				000000000000000000000730 /* Fonts */,
 				000000000000000000000710 /* Views */,
@@ -159,6 +166,7 @@
 				000000000000000000000037 /* DeterministicUIContractsTests.swift */,
 				000000000000000000000038 /* RegressionGuardrailTests.swift */,
 				000000000000000000000042 /* ProjectTests.swift */,
+				000000000000000000000049 /* StitchwiseProTests.swift */,
 			);
 			path = KnittingGaugeReconcilerTests;
 			sourceTree = "<group>";
@@ -244,8 +252,8 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000129, 000000000000000000000132, 000000000000000000000134, 000000000000000000000135, 000000000000000000000136, 000000000000000000000139, 000000000000000000000140, 000000000000000000000141, 000000000000000000000144); runOnlyForDeploymentPostprocessing = 0; };
-		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107, 000000000000000000000137, 000000000000000000000138, 000000000000000000000142); runOnlyForDeploymentPostprocessing = 0; };
+		000000000000000000000901 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000101, 000000000000000000000102, 000000000000000000000103, 000000000000000000000120, 000000000000000000000121, 000000000000000000000122, 000000000000000000000123, 000000000000000000000124, 000000000000000000000125, 000000000000000000000126, 000000000000000000000129, 000000000000000000000132, 000000000000000000000134, 000000000000000000000135, 000000000000000000000136, 000000000000000000000139, 000000000000000000000140, 000000000000000000000141, 000000000000000000000144, 000000000000000000000147); runOnlyForDeploymentPostprocessing = 0; };
+		000000000000000000000902 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000104, 000000000000000000000107, 000000000000000000000137, 000000000000000000000138, 000000000000000000000142, 000000000000000000000148); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */

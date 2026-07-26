@@ -295,6 +295,7 @@ if [[ "$MODE" == "test" ]]; then
   xcargs+=(
     "INDEX_DATA_STORE_DIR=${PERIPHERY_INDEX_STORE_PATH}"
     "-parallel-testing-enabled NO"
+    "OTHER_SWIFT_FLAGS=-warnings-as-errors\\ -DTESTING"
   )
 fi
 

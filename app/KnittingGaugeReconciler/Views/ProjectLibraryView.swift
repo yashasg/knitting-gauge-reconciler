@@ -12,6 +12,7 @@ final class ProjectLibraryState {
     var searchText: String
     var isSearchPresented: Bool
     var isSettingsPresented: Bool
+    var isProPresented: Bool
 
     init(
         store: ProjectStore = ProjectStore(),
@@ -20,7 +21,8 @@ final class ProjectLibraryState {
         navigationPath: [KnittingProject.ID] = [],
         searchText: String = "",
         isSearchPresented: Bool = false,
-        isSettingsPresented: Bool = false
+        isSettingsPresented: Bool = false,
+        isProPresented: Bool = false
     ) {
         self.store = store
         self.isCreatingProject = isCreatingProject
@@ -29,6 +31,7 @@ final class ProjectLibraryState {
         self.searchText = searchText
         self.isSearchPresented = isSearchPresented
         self.isSettingsPresented = isSettingsPresented
+        self.isProPresented = isProPresented
     }
 
     var visibleProjects: [KnittingProject] {
@@ -80,6 +83,14 @@ final class ProjectLibraryState {
         isSettingsPresented = false
     }
 
+    func presentPro() {
+        isProPresented = true
+    }
+
+    func dismissPro() {
+        isProPresented = false
+    }
+
     func presentSearch() {
         isSearchPresented = true
     }
@@ -95,6 +106,7 @@ final class ProjectLibraryState {
 
 @MainActor
 struct ProjectLibraryView: View {
+    @Environment(StitchwiseProStore.self) private var proStore
     @State var state: ProjectLibraryState
     private let model: ProjectLibraryState
 
@@ -132,6 +144,14 @@ struct ProjectLibraryView: View {
                 }
             .navigationTitle("Projects")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    StitchwiseProToolbarButton(
+                        isUnlocked: proStore.isUnlocked,
+                        isChecking: proStore.isChecking,
+                        action: state.presentPro
+                    )
+                }
+
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button(action: state.presentSearch) {
                         Image(systemName: "magnifyingglass")
@@ -160,15 +180,29 @@ struct ProjectLibraryView: View {
             onDismiss: state.openCreatedProject,
             content: projectCreator
         )
-        .sheet(isPresented: $state.isSettingsPresented) {
-            SettingsView()
-        }
+        .sheet(
+            isPresented: $state.isSettingsPresented,
+            content: settingsSheet
+        )
+        .sheet(
+            isPresented: $state.isProPresented,
+            onDismiss: state.dismissPro,
+            content: proSheet
+        )
         .alert(
             "Project Storage Error",
             isPresented: $state.issuePresented,
             actions: storageErrorActions,
             message: storageErrorMessage
         )
+    }
+
+    func settingsSheet() -> some View {
+        SettingsView()
+    }
+
+    func proSheet() -> some View {
+        StitchwiseProSheet()
     }
 
     @ViewBuilder

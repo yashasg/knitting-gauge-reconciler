@@ -25,7 +25,9 @@ struct CreateProjectFlow: View {
         }
     }
 
+    @Environment(StitchwiseProStore.self) private var proStore
     @State private var state: CreateProjectFlowState
+    private let proStoreOverride: StitchwiseProStore?
 
     init(
         store: ProjectStore,
@@ -37,6 +39,7 @@ struct CreateProjectFlow: View {
         showSaveFailure: Bool = false,
         onDismiss: (() -> Void)? = nil
     ) {
+        proStoreOverride = nil
         _state = State(
             initialValue: CreateProjectFlowState(
                 store: store,
@@ -52,7 +55,11 @@ struct CreateProjectFlow: View {
         )
     }
 
-    init(state: CreateProjectFlowState) {
+    init(
+        state: CreateProjectFlowState,
+        proStore: StitchwiseProStore? = nil
+    ) {
+        proStoreOverride = proStore
         _state = State(initialValue: state)
     }
 
@@ -75,6 +82,16 @@ struct CreateProjectFlow: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(content: cancellationToolbar)
             .safeAreaInset(edge: .bottom, content: actionBarContent)
+            .navigationDestination(isPresented: $state.isProPurchasePresented) {
+                StitchwiseProView(
+                    context: .project(
+                        type: state.draft.type,
+                        projectLimitReached:
+                            state.store.projects.count >= ProjectAccess.freeProjectLimit
+                    ),
+                    onPresentationOutcome: handleProPresentationOutcome
+                )
+            }
         }
         .tint(AppTheme.sage)
         .interactiveDismissDisabled(state.hasChanges)
@@ -92,8 +109,15 @@ struct CreateProjectFlow: View {
             message: saveFailureMessage
         )
         .background(CreateProjectDismissInstaller(state: state))
+        .onChange(of: activeProStore.isUnlocked, handleProUnlockChange)
+        .onChange(
+            of: state.isProPurchasePresented,
+            handleProPresentationChange
+        )
     }
+}
 
+extension CreateProjectFlow {
     @ToolbarContentBuilder
     func cancellationToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .cancellationAction, content: cancelButton)
@@ -133,7 +157,10 @@ struct CreateProjectFlow: View {
 
         switch state.step {
         case .identity:
-            CreateProjectIdentityStep(draft: $state.draft)
+            CreateProjectIdentityStep(
+                draft: $state.draft,
+                showsProTypeIndicators: isConfirmedLocked
+            )
         case .construction:
             CreateProjectConstructionStep(draft: $state.draft)
         case .gauge:
@@ -150,7 +177,7 @@ struct CreateProjectFlow: View {
     var actionBar: some View {
         HStack(spacing: Spacing.control) {
             if state.step != .identity {
-                Button(action: state.moveBack) {
+                Button(action: moveBack) {
                     Label("Back", systemImage: "chevron.backward")
                 }
                     .font(.satoshiBody.weight(.semibold))
@@ -160,11 +187,18 @@ struct CreateProjectFlow: View {
                     .tint(AppTheme.sage)
             }
             Spacer()
-            Button(action: state.advance) {
-                HStack(spacing: Spacing.inner) {
-                    Text(state.primaryActionLabel)
-                    Image(systemName: state.primaryActionSystemImage)
-                        .accessibilityHidden(true)
+            Button(action: advance) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Spacing.inner) {
+                        primaryActionTitle
+                        primaryActionStatus
+                        primaryActionIcon
+                    }
+                    VStack(spacing: Spacing.tight) {
+                        primaryActionTitle
+                        primaryActionStatus
+                        primaryActionIcon
+                    }
                 }
             }
                 .font(.satoshiBody.weight(.semibold))
@@ -172,7 +206,10 @@ struct CreateProjectFlow: View {
                 .buttonBorderShape(.roundedRectangle(radius: Radius.small))
                 .controlSize(.large)
                 .tint(AppTheme.sage)
-                .disabled(!state.canAdvance)
+                .disabled(!canAdvance)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(primaryActionAccessibilityLabel)
+                .accessibilityHint(primaryActionAccessibilityHint)
         }
         .padding(.horizontal, Spacing.margin)
         .padding(.vertical, Spacing.control)
@@ -184,6 +221,127 @@ struct CreateProjectFlow: View {
         Divider()
             .overlay(AppTheme.outline)
     }
+
+    var isConfirmedLocked: Bool {
+        !activeProStore.isChecking && !activeProStore.isUnlocked
+    }
+
+    var potentiallyRequiresPro: Bool {
+        ProjectAccess.requiresPro(
+            type: state.draft.type,
+            savedProjectCount: state.store.projects.count,
+            originalType: state.originalProjectType,
+            isUnlocked: false
+        )
+    }
+
+    var requiresPro: Bool {
+        ProjectAccess.requiresPro(
+            type: state.draft.type,
+            savedProjectCount: state.store.projects.count,
+            originalType: state.originalProjectType,
+            isUnlocked: activeProStore.isUnlocked
+        )
+    }
+
+    var showsProBadge: Bool {
+        state.step == .review && isConfirmedLocked && requiresPro
+    }
+
+    var showsCheckingAccess: Bool {
+        state.step == .review && activeProStore.isChecking && potentiallyRequiresPro
+    }
+
+    var canAdvance: Bool {
+        state.canAdvance &&
+            !state.isCommitting &&
+            !state.hasCommitted &&
+            !showsCheckingAccess
+    }
+
+    var primaryActionTitle: some View {
+        Text(state.primaryActionLabel)
+    }
+
+    @ViewBuilder
+    var primaryActionStatus: some View {
+        if showsProBadge {
+            ProBadge()
+                .accessibilityHidden(true)
+        } else if showsCheckingAccess {
+            Text("Checking Access")
+                .font(.satoshiCaption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+        }
+    }
+
+    var primaryActionIcon: some View {
+        Image(systemName: state.primaryActionSystemImage)
+            .accessibilityHidden(true)
+    }
+
+    var primaryActionAccessibilityLabel: String {
+        if showsProBadge {
+            return "\(state.primaryActionLabel), requires Stitchwise Pro"
+        }
+        if showsCheckingAccess {
+            return "\(state.primaryActionLabel), checking access"
+        }
+        return state.primaryActionLabel
+    }
+
+    var primaryActionAccessibilityHint: String {
+        if showsProBadge {
+            return "Opens Stitchwise Pro options without saving this project."
+        }
+        if showsCheckingAccess {
+            return "Wait while Stitchwise Pro access is verified."
+        }
+        if state.step == .review {
+            return state.isEditing
+                ? "Saves changes and returns to the project results."
+                : "Saves the project and opens its results."
+        }
+        return "Continues to the next project setup step."
+    }
+
+    func advance() {
+        state.advance { activeProStore.entitlement }
+    }
+
+    func moveBack() {
+        state.moveBack()
+    }
+
+    func resumeAwaitingProCommitIfPossible() {
+        guard activeProStore.isUnlocked,
+              state.awaitingProCommit,
+              state.isProPurchasePresented else {
+            return
+        }
+        advance()
+    }
+
+    func handleProPresentationOutcome(
+        _ outcome: StitchwiseProPresentationOutcome
+    ) {
+        state.handleProPresentationOutcome(outcome)
+    }
+
+    func handleProUnlockChange(_: Bool, _ isUnlocked: Bool) {
+        guard isUnlocked else { return }
+        resumeAwaitingProCommitIfPossible()
+    }
+
+    func handleProPresentationChange(_: Bool, _ isPresented: Bool) {
+        guard !isPresented else { return }
+        state.awaitingProCommit = false
+    }
+
+    private var activeProStore: StitchwiseProStore {
+        proStoreOverride ?? proStore
+    }
 }
 
 @MainActor
@@ -194,6 +352,10 @@ final class CreateProjectFlowState {
     var step: CreateProjectFlow.Step
     var showDiscardConfirmation: Bool
     var showSaveFailure: Bool
+    var isProPurchasePresented: Bool
+    var awaitingProCommit: Bool
+    private(set) var isCommitting: Bool
+    private(set) var hasCommitted: Bool
 
     private let editingProject: KnittingProject?
     private let initialDraft: ProjectDraft
@@ -210,7 +372,11 @@ final class CreateProjectFlowState {
         editingProject: KnittingProject? = nil,
         step: CreateProjectFlow.Step = .identity,
         showDiscardConfirmation: Bool = false,
-        showSaveFailure: Bool = false
+        showSaveFailure: Bool = false,
+        isProPurchasePresented: Bool = false,
+        awaitingProCommit: Bool = false,
+        isCommitting: Bool = false,
+        hasCommitted: Bool = false
     ) {
         self.store = store
         self.onCreated = onCreated
@@ -222,6 +388,10 @@ final class CreateProjectFlowState {
         self.step = step
         self.showDiscardConfirmation = showDiscardConfirmation
         self.showSaveFailure = showSaveFailure
+        self.isProPurchasePresented = isProPurchasePresented
+        self.awaitingProCommit = awaitingProCommit
+        self.isCommitting = isCommitting
+        self.hasCommitted = hasCommitted
     }
 
     var canAdvance: Bool {
@@ -256,6 +426,14 @@ final class CreateProjectFlowState {
         editingProject != nil && step == .identity ? "Edit Project" : step.title
     }
 
+    var isEditing: Bool {
+        editingProject != nil
+    }
+
+    var originalProjectType: ProjectType? {
+        editingProject?.type
+    }
+
     var hasChanges: Bool {
         draft != initialDraft || step != .identity
     }
@@ -269,11 +447,13 @@ final class CreateProjectFlowState {
         if hasChanges {
             showDiscardConfirmation = true
         } else {
+            abandonProGate()
             onDismiss()
         }
     }
 
     func discard() {
+        abandonProGate()
         onDismiss()
     }
 
@@ -285,7 +465,17 @@ final class CreateProjectFlowState {
         showSaveFailure = false
     }
 
+    func handleProPresentationOutcome(
+        _ outcome: StitchwiseProPresentationOutcome
+    ) {
+        switch outcome {
+        case .purchaseCancelled:
+            abandonProGate()
+        }
+    }
+
     func moveBack() {
+        abandonProGate()
         switch step {
         case .identity:
             break
@@ -302,7 +492,10 @@ final class CreateProjectFlowState {
         }
     }
 
-    func advance() {
+    func advance(
+        entitlement: @MainActor () -> StitchwiseProEntitlement
+    ) {
+        guard canAdvance, !isCommitting, !hasCommitted else { return }
         switch step {
         case .identity:
             step = .construction
@@ -315,25 +508,93 @@ final class CreateProjectFlowState {
         case .notes:
             step = .review
         case .review:
-            saveProject()
+            attemptReviewCommit(entitlement: entitlement)
         }
     }
 
-    func saveProject() {
+    private func attemptReviewCommit(
+        entitlement: @MainActor () -> StitchwiseProEntitlement
+    ) {
+        let currentEntitlement = entitlement()
+        let isUnlocked: Bool
+        let isChecking: Bool
+        switch currentEntitlement {
+        case .checking:
+            isUnlocked = false
+            isChecking = true
+        case .locked:
+            isUnlocked = false
+            isChecking = false
+        case .unlocked:
+            isUnlocked = true
+            isChecking = false
+        }
+
+        let requiresPro = ProjectAccess.requiresPro(
+            type: draft.type,
+            savedProjectCount: store.projects.count,
+            originalType: editingProject?.type,
+            isUnlocked: isUnlocked
+        )
+        guard !isChecking || !requiresPro else { return }
+        guard !requiresPro else {
+            awaitingProCommit = true
+            isProPurchasePresented = true
+            return
+        }
+        commitProject(entitlement: entitlement)
+    }
+
+    private func commitProject(
+        entitlement: @MainActor () -> StitchwiseProEntitlement
+    ) {
+        guard !isCommitting, !hasCommitted else { return }
+        isCommitting = true
+
         let now = Date()
         guard let project = draft.makeProject(
             id: editingProject?.id ?? UUID(),
             createdAt: editingProject?.createdAt,
             patternDetailsExpanded: editingProject?.patternDetailsExpanded ?? false,
             now: now
-        ) else { return }
+        ) else {
+            isCommitting = false
+            return
+        }
+
+        let currentEntitlement = entitlement()
+        let isUnlocked: Bool
+        switch currentEntitlement {
+        case .checking, .locked:
+            isUnlocked = false
+        case .unlocked:
+            isUnlocked = true
+        }
+        guard !ProjectAccess.requiresPro(
+            type: draft.type,
+            savedProjectCount: store.projects.count,
+            originalType: editingProject?.type,
+            isUnlocked: isUnlocked
+        ) else {
+            isCommitting = false
+            return
+        }
+
         let didSave = editingProject == nil ? store.add(project) : store.update(project)
         guard didSave else {
             showSaveFailure = true
+            isCommitting = false
             return
         }
+        hasCommitted = true
+        awaitingProCommit = false
         onCreated(project.id)
         onDismiss()
+    }
+
+    private func abandonProGate() {
+        awaitingProCommit = false
+        isProPurchasePresented = false
     }
 }
 
@@ -374,11 +635,16 @@ struct CreateProjectProgressHeader: View {
 
 struct CreateProjectIdentityStep: View {
     @Binding var draft: ProjectDraft
+    let showsProTypeIndicators: Bool
     @FocusState private var nameIsFocused: Bool
     @ScaledMetric(relativeTo: .body) private var projectTypeIconSize = Sizing.stepBadge
 
-    init(draft: Binding<ProjectDraft>) {
+    init(
+        draft: Binding<ProjectDraft>,
+        showsProTypeIndicators: Bool = false
+    ) {
         _draft = draft
+        self.showsProTypeIndicators = showsProTypeIndicators
     }
 
     var body: some View {
@@ -444,7 +710,8 @@ struct CreateProjectIdentityStep: View {
     private var projectTypeMenu: some View {
         Picker("Project Type", selection: projectTypeBinding) {
             ForEach(ProjectType.allCases) { type in
-                Text(type.label).tag(type)
+                projectTypeOption(type)
+                    .tag(type)
             }
         }
         .labelsHidden()
@@ -452,6 +719,22 @@ struct CreateProjectIdentityStep: View {
         .tint(AppTheme.ink)
         .fixedSize(horizontal: true, vertical: false)
         .accessibilityHint(draft.type.description)
+    }
+
+    @ViewBuilder
+    private func projectTypeOption(_ type: ProjectType) -> some View {
+        if showsProTypeIndicators && type.isProOnly {
+            HStack(spacing: Spacing.inner) {
+                Text(type.label)
+                Text("Pro")
+                    .font(.satoshiCaption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(type.label), Pro")
+        } else {
+            Text(type.label)
+        }
     }
 
     private var projectColorPicker: some View {

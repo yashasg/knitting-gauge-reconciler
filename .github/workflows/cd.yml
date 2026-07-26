@@ -254,7 +254,7 @@ jobs:
             --arg run_url "$run_url" \
             --argjson id "$run_id" \
             '.id == $id and
-             .name == "CI" and
+             .name == $display_title and
              .display_title == $display_title and
              .event == "repository_dispatch" and
              .status == "completed" and

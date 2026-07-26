@@ -39,13 +39,13 @@ struct KnittingGaugeReconcilerApp: App {
     }
 
     func sceneContent() -> some View {
+        #if TESTING
+        Self.content(store: stitchwiseProStore)
+        #else
         Self.content(store: stitchwiseProStore)
             .task(refreshStore)
-            #if TESTING
-            .onChange(of: ScenePhase.inactive, refreshStoreWhenActive)
-            #else
             .onChange(of: scenePhaseOverride ?? scenePhase, refreshStoreWhenActive)
-            #endif
+        #endif
     }
 
     @MainActor

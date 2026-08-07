@@ -336,13 +336,23 @@ jobs:
           MATCH_KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
           export MATCH_KEYCHAIN_PASSWORD
 
-          fastlane_args=()
-
+          # Passed as separate invocations rather than an args array: the macOS
+          # runner is bash 3.2, where expanding an empty array under `set -u` is
+          # an unbound variable error that aborts the script without failing the
+          # step, so the lane silently never runs.
           if [[ -n "$TESTFLIGHT_NOTES" ]]; then
-            fastlane_args+=("notes:$TESTFLIGHT_NOTES")
+            bundle exec fastlane "$LANE" "notes:$TESTFLIGHT_NOTES"
+          else
+            bundle exec fastlane "$LANE"
           fi
 
-          bundle exec fastlane "$LANE" "${fastlane_args[@]}"
+          # A `set -u` abort inside this step exits 0, because the EXIT trap
+          # resets the status, so the step can report success without ever
+          # running the lane. Fail loudly instead of shipping nothing.
+          if ! ls -1 ./*.ipa > /dev/null 2>&1; then
+            echo "::error::Fastlane lane produced no .ipa; nothing was uploaded"
+            exit 1
+          fi
 
       - name: Clean release credentials
         if: always()

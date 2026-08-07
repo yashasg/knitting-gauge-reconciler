@@ -37,17 +37,6 @@ on:
         required: false
         default: ""
         type: string
-      version_bump:
-        description: Semantic version bump before TestFlight build-number increment (patch default; choose none for tag dispatches)
-        required: false
-        default: patch
-        type: choice
-        options:
-          - none
-          - patch
-          - minor
-          - major
-
 permissions:
   contents: read
   actions: read
@@ -75,7 +64,6 @@ jobs:
           LANE: ${{ inputs.lane }}
           REF: ${{ inputs.ref }}
           REF_TYPE: ${{ inputs.ref_type }}
-          VERSION_BUMP: ${{ inputs.version_bump }}
         run: |
           set -euo pipefail
           case "$LANE" in
@@ -86,16 +74,8 @@ jobs:
             branch|tag) ;;
             *) echo "::error::Invalid ref_type: $REF_TYPE"; exit 1 ;;
           esac
-          case "$VERSION_BUMP" in
-            none|patch|minor|major) ;;
-            *) echo "::error::Invalid version_bump: $VERSION_BUMP"; exit 1 ;;
-          esac
           if [[ "$REF_TYPE" == "branch" && "$REF" != "main" ]]; then
             echo "::error::Branch releases must use main"
-            exit 1
-          fi
-          if [[ "$REF_TYPE" == "tag" && "$VERSION_BUMP" != "none" ]]; then
-            echo "::error::version_bump must be 'none' when ref_type is 'tag'"
             exit 1
           fi
           if [[ "$REF_TYPE" == "tag" ]] && ! git check-ref-format "refs/tags/$REF"; then
@@ -316,7 +296,6 @@ jobs:
           GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
           LANE: ${{ inputs.lane }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-          VERSION_BUMP: ${{ inputs.version_bump }}
         working-directory: app
         run: |
           set -euo pipefail
@@ -358,10 +337,6 @@ jobs:
           export MATCH_KEYCHAIN_PASSWORD
 
           fastlane_args=()
-
-          if [[ "$VERSION_BUMP" != "none" ]]; then
-            fastlane_args+=("bump:$VERSION_BUMP")
-          fi
 
           if [[ -n "$TESTFLIGHT_NOTES" ]]; then
             fastlane_args+=("notes:$TESTFLIGHT_NOTES")
